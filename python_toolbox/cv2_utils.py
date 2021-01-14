@@ -109,11 +109,14 @@ def read_video(file_dir, file_name, is_check, save_dir="./{}", start_num=0, inte
     else:
         while(cap.isOpened()):
             ret, frame = cap.read()
-            cv2.imshow('Processed image', frame)
-            if not _img_ct % interval:
-                wirte_img_in(save_dir.format(_img_ct), frame)
-            _img_ct += 1
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if ret:
+                cv2.imshow('Processed image', frame)
+                if not _img_ct % interval:
+                    wirte_img_in(save_dir.format(_img_ct), frame)
+                _img_ct += 1
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
                 break
 
         cv2.destroyAllWindows()
