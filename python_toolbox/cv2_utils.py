@@ -92,6 +92,34 @@ def read_img(file_dir: str, color_type: int, resize: list = None, is_last_channe
                 is_last_axis=is_last_channel)
 
 
+def read_video(file_dir, file_name, is_check, save_dir="./{}", start_num=0, interval=1):
+    cap = cv2.VideoCapture(file_dir + file_name)
+    _img_ct = start_num
+    if is_check:
+        file_check = cap.isOpened()
+        if file_check:
+            ret, frame = cap.read()
+            cv2.imshow('Video file check', frame)
+
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cap.release()
+
+        return file_check
+    else:
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            cv2.imshow('Processed image', frame)
+            if not _img_ct % interval:
+                wirte_img_in(save_dir.format(_img_ct), frame)
+            _img_ct += 1
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cv2.destroyAllWindows()
+        cap.release()
+
+
 def wirte_img_in(save_dir: str, img: ["np.uint8 ndarray"], ext: ["Defalt ext is png"] = None) -> None:
     if ext is not None:
         assert IMAGE_EXT.index(ext)

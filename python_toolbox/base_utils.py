@@ -161,14 +161,17 @@ def dir_work(obj_dir: str, mode: int, dst_dir: str = None):
             shutil.rmtree(obj_dir)
 
 
-def get_work_folder():
+def get_work_folder(is_last_dir=True):
     """
     Args:
         None
     Returns:
         return  :   Project folder Name
     """
-    return getcwd().split("/")[-1] + SLASH
+    if is_last_dir:
+        return getcwd().split("/")[-1] + SLASH
+    else:
+        return getcwd()
 
 
 """
