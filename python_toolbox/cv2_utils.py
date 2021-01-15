@@ -95,14 +95,14 @@ def read_img(file_dir: str, color_type: int, resize: list = None, is_last_channe
 def read_video(file_dir, file_name, mode, save_dir="./{}", start_num=0, interval=1):
     cap = cv2.VideoCapture(file_dir + file_name)
     _img_ct = start_num
-    
+
     if mode == "check":
         file_check = cap.isOpened()
         if file_check:
             ret, frame = cap.read()
             cv2.imshow('Video file check', frame)
 
-        cv2.waitKey(0)
+        cv2.waitKey(10)
         cv2.destroyAllWindows()
         cap.release()
 
