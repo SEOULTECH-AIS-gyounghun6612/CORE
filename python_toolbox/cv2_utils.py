@@ -92,10 +92,11 @@ def read_img(file_dir: str, color_type: int, resize: list = None, is_last_channe
                 is_last_axis=is_last_channel)
 
 
-def read_video(file_dir, file_name, is_check, save_dir="./{}", start_num=0, interval=1):
+def read_video(file_dir, file_name, mode, save_dir="./{}", start_num=0, interval=1):
     cap = cv2.VideoCapture(file_dir + file_name)
     _img_ct = start_num
-    if is_check:
+    
+    if mode == "check":
         file_check = cap.isOpened()
         if file_check:
             ret, frame = cap.read()
@@ -106,7 +107,8 @@ def read_video(file_dir, file_name, is_check, save_dir="./{}", start_num=0, inte
         cap.release()
 
         return file_check
-    else:
+
+    elif mode == "convert_to_img":
         while(cap.isOpened()):
             ret, frame = cap.read()
             if ret:
@@ -118,6 +120,27 @@ def read_video(file_dir, file_name, is_check, save_dir="./{}", start_num=0, inte
                     break
             else:
                 break
+
+        cv2.destroyAllWindows()
+        cap.release()
+
+    elif mode == "convert_to_np":
+        _tmp_holder = []
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            if ret:
+                cv2.imshow('Processed image', frame)
+                _tmp_holder.append(frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
+                break
+
+        _tmp_holder = np.array(_tmp_holder)
+        if save_dir.split("/")[-1].split(".")[-1] == "npz":
+            np.savez_compressed(save_dir, data=_tmp_holder)
+        else:
+            np.savez(save_dir, data=_tmp_holder)
 
         cv2.destroyAllWindows()
         cap.release()
