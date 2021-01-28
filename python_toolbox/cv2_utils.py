@@ -185,9 +185,8 @@ def make_video(save_dir: str, imgs: ["np.uint8 ndarray"], ext: ["Defalt ext is a
 
     for _img in imgs:
         video_file.write(_img)
-        if DEBUG:
-            cv2.imshow('frame', _img)
-            cv2.waitKey(1)
+        cv2.imshow('frame', _img)
+        cv2.waitKey(1)
     video_file.release()
 
 
