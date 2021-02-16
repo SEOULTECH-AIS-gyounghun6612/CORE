@@ -92,58 +92,9 @@ def read_img(file_dir: str, color_type: int, resize: list = None, is_last_channe
                 is_last_axis=is_last_channel)
 
 
-def read_video(file_dir, file_name, mode, save_dir="./{}", start_num=0, interval=1):
-    cap = cv2.VideoCapture(file_dir + file_name)
-    _img_ct = start_num
-
-    if mode == "check":
-        file_check = cap.isOpened()
-        if file_check:
-            ret, frame = cap.read()
-            cv2.imshow('Video file check', frame)
-
-        cv2.waitKey(10)
-        cv2.destroyAllWindows()
-        cap.release()
-
-        return file_check
-
-    elif mode == "convert_to_img":
-        while(cap.isOpened()):
-            ret, frame = cap.read()
-            if ret:
-                cv2.imshow('Processed image', frame)
-                if not _img_ct % interval:
-                    wirte_img_in(save_dir.format(_img_ct), frame)
-                _img_ct += 1
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            else:
-                break
-
-        cv2.destroyAllWindows()
-        cap.release()
-
-    elif mode == "convert_to_np":
-        _tmp_holder = []
-        while(cap.isOpened()):
-            ret, frame = cap.read()
-            if ret:
-                cv2.imshow('Processed image', frame)
-                _tmp_holder.append(frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            else:
-                break
-
-        _tmp_holder = np.array(_tmp_holder)
-        if save_dir.split("/")[-1].split(".")[-1] == "npz":
-            np.savez_compressed(save_dir, data=_tmp_holder)
-        else:
-            np.savez(save_dir, data=_tmp_holder)
-
-        cv2.destroyAllWindows()
-        cap.release()
+def read_video(file_dir):
+    cap = cv2.VideoCapture(file_dir)
+    return cap
 
 
 def wirte_img_in(save_dir: str, img: ["np.uint8 ndarray"], ext: ["Defalt ext is png"] = None) -> None:
@@ -189,6 +140,18 @@ def make_video(save_dir: str, imgs: ["np.uint8 ndarray"], ext: ["Defalt ext is a
         cv2.waitKey(1)
     video_file.release()
 
+
+def save_numpy(save_dir, data):
+    if type(data) == list:
+        _array = np.array(data)
+
+    elif type(data) == np.ndarray:
+        _array = data.copy()
+    
+    if save_dir.split("/")[-1].split(".")[-1] == "npz":
+        np.savez_compressed(save_dir, data=data)
+    else:
+        np.savez(save_dir, data=data)
 
 """
 Custom function about Debug
