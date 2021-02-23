@@ -12,9 +12,10 @@ Requirement
 import json
 import datetime
 import platform
+import shutil
+
 from glob import glob
 from os import path, system, getcwd, mkdir, remove
-import shutil
 
 from . import _error as _e
 
@@ -110,7 +111,7 @@ def disconnect_AIS_server(mount_dir: str) -> None:
         system("sudo umount {MountDir}".format(MountDir=mount_dir))
 
 
-def dir_maker(obj_dir: str, root_dir: str = None) -> str:
+def dir_maker(obj_dirs: list, root_dir: str = None) -> str:
     """
     Args:
         obj_dir     :   maked directory
@@ -118,12 +119,25 @@ def dir_maker(obj_dir: str, root_dir: str = None) -> str:
     Returns:
         maked_dir   :   maked folder's directory
     """
-    _obj_dir = obj_dir if obj_dir[-1] == SLASH else obj_dir + SLASH
-    maked_dir = _obj_dir if root_dir is None\
-        else (root_dir + _obj_dir if root_dir[-1] == SLASH else root_dir + SLASH + _obj_dir)
-    if not path.isdir(maked_dir):
-        mkdir(maked_dir)
 
+    if type(obj_dirs) != list:
+        _obj_dirs = [obj_dirs]
+
+    for _obj_dir in _obj_dirs:
+        # slash check
+        _obj_dir = _obj_dir if _obj_dir[-1] == SLASH else _obj_dir + SLASH
+
+        # new_dir
+        maked_dir = _obj_dir if root_dir is None\
+            else (root_dir + _obj_dir if root_dir[-1] == SLASH else root_dir + SLASH + _obj_dir)
+        if not path.isdir(maked_dir):
+            mkdir(maked_dir)
+
+        # use mkdir after dir check
+        if not path.isdir(maked_dir):
+            mkdir(maked_dir)
+
+        root_dir = maked_dir
     return maked_dir
 
 
