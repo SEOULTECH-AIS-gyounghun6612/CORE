@@ -24,7 +24,7 @@ from glob import glob
 from os import path, system, getcwd, mkdir, remove
 import shutil
 
-import c_error as e
+import _error as e
 
 # Set constant
 DEBUG = False
