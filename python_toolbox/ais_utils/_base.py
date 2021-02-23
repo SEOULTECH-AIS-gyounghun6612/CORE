@@ -122,6 +122,8 @@ def dir_maker(obj_dirs: list, root_dir: str = None) -> str:
 
     if type(obj_dirs) != list:
         _obj_dirs = [obj_dirs]
+    else:
+        _obj_dirs = obj_dirs
 
     for _obj_dir in _obj_dirs:
         # slash check
