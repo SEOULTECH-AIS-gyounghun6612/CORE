@@ -247,8 +247,12 @@ def make_trackbar_window(window_name, Trackbar_name, image_precess):
 
     while(True):
         _event = cv2.waitKeyEx(10)
+        _parameter = []
         for _ct_name, _name in enumerate(Trackbar_name):
-            image_precess.value_process(_ct_name, cv2.getTrackbarPos(_name, window_name))
+            _parameter.append(cv2.getTrackbarPos(_name, window_name))
+
+        image_precess.value_process(_parameter)
+
         is_stop = image_precess.event_process(_event)
         img_render(image_precess.return_image(), window_name)
         if is_stop:
