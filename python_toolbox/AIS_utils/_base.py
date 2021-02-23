@@ -21,7 +21,7 @@ import json
 import datetime
 import platform
 from glob import glob
-from os import path, system, getcwd, mkdir, rmdir, rename, remove
+from os import path, system, getcwd, mkdir, remove
 import shutil
 
 import c_error as e
@@ -231,9 +231,6 @@ def file_work(obj_file: str, mode: int, dst_dir: str = None):
 #################################################
 ########## Custom function about Debug ##########
 #################################################
-def nan_check(value):
-    return math.isnan(value)
-
 
 def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
     """

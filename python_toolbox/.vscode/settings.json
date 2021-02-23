@@ -1,7 +1,10 @@
 {
     "python.pythonPath": "/home/ais-choi/.conda/envs/pytorch/bin/python",
-    "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": ["-ignore = "]
+    "python.linting.enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length=110",
+        "--ignore=E402,",
+    ]
 }

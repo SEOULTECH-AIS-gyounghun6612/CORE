@@ -20,7 +20,6 @@ File information
 # Import module
 import cv2
 import numpy as np
-import math
 
 """
 Custom function about np module
