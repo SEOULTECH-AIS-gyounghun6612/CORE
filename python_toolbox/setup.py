@@ -7,7 +7,7 @@ setup(
     url="https://github.com/gyounghun6612/base_utils_v2.git",
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
-    packages=["AIS_utils"],
+    packages=["ais_utils"],
     zip_safe=False,
     install_requires=[
         "opencv-python"
