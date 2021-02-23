@@ -59,3 +59,7 @@ class No_model_Error(Exception):
 
     def __str__(self):
         print(make_code_info_text(self._data))
+
+
+def load_success():
+    print("!!! custom python module AIS_utils_error load Success !!!")

@@ -6,17 +6,9 @@ File object
 Requirement
 =====
     None
-
-File information
-=====
-    first edit date   : 2020/05/21
-    first editer      : choi keonghun
-    last edit date    : 2020/12/16
-    last editer       : choi keonghun
-
-Import module
 =====
 """
+# Import module
 import json
 import datetime
 import platform
@@ -24,7 +16,7 @@ from glob import glob
 from os import path, system, getcwd, mkdir, remove
 import shutil
 
-from ._error import *
+from . import _error as _e
 
 # Set constant
 DEBUG = False
@@ -72,7 +64,7 @@ def connect_AIS_server(
         mount_dir : Mounted directory
     """
     if not is_local:
-        raise Not_yet_Error(
+        raise _e.Not_yet_Error(
             File_name="base_utils",
             Function="connect_AIS_server",
             Detail="About External IP connection connet"
@@ -127,7 +119,8 @@ def dir_maker(obj_dir: str, root_dir: str = None) -> str:
         maked_dir   :   maked folder's directory
     """
     _obj_dir = obj_dir if obj_dir[-1] == SLASH else obj_dir + SLASH
-    maked_dir = _obj_dir if root_dir is None else (root_dir + _obj_dir if root_dir[-1] == SLASH else root_dir + SLASH + _obj_dir)
+    maked_dir = _obj_dir if root_dir is None\
+        else (root_dir + _obj_dir if root_dir[-1] == SLASH else root_dir + SLASH + _obj_dir)
     if not path.isdir(maked_dir):
         mkdir(maked_dir)
 
@@ -154,7 +147,7 @@ def dir_work(obj_dir: str, mode: int, dst_dir: str = None):
         shutil.rmtree(obj_dir)
     else:
         if dst_dir is None:
-            Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("dir_work", "dst_dir"))
+            _e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("dir_work", "dst_dir"))
         shutil.copytree(obj_dir, dst_dir)
 
         if mode == MOVE:
@@ -183,14 +176,14 @@ Custom function about file R/W
 
 
 # FUNCTION
-def get_file_list(obj_dir: str, file_str: str = "*", ext: str = ".*", just_file_name: bool = False) -> ["str_list"]:
+def get_file_list(obj_dir: str, file_str: str = "*", ext: str = ".*", just_file_name: bool = False) -> list:
     """
     Args:
         obj_dir             :
         file_str            :
         ext                 :
         just_file_name      :
-    Returns:  
+    Returns:
         _file_list (list)   :   Project folder Name
     """
     _ext = "." + ext if ext[0] != "." else ext
@@ -202,12 +195,12 @@ def get_file_list(obj_dir: str, file_str: str = "*", ext: str = ".*", just_file_
 
 def json_file(save_dir: str, file_name: str, data_dict: dict, is_save: bool) -> None:
     """
-    Args:  
-        save_dir        :   
-        file_name       :   
-        data_dict       :   
-    Returns:  
-        return (dict)   :   
+    Args:
+        save_dir        :
+        file_name       :
+        data_dict       :
+    Returns:
+        return (dict)   :
     """
     if is_save:
         _file = open(save_dir + file_name, "w")
@@ -222,20 +215,25 @@ def file_work(obj_file: str, mode: int, dst_dir: str = None):
         remove(obj_file)
     else:
         if dst_dir is None:
-            Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("file_work", "dst_dir"))
+            _e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("file_work", "dst_dir"))
         shutil.copyfile(obj_file, dst_dir)
         if mode == MOVE:
             remove(obj_file)
 
 
-#################################################
-########## Custom function about Debug ##########
-#################################################
+"""
+Custom function about precess debug
+=====
+"""
+# CONSTANT
+#    EMPTY
 
+
+# FUNCTION
 def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
     """
     Call in a loop to create terminal progress bar
-    @params:
+    Args:
         iteration   - Required  : current iteration (Int)
         total       - Required  : total iterations (Int)
         prefix      - Optional  : prefix string (Str)
@@ -243,6 +241,8 @@ def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100,
         decimals    - Optional  : positive number of decimals in percent complete (Int)
         length      - Optional  : character length of bar (Int)
         fill        - Optional  : bar fill character (Str)
+    Returns:
+        Empty
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
@@ -252,3 +252,6 @@ def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100,
     if iteration == total:
         print()
 
+
+def load_success():
+    print("!!! custom python module AIS_utils_base load Success !!!")
