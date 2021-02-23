@@ -24,7 +24,7 @@ from glob import glob
 from os import path, system, getcwd, mkdir, remove
 import shutil
 
-import _error as e
+from ._error import *
 
 # Set constant
 DEBUG = False
@@ -72,7 +72,7 @@ def connect_AIS_server(
         mount_dir : Mounted directory
     """
     if not is_local:
-        raise e.Not_yet_Error(
+        raise Not_yet_Error(
             File_name="base_utils",
             Function="connect_AIS_server",
             Detail="About External IP connection connet"
@@ -154,7 +154,7 @@ def dir_work(obj_dir: str, mode: int, dst_dir: str = None):
         shutil.rmtree(obj_dir)
     else:
         if dst_dir is None:
-            e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("dir_work", "dst_dir"))
+            Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("dir_work", "dst_dir"))
         shutil.copytree(obj_dir, dst_dir)
 
         if mode == MOVE:
@@ -222,7 +222,7 @@ def file_work(obj_file: str, mode: int, dst_dir: str = None):
         remove(obj_file)
     else:
         if dst_dir is None:
-            e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("file_work", "dst_dir"))
+            Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("file_work", "dst_dir"))
         shutil.copyfile(obj_file, dst_dir)
         if mode == MOVE:
             remove(obj_file)
