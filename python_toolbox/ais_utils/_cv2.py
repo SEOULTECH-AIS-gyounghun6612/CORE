@@ -229,7 +229,7 @@ class trackbar():
 
 
 class image_process():
-    def __init__(self, origianl_image, is_zero2one=False):
+    def __init__(self, origianl_image):
         self.original_img = origianl_image
         self.processed_img = None
 
