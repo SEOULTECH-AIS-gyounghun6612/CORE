@@ -17,7 +17,6 @@ import shutil
 from glob import glob
 from os import path, system, getcwd, mkdir, remove
 
-# from . import _error as _e
 import _error as _e
 
 # Set constant
