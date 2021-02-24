@@ -17,7 +17,8 @@ import shutil
 from glob import glob
 from os import path, system, getcwd, mkdir, remove
 
-import _error as _e
+from . import _error as _e
+# import _error as _e
 
 # Set constant
 DEBUG = False
