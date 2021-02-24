@@ -1,6 +1,6 @@
-from . import _base as _b
-from . import _cv2 as _cv
-from . import _error as _e
+import _base as _b
+import _cv2 as _cv
+import _error as _e
 
 _b.load_success()
 _cv.load_success()

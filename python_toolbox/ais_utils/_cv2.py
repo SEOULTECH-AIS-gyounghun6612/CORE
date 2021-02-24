@@ -283,12 +283,12 @@ class trackbar_window():
             # display original image
             cv2.namedWindow(ORIGINAL_WINDOW_NAME)
             original_render_dict = self.process.return_original_image()
-            img_render(original_render_dict)
+            img_render(**original_render_dict)
 
         # display processed image
         parameters = self._get_parameters()
         processed_render_dict = self.process.return_processed_image(self.name, parameters)
-        img_render(processed_render_dict)
+        img_render(**processed_render_dict)
 
     def _set_trackbar(self):
         def nothing(pos):
@@ -318,9 +318,10 @@ class trackbar_window():
             _event = cv2.waitKeyEx(10)
             parameters = self._get_parameters()
             processed_render_dict = self.process.return_processed_image(self.name, parameters)
+            img_render(**processed_render_dict)
             if _event == ord('s'):  # image save
                 processed_render_dict["save_dir"] = save_dir
-                img_render(processed_render_dict)
+                img_render(**processed_render_dict)
                 break
             elif _event == ord('q'):  # loop break
                 break
@@ -351,9 +352,8 @@ def img_render(
     # process 1 :
     if is_zero2one:
         _img *= PIXEL_MAX
-
-    _img = np.clip(_img, 0, PIXEL_MAX)
-    _img = _img.astype(np.uint8)
+        _img = np.clip(_img, 0, PIXEL_MAX)
+        _img = _img.astype(np.uint8)
 
     #  process 2 :
     if is_First_channel:
