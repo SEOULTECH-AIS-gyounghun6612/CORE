@@ -237,7 +237,7 @@ class image_process():
         return {
             "img": self.original_img,
             "window_name": ORIGINAL_WINDOW_NAME,
-            "is_zero2one": self.original_is_zero2one,
+            "is_zero2one": False,
             "is_First_channel": False,
             "input_text": None,
             "save_dir": None,
