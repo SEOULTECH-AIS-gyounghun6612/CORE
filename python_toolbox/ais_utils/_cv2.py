@@ -256,7 +256,7 @@ class image_process():
             "is_DEBUG": False
         }
 
-    def doing_process(parameters):
+    def doing_process(self, parameters):
         print("!!! Process is not set !!!")
         return False, False
 
