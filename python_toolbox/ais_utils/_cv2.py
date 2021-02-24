@@ -295,7 +295,7 @@ class trackbar_window():
             pass
         # make window n track bar
         for trackbar in self.trackbar_list:
-            _value_range = trackbar._range()
+            _value_range = trackbar._range
             cv2.createTrackbar(
                 trackbar._name,
                 self.name,
