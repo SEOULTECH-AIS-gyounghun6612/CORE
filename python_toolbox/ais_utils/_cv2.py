@@ -211,52 +211,119 @@ NEIGHBOR_SPACE2 = [[None, -1], [1, -1], [1, None]]
 IMAGE_TEXT_PADDING = 10
 SMALL_VALUE = 1E-10
 
+ORIGINAL_WINDOW_NAME = "original"
+
 
 # FUNCTION
-def make_trackbar_window(window_name, Trackbar_name, image_precess):
-    """
-    Args:
-        save_dir :
-        img : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .avi
-        frame :
-        shape :
-    Returns:
-        Empty
-    """
-    def nothing(pos):
-        pass
+class trackbar():
+    def __init__(self, name, value_range):
+        """
+        Args:
+            name :
+            value_range : np.uint8 ndarray
+        Returns:
+            Empty
+        """
+        self._name = name
+        self._range = value_range
 
-    cv2.namedWindow(window_name)
-    img_render(image_precess.return_image(), window_name)
 
-    # make window n track bar
-    for _ct_track, _name in enumerate(Trackbar_name):
-        _value_range = image_precess.return_range(_ct_track)
-        cv2.createTrackbar(
-            _name,
-            window_name,
-            _value_range[0],
-            _value_range[1],
-            nothing)
-        cv2.setTrackbarPos(
-            _name,
-            window_name,
-            int(np.mean(_value_range)))
+class image_process():
+    def __init__(self, origianl_image, is_zero2one=False):
+        self.original_img = origianl_image
+        self.processed_img = None
 
-    while(True):
-        _event = cv2.waitKeyEx(10)
-        _parameter = []
-        for _ct_name, _name in enumerate(Trackbar_name):
-            _parameter.append(cv2.getTrackbarPos(_name, window_name))
+    def return_original_image(self):
+        return {
+            "img": self.original_img,
+            "window_name": ORIGINAL_WINDOW_NAME,
+            "is_zero2one": self.original_is_zero2one,
+            "is_First_channel": False,
+            "input_text": None,
+            "save_dir": None,
+            "is_DEBUG": False
+        }
 
-        image_precess.value_process(_parameter)
+    def return_processed_image(self, window_name, parameters):
+        is_z2o, is_First = self.doing_process(parameters)
+        return {
+            "img": self.processed_img,
+            "window_name": window_name,
+            "is_zero2one": is_z2o,
+            "is_First_channel": is_First,
+            "input_text": None,
+            "save_dir": None,
+            "is_DEBUG": False
+        }
 
-        is_stop = image_precess.event_process(_event)
-        img_render(image_precess.return_image(), window_name)
-        if is_stop:
-            break
+    def doing_process(parameters):
+        print("!!! Process is not set !!!")
+        return False, False
+
+
+class trackbar_window():
+    def __init__(self, window_name: str, trackbars: list, image_process, display_origianl: bool = True):
+        """
+        Args:
+            window_name :
+            trackbars : trackbar's setting list. this list consist of trackbar class
+            image_process : np.uint8 ndarray
+            display_origianl :
+        Returns:
+            Empty
+        """
+        self.name = window_name
+        self.trackbar_list = trackbars
+        self.process = image_process
+
+        cv2.namedWindow(self.name)
+        self._set_trackbar()
+
+        if display_origianl:
+            # display original image
+            cv2.namedWindow(ORIGINAL_WINDOW_NAME)
+            original_render_dict = self.process.return_original_image()
+            img_render(original_render_dict)
+
+        # display processed image
+        parameters = self._get_parameters()
+        processed_render_dict = self.process.return_processed_image(self.name, parameters)
+        img_render(processed_render_dict)
+
+    def _set_trackbar(self):
+        def nothing(pos):
+            pass
+        # make window n track bar
+        for trackbar in self.trackbar_list:
+            _value_range = trackbar._range()
+            cv2.createTrackbar(
+                trackbar._name,
+                self.name,
+                _value_range[0],
+                _value_range[1],
+                nothing)
+            cv2.setTrackbarPos(
+                trackbar._name,
+                self.name,
+                int(np.mean(_value_range)))
+
+    def _get_parameters(self):
+        _parameters = []
+        for trackbar in self.trackbar_list:
+            _parameters.append(cv2.getTrackbarPos(trackbar._name, self.name))
+        return _parameters
+
+    def loop(self, save_dir):
+        while(True):
+            _event = cv2.waitKeyEx(10)
+            parameters = self._get_parameters()
+            processed_render_dict = self.process.return_processed_image(self.name, parameters)
+            if _event == ord('s'):  # image save
+                processed_render_dict["save_dir"] = save_dir
+                img_render(processed_render_dict)
+                break
+            elif _event == ord('q'):  # loop break
+                break
 
 
 def img_render(
