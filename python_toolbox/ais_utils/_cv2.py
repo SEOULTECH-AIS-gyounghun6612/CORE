@@ -244,11 +244,11 @@ class image_process():
             "is_DEBUG": False
         }
 
-    def return_processed_image(self, window_name, parameters):
+    def return_processed_image(self, _name, parameters):
         is_z2o, is_First = self.doing_process(parameters)
         return {
             "img": self.processed_img,
-            "window_name": window_name,
+            "window_name": _name,
             "is_zero2one": is_z2o,
             "is_First_channel": is_First,
             "input_text": None,
