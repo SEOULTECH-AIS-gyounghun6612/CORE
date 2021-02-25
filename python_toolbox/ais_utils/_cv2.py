@@ -326,6 +326,8 @@ class trackbar_window():
             elif _event == ord('q'):  # loop break
                 break
 
+        return _event
+
 
 def img_render(
         img: np.ndarray,
