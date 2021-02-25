@@ -627,6 +627,44 @@ def make_noise_in_image(
         print("have some problem in noise type setting")
 
 
+def image_data_expand(
+        file_list: list,
+        resize: list = None,
+        crop_size: list = None,
+        flip: str = None,
+        rotate: int = None):
+    """
+    Args:
+        file_list :
+        resize : "[int, int] or [float, float]"
+        crop_size : 
+        flip : 
+        rotate :
+    Returns:
+        Empty
+    """
+    _img_list = []
+
+    for file in file_list:
+        _img = cv2.imread(file, cv2.IMREAD_COLOR)
+        _img_list.append(_img)
+
+    if resize is not None:
+        for _ct in range(len(_img_list)):
+            _img_list[_ct] = img_resize(_img_list[_ct], resize)
+
+    if crop_size is not None:
+        _h, _w, _ = np.shape(_img)
+        _start_h = np.random.randint(_h - crop_size[0])
+        _start_w = np.random.randint(_w - crop_size[1])
+        for _ct in range(len(_img_list)):
+            _img_list[_ct] = \
+                _img_list[_ct][_start_h: _start_h + crop_size[0], _start_w:_start_w + crop_size[1], ]
+
+    if flip is not None:
+        _img = img_resize(_img, resize)
+
+
 # ##################################################### #
 # ############ Custom function about trick ############ #
 # ##################################################### #
