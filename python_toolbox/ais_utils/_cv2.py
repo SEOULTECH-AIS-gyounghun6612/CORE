@@ -700,7 +700,8 @@ def image_augmentation(
                 _img_list[_ct] = cv2.flip(_img_list[_ct], 1)
                 _file_list[_ct] += "_hv"
     else:
-        _file_list[_ct] += "_o"
+        for _ct in range(len(_img_list)):
+            _file_list[_ct] += "_o"
 
     if rotate is not None:
         _angle = np.random.randint(-rotate[1], rotate[1])
