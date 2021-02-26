@@ -631,7 +631,7 @@ def make_noise_in_image(
 
 def image_rotate(img, center_rate, angle, scale):
     _h, _w, _c = np.shape(img)
-    _matrix = cv2.getRotationMatrix2D((_h / center_rate[0], _w / center_rate[1]), angle, scale)
+    _matrix = cv2.getRotationMatrix2D((_h * center_rate[0], _w * center_rate[1]), angle, scale)
 
     return cv2.warpAffine(img, _matrix, (_h, _w))
 
@@ -703,7 +703,7 @@ def image_augmentation(
         _file_list[_ct] += "_o"
 
     if rotate is not None:
-        _angle = np.random.randint(rotate[1])
+        _angle = np.random.randint(-rotate[1], rotate[1])
         for _ct in range(len(_img_list)):
             _img_list[_ct] = image_rotate(_img_list[_ct], rotate[0], _angle, rotate[2])
             _file_list[_ct] += "_{}-{}-{}-{}".format(rotate[0][0], rotate[0][1], _angle, rotate[2])
