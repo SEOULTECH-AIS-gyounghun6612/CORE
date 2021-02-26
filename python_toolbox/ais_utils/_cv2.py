@@ -706,7 +706,7 @@ def image_augmentation(
         _angle = np.random.randint(rotate[1])
         for _ct in range(len(_img_list)):
             _img_list[_ct] = image_rotate(_img_list[_ct], rotate[0], _angle, rotate[2])
-            _file_list[_ct] += "_{}-{}-{}-{}".format(rotate[0][0], rotate[0][1], _angle, rotate[2]))
+            _file_list[_ct] += "_{}-{}-{}-{}".format(rotate[0][0], rotate[0][1], _angle, rotate[2])
 
     for _ct in range(len(_img_list)):
         _file_list[_ct] += ext
