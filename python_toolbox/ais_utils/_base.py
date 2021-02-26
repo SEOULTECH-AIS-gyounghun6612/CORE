@@ -151,8 +151,8 @@ def result_dir_maker(result_dir: str = None, result_root: str = None) -> str:
     Returns:
         return          :   maked folder's directory
     """
-    _result_root = dir_maker(obj_dir=result_root) if result_root is not None \
-        else dir_maker(root_dir=".", obj_dir="Result")
+    _result_root = dir_maker(obj_dirs=result_root) if result_root is not None \
+        else dir_maker(root_dir=".", obj_dirs="Result")
     _result_dir = result_dir if result_dir is not None \
         else "{}{}".format(datetime.datetime.now().strftime('%Y_%m_%d'), SLASH)
     return dir_maker(_result_dir, _result_root)
