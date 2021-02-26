@@ -13,6 +13,7 @@ Requirement
 import cv2
 import numpy as np
 
+from . import _error as _e
 """
 Custom function about np module
 =====
@@ -494,6 +495,7 @@ Custom function about image process
 =====
 """
 # CONSTANT
+FLIP_OPTION = ["V", "H", "VH", "HV", "v", "h", "hv", "vh"]
 SALT_N_PAPPER = 0
 INVERS = 1
 
@@ -627,31 +629,51 @@ def make_noise_in_image(
         print("have some problem in noise type setting")
 
 
-def image_data_expand(
+def image_rotate(img, center_rate, angle, scale):
+    _h, _w, _c = np.shape(img)
+    _matrix = cv2.getRotationMatrix2D((_h / center_rate[0], _w / center_rate[1]), angle, scale)
+
+    return cv2.warpAffine(img, _matrix, (_h, _w))
+
+
+def image_augmentation(
         file_list: list,
         resize: list = None,
         crop_size: list = None,
         flip: str = None,
-        rotate: int = None):
+        rotate: list = None,
+        ext: str = ".png"):
     """
     Args:
         file_list :
         resize : "[int, int] or [float, float]"
-        crop_size : 
-        flip : 
+        crop_size :
+        flip :
         rotate :
+        ext :
     Returns:
         Empty
     """
+    flip_option_check = flip in FLIP_OPTION
+
+    if not flip_option_check:
+        _e.Custom_Variable_Error(
+            loacation="ais_utils._cv2.image_augmentation",
+            parameters="flip",
+            details="you set the the weird flip option letter")
+
     _img_list = []
+    _file_list = []
 
     for file in file_list:
         _img = cv2.imread(file, cv2.IMREAD_COLOR)
         _img_list.append(_img)
+        _file_list.append(file.split("/")[-1].split(".")[0])
 
     if resize is not None:
         for _ct in range(len(_img_list)):
             _img_list[_ct] = img_resize(_img_list[_ct], resize)
+            _file_list[_ct] += "_{}-{}".format(resize[0], resize[1])
 
     if crop_size is not None:
         _h, _w, _ = np.shape(_img)
@@ -660,9 +682,36 @@ def image_data_expand(
         for _ct in range(len(_img_list)):
             _img_list[_ct] = \
                 _img_list[_ct][_start_h: _start_h + crop_size[0], _start_w:_start_w + crop_size[1], ]
+            _file_list[_ct] += "_{}-{}-{}-{}".format(_start_h, _start_w, crop_size[0], crop_size[1])
 
     if flip is not None:
-        _img = img_resize(_img, resize)
+        if "v" == flip or "V" == flip:
+            for _ct in range(len(_img_list)):
+                _img_list[_ct] = cv2.flip(_img_list[_ct], 1)
+                _file_list[_ct] += "_v"
+        elif "h" == flip or "H" == flip:
+            for _ct in range(len(_img_list)):
+                _img_list[_ct] = cv2.flip(_img_list[_ct], 0)
+                _file_list[_ct] += "_h"
+
+        elif "hv" == flip or "HV" == flip or "vh" == flip or "VH" == flip:
+            for _ct in range(len(_img_list)):
+                _img_list[_ct] = cv2.flip(_img_list[_ct], 0)
+                _img_list[_ct] = cv2.flip(_img_list[_ct], 1)
+                _file_list[_ct] += "_hv"
+    else:
+        _file_list[_ct] += "_o"
+
+    if rotate is not None:
+        _angle = np.random.randint(rotate[1])
+        for _ct in range(len(_img_list)):
+            _img_list[_ct] = image_rotate(_img_list[_ct], rotate[0], _angle, rotate[2])
+            _file_list[_ct] += "_{}-{}-{}-{}".format(rotate[0][0], rotate[0][1], _angle, rotate[2]))
+
+    for _ct in range(len(_img_list)):
+        _file_list[_ct] += ext
+
+    return [_img_list, _file_list]
 
 
 # ##################################################### #

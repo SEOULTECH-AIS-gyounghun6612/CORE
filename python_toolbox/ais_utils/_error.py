@@ -7,58 +7,44 @@ Requirement
 =====
     None
 
-File information
-=====
-    first edit date   : 2020/10/30
-    first editer      : choi keonghun
-    last edit date    : 2020/10/30
-    last editer       : choi keonghun
-
-Import module
-=====
 """
-ERROR_Info_Sequence = [
-    "Directory",  # file directory
-    "File_name",  # file name
-    "Function",   # function in which the error occurred
-    "Detail"
-]
+# Import module
+# Empty
 
 
-def make_code_info_text(**kwagrs):
-    temp = "Error information\n"
-    for _info in ERROR_Info_Sequence:
-        temp += "\t {Info} : {data} \n".format(
-            Info=_info,
-            data=kwagrs[_info]
-        ) if _info in kwagrs else ""
-    return temp
+def Custom_Variable_Error(loacation: str, parameters: list, details: list = None):
+    """
+    Args:
+        Funtion_name:
+        parameters:
+        details:
+    Returns:
+        return  :   Project folder Name
+    """
+    _is_detail = details is not None
+    _paras = [parameters, ] if type(parameters) != list else parameters
+    _details = ([details, ] if type(details) != list else details) if _is_detail else None
+
+    assert len(_paras) == len(_details)
+    printed_datas = zip(_paras, _details) if _is_detail\
+        else parameters
+
+    printed_line = "Sorry. in this {} code, about the {} have some problem\n" if _is_detail\
+        else "Sorry. in this {} code, about the {} have some problem\n\t Detail : {}"
+
+    error_text = ""
+    for parameter in printed_datas:
+        error_text += printed_line.format(loacation, parameter) if _is_detail\
+            else printed_line.format(loacation, parameter[0], parameter[1])
+    assert False, "Custom_Variable_Error\n" + error_text
 
 
-class Not_yet_Error(Exception):
-    def __init__(self, **kwagrs):
-        self._data = kwagrs
-        self._data["Detail"] += "This code is Not yet. m(__)m"
-
-    def __str__(self):
-        print(make_code_info_text(self._data))
+def Not_yet_Error(loacation, detail):
+    assert False, "Sorry. in this {} code, about the {} is Not yet. m(__)m".format(loacation, detail)
 
 
-class Variable_Error(Exception):
-    def __init__(self, **kwagrs):
-        self._data = kwagrs
-
-    def __str__(self):
-        print(make_code_info_text(self._data))
-
-
-class No_model_Error(Exception):
-    def __init__(self, **kwagrs):
-        self._data = kwagrs
-        self._data["Detail"] += "Check again your model folder."
-
-    def __str__(self):
-        print(make_code_info_text(self._data))
+def No_model_Error(Model_dir):
+    assert False, "There was a problem with {} model.\n Please check again.".format(Model_dir)
 
 
 def load_success():

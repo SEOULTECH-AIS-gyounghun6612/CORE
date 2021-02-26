@@ -67,9 +67,8 @@ def connect_AIS_server(
     """
     if not is_local:
         raise _e.Not_yet_Error(
-            File_name="base_utils",
-            Function="connect_AIS_server",
-            Detail="About External IP connection connet"
+            loacation="connect_AIS_server",
+            detail="About External IP connection connet"
         )
 
     _command = ""
@@ -164,7 +163,9 @@ def dir_work(obj_dir: str, mode: int, dst_dir: str = None):
         shutil.rmtree(obj_dir)
     else:
         if dst_dir is None:
-            _e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("dir_work", "dst_dir"))
+            _e.Custom_Variable_Error(
+                loacation="ais_utils._base.dir_work",
+                parameters="dst_dir")
         shutil.copytree(obj_dir, dst_dir)
 
         if mode == MOVE:
@@ -232,7 +233,9 @@ def file_work(obj_file: str, mode: int, dst_dir: str = None):
         remove(obj_file)
     else:
         if dst_dir is None:
-            _e.Variable_Error(" Function - {}, Varialbe - {}. Ckech it Again".format("file_work", "dst_dir"))
+            _e.Custom_Variable_Error(
+                loacation="ais_utils._base.file_work",
+                parameters="dst_dir")
         shutil.copyfile(obj_file, dst_dir)
         if mode == MOVE:
             remove(obj_file)
