@@ -495,7 +495,7 @@ Custom function about image process
 =====
 """
 # CONSTANT
-FLIP_OPTION = ["V", "H", "VH", "HV", "v", "h", "hv", "vh"]
+FLIP_OPTION = ["V", "H", "VH", "HV", "v", "h", "hv", "vh", None]
 SALT_N_PAPPER = 0
 INVERS = 1
 
