@@ -562,7 +562,12 @@ def make_canny(
     if len(np.shape(_img)) == 3:
         _img = cv2.cvtColor(_img, cv2.COLOR_BGR2GRAY)
 
-    cany_img = cv2.Canny(_img, high, low, fillter_size)
+    if fillter_size is not None:
+        _img = cv2.blur(_img, (fillter_size, fillter_size))
+        cany_img = cv2.Canny(_img, high, low, fillter_size)
+    else:
+        cany_img = cv2.Canny(_img, high, low)
+
     cany_img = np.array([cany_img, cany_img, cany_img], np.uint8) if is_First_ch \
         else np.dstack([cany_img, cany_img, cany_img])
     cany_img = cany_img / 255 if is_zero2one else cany_img
