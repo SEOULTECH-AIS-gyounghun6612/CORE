@@ -532,7 +532,12 @@ def img_resize(img: np.ndarray, size: list):
 
 
 def make_canny(
-        img: np.ndarray, high: int, low: int, is_First_ch=True, is_zero2one: bool = True) -> np.ndarray:
+        img: np.ndarray,
+        high: int,
+        low: int,
+        fillter_size: int = None,
+        is_First_ch=True,
+        is_zero2one: bool = True) -> np.ndarray:
     """
     Args:
         img :
@@ -557,7 +562,7 @@ def make_canny(
     if len(np.shape(_img)) == 3:
         _img = cv2.cvtColor(_img, cv2.COLOR_BGR2GRAY)
 
-    cany_img = cv2.Canny(_img, high, low)
+    cany_img = cv2.Canny(_img, high, low, fillter_size)
     cany_img = np.array([cany_img, cany_img, cany_img], np.uint8) if is_First_ch \
         else np.dstack([cany_img, cany_img, cany_img])
     cany_img = cany_img / 255 if is_zero2one else cany_img
