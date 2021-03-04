@@ -660,7 +660,7 @@ def image_augmentation(
         _e.Custom_Variable_Error(
             loacation="ais_utils._cv2.image_augmentation",
             parameters="flip",
-            details="you set the the weird flip option letter")
+            detail="you set the the weird flip option letter")
 
     _img_list = []
     _file_list = []

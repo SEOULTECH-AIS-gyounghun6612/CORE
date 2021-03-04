@@ -211,7 +211,7 @@ def get_file_list(obj_dir: str, file_str: str = "*", ext: str = ".*", just_file_
     return _file_list
 
 
-def json_file(save_dir: str, file_name: str, data_dict: dict, is_save: bool) -> None:
+def json_file(save_dir: str, file_name: str = None, data_dict: dict = None, is_save: bool = False) -> None:
     """
     Args:
         save_dir        :
@@ -220,11 +220,25 @@ def json_file(save_dir: str, file_name: str, data_dict: dict, is_save: bool) -> 
     Returns:
         return (dict)   :
     """
+
+    if file_name is None:
+        if save_dir.split("/")[-1].split(".")[-1] != "json":
+            _e.Custom_Variable_Error(
+                loacation="ais_utils._base.json_file",
+                parameters=["save_dir", "file_name"],
+                details="When 'file_name' set the None, setted data in 'save_dir',\
+                    must be have JSON file name."
+            )
+        else:
+            _file_dir = save_dir
+    else:
+        _file_dir = save_dir + file_name
+
     if is_save:
-        _file = open(save_dir + file_name, "w")
+        _file = open(_file_dir, "w")
         json.dump(data_dict, _file, indent=4)
     else:
-        _file = open(save_dir + file_name, "r")
+        _file = open(_file_dir, "r")
         return json.load(_file)
 
 

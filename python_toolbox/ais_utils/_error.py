@@ -12,7 +12,7 @@ Requirement
 # Empty
 
 
-def Custom_Variable_Error(loacation: str, parameters: list, details: list = None):
+def Custom_Variable_Error(loacation: str, parameters: list, detail: str = None):
     """
     Args:
         Funtion_name:
@@ -21,22 +21,21 @@ def Custom_Variable_Error(loacation: str, parameters: list, details: list = None
     Returns:
         return  :   Project folder Name
     """
-    _is_detail = details is not None
+    _is_detail = detail is not None
     _paras = [parameters, ] if type(parameters) != list else parameters
-    _details = ([details, ] if type(details) != list else details) if _is_detail else None
 
-    assert len(_paras) == len(_details)
-    printed_datas = zip(_paras, _details) if _is_detail\
-        else parameters
+    printed_line = "Sorry. in this {} code, about the {} have some problem\n\t Detail : {}" if _is_detail\
+        else "Sorry. in this {} code, about the {} have some problem\n"
 
-    printed_line = "Sorry. in this {} code, about the {} have some problem\n" if _is_detail\
-        else "Sorry. in this {} code, about the {} have some problem\n\t Detail : {}"
+    _error_paras_text = ""
+    for parameter in _paras:
+        _error_paras_text += parameter + ", "
+    _error_paras_text = _error_paras_text[:-2]
 
-    error_text = ""
-    for parameter in printed_datas:
-        error_text += printed_line.format(loacation, parameter) if _is_detail\
-            else printed_line.format(loacation, parameter[0], parameter[1])
-    assert False, "Custom_Variable_Error\n" + error_text
+    printed_line = printed_line.format(_error_paras_text, detail) if _is_detail\
+        else printed_line.format(_error_paras_text)
+
+    assert False, "Custom_Variable_Error\n" + printed_line
 
 
 def Not_yet_Error(loacation, detail):
