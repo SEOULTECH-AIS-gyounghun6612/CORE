@@ -1,6 +1,6 @@
 # base_utils_v2
 
-기본적으로 자주 사용하는 Python 관련 개인 모듈 정리 및 향후 pip 명령어를 활용하여 설치하기 위한 레포지토리
+기본적으로 자주 사용하는 Python 관련 개인 모듈 정리 및 향후 pip 명령어를 활용하여 설치하기 위한 레포지토리  
 Basically, a repository for personal modules related to Python that are frequently used and for installation using pip commands in the future.
 
 ## Update plan
