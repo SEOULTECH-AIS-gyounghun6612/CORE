@@ -111,7 +111,7 @@ def disconnect_AIS_server(mount_dir: str) -> None:
         system("sudo umount {MountDir}".format(MountDir=mount_dir))
 
 
-def dir_maker(obj_dirs: list, root_dir: str = None) -> str:
+def dir_maker(obj_dirs: list or dict, root_dir: str = None) -> str:
     """
     Args:
         obj_dir     :   maked directory
@@ -120,27 +120,33 @@ def dir_maker(obj_dirs: list, root_dir: str = None) -> str:
         maked_dir   :   maked folder's directory
     """
 
-    if type(obj_dirs) != list:
-        _obj_dirs = [obj_dirs]
+    _root = "./" if root_dir is None else (root_dir if root_dir[-1] == SLASH else root_dir + SLASH)
+
+    if type(obj_dirs) == dict:
+        _tmp_keys = obj_dirs.keys()
+        for _key in _tmp_keys:
+            maked_dir = _root + _key
+            if not path.isdir(maked_dir):
+                mkdir(maked_dir)
+            dir_maker(obj_dirs[_key], maked_dir)
+
+    elif type(obj_dirs) == list:
+        for obj_dir in obj_dirs:
+            maked_dir = _root + obj_dir
+            if not path.isdir(maked_dir):
+                mkdir(maked_dir)
+
+    elif type(obj_dirs) == str:  # make the dir and return it
+        maked_dir = _root + obj_dirs
+        if not path.isdir(maked_dir):
+            mkdir(maked_dir)
+
+        return maked_dir
     else:
-        _obj_dirs = obj_dirs
-
-    for _obj_dir in _obj_dirs:
-        # slash check
-        _obj_dir = _obj_dir if _obj_dir[-1] == SLASH else _obj_dir + SLASH
-
-        # new_dir
-        maked_dir = _obj_dir if root_dir is None\
-            else (root_dir + _obj_dir if root_dir[-1] == SLASH else root_dir + SLASH + _obj_dir)
-        if not path.isdir(maked_dir):
-            mkdir(maked_dir)
-
-        # use mkdir after dir check
-        if not path.isdir(maked_dir):
-            mkdir(maked_dir)
-
-        root_dir = maked_dir
-    return maked_dir
+        _e.Custom_Variable_Error(
+            loacation="ais_utils._base.dir_maker",
+            parameters=["obj_dirs", ],
+            detail="Parameter 'obj_dirs' type is must be in dict, list and str")
 
 
 def result_dir_maker(result_dir: str = None, result_root: str = None) -> str:
