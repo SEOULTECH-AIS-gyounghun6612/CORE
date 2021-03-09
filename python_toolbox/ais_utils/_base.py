@@ -149,7 +149,7 @@ def dir_maker(obj_dirs: list or dict, root_dir: str = None) -> str:
             detail="Parameter 'obj_dirs' type is must be in dict, list and str")
 
 
-def result_dir_maker(result_dir: str = None, result_root: str = None) -> str:
+def result_dir_maker(result_dir: str or list = None, result_root: str = None) -> str:
     """
     Args:
         result_dir      :   maked result directory
@@ -157,11 +157,21 @@ def result_dir_maker(result_dir: str = None, result_root: str = None) -> str:
     Returns:
         return          :   maked folder's directory
     """
-    _result_root = dir_maker(obj_dirs=result_root) if result_root is not None \
-        else dir_maker(root_dir=".", obj_dirs="Result")
-    _result_dir = result_dir if result_dir is not None \
-        else "{}{}".format(datetime.datetime.now().strftime('%Y_%m_%d'), SLASH)
-    return dir_maker(_result_dir, _result_root)
+    _root = dir_maker(root_dir=result_root, obj_dirs="") if result_root is not None \
+        else dir_maker(obj_dirs="Result")
+
+    _date_str = datetime.datetime.now().strftime('%Y_%m_%d')
+
+    if type(result_dir) == list:
+        for _dir in result_dir:
+            _result_dir = _dir if _dir is not None else "{}{}".format(_date_str, SLASH)
+            _root = dir_maker(_result_dir, _root)
+
+    elif type(result_dir) == str:
+        _result_dir = _dir if _dir is not None else "{}{}".format(_date_str, SLASH)
+        _root = dir_maker(_result_dir, _root)
+
+    return _root
 
 
 def dir_work(obj_dir: str, mode: int, dst_dir: str = None):
