@@ -7,8 +7,8 @@ Basically, a repository for personal modules related to Python that are frequent
 
 ## ais_utils
 #### _base.py
-- [ ] 폴더명을 트리 구조 데이터로 입력 받아, 폴더를 생성
-- [ ] Receives the folder name as tree structure data and creates a folder
+- [x] 폴더명을 트리 구조 데이터로 입력 받아, 폴더를 생성
+- [x] Receives the folder name as tree structure data and creates a folder
 
 #### _cv.py
 - [ ] 계획 미정
