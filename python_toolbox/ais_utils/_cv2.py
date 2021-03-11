@@ -320,24 +320,26 @@ class trackbar_window():
             _parameters.append(cv2.getTrackbarPos(trackbar._name, ORIGINAL_WINDOW_NAME))
         return _parameters
 
-    def loop(self, save_dir):
+    def loop(self):
+        output = {
+            "original": self.process[0].return_original_image()
+        }
         while(True):
             for _prs_ct, _prs in enumerate(self.process):
                 parameters = self._get_parameters()
                 processed_render_dict = \
                     _prs.return_processed_image(self.name[_prs_ct], parameters)
-                img_render(**processed_render_dict)
 
-                _event = cv2.waitKeyEx(10)
-                if _event == ord('s'):  # image save
-                    processed_render_dict["save_dir"] = save_dir
-                    img_render(**processed_render_dict)
-                    break
+                img_render(**processed_render_dict)
+                output["prs_{}".format(_prs_ct): processed_render_dict]
+
             _event = cv2.waitKeyEx(10)
             if _event == ord('q'):  # loop break
                 break
+            elif _event == ord('s'):
+                break
 
-        return _event
+        return _event, output
 
 
 def img_render(
