@@ -263,7 +263,12 @@ class image_process():
 
 
 class trackbar_window():
-    def __init__(self, window_name: str, trackbars: list, image_process, display_origianl: bool = True):
+    def __init__(
+            self,
+            window_name: str or list,
+            trackbars: list,
+            image_process: list,
+            display_origianl: bool = True):
         """
         Args:
             window_name :
@@ -273,58 +278,66 @@ class trackbar_window():
         Returns:
             Empty
         """
-        self.name = window_name
-        self.trackbar_list = trackbars
-        self.process = image_process
-
-        cv2.namedWindow(self.name)
-        self._set_trackbar()
+        self.name = window_name if type(window_name) == list else [window_name, ]
+        self.trackbar_list = trackbars if type(trackbars[0]) == list else [trackbars, ]
+        self.process = image_process if type(image_process) == list else [image_process, ]
 
         if display_origianl:
             # display original image
             cv2.namedWindow(ORIGINAL_WINDOW_NAME)
-            original_render_dict = self.process.return_original_image()
+            original_render_dict = self.process[0].return_original_image()
             img_render(**original_render_dict)
 
         # display processed image
-        parameters = self._get_parameters()
-        processed_render_dict = self.process.return_processed_image(self.name, parameters)
-        img_render(**processed_render_dict)
+        for _prs_ct, _prs in enumerate(self.process):
+            # make window
+            cv2.namedWindow(self.name[_prs_ct])
+            self._set_trackbar(_prs_ct)
+            parameters = self._get_parameters(_prs_ct)
 
-    def _set_trackbar(self):
+            processed_render_dict = _prs.return_processed_image(
+                self.name[_prs_ct],
+                parameters)
+            img_render(**processed_render_dict)
+
+    def _set_trackbar(self, prs_num):
         def nothing(pos):
             pass
         # make window n track bar
-        for trackbar in self.trackbar_list:
+        for trackbar in self.trackbar_list[prs_num]:
             _value_range = trackbar._range
             cv2.createTrackbar(
                 trackbar._name,
-                self.name,
+                self.name[prs_num],
                 _value_range[0],
                 _value_range[1],
                 nothing)
             cv2.setTrackbarPos(
                 trackbar._name,
-                self.name,
-                int(np.mean(_value_range)))
+                self.name[prs_num],
+                int(np.mean(_value_range[prs_num])))
 
-    def _get_parameters(self):
+    def _get_parameters(self, _prs_ct):
         _parameters = []
-        for trackbar in self.trackbar_list:
-            _parameters.append(cv2.getTrackbarPos(trackbar._name, self.name))
+        for trackbar in self.trackbar_list[_prs_ct]:
+            _parameters.append(cv2.getTrackbarPos(trackbar._name, self.name[_prs_ct]))
         return _parameters
 
     def loop(self, save_dir):
         while(True):
-            _event = cv2.waitKeyEx(10)
-            parameters = self._get_parameters()
-            processed_render_dict = self.process.return_processed_image(self.name, parameters)
-            img_render(**processed_render_dict)
-            if _event == ord('s'):  # image save
-                processed_render_dict["save_dir"] = save_dir
+            for _prs_ct, _prs in enumerate(self.process):
+                parameters = self._get_parameters(_prs_ct)
+                processed_render_dict = \
+                    _prs.return_processed_image(self.name[_prs_ct], parameters)
                 img_render(**processed_render_dict)
-                break
-            elif _event == ord('q'):  # loop break
+
+                _event = cv2.waitKeyEx(10)
+                if _event == ord('s'):  # image save
+                    processed_render_dict["save_dir"] = save_dir
+                    img_render(**processed_render_dict)
+                    break
+            _event = cv2.waitKeyEx(10)
+            if _event == ord('q'):  # loop break
                 break
 
         return _event
