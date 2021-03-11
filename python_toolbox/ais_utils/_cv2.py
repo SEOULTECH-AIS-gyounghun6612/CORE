@@ -246,20 +246,20 @@ class image_process():
         }
 
     def return_processed_image(self, _name, parameters):
-        is_z2o, is_First = self.doing_process(parameters)
+        is_z2o, is_First, input_text = self.doing_process(parameters)
         return {
             "img": self.processed_img,
             "window_name": _name,
             "is_zero2one": is_z2o,
             "is_First_channel": is_First,
-            "input_text": None,
+            "input_text": input_text,
             "save_dir": None,
             "is_DEBUG": False
         }
 
     def doing_process(self, parameters):
         print("!!! Process is not set !!!")
-        return False, False
+        return False, False, None
 
 
 class trackbar_window():
