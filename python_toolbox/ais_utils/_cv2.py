@@ -331,7 +331,7 @@ class trackbar_window():
                     _prs.return_processed_image(self.name[_prs_ct], parameters)
 
                 img_render(**processed_render_dict)
-                output["prs_{}".format(_prs_ct): processed_render_dict]
+                output["prs_{}".format(_prs_ct)] = processed_render_dict
 
             _event = cv2.waitKeyEx(10)
             if _event == ord('q'):  # loop break
