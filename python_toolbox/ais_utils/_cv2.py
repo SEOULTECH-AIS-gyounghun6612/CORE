@@ -216,132 +216,6 @@ ORIGINAL_WINDOW_NAME = "original"
 
 
 # FUNCTION
-class trackbar():
-    def __init__(self, name, value_range):
-        """
-        Args:
-            name :
-            value_range : np.uint8 ndarray
-        Returns:
-            Empty
-        """
-        self._name = name
-        self._range = value_range
-
-
-class image_process():
-    def __init__(self, origianl_image):
-        self.original_img = origianl_image
-        self.processed_img = None
-
-    def return_original_image(self):
-        return {
-            "img": self.original_img,
-            "window_name": ORIGINAL_WINDOW_NAME,
-            "is_zero2one": False,
-            "is_First_channel": False,
-            "input_text": None,
-            "save_dir": None,
-            "is_DEBUG": False
-        }
-
-    def return_processed_image(self, _name, parameters):
-        is_z2o, is_First, input_text = self.doing_process(parameters)
-        return {
-            "img": self.processed_img,
-            "window_name": _name,
-            "is_zero2one": is_z2o,
-            "is_First_channel": is_First,
-            "input_text": input_text,
-            "save_dir": None,
-            "is_DEBUG": False
-        }
-
-    def doing_process(self, parameters):
-        print("!!! Process is not set !!!")
-        return False, False, None
-
-
-class trackbar_window():
-    def __init__(
-            self,
-            window_name: str or list,
-            trackbars: list,
-            image_process: list,):
-        """
-        Args:
-            window_name :
-            trackbars : trackbar's setting list. this list consist of trackbar class
-            image_process : np.uint8 ndarray
-        Returns:
-            Empty
-        """
-        self.name = window_name if type(window_name) == list else [window_name, ]
-        self.trackbar_list = trackbars
-        self.process = image_process if type(image_process) == list else [image_process, ]
-
-        # display original image
-        cv2.namedWindow(ORIGINAL_WINDOW_NAME)
-        self._set_trackbar()
-        original_render_dict = self.process[0].return_original_image()
-        img_render(**original_render_dict)
-
-        # display processed image
-        for _prs_ct, _prs in enumerate(self.process):
-            # make window
-            cv2.namedWindow(self.name[_prs_ct])
-            parameters = self._get_parameters()
-
-            processed_render_dict = _prs.return_processed_image(
-                self.name[_prs_ct],
-                parameters)
-            img_render(**processed_render_dict)
-
-    def _set_trackbar(self):
-        def nothing(pos):
-            pass
-        # make window n track bar
-        for trackbar in self.trackbar_list:
-            _value_range = trackbar._range
-            cv2.createTrackbar(
-                trackbar._name,
-                ORIGINAL_WINDOW_NAME,
-                _value_range[0],
-                _value_range[1],
-                nothing)
-            cv2.setTrackbarPos(
-                trackbar._name,
-                ORIGINAL_WINDOW_NAME,
-                int(np.mean(_value_range)))
-
-    def _get_parameters(self):
-        _parameters = []
-        for trackbar in self.trackbar_list:
-            _parameters.append(cv2.getTrackbarPos(trackbar._name, ORIGINAL_WINDOW_NAME))
-        return _parameters
-
-    def loop(self):
-        output = {
-            "original": self.process[0].return_original_image()
-        }
-        while(True):
-            for _prs_ct, _prs in enumerate(self.process):
-                parameters = self._get_parameters()
-                processed_render_dict = \
-                    _prs.return_processed_image(self.name[_prs_ct], parameters)
-
-                img_render(**processed_render_dict)
-                output["prs_{}".format(_prs_ct)] = processed_render_dict
-
-            _event = cv2.waitKeyEx(10)
-            if _event == ord('q'):  # loop break
-                break
-            elif _event == ord('s'):
-                break
-
-        return _event, output
-
-
 def img_render(
         img: np.ndarray,
         window_name: str,
@@ -513,6 +387,132 @@ INVERS = 1
 
 
 # FUNCTION
+class trackbar():
+    def __init__(self, name, value_range):
+        """
+        Args:
+            name :
+            value_range : np.uint8 ndarray
+        Returns:
+            Empty
+        """
+        self._name = name
+        self._range = value_range
+
+
+class image_process():
+    def __init__(self, origianl_image):
+        self.original_img = origianl_image
+        self.processed_img = None
+
+    def return_original_image(self):
+        return {
+            "img": self.original_img,
+            "window_name": ORIGINAL_WINDOW_NAME,
+            "is_zero2one": False,
+            "is_First_channel": False,
+            "input_text": None,
+            "save_dir": None,
+            "is_DEBUG": False
+        }
+
+    def return_processed_image(self, _name, parameters):
+        is_z2o, is_First, input_text = self.doing_process(parameters)
+        return {
+            "img": self.processed_img,
+            "window_name": _name,
+            "is_zero2one": is_z2o,
+            "is_First_channel": is_First,
+            "input_text": input_text,
+            "save_dir": None,
+            "is_DEBUG": False
+        }
+
+    def doing_process(self, parameters):
+        print("!!! Process is not set !!!")
+        return False, False, None
+
+
+class trackbar_window():
+    def __init__(
+            self,
+            window_name: str or list,
+            trackbars: list,
+            image_process: list,):
+        """
+        Args:
+            window_name :
+            trackbars : trackbar's setting list. this list consist of trackbar class
+            image_process : np.uint8 ndarray
+        Returns:
+            Empty
+        """
+        self.name = window_name if type(window_name) == list else [window_name, ]
+        self.trackbar_list = trackbars
+        self.process = image_process if type(image_process) == list else [image_process, ]
+
+        # display original image
+        cv2.namedWindow(ORIGINAL_WINDOW_NAME)
+        self._set_trackbar()
+        original_render_dict = self.process[0].return_original_image()
+        img_render(**original_render_dict)
+
+        # display processed image
+        for _prs_ct, _prs in enumerate(self.process):
+            # make window
+            cv2.namedWindow(self.name[_prs_ct])
+            parameters = self._get_parameters()
+
+            processed_render_dict = _prs.return_processed_image(
+                self.name[_prs_ct],
+                parameters)
+            img_render(**processed_render_dict)
+
+    def _set_trackbar(self):
+        def nothing(pos):
+            pass
+        # make window n track bar
+        for trackbar in self.trackbar_list:
+            _value_range = trackbar._range
+            cv2.createTrackbar(
+                trackbar._name,
+                ORIGINAL_WINDOW_NAME,
+                _value_range[0],
+                _value_range[1],
+                nothing)
+            cv2.setTrackbarPos(
+                trackbar._name,
+                ORIGINAL_WINDOW_NAME,
+                int(np.mean(_value_range)))
+
+    def _get_parameters(self):
+        _parameters = []
+        for trackbar in self.trackbar_list:
+            _parameters.append(cv2.getTrackbarPos(trackbar._name, ORIGINAL_WINDOW_NAME))
+        return _parameters
+
+    def loop(self):
+        output = {
+            "original": self.process[0].return_original_image()
+        }
+        while(True):
+            for _prs_ct, _prs in enumerate(self.process):
+                parameters = self._get_parameters()
+                processed_render_dict = \
+                    _prs.return_processed_image(self.name[_prs_ct], parameters)
+
+                img_render(**processed_render_dict)
+                output["prs_{}".format(_prs_ct)] = processed_render_dict
+
+            _event = cv2.waitKeyEx(10)
+            if _event == ord('q'):  # loop break
+                break
+            elif _event == ord('s'):
+                break
+
+        return _event, output
+
+
 def img_resize(img: np.ndarray, size: list):
     """
     Args:
@@ -737,9 +737,59 @@ def image_augmentation(
     return [_img_list, _file_list]
 
 
-# ##################################################### #
-# ############ Custom function about trick ############ #
-# ##################################################### #
+"""
+Custom function about data type process
+=====
+"""
+
+
+def custom_channel_compress(img: np.ndarray, color_type: int):
+    """
+    Args:
+        img :
+        color_type :
+    Returns:
+        compressed_data
+    """
+    if color_type == COLOR_GRAY or color_type == COLOR_BGRA:
+        _e.Custom_Variable_Error(
+            loacation="ais_utils._cv2.custom_channel_compress",
+            parameters="color_type",
+            detail="this function work for 3 channel data")
+    else:
+        _w, _h, _c = np.shape(img)
+        compressed_data = np.zeros((_w, _h), dtype=np.float32)
+
+        for _ct_c in range(_c):
+            compressed_data += img[:, :, _ct_c] / (256 ** _ct_c)
+
+        return compressed_data
+
+
+def custom_channel_extract(compressed_data: np.ndarray, to_color_type: int):
+    """
+    Args:
+        compressed_data :
+        to_color_type :
+    Returns:
+        extracted_img
+    """
+    if to_color_type == COLOR_GRAY or to_color_type == COLOR_BGRA:
+        _e.Custom_Variable_Error(
+            loacation="ais_utils._cv2.custom_channel_extract",
+            parameters="to_color_type",
+            detail="this function work to 3 channel data")
+    else:
+        _w, _h = np.shape(compressed_data)
+        _restore = np.zeros((_w, _h, 3), dtype=np.uint8)
+
+        for _ct_c in range(3):
+            _restore[:, :, _ct_c] = (compressed_data // 1.0).astype(np.uint8)
+            compressed_data = (compressed_data - _restore[:, :, _ct_c]) * 256
+
+        return _restore
+
+
 # def float_data_save(file_dir: str, data: float):
 #     """ Image file to data
 #     Args:
