@@ -196,9 +196,33 @@ def get_work_folder(is_last_dir=True):
         return  :   Project folder Name
     """
     if is_last_dir:
-        return getcwd().split("/")[-1] + SLASH
+        return getcwd().split(SLASH)[-1] + SLASH
     else:
-        return getcwd()
+        return getcwd() + SLASH
+
+
+def dir_compare_to_work_folder(compare_dir):
+    compare_dir = compare_dir if compare_dir[-1] != SLASH else compare_dir[:-1]
+
+    compare_data = compare_dir.split(SLASH)
+    work_data = get_work_folder(False)[:-1].split(SLASH)
+
+    tmp_dir = "./"
+    same_count = 0
+
+    for _tmp_folder in work_data:
+        if _tmp_folder in compare_data:
+            same_count += 1
+        else:
+            break
+    if len(work_data) - same_count:
+        for _ct in range(len(work_data) - same_count):
+            tmp_dir += "../"
+
+    for _folder in compare_data[same_count - 1:]:
+        tmp_dir += _folder
+
+    return tmp_dir
 
 
 """
@@ -238,7 +262,7 @@ def json_file(save_dir: str, file_name: str = None, data_dict: dict = None, is_s
     """
 
     if file_name is None:
-        if save_dir.split("/")[-1].split(".")[-1] != "json":
+        if save_dir.split(SLASH)[-1].split(".")[-1] != "json":
             _e.Custom_Variable_Error(
                 loacation="ais_utils._base.json_file",
                 parameters=["save_dir", "file_name"],
