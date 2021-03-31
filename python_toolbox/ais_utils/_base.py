@@ -219,7 +219,7 @@ def dir_compare_to_work_folder(compare_dir):
         for _ct in range(len(work_data) - same_count):
             tmp_dir += "../"
 
-    for _folder in compare_data[same_count - 1:]:
+    for _folder in compare_data[same_count:]:
         tmp_dir += _folder + "/"
 
     return tmp_dir
