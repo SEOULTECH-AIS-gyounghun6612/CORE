@@ -1,7 +1,7 @@
-from . import _base as _b
-from . import _cv2 as _cv
-from . import _error as _e
+from . import _base
+from . import _cv2
+from . import _error
 
-_b.load_success()
-_cv.load_success()
-_e.load_success()
+_base.load_success()
+_cv2.load_success()
+_error.load_success()
