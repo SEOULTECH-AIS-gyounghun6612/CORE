@@ -207,7 +207,7 @@ def dir_compare_to_work_folder(compare_dir):
     compare_data = compare_dir.split(SLASH)
     work_data = get_work_folder(False)[:-1].split(SLASH)
 
-    tmp_dir = "./"
+    tmp_dir = "." + SLASH
     same_count = 0
 
     for _tmp_folder in work_data:
@@ -217,10 +217,10 @@ def dir_compare_to_work_folder(compare_dir):
             break
     if len(work_data) - same_count:
         for _ct in range(len(work_data) - same_count):
-            tmp_dir += "../"
+            tmp_dir += ".." + SLASH
 
     for _folder in compare_data[same_count:]:
-        tmp_dir += _folder + "/"
+        tmp_dir += _folder + SLASH
 
     return tmp_dir
 
@@ -328,4 +328,4 @@ def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100,
 
 
 def load_success():
-    print("!!! custom python module AIS_utils_base load Success !!!")
+    print("!!! custom python module ais_utils _base load Success !!!")

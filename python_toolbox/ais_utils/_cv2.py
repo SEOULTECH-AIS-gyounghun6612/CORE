@@ -803,4 +803,4 @@ def custom_channel_extract(compressed_data: np.ndarray, to_color_type: int):
 
 
 def load_success():
-    print("!!! custom python module AIS_utils_cv2 load Success !!!")
+    print("!!! custom python module ais_utils _cv2 load Success !!!")
