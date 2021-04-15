@@ -737,6 +737,71 @@ def image_augmentation(
     return [_img_list, _file_list]
 
 
+def write_text_in(img, input_text, option="B", position=None, text_color=(0, 0, 0)):
+    [_text_w, _text_h], _ = \
+        cv2.getTextSize(text=input_text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
+
+    _h, _w, _c = np.shape(img)
+
+    # make text image
+    _text_shell =\
+        255 * np.ones(
+            (_text_h + (2 * IMAGE_TEXT_PADDING), _text_w + (2 * IMAGE_TEXT_PADDING), _c), dtype=np.uint8)
+
+    if all(text_color, (255, 255, 255)):
+        text_color = (128, 128, 128)
+
+    cv2.putText(img=_text_shell,
+                text=input_text,
+                org=(IMAGE_TEXT_PADDING, _text_h + IMAGE_TEXT_PADDING),
+                fontScale=1,
+                thickness=2,
+                fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                color=text_color)
+
+    if (option != "I" or option != "i") and position is None:
+        _text_shell = img_resize(_text_shell, [_text_h, _w])
+
+        if option != "T" or option != "t":
+            # combined save image n text image
+            _render_image = 255 * np.ones((_h + _text_h, _w, _c), dtype=np.uint8)
+            _render_image[:_text_h, :, :] = _text_shell
+            _render_image[_text_h:, :, :] = img
+            return _render_image
+
+        else:
+            # combined save image n text image
+            _render_image = 255 * np.ones((_h + _text_h, _w, _c), dtype=np.uint8)
+            _render_image[:_h, :, :] = img
+            _render_image[_h:, :, :] = _text_shell
+            return _render_image
+
+    else:
+        if _text_w >= 80:
+            _text_w = 80
+
+        if position[0] - _text_h < 0:
+            position[0] = _text_h
+        if position[0] > _h:
+            position[0] = _h
+
+        if position[1] + _text_w < _w:
+            position[1] = _w - _text_w
+        if position[1] < 0:
+            position[1] = 0
+
+        _text_shell = img_resize(_text_shell, [_text_h, _text_w])
+        _mask = _text_shell == np.array((256, 256, 256), np.uint8)
+
+        _base = img[position[0]: position[0] + _text_h, position[1]: position[1] + _text_w, :]
+
+        _base = _base * _mask + _text_shell * (1 - _mask)
+
+        img[position[0]: position[0] + _text_h, position[1]: position[1] + _text_w, :] = _base
+
+        return img
+
+
 """
 Custom function about data type process
 =====
