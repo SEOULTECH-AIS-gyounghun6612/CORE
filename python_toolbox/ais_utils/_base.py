@@ -247,7 +247,7 @@ def get_dir_list(obj_dir: str, dir_str: str = "*", is_last_dir: bool = False) ->
     """
     _dir_list = sorted(glob(obj_dir + dir_str))
     if is_last_dir:
-        _dir_list = [_temp.split(SLASH)[-1] for _temp in _file_list]
+        _dir_list = [_temp.split(SLASH)[-1] for _temp in _dir_list]
     return _dir_list
 
 
