@@ -202,9 +202,9 @@ def get_work_folder(is_last_dir=True):
 
 
 def dir_compare(base_dir, compare_obj, is_dir=True):
-    compare_obj = _dir_checker(compare_obj, True)
+    compare_obj = dir_checker(compare_obj, True)
     compare_data = compare_obj.split(SLASH)
-    base_dir = _dir_checker(base_dir, True)
+    base_dir = dir_checker(base_dir, True)
     base_data = base_dir.split(SLASH)
 
     tmp_dir = "." + SLASH
@@ -222,14 +222,14 @@ def dir_compare(base_dir, compare_obj, is_dir=True):
     for _folder in compare_data[same_count:]:
         tmp_dir += _folder + SLASH
 
-    return _dir_checker(tmp_dir, not is_dir)
+    return dir_checker(tmp_dir, not is_dir)
 
 
 def dir_compare_to_work_folder(compare_dir):
     return dir_compare(get_work_folder(False), compare_dir)
 
 
-def _dir_checker(checked_dir, is_reverse):
+def dir_checker(checked_dir, is_reverse):
     if is_reverse:
         return checked_dir if checked_dir[-1] != SLASH else checked_dir[:-1]
     else:
