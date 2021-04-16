@@ -201,22 +201,22 @@ def get_work_folder(is_last_dir=True):
         return getcwd() + SLASH
 
 
-def dir_compare_to_work_folder(compare_dir):
-    compare_dir = compare_dir if compare_dir[-1] != SLASH else compare_dir[:-1]
-
-    compare_data = compare_dir.split(SLASH)
-    work_data = get_work_folder(False)[:-1].split(SLASH)
+def dir_compare(base_dir, compare_obj):
+    compare_obj = _dir_checker(compare_obj, True)
+    compare_data = compare_obj.split(SLASH)
+    base_dir = _dir_checker(base_dir, True)
+    base_data = base_dir.split(SLASH)
 
     tmp_dir = "." + SLASH
     same_count = 0
 
-    for _tmp_folder in work_data:
+    for _tmp_folder in base_data:
         if _tmp_folder in compare_data:
             same_count += 1
         else:
             break
-    if len(work_data) - same_count:
-        for _ct in range(len(work_data) - same_count):
+    if len(base_data) - same_count:
+        for _ct in range(len(base_data) - same_count):
             tmp_dir += ".." + SLASH
 
     for _folder in compare_data[same_count:]:
@@ -224,6 +224,16 @@ def dir_compare_to_work_folder(compare_dir):
 
     return tmp_dir
 
+
+def dir_compare_to_work_folder(compare_dir):
+    return dir_compare(get_work_folder(False), compare_dir)
+
+
+def _dir_checker(checked_dir, is_reverse):
+    if is_reverse:
+        return checked_dir if checked_dir[-1] != SLASH else checked_dir[:-1]
+    else:
+        return checked_dir if checked_dir[-1] == SLASH else checked_dir + SLASH
 
 """
 Custom function about file R/W
