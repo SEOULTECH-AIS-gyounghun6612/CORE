@@ -235,6 +235,22 @@ def dir_checker(checked_dir, is_reverse):
     else:
         return checked_dir if checked_dir[-1] == SLASH else checked_dir + SLASH
 
+
+def get_dir_list(obj_dir: str, dir_str: str = "*", is_last_dir: bool = False) -> list:
+    """
+    Args:
+        obj_dir             :
+        dir_str             :
+        is_last_dir         :
+    Returns:
+        _dir_list (list)   :   Project folder Name
+    """
+    _dir_list = sorted(glob(obj_dir + dir_str))
+    if is_last_dir:
+        _dir_list = [_temp.split(SLASH)[-1] for _temp in _file_list]
+    return _dir_list
+
+
 """
 Custom function about file R/W
 =====
