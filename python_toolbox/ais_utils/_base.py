@@ -201,7 +201,7 @@ def get_work_folder(is_last_dir=True):
         return getcwd() + SLASH
 
 
-def dir_compare(base_dir, compare_obj):
+def dir_compare(base_dir, compare_obj, is_dir=True):
     compare_obj = _dir_checker(compare_obj, True)
     compare_data = compare_obj.split(SLASH)
     base_dir = _dir_checker(base_dir, True)
@@ -222,7 +222,7 @@ def dir_compare(base_dir, compare_obj):
     for _folder in compare_data[same_count:]:
         tmp_dir += _folder + SLASH
 
-    return tmp_dir
+    return _dir_checker(tmp_dir, not is_dir)
 
 
 def dir_compare_to_work_folder(compare_dir):
