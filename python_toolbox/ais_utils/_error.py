@@ -32,8 +32,8 @@ def Custom_Variable_Error(loacation: str, parameters: list, detail: str = None):
         _error_paras_text += parameter + ", "
     _error_paras_text = _error_paras_text[:-2]
 
-    printed_line = printed_line.format(_error_paras_text, detail) if _is_detail\
-        else printed_line.format(_error_paras_text)
+    printed_line = printed_line.format(loacation, _error_paras_text, detail) if _is_detail\
+        else printed_line.format(loacation, _error_paras_text)
 
     assert False, "Custom_Variable_Error\n" + printed_line
 
