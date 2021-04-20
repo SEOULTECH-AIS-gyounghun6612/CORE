@@ -802,6 +802,13 @@ def write_text_in(img, input_text, option="B", position=None, text_color=(0, 0, 
         return img
 
 
+def image_mixing(base, mask, cover_rate):
+    _processed_base = ((1 - cover_rate) * base).astype(np.uint8)
+    _processed_mask = (cover_rate * mask).astype(np.uint8)
+
+    return _processed_base + _processed_mask
+
+
 """
 Custom function about data type process
 =====
