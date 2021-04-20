@@ -517,7 +517,7 @@ def img_resize(img: np.ndarray, size: list):
     """
     Args:
         img :
-        size : "[int, int] or [float, float]"
+        size : "[int, int] or [float, float]" H, W
     Returns:
         Confusion Matrix (list)
     """
