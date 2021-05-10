@@ -5,33 +5,42 @@ def array2RLE(data, order='F'):
     if data is not None:
         _size = data.shape
         _size = (int(_size[0]), int(_size[1]))
-        _line = data.reshape(_size[0] * _size[1], order=order)
+
         return_RLE = []
-        _count_list = []
+        if data == np.zeros_like(data):
+            return_RLE.append(_size[0] * _size[1])
+            return {"size": _size, "counts": return_RLE}
+        elif data == np.ones_like(data):
+            return_RLE.append(0)
+            return_RLE.append(_size[0] * _size[1])
+            return {"size": _size, "counts": return_RLE}
+        else:
+            _line = data.reshape(_size[0] * _size[1], order=order)
+            _count_list = []
 
-        for _type in range(2):
-            _points = np.where(_line == _type)[0]
-            _filter = _points[1:] - _points[:-1]
-            _filter = _filter[np.where(_filter != 1)[0]]
-            _count = _filter[np.where(_filter != 1)[0]] - 1
+            for _type in range(2):
+                _points = np.where(_line == _type)[0]
+                _filter = _points[1:] - _points[:-1]
+                _filter = _filter[np.where(_filter != 1)[0]]
+                _count = _filter[np.where(_filter != 1)[0]] - 1
 
-            if _points[0]:
-                _count = np.append((_points[0], ), _count)
-            _count_list.append(_count)
+                if _points[0]:
+                    _count = np.append((_points[0], ), _count)
+                _count_list.append(_count)
 
-        _one_count, _zero_count = _count_list
+            _one_count, _zero_count = _count_list
 
-        if _line[0]:
-            _zero_count = np.append((0, ), _zero_count)
+            if _line[0]:
+                _zero_count = np.append((0, ), _zero_count)
 
-        for _ct in range(len(_one_count)):
-            return_RLE.append(int(_zero_count[_ct]))
-            return_RLE.append(int(_one_count[_ct]))
+            for _ct in range(len(_one_count)):
+                return_RLE.append(int(_zero_count[_ct]))
+                return_RLE.append(int(_one_count[_ct]))
 
-        _last_count = int(len(_line) - sum(return_RLE))
-        return_RLE.append(_last_count)
+            _last_count = int(len(_line) - sum(return_RLE))
+            return_RLE.append(_last_count)
 
-        return {"size": _size, "counts": return_RLE}
+            return {"size": _size, "counts": return_RLE}
 
     else:
         return None
