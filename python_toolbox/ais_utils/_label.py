@@ -1,4 +1,4 @@
-from ais_utils import _error
+from . import _error
 import numpy as np
 
 BDD_100k = {
