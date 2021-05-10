@@ -48,7 +48,7 @@ def RLE2array(data, order='F'):
             else:
                 _tmp = np.ones(_count, dtype=np.uint8)
 
-            array = np.concatenate((array, _tmp), axis=None)
+            array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
 
         array = np.reshape(array, data["size"], order)
         return array
