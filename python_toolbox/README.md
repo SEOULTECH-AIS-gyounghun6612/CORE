@@ -11,12 +11,20 @@ Basically, a repository for personal modules related to Python that are frequent
 - [x] Receives the folder name as tree structure data and creates a folder
 
 #### _cv.py
+- [ ] nump를 이용한 일부 모듈 이동 (-> _numpy.py)
+- [ ] Move some modules using numpy (-> numpy.py)
+
+#### _label.py
 - [ ] 계획 미정
 - [ ] Not yet
 
-## ais_advenced
+#### _error.py
 - [ ] 계획 미정
 - [ ] Not yet
+
+#### _numpy.py
+- [ ] Neighbor_Confusion_Matrix 기능 복구 및 수정
+- [ ] Neighbor_Confusion_Matrix function recovery and fix
 
 ## Install
 1. SSH 키 등록
