@@ -49,6 +49,12 @@ DLETET = 2
 
 
 # FUNCTION
+"""
+Custom function about Dir work
+=====
+"""
+
+
 def connect_AIS_server(
         user_id: str, password: str, root_dir: str, mount_dir: str, is_local: bool = True) -> str:
     """
