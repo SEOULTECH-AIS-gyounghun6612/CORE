@@ -40,13 +40,13 @@ def array2RLE(data, order='F'):
 def RLE2array(data, order='F'):
     if data is not None:
         rle_data = data["counts"]
-        array = np.array([])
+        array = np.array([], dtype=np.uint8)
         for _type, _count in enumerate(rle_data):
             value = _type % 2
             if value:
-                _tmp = np.zeros(_count, dtype=np.uint8)
-            else:
                 _tmp = np.ones(_count, dtype=np.uint8)
+            else:
+                _tmp = np.zeros(_count, dtype=np.uint8)
 
             array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
 
