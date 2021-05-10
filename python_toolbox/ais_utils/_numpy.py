@@ -7,10 +7,10 @@ def array2RLE(data, order='F'):
         _size = (int(_size[0]), int(_size[1]))
 
         return_RLE = []
-        if data == np.zeros_like(data):
+        if (data == np.zeros_like(data)).all():
             return_RLE.append(_size[0] * _size[1])
             return {"size": _size, "counts": return_RLE}
-        elif data == np.ones_like(data):
+        elif (data == np.ones_like(data)).all():
             return_RLE.append(0)
             return_RLE.append(_size[0] * _size[1])
             return {"size": _size, "counts": return_RLE}
