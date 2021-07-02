@@ -14,6 +14,8 @@ Basically, a repository for personal modules related to Python that are frequent
 #### _cv.py
 - [ ] nump를 이용한 일부 모듈 이동 (-> _numpy.py)
 - [ ] Move some modules using numpy (-> numpy.py)
+- [ ] 빈 캔버스 반환 함수
+- [ ] 
 
 #### _label.py
 - [ ] 계획 미정
