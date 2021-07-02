@@ -4,6 +4,8 @@
 Basically, a repository for personal modules related to Python that are frequently used and for installation using pip commands in the future.
 
 ## Update plan
+- [ ] 즈요 구조 변경 (Function을 이용한 구성에서 각 파트에서 기능별 class 생성)
+
 
 #### _base.py
 - [x] 폴더명을 트리 구조 데이터로 입력 받아, 폴더를 생성
