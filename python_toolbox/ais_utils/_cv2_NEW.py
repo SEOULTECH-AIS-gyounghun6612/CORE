@@ -11,377 +11,168 @@ Requirement
 
 # Import module
 import cv2
-import numpy as np
+from enum import Enum
+from . import _base
+from . import _error
+from . import _numpy
 
-from . import _error as _e
-
-def data_stack(data_list: list, is_last_axis: bool = True):
-    """ Make merge data array from data_list
-    Args:
-        data_list :
-        is_last_axis :
-    Returns:
-        return_data (like data_list type) : merge data array
-    """
-    return_data = np.dstack(data_list) if is_last_axis else np.array(data_list)
-    return return_data
+_error_message = _error.Custom_error("AIS_utils", "_cv2")
 
 
-"""
-Custom function about file W/R
-=====
-"""
-# CONSTANT
-COLOR_BGR = 0
-COLOR_GRAY = 1
-COLOR_BGRA = 2
-COLOR_RGB = 3
-PIXEL_MAX = 255
-
-IMAGE_EXT = ["jpg", "png", "bmp", ".jpg", ".png", ".bmp"]
-VIDEO_EXT = ["mp4", "avi", ".mp4", ".avi"]
+class Color_option(Enum):
+    BGR = 0
+    RGB = 1
+    BGRA = 2
+    GRAY = 3
 
 
-# FUNCTION
-def read_img(
-        file_dir: str,
-        color_type: int,
-        resize: list = None,
-        is_last_channel: bool = True,
-        is_debug: bool = False):
-    """
-    Args:
-        file_dir :
-        color_type :
-        resize :
-        is_last_channel :
-        is_debug :
-    Returns:
-        return (np.uint8 array): image data
-    """
-    # data read
-    if color_type == COLOR_BGR:
-        _read_img = cv2.imread(file_dir, cv2.IMREAD_COLOR)
-    elif color_type == COLOR_GRAY:
-        _read_img = cv2.imread(file_dir, cv2.IMREAD_GRAYSCALE)
-    elif color_type == COLOR_RGB:
-        _read_img = cv2.imread(file_dir, cv2.IMREAD_COLOR)
-        _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
-    elif color_type == COLOR_BGRA:
-        # this code dosen't check it. if you wnat use it. check it output
-        _read_img = cv2.imread(file_dir, cv2.IMREAD_UNCHANGED)
-
-    # do resize step
-    if resize is not None:
-        _read_img = img_resize(_read_img, resize)
-
-    # read debug
-    if is_debug:
-        # if debug option is true, display the image in test window and program will be stop.
-        cv2.imshow("reading img", _read_img)
-        cv2.waitKey(0)
-
-    if is_last_channel:
-        # img => [w, h, c]
-        return _read_img[:, :, np.newaxis] if color_type == COLOR_GRAY else _read_img
-    else:
-        # img => [c, w, h]
-        return _read_img[np.newaxis, :, :] if color_type == COLOR_GRAY \
-            else data_stack(
-                data_list=[_read_img[:, :, 0], _read_img[:, :, 1], _read_img[:, :, 2]],
-                is_last_axis=is_last_channel)
+class Channel_position(Enum):
+    Last = True
+    First = False
 
 
-def read_video(file_dir):
-    """
-    Args:
-        file_dir :
-    Returns:
-        return (np.uint8 array): image data
-    """
-    cap = cv2.VideoCapture(file_dir)
-    return cap
+class Range_option(Enum):
+    ZtoM = 0  # [0, 255]
+    ZtoO = 1  # [0, 1.0]
 
 
-def wirte_img_in(save_dir: str, img: np.ndarray, ext: str = None) -> None:
-    """
-    Args:
-        save_dir :
-        img : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .png
-    Returns:
-        Empty
-    """
-    if ext is not None:
-        assert IMAGE_EXT.index(ext)
-        file_dir = save_dir + ext if ext[0] == "." else save_dir + "." + ext
-    else:
-        if IMAGE_EXT.index(save_dir[-4:]):
-            file_dir = save_dir
+# extention about read and write
+class cv2_RnW():
+    # option
+    DEBUG = False
+
+    IMAGE_EXT = ["jpg", "png", "bmp", ".jpg", ".png", ".bmp"]
+    VIDEO_EXT = ["mp4", "avi", ".mp4", ".avi"]
+
+    @classmethod
+    def image_read(self, filename: str, color_option: Channel_position):
+        if not _base.directory.exist_check(filename):
+            _error_message.variable_stop(
+                "cv2_RnW.image_read",
+                "Have some problem in parameter 'filename'. Not exist")
+        # data read
+        if color_option == Color_option.BGR:
+            _read_img = cv2.imread(filename, cv2.IMREAD_COLOR)
+        elif color_option == Color_option.GRAY:
+            _read_img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        elif color_option == Color_option.RGB:
+            _read_img = cv2.imread(filename, cv2.IMREAD_COLOR)
+            _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
+        elif color_option == Color_option.BGRA:
+            # this code dosen't check it. if you wnat use it. check it output
+            _read_img = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+
+        # read debug
+        if self.DEBUG:
+            # if debug option is true, display the image in test window and program will be stop.
+            cv2.imshow("image_read", _read_img)
+            cv2.waitKey(0)
+
+    @classmethod
+    def image_write(self, filename: str, image):
+        if not _base.directory.extention_check(filename, self.IMAGE_EXT):
+            if self.DEBUG:
+                _error_message.variable(
+                    "cv2_RnW.image_write",
+                    "Have some problem in parameter 'filename'. use default ext")
+            filename += "jpg" if filename[-1] == "." else ".jpg"
+
+        cv2.imwrite(filename, image)
+
+    @staticmethod
+    def video_capture(location, is_file=False):
+        if is_file:
+            if not _base.directory.exist_check(location):
+                _error_message.variable_stop(
+                    "cv2_RnW.image_read",
+                    "Have some problem in parameter 'location'. Not exist")
+        cap = cv2.VideoCapture(location)
+        return cap
+
+    @classmethod
+    def video_write(self, filename, video_size, frame=30):
+        video_format = filename.split("/")[-1].split(".")[-1]
+
+        if not _base.directory.extention_check(video_format, self.VIDEO_EXT):
+            if self.DEBUG:
+                _error_message.variable(
+                    "cv2_RnW.video_write",
+                    "Have some problem in parameter 'filename'. use default ext")
+            video_format = "avi"
+            filename += "avi" if filename[-1] == "." else ".avi"
+
+        _h, _w = video_size[:2]
+
+        if video_format == "avi":
+            fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+        elif video_format == "mp4":
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+
+        return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
+
+
+# extention about image process
+class base_process():
+    M = 255
+
+    @staticmethod
+    def channel_converter(image, channel_option: Channel_position):
+        if channel_option.value:  # [w, h, c]
+            return _numpy.image_extention.conver_to_last_channel(image)
+        else:  # [c, w, h]
+            return _numpy.image_extention.conver_to_first_channel(image)
+
+    @staticmethod
+    def resize(image, size: list):
+        _h, _w = image.shape[:2]
+        _interpolation = cv2.INTER_AREA
+
+        # ratiol
+        if type(size[0]) == float and type(size[1]) == float:
+            if size[0] >= 1.0 or size[1] >= 1.0:
+                _interpolation = cv2.INTER_LINEAR
+            return cv2.resize(image, dsize=[0, 0], fx=size[1], fy=size[0], interpolation=_interpolation)
+
+        # absolute
+        elif type(size[0]) == int and type(size[1]) == int:
+            if size[0] >= _w or size[1] >= _h:
+                _interpolation = cv2.INTER_LINEAR
+            return cv2.resize(image, dsize=(size[1], size[0]), interpolation=_interpolation)
+
         else:
-            file_dir = save_dir + ".png"
+            _error_message.variable(
+                "base_process.img_resize",
+                "Have some problem in parameter 'size'\n" + "Function return input image")
+            return image
 
-    cv2.imwrite(file_dir, img)
+    @staticmethod
+    def range_converter(image, form_range: Range_option, to_range: Range_option):
+        if form_range == Range_option.ZtoO:
+            if to_range == Range_option.ZtoM:  # convert to [0.0, 1.0] -> [0, 255]
+                
+                return image
+            else:
+                return image
+        elif form_range == Range_option.ZtoM:
+            if to_range == Range_option.ZtoO:  # convert to [0, 255] -> [0.0, 1.0]
 
-
-def make_video(
-        save_dir: str,
-        imgs: np.ndarray,
-        ext: str = None,
-        frame: float = 30.0,
-        shape: list = None) -> None:
-    """
-    Args:
-        save_dir :
-        img : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .avi
-        frame :
-        shape :
-    Returns:
-        Empty
-    """
-    if shape is not None:
-        h, w = shape
-    else:
-        h, w, _ = np.shape(imgs[0])
-    if ext is not None:
-        assert VIDEO_EXT.index(ext)
-        _ext = ext
-        file_dir = save_dir + ext if ext[0] == "." else save_dir + "." + ext
-    else:
-        if VIDEO_EXT.index(save_dir[-4:]):
-            file_dir = save_dir
-            _ext = save_dir[-3:]
-        else:
-            _ext = "avi"
-            file_dir = save_dir + ".avi"
-
-    if _ext == "avi":
-        fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-    elif _ext == "mp4":
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-
-    video_file = cv2.VideoWriter(file_dir, fourcc, frame, (w, h))
-
-    for _img in imgs:
-        video_file.write(_img)
-        cv2.imshow('frame', _img)
-        cv2.waitKey(1)
-    video_file.release()
+                return image
+            else:
+                return image
 
 
-def save_numpy(save_dir, data):
-    """
-    Args:
-        save_dir :
-        img : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .avi
-        frame :
-        shape :
-    Returns:
-        Empty
-    """
-    if type(data) == list:
-        _array = np.array(data)
-
-    elif type(data) == np.ndarray:
-        _array = data.copy()
-
-    if save_dir.split("/")[-1].split(".")[-1] == "npz":
-        np.savez_compressed(save_dir, data=_array)
-    else:
-        np.savez(save_dir, data=_array)
+    @classmethod
+    def canny(
+            self,
+            image,
+            thresholds,
+            kernel_size,
+            input_range=Range_option.ZtoM,
+            input_channel_option=Channel_position.Last):
+        pass
 
 
-"""
-Custom function about Debug
-=====
-"""
-# CONSTANT
-NEIGHBOR_SPACE = [[1, None], [0, None], [None, -1]]
-NEIGHBOR_SPACE2 = [[None, -1], [1, -1], [1, None]]
-
-IMAGE_TEXT_PADDING = 10
-SMALL_VALUE = 1E-10
-
-ORIGINAL_WINDOW_NAME = "original"
-
-
-# FUNCTION
-def img_render(
-        img: np.ndarray,
-        window_name: str,
-        is_zero2one: bool = True,
-        is_First_channel: bool = False,
-        input_text: str = None,
-        save_dir: str = None,
-        is_DEBUG: bool = False) -> None:
-    """
-    Args:
-        img : np.uint8 ndarray
-        window_name :
-        is_zero2one :
-        is_First_channel :
-        input_text :
-        save_dir :
-        is_DEBUG :
-    Returns:
-        Empty
-    """
-    _img = img
-
-    # process 1 :
-    if is_zero2one:
-        _img *= PIXEL_MAX
-        _img = np.clip(_img, 0, PIXEL_MAX)
-        _img = _img.astype(np.uint8)
-
-    #  process 2 :
-    if is_First_channel:
-        # in torch, img data style is first channel. so, change to last channel
-        _img = np.dstack([_img[0], _img[1], _img[2]]).astype(np.uint8)
-
-    #  process 3 :
-    if input_text is not None:
-        [_text_w, _text_h], _ = cv2.getTextSize(
-            text=input_text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
-        _h, _w, _c = np.shape(_img)
-
-        # make text image
-        _text_shell =\
-            255 * np.ones(
-                (_text_h + (2 * IMAGE_TEXT_PADDING), _text_w + (2 * IMAGE_TEXT_PADDING), _c), dtype=np.uint8)
-        cv2.putText(img=_text_shell,
-                    text=input_text,
-                    org=(IMAGE_TEXT_PADDING, _text_h + IMAGE_TEXT_PADDING),
-                    fontScale=1,
-                    thickness=2,
-                    fontFace=cv2.FONT_HERSHEY_DUPLEX,
-                    color=(0, 0, 0))
-        _text_shell = img_resize(_text_shell, [_text_h, _w])
-
-        # combined save image n text image
-        _render_image = 255 * np.ones((_h + _text_h, _w, _c), dtype=np.uint8)
-        _render_image[:_h, :, :] = _img
-        _render_image[_h:, :, :] = _text_shell
-        _img = _render_image
-
-    #  process 4 :
-    if save_dir is not None:
-        wirte_img_in(save_dir, _img)
-
-    #  process 5 :
-    if window_name is not None:
-        cv2.imshow(window_name, _img)
-    cv2.waitKey(10)
-
-
-def Neighbor_Confusion_Matrix(
-        img: np.ndarray, target: np.ndarray, interest: np.ndarray) -> list:
-    """
-    Args:
-        img :
-        target : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .avi
-        frame :
-        shape :
-    Returns:
-        Confusion Matrix (list)
-    """
-    _nb_tp = np.zeros_like(img[1: -1, 1: -1])
-    _nb_tn = np.zeros_like(img[1: -1, 1: -1])
-    _nb_fp = np.zeros_like(img[1: -1, 1: -1])
-    _nb_fn = np.zeros_like(img[1: -1, 1: -1])
-
-    for _h_c in range(3):
-        image_h_s = NEIGHBOR_SPACE[_h_c][0]
-        image_h_e = NEIGHBOR_SPACE[_h_c][1]
-        target_h_s = NEIGHBOR_SPACE[2 - _h_c][0]
-        target_h_e = NEIGHBOR_SPACE[2 - _h_c][1]
-        roi_h_s = NEIGHBOR_SPACE2[_h_c][0]
-        roi_h_e = NEIGHBOR_SPACE2[_h_c][1]
-
-        for _w_c in range(3):
-            image_w_s = NEIGHBOR_SPACE[_w_c][0]
-            image_w_e = NEIGHBOR_SPACE[_w_c][1]
-            target_w_s = NEIGHBOR_SPACE[2 - _w_c][0]
-            target_w_e = NEIGHBOR_SPACE[2 - _w_c][1]
-            roi_w_s = NEIGHBOR_SPACE2[_w_c][0]
-            roi_w_e = NEIGHBOR_SPACE2[_w_c][1]
-
-            cutted_image = img[image_h_s: image_h_e, image_w_s: image_w_e]
-            cutted_interest = interest[image_h_s: image_h_e, image_w_s: image_w_e]
-            cutted_target = target[target_h_s: target_h_e, target_w_s: target_w_e]
-
-            _cm = Calculate_Confusion_Matrix(cutted_image, cutted_target, cutted_interest)
-
-            _nb_tp = np.logical_or(_nb_tp, _cm[0][roi_h_s: roi_h_e, roi_w_s: roi_w_e])
-            _nb_tn = np.logical_or(_nb_tn, _cm[1][roi_h_s: roi_h_e, roi_w_s: roi_w_e])
-            _nb_fp = np.logical_or(_nb_fp, _cm[3][roi_h_s: roi_h_e, roi_w_s: roi_w_e])
-            _nb_fn = np.logical_or(_nb_fn, _cm[2][roi_h_s: roi_h_e, roi_w_s: roi_w_e])
-
-    _nb_fn = _nb_fn.astype(np.uint8) - np.logical_and(_nb_fn, _nb_tp).astype(np.uint8)
-    _nb_fp = _nb_fp.astype(np.uint8) - np.logical_and(_nb_fp, _nb_tn).astype(np.uint8)
-
-    output = []
-    output.append(_nb_tp.astype(np.uint8))
-    output.append(_nb_tn.astype(np.uint8))
-    output.append(_nb_fn.astype(np.uint8))
-    output.append(_nb_fp.astype(np.uint8))
-
-    return output
-
-
-def Calculate_Confusion_Matrix(image: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
-    """
-    Args:
-        img :
-        target : np.uint8 ndarray
-        ext : if you want image ext.
-              if you set Default, and save_dir has not ext, autometically set .avi
-        frame :
-        shape :
-    Returns:
-        Confusion Matrix (list)
-    """
-    if interest is None:
-        interest = np.ones_like(image, np.uint8)
-    compare = (image == target).astype(np.uint8)
-
-    compare_255 = (compare * 254)  # collect is 254, not 0 -> Tx
-    inv_compare_255 = ((1 - compare) * 254)  # wrong is 254, not 0 -> Fx
-
-    collect_FG = np.logical_and(compare_255, target.astype(bool))       # TP
-    collect_BG = np.logical_and(compare_255, ~(target.astype(bool)))    # TN
-    wrong_BG = np.logical_and(inv_compare_255, target.astype(bool))     # FN
-    wrong_FG = np.logical_and(inv_compare_255, ~(target.astype(bool)))  # FP
-
-    return (collect_FG * interest, collect_BG * interest, wrong_BG * interest, wrong_FG * interest)
-
-
-def Confusion_Matrix_to_value(TP, TN, FN, FP):
-    pre = TP / (TP + FP + SMALL_VALUE)
-    recall = TP / (TP + FN + SMALL_VALUE)
-    fm = (2 * pre * recall) / (pre + recall + SMALL_VALUE)
-
-    return pre, recall, fm
-
-
-"""
-Custom function about image process
-=====
-"""
-# CONSTANT
-FLIP_OPTION = ["V", "H", "VH", "HV", "v", "h", "hv", "vh", None]
-SALT_N_PAPPER = 0
-INVERS = 1
-
-
-# FUNCTION
+# extention display with control
 class trackbar():
     def __init__(self, name, value_range):
         """
@@ -508,49 +299,97 @@ class trackbar_window():
         return _event, output
 
 
-# class Image_Process():
-#     @ classmethod
-#     def get_canvas(self, background_color, channel=3):
-#         """
-#         Args:
-#             background_color
-#         Return:
-#             canvas
-#         # """
-#         # if channel == 1:
-#         #     np.dstack()
-#         # return
-#         pass
+"""
+Custom function about Debug
+=====
+"""
+# CONSTANT
+NEIGHBOR_SPACE = [[1, None], [0, None], [None, -1]]
+NEIGHBOR_SPACE2 = [[None, -1], [1, -1], [1, None]]
 
+IMAGE_TEXT_PADDING = 10
+SMALL_VALUE = 1E-10
 
-def img_resize(img: np.ndarray, size: list):
+ORIGINAL_WINDOW_NAME = "original"
+
+PIXEL_MAX = 255
+# FUNCTION
+def img_render(
+        img: np.ndarray,
+        window_name: str,
+        is_zero2one: bool = True,
+        is_First_channel: bool = False,
+        input_text: str = None,
+        save_dir: str = None,
+        is_DEBUG: bool = False) -> None:
     """
     Args:
-        img :
-        size : "[int, int] or [float, float]" H, W
+        img : np.uint8 ndarray
+        window_name :
+        is_zero2one :
+        is_First_channel :
+        input_text :
+        save_dir :
+        is_DEBUG :
     Returns:
-        Confusion Matrix (list)
+        Empty
     """
-    try:
-        h, w, _ = np.shape(img)
-    except ValueError:
-        h, w = np.shape(img)
-    _interpolation = cv2.INTER_AREA
-    if type(size[0]) == float and type(size[1]) == float:
-        if size[0] >= 1.0 or size[1] >= 1.0:
-            _interpolation = cv2.INTER_LINEAR
+    _img = img
 
-        return cv2.resize(img, dsize=[0, 0], fx=size[1], fy=size[0], interpolation=_interpolation)
+    # process 1 :
+    if is_zero2one:
+        _img *= PIXEL_MAX
+        _img = np.clip(_img, 0, PIXEL_MAX)
+        _img = _img.astype(np.uint8)
 
-    elif type(size[0]) == int and type(size[1]) == int:
-        if size[0] >= w or size[1] >= h:
-            _interpolation = cv2.INTER_LINEAR
+    #  process 2 :
+    if is_First_channel:
+        # in torch, img data style is first channel. so, change to last channel
+        _img = np.dstack([_img[0], _img[1], _img[2]]).astype(np.uint8)
 
-        return cv2.resize(img, dsize=(size[1], size[0]), interpolation=_interpolation)
+    #  process 3 :
+    if input_text is not None:
+        [_text_w, _text_h], _ = cv2.getTextSize(
+            text=input_text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
+        _h, _w, _c = np.shape(_img)
 
-    else:
-        print("setting error. in this situation, return input image.")
-        return img
+        # make text image
+        _text_shell =\
+            255 * np.ones(
+                (_text_h + (2 * IMAGE_TEXT_PADDING), _text_w + (2 * IMAGE_TEXT_PADDING), _c), dtype=np.uint8)
+        cv2.putText(img=_text_shell,
+                    text=input_text,
+                    org=(IMAGE_TEXT_PADDING, _text_h + IMAGE_TEXT_PADDING),
+                    fontScale=1,
+                    thickness=2,
+                    fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                    color=(0, 0, 0))
+        _text_shell = img_resize(_text_shell, [_text_h, _w])
+
+        # combined save image n text image
+        _render_image = 255 * np.ones((_h + _text_h, _w, _c), dtype=np.uint8)
+        _render_image[:_h, :, :] = _img
+        _render_image[_h:, :, :] = _text_shell
+        _img = _render_image
+
+    #  process 4 :
+    if save_dir is not None:
+        wirte_img_in(save_dir, _img)
+
+    #  process 5 :
+    if window_name is not None:
+        cv2.imshow(window_name, _img)
+    cv2.waitKey(10)
+
+
+"""
+Custom function about image process
+=====
+"""
+# CONSTANT
+FLIP_OPTION = ["V", "H", "VH", "HV", "v", "h", "hv", "vh", None]
+SALT_N_PAPPER = 0
+INVERS = 1
 
 
 def make_canny(

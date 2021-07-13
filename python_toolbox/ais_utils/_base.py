@@ -18,11 +18,8 @@ from glob import glob
 from os import path, system, getcwd, mkdir, remove
 
 from . import _error as _e
-# import _error as _e
 
 # Set constant
-DEBUG = False
-
 
 # ----- PROGRAM START WORKING IN BELOW LINE ----- #
 """
@@ -48,11 +45,18 @@ MOVE = 1
 DLETET = 2
 
 
-# FUNCTION
-"""
-Custom function about Dir work
-=====
-"""
+class directory():
+    @staticmethod
+    def extention_check(filename, exts):
+        file_ext = filename.split("/")[-1].split(".")[-1]
+        if file_ext in exts:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def exist_check(directory, is_file=True):
+        return path.isfile(directory) if is_file else path.isdir(directory)
 
 
 def connect_AIS_server(

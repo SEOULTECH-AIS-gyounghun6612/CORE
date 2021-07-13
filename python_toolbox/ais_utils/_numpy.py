@@ -1,83 +1,130 @@
 import numpy as np
+from . import _error
+
+_error_message = _error.Custom_error("AIS_utils", "_numpy")
 
 
-def array2RLE(data, order='F'):
-    if data is not None:
-        _size = data.shape
-        _size = (int(_size[0]), int(_size[1]))
+class RLE():
+    size_key = "size"
+    count_key = "counts"
 
-        return_RLE = []
-        if (data == np.zeros_like(data)).all():
-            return_RLE.append(_size[0] * _size[1])
-            return {"size": _size, "counts": return_RLE}
-        elif (data == np.ones_like(data)).all():
-            return_RLE.append(0)
-            return_RLE.append(_size[0] * _size[1])
-            return {"size": _size, "counts": return_RLE}
-        else:
-            _line = data.reshape(_size[0] * _size[1], order=order)
-            _count_list = []
+    @classmethod
+    def from_nparray(self, data, order='F'):
+        if data is not None:
+            _size = data.shape
+            _size = (int(_size[0]), int(_size[1]))
 
-            for _type in range(2):
-                _points = np.where(_line == _type)[0]
-                _filter = _points[1:] - _points[:-1]
-                _filter = _filter[np.where(_filter != 1)[0]]
-                _count = _filter[np.where(_filter != 1)[0]] - 1
-
-                if _points[0]:
-                    _count = np.append((_points[0], ), _count)
-                _count_list.append(_count)
-
-            _one_count, _zero_count = _count_list
-
-            if _line[0]:
-                _zero_count = np.append((0, ), _zero_count)
-
-            for _ct in range(len(_one_count)):
-                return_RLE.append(int(_zero_count[_ct]))
-                return_RLE.append(int(_one_count[_ct]))
-
-            _last_count = int(len(_line) - sum(return_RLE))
-            return_RLE.append(_last_count)
-
-            return {"size": _size, "counts": return_RLE}
-
-    else:
-        return None
-
-
-def RLE2array(data, order='F'):
-    if data is not None:
-        rle_data = data["counts"]
-        array = np.array([], dtype=np.uint8)
-        for _type, _count in enumerate(rle_data):
-            value = _type % 2
-            if value:
-                _tmp = np.ones(_count, dtype=np.uint8)
+            return_RLE = []
+            # zeros
+            if (data == np.zeros_like(data)).all():
+                return_RLE.append(_size[0] * _size[1])
+            # ones
+            elif (data == np.ones_like(data)).all():
+                return_RLE.append(0)
+                return_RLE.append(_size[0] * _size[1])
+            # else
             else:
-                _tmp = np.zeros(_count, dtype=np.uint8)
+                _line = data.reshape(_size[0] * _size[1], order=order)
+                _count_list = []
 
-            array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
+                # in later add annotation
+                for _type in range(2):
+                    _points = np.where(_line == _type)[0]
+                    _filter = _points[1:] - _points[:-1]
+                    _filter = _filter[np.where(_filter != 1)[0]]
+                    _count = _filter[np.where(_filter != 1)[0]] - 1
 
-        array = np.reshape(array, data["size"], order)
-        return array
-    else:
-        return None
+                    if _points[0]:
+                        _count = np.append((_points[0], ), _count)
+                    _count_list.append(_count)
+
+                _one_count, _zero_count = _count_list
+
+                if _line[0]:
+                    _zero_count = np.append((0, ), _zero_count)
+
+                for _ct in range(len(_one_count)):
+                    return_RLE.append(int(_zero_count[_ct]))
+                    return_RLE.append(int(_one_count[_ct]))
+
+                _last_count = int(len(_line) - sum(return_RLE))
+                return_RLE.append(_last_count)
+
+            return {self.size_key: _size, self.count_key: return_RLE}
+
+        else:
+            _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
+            return None
+
+    @classmethod
+    def to_nparray(self, data, order='F'):
+        if data is not None:
+            rle_data = data[self.count_key]
+            array = np.array([], dtype=np.uint8)
+            for _type, _count in enumerate(rle_data):
+                value = _type % 2
+                if value:
+                    _tmp = np.ones(_count, dtype=np.uint8)
+                else:
+                    _tmp = np.zeros(_count, dtype=np.uint8)
+
+                array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
+
+            array = np.reshape(array, data[self.size_key], order)
+            return array
+        else:
+            _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
+            return None
 
 
-def save_numpy(save_dir, data):
-    """
-    Args:
-        save_dir :
-        data :
-    Returns:
-        Empty
-    """
-    _array = np.array(data)
-    if save_dir.split("/")[-1].split(".")[-1] == "npz":
-        np.savez_compressed(save_dir, data=_array)
-    else:
-        np.savez(save_dir, data=_array)
+class np_RnW():
+    def save_numpy(save_dir, data):
+        """
+        Args:
+            save_dir :
+            data :
+        Returns:
+            Empty
+        """
+        _array = np.array(data)
+        if save_dir.split("/")[-1].split(".")[-1] == "npz":
+            np.savez_compressed(save_dir, data=_array)
+        else:
+            np.savez(save_dir, data=_array)
+
+
+class image_extention():
+    @staticmethod
+    def get_canvus(size, sample=None, background_color=0):
+        if background_color in ["black", 0, [0, 0, 0]]:
+            return np.zeros(size, dtype=np.uint8) if sample is None else np.zeros_like(sample, dtype=np.uint8)
+
+    @staticmethod
+    def stack_image(image_list: list, is_last_stack: bool = True):
+        return np.dstack(image_list) if is_last_stack else np.vstack(image_list)
+
+    @classmethod
+    def conver_to_last_channel(self, image):
+        img_shape = image.shape
+        if len(img_shape) == 2:
+            # gray iamge
+            return image[:, :, np.newaxis]
+        else:
+            # else image
+            divide_data = [image[ct] for ct in range(img_shape[-1])]
+            return self.stack_image(divide_data)
+
+    @classmethod
+    def conver_to_first_channel(self, image):
+        img_shape = image.shape
+        if len(img_shape) == 2:
+            # gray iamge
+            return image[np.newaxis, :, :]
+        else:
+            # else image
+            divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
+            return self.stack_image(divide_data, False)
+
 
 # in later fix it
 # def Neighbor_Confusion_Matrix(

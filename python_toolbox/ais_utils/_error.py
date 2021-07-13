@@ -9,7 +9,34 @@ Requirement
 
 """
 # Import module
-# Empty
+# stand alone module
+
+
+class Custom_error():
+    def __init__(self, module_name, file_name) -> None:
+        self.error_text =\
+            "!!!!!ERROR!!!!!\n" +\
+            "Module: {}\n".format(module_name) +\
+            "File: {}\n".format(file_name) +\
+            "Function: {}\n" +\
+            "Error type: {}\n" +\
+            "Detail: {}\n" +\
+            "!!!!!ERROR!!!!!\n"
+
+        self.warring_text =\
+            "!!!!!WARRING!!!!!\n" +\
+            "Module: {}\n".format(module_name) +\
+            "File: {}\n".format(file_name) +\
+            "Function: {}\n" +\
+            "WARRING type: {}\n" +\
+            "Detail: {}\n" +\
+            "!!!!!WARRING!!!!!\n"
+
+    def variable(self, function_name, detail):
+        print(self.warring_text.format(function_name, "variable", detail))
+
+    def variable_stop(self, function_name, detail):
+        assert False, self.warring_text.format(function_name, "variable", detail)
 
 
 def Custom_Variable_Error(loacation: str, parameters: list, detail: str = None):
