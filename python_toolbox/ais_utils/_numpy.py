@@ -4,6 +4,65 @@ from . import _error
 _error_message = _error.Custom_error("AIS_utils", "_numpy")
 
 
+class np_RnW():
+    def save_numpy(save_dir, data):
+        """
+        Args:
+            save_dir :
+            data :
+        Returns:
+            Empty
+        """
+        _array = np.array(data)
+        if save_dir.split("/")[-1].split(".")[-1] == "npz":
+            np.savez_compressed(save_dir, data=_array)
+        else:
+            np.savez(save_dir, data=_array)
+
+
+class base_process():
+    @staticmethod
+    def type_converter(data, to_type):
+        if to_type == "uint8":
+            return data.astype(np.uint8)
+
+    @staticmethod
+    def stack(data_list: list, channel=-1):
+        return np.stack(data_list, axis=channel)
+
+
+class image_extention():
+    @staticmethod
+    def get_canvus(size, sample=None, background_color=0):
+        canvus = np.ones(size) if sample is None else np.ones_like(sample)
+        if background_color in ["black", 0, [0, 0, 0]]:
+            return (canvus * 0).astype(np.uint8)
+        elif background_color in ["white", 255, [255, 255, 255]]:
+            return (canvus * 255).astype(np.uint8)
+
+    @staticmethod
+    def conver_to_last_channel(image):
+        img_shape = image.shape
+        if len(img_shape) == 2:
+            # gray iamge
+            return image[:, :, np.newaxis]
+        else:
+            # else image
+            divide_data = [image[ct] for ct in range(img_shape[0])]
+            return base_process.stack(divide_data)
+
+    @staticmethod
+    def conver_to_first_channel(image):
+        img_shape = image.shape
+        if len(img_shape) == 2:
+            # gray iamge
+            return image[np.newaxis, :, :]
+        else:
+            # else image
+            divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
+            return base_process.stack(divide_data, 0)
+
+
 class RLE():
     size_key = "size"
     count_key = "counts"
@@ -75,55 +134,6 @@ class RLE():
         else:
             _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
             return None
-
-
-class np_RnW():
-    def save_numpy(save_dir, data):
-        """
-        Args:
-            save_dir :
-            data :
-        Returns:
-            Empty
-        """
-        _array = np.array(data)
-        if save_dir.split("/")[-1].split(".")[-1] == "npz":
-            np.savez_compressed(save_dir, data=_array)
-        else:
-            np.savez(save_dir, data=_array)
-
-
-class image_extention():
-    @staticmethod
-    def get_canvus(size, sample=None, background_color=0):
-        if background_color in ["black", 0, [0, 0, 0]]:
-            return np.zeros(size, dtype=np.uint8) if sample is None else np.zeros_like(sample, dtype=np.uint8)
-
-    @staticmethod
-    def stack_image(image_list: list, is_last_stack: bool = True):
-        return np.dstack(image_list) if is_last_stack else np.vstack(image_list)
-
-    @classmethod
-    def conver_to_last_channel(self, image):
-        img_shape = image.shape
-        if len(img_shape) == 2:
-            # gray iamge
-            return image[:, :, np.newaxis]
-        else:
-            # else image
-            divide_data = [image[ct] for ct in range(img_shape[-1])]
-            return self.stack_image(divide_data)
-
-    @classmethod
-    def conver_to_first_channel(self, image):
-        img_shape = image.shape
-        if len(img_shape) == 2:
-            # gray iamge
-            return image[np.newaxis, :, :]
-        else:
-            # else image
-            divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
-            return self.stack_image(divide_data, False)
 
 
 # in later fix it

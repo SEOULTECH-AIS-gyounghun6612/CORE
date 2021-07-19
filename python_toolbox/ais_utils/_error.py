@@ -13,6 +13,16 @@ Requirement
 
 
 class Custom_error():
+    # Detail_text
+    NOT_YET = \
+        "For now, this part is not yet complete."
+
+    VARIABLE = \
+        "The variable causing the problem: \n \
+        {}\n \
+        Anotation: \n \
+        {}"
+
     def __init__(self, module_name, file_name) -> None:
         self.error_text =\
             "!!!!!ERROR!!!!!\n" +\
@@ -32,11 +42,32 @@ class Custom_error():
             "Detail: {}\n" +\
             "!!!!!WARRING!!!!!\n"
 
-    def variable(self, function_name, detail):
-        print(self.warring_text.format(function_name, "variable", detail))
+    def not_yet(self, function_name):
+        assert False, self.error_text.format(function_name, "Not yet", self.NOT_YET)
 
-    def variable_stop(self, function_name, detail):
-        assert False, self.warring_text.format(function_name, "variable", detail)
+    def variable(self, function_name, variable_list, AA):
+        """
+        Args:
+            function_name   : (No narrative)
+            variable_list   : (No narrative)
+            AA              : Additional annotation
+        Returns:
+            None
+        """
+        print_text = self.VARIABLE.format(variable_list, AA)
+        print(self.warring_text.format(function_name, "variable", print_text))
+
+    def variable_stop(self, function_name, variable_list, AA):
+        """
+        Args:
+            function_name   : (No narrative)
+            variable_list   : (No narrative)
+            AA              : Additional annotation
+        Returns:
+            None
+        """
+        print_text = self.VARIABLE.format(variable_list, AA)
+        assert False, self.error_text.format(function_name, "variable", print_text)
 
 
 def Custom_Variable_Error(loacation: str, parameters: list, detail: str = None):

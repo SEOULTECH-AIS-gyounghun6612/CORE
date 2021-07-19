@@ -20,6 +20,133 @@ from os import path, system, getcwd, mkdir, remove
 from . import _error as _e
 
 # Set constant
+DEBUG = False
+_error = _e.Custom_error(
+    module_name="ais_custom_utils_v 2.x",
+    file_name="_base.py")
+
+
+class directory():
+    @staticmethod
+    def _exist_check(directory, is_file=True):
+        return path.isfile(directory) if is_file else path.isdir(directory)
+
+    @staticmethod
+    def _make():
+        pass
+
+    @staticmethod
+    def _inside_serch():
+        pass
+
+    @staticmethod
+    def _compare():
+        pass
+
+    @staticmethod
+    def _del():
+        pass
+
+    @staticmethod
+    def _copy():
+        pass
+
+
+class file():
+    @staticmethod
+    def _extention_check(filename, exts):
+        file_ext = filename.split("/")[-1].split(".")[-1]
+        if file_ext in exts:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def _load():
+        pass
+
+    @staticmethod
+    def _save():
+        pass
+
+    @staticmethod
+    def _json(save_dir, file_name=None, data_dict=None, is_save=False):
+        """
+        Args:
+            save_dir        :
+            file_name       :
+            data_dict       :
+        Returns:
+            return (dict)   :
+        """
+
+        if file_name is None:
+            if not file._extention_check(save_dir, ["json", ]):
+                _error.variable_stop(
+                    function_name="file_IO.json_file",
+                    variable_list=["save_dir", "file_name"],
+                    AA=""
+                )
+
+            else:
+                _error.variable(
+                    function_name="file_IO.json_file",
+                    variable_list=["save_dir", "file_name"],
+                    AA=""
+                ) if DEBUG else None
+                _file_dir = save_dir
+        else:
+            _file_dir = save_dir + file_name
+
+        if is_save:
+            _file = open(_file_dir, "w")
+            json.dump(data_dict, _file, indent=4)
+        else:
+            _file = open(_file_dir, "r")
+            return json.load(_file)
+
+    @staticmethod
+    def _del():
+        pass
+
+    @staticmethod
+    def _copy():
+        pass
+
+
+class etc():
+    @staticmethod
+    def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
+        """
+        Call in a loop to create terminal progress bar
+        Args:
+            iteration   - Required  : current iteration (Int)
+            total       - Required  : total iterations (Int)
+            prefix      - Optional  : prefix string (Str)
+            suffix      - Optional  : suffix string (Str)
+            decimals    - Optional  : positive number of decimals in percent complete (Int)
+            length      - Optional  : character length of bar (Int)
+            fill        - Optional  : bar fill character (Str)
+        Returns:
+            Empty
+        """
+        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+        filledLength = int(length * iteration // total)
+        bar = fill * filledLength + '-' * (length - filledLength)
+        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end="\r")
+        # Print New Line on Complete
+        if iteration == total:
+            print()
+
+
+class server():
+    @staticmethod
+    def _connect():
+        pass
+
+    @staticmethod
+    def _unconnect():
+        pass
 
 # ----- PROGRAM START WORKING IN BELOW LINE ----- #
 """
@@ -43,20 +170,6 @@ DIR_PUBLIC = "Public" + SLASH
 COPY = 0
 MOVE = 1
 DLETET = 2
-
-
-class directory():
-    @staticmethod
-    def extention_check(filename, exts):
-        file_ext = filename.split("/")[-1].split(".")[-1]
-        if file_ext in exts:
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def exist_check(directory, is_file=True):
-        return path.isfile(directory) if is_file else path.isdir(directory)
 
 
 def connect_AIS_server(
@@ -340,28 +453,5 @@ Custom function about precess debug
 
 
 # FUNCTION
-def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
-    """
-    Call in a loop to create terminal progress bar
-    Args:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-    Returns:
-        Empty
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end="\r")
-    # Print New Line on Complete
-    if iteration == total:
-        print()
-
-
 def load_success():
     print("!!! custom python module ais_utils _base load Success !!!")

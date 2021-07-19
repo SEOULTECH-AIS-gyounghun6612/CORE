@@ -15,6 +15,7 @@ import numpy as np
 
 from . import _error as _e
 
+
 def data_stack(data_list: list, is_last_axis: bool = True):
     """ Make merge data array from data_list
     Args:
