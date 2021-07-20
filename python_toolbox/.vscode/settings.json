@@ -6,5 +6,5 @@
         "--max-line-length=110",
         "--ignore=E402,",
     ],
-    "python.pythonPath": "/home/ais-choi-01/.conda/envs/pytorch/bin/python"
+    "python.pythonPath": "/home/ais-choi-01/anaconda3/bin/python"
 }

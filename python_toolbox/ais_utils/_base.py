@@ -15,7 +15,7 @@ import platform
 import shutil
 
 from glob import glob
-from os import path, system, getcwd, mkdir, remove
+from os import error, path, stat, system, getcwd, mkdir, remove
 
 from . import _error as _e
 
@@ -27,13 +27,74 @@ _error = _e.Custom_error(
 
 
 class directory():
-    @staticmethod
-    def _exist_check(directory, is_file=True):
-        return path.isfile(directory) if is_file else path.isdir(directory)
+    OS_THIS = platform.system()
+    OS_WINDOW = "Windows"
+    OS_UBUNTU = "Linux"
+    SLASH = "/" if OS_THIS == OS_UBUNTU else "\\"
+    RELARTION = "." + SLASH
+
+    @classmethod
+    def _slash_check(self, directory):
+        _tmp_ct = -1 if self.OS_THIS == self.OS_UBUNTU else -2
+        _tmp_dir = directory if directory[_tmp_ct:] == self.SLASH else directory + self.SLASH
+        return _tmp_dir
+
+    @classmethod
+    def _devide(self, directory, point):
+        _dir = self._slash_check(directory)
+        _comp = _dir.split(self.SLASH)[:-1]
+
+        _front = ""
+        _back = ""
+        for _data in _comp[:point]:
+            _front += _data + self.SLASH
+        for _data in _comp[point:]:
+            _back += _data + self.SLASH
+
+        return _front, _back
 
     @staticmethod
-    def _make():
-        pass
+    def _exist_check(directory, is_file=False):
+        return path.isfile(directory) if is_file\
+            else path.isdir(directory._slash_check(directory))
+
+    @classmethod
+    def _make(self, obj_dirs, root_dir=None):
+        if isinstance(obj_dirs, str):
+            obj_dirs = [obj_dirs, ]
+        elif isinstance(obj_dirs, list):
+            pass
+        else:
+            # !!!ERROR!!! wrong type entered
+            _error.variable_stop(
+                function_name="directory._make",
+                variable_list=["obj_dirs", ],
+                AA="Entered parameter 'obj_dirs' has unsuitable type data"
+            )
+
+        # root dir check
+        if root_dir is not None:
+            # not use relartion
+            _root = directory._slash_check(root_dir)
+            if not directory._exist_check(_root):
+                _front, _back = directory._devide(_root, -1)
+                directory._make(_back, _front)
+        else:
+            # use relartion
+            _root = ""
+            for _ct, _data in enumerate(obj_dirs):
+                if _data.find(self.RELARTION):
+                    obj_dirs[_ct] = self.RELARTION + _data
+
+        # make directory
+        for _ct, _data in enumerate(obj_dirs):
+            _tem_dir = directory._slash_check(_root + self.SLASH + _data)
+
+            if not directory._exist_check(_tem_dir):
+                mkdir(_tem_dir)
+            obj_dirs[_ct] = _tem_dir
+
+        return obj_dirs
 
     @staticmethod
     def _inside_serch():
@@ -54,12 +115,40 @@ class directory():
 
 class file():
     @staticmethod
-    def _extention_check(filename, exts):
-        file_ext = filename.split("/")[-1].split(".")[-1]
-        if file_ext in exts:
-            return True
+    def _from_directory(dir):
+        _last_component = dir.split(directory.SLASH)[-1]
+        if _last_component.find(".") == -1:
+            return None
         else:
-            return False
+            return _last_component
+
+    @staticmethod
+    def _extension_check(file_dir, exts, is_fix=False):
+        file_name = file._from_directory(file_dir)
+        is_positive = False
+
+        if file_name is None:
+            # !!!WARING!!! file directory not have file name
+            _error.variable(
+                function_name="file._extension_check",
+                variable_list=["file_dir", ],
+                AA="File name not exist in Entered Parameter 'file_dir'"
+            ) if DEBUG else None
+
+            # fix
+            new_file_dir = file_dir + "." + exts[0] if is_fix else None
+
+        else:
+            file_ext = file_name.split(".")[-1]
+            is_positive = file_ext in exts
+
+            # fix
+            if (not is_positive) and is_fix:
+                _tem_ct = file_name.find(".")
+                replace_file_name = file_name[:_tem_ct] + "." + exts[0]
+                new_file_dir = file_dir.replace(file_name, replace_file_name)
+
+        return [is_positive, new_file_dir] if is_fix else is_positive
 
     @staticmethod
     def _load():
@@ -70,7 +159,7 @@ class file():
         pass
 
     @staticmethod
-    def _json(save_dir, file_name=None, data_dict=None, is_save=False):
+    def _json(file_dir, file_name, data_dict=None, is_save=False):
         """
         Args:
             save_dir        :
@@ -79,31 +168,57 @@ class file():
         Returns:
             return (dict)   :
         """
+        # directory check
+        if not directory._exist_check(file_dir):
+            if is_save:
+                # !!!WARING!!! save directory not exist
+                _error.variable(
+                    function_name="file.json_file",
+                    variable_list=["file_dir", ],
+                    AA="Entered directory '{}' not exist. In first make that".format(file_dir)
+                ) if DEBUG else None
 
-        if file_name is None:
-            if not file._extention_check(save_dir, ["json", ]):
-                _error.variable_stop(
-                    function_name="file_IO.json_file",
-                    variable_list=["save_dir", "file_name"],
-                    AA=""
-                )
+                directory._make(file_dir)
 
             else:
-                _error.variable(
-                    function_name="file_IO.json_file",
-                    variable_list=["save_dir", "file_name"],
-                    AA=""
-                ) if DEBUG else None
-                _file_dir = save_dir
-        else:
-            _file_dir = save_dir + file_name
+                # !!!ERROR!!! load directory not exist
+                _error.variable_stop(
+                    function_name="file.json_file",
+                    variable_list=["file_dir", ],
+                    AA="Entered directory '{}' not exist".format(file_dir)
+                )
 
+        # file_name check
+        check_result, new_file_name = file._extension_check(file_name, ["json", ], True)
+        if not check_result:
+            # !!!WARING!!! extension not exist in file_name
+            _error.variable(
+                function_name="file.json_file",
+                variable_list=["file_name", ],
+                AA="Extension not exist in entered parameter 'file_name'."
+            ) if DEBUG else None
+            file_name = new_file_name
+
+        # json file process load or save
+        _tmp_dir = file_dir + file_name
         if is_save:
-            _file = open(_file_dir, "w")
+            # json file save
+            _file = open(_tmp_dir, "w")
             json.dump(data_dict, _file, indent=4)
         else:
-            _file = open(_file_dir, "r")
-            return json.load(_file)
+            # json file load
+            if directory._exist_check(_tmp_dir, True):
+                # json file exist
+                _file = open(_tmp_dir, "r")
+                return json.load(_file)
+
+            else:
+                # !!!ERROR!!! load json file not exist
+                _error.variable_stop(
+                    function_name="file.json_file",
+                    variable_list=["file_dir", "file_name"],
+                    AA="Load file '{}' not exist".format(_tmp_dir)
+                )
 
     @staticmethod
     def _del():
