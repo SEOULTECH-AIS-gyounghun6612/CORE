@@ -1,4 +1,12 @@
+# ignore list
+# for code test file
 test.*
 
+# data file
 *.png
+
+# vscode settin info
+.vscode/*
+
+# etc 
 *.pyc
