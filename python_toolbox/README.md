@@ -4,30 +4,26 @@
 Basically, a repository for personal modules related to Python that are frequently used and for installation using pip commands in the future.
 
 ## Update plan
-- [ ] 즈요 구조 변경 (Function을 이용한 구성에서 각 파트에서 기능별 class 생성)
-
 
 #### _base.py
-- [x] 폴더명을 트리 구조 데이터로 입력 받아, 폴더를 생성
-- [x] Receives the folder name as tree structure data and creates a folder
+- [ ] 계획 미정
+- [ ] No plan
 
 #### _cv.py
-- [ ] nump를 이용한 일부 모듈 이동 (-> _numpy.py)
-- [ ] Move some modules using numpy (-> numpy.py)
-- [ ] 빈 캔버스 반환 함수
-- [ ] 
+- [ ] 계획 미정
+- [ ] No plan
 
 #### _label.py
 - [ ] 계획 미정
-- [ ] Not yet
+- [ ] No plan
 
 #### _error.py
 - [ ] 계획 미정
 - [ ] Not yet
 
 #### _numpy.py
-- [ ] Neighbor_Confusion_Matrix 기능 복구 및 수정
-- [ ] Neighbor_Confusion_Matrix function recovery and fix
+- [ ] 계획 미정
+- [ ] No plan
 
 ## Install
 1. SSH 키 등록
