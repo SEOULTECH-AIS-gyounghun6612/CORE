@@ -89,7 +89,7 @@ class cv2_RnW():
         cap = cv2.VideoCapture(location)
         return cap
 
-    @classmethod
+    @classmethod  # in later fix
     def video_write(self, filename, video_size, frame=30):
         video_format = filename.split("/")[-1].split(".")[-1]
 
@@ -179,22 +179,31 @@ class gui_process():
     def image_cover():
         pass
 
+
+class draw():
     @staticmethod
-    def write_text(image, text):
+    def _text(image, text):
         pass
 
-    def draw_rectangle():
+    @staticmethod
+    def _rectangle():
         pass
 
-    def draw_circle():
+    @staticmethod
+    def _circle():
         pass
 
-    def draw_oval():
+    @staticmethod
+    def _oval():
         pass
 
-    def draw_polygon(image, pts, thick, color):
+    @staticmethod
+    def _polygon(image, pts, thick, color, is_close):
+        pts = _numpy.image_extention.poly_points(pts)
         if thick == -1:
             return cv2.fillConvexPoly(image, pts, color)
+        else:
+            return cv2.polylines(image, pts, is_close, color, thick)
 
 
 # extention display with control
