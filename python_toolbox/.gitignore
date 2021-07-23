@@ -1,12 +1,22 @@
-# ignore list
-# for code test file
-test.*
-
-# data file
+# ignore option
+# data file and directory
+data/
 *.png
+*.jpg
+*.npy
 
-# vscode settin info
+# tmeporary or test file and directory
+temp.*
+test.*
+test/*
+
+# build file and directory
+dist/*
+build/*
+
+# vscode option file and directory
 .vscode/*
 
-# etc 
+# etc
+*.spec
 *.pyc
