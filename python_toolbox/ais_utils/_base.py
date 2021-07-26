@@ -10,11 +10,10 @@ Requirement
 """
 # Import module
 import json
-import datetime
 import platform
 
 from glob import glob
-from os import path, system, getcwd, mkdir
+from os import path, getcwd, mkdir
 
 from . import _error as _e
 
@@ -302,68 +301,6 @@ class server():
         pass
 
 
-def connect_AIS_server(
-        user_id: str, password: str, root_dir: str, mount_dir: str, is_local: bool = True) -> str:
-    """
-    Args:
-        user_id     :   Your AIS server ID
-        password    :   Your AIS server password
-        root_dir    :   Mounted AIS server root dir. Read detail information in under block
-            DIR_CODE_N_RESULT : Sector for save code n result
-            DIR_DATASET : Sector for datasets load n save
-            DIR_PUBLIC : Sector for else
-        mount_dir   :   Where in your computer, for mounted the server. If use Ubuntu, directory,
-                        else If use Window, drive letter
-        is_local    :   If you connect in loacal this param is True. else, set False
-    Returns:
-        mount_dir : Mounted directory
-    """
-    if not is_local:
-        raise _e.Not_yet_Error(
-            loacation="connect_AIS_server",
-            detail="About External IP connection connet"
-        )
-
-    _command = ""
-
-    if OS_THIS == OS_WINDOW:
-        _command += "NET USE "
-        _command += "{MountDir}: ".format(MountDir=mount_dir)
-        _command += "\\\\{ServerLocalIp}\\{RootDir} ".format(
-            ServerLocalIp=SERVER_LOCAL_IP,
-            RootDir=root_dir
-        )
-        _command += "{Password} ".format(Password=password)
-        _command += "/user:{UserName}".format(UserName=user_id)
-
-    elif OS_THIS == OS_UBUNTU:
-        # when use Ubuntu, if want connect AIS server in local network
-        _command += "sudo -S mount -t cifs -o username={UserName}".format(UserName=user_id)
-        _command += ",password={Password}".format(Password=password)
-        _command += ",uid=1000,gid=1000 "
-        _command += "//{ServerLocalIp}/{RootDir} {MountDir}".format(
-            ServerLocalIp=SERVER_LOCAL_IP,
-            RootDir=root_dir,
-            MountDir=mount_dir
-        )
-    system(_command)
-    return mount_dir + ":" if OS_THIS == OS_WINDOW else mount_dir
-
-
-def disconnect_AIS_server(mount_dir: str) -> None:
-    """
-    Args:
-        mount_dir   :   Disconnected Dir
-    Returns:
-             None
-    """
-    if OS_THIS == OS_WINDOW:
-        system("NET USE {}: /DELETE".format(mount_dir))
-    elif OS_THIS == OS_UBUNTU:
-        system("fuser -ck {MountDir}".format(MountDir=mount_dir))
-        system("sudo umount {MountDir}".format(MountDir=mount_dir))
-
-
 # FUNCTION
-def load_success():
+def load_check():
     print("!!! custom python module ais_utils _base load Success !!!")

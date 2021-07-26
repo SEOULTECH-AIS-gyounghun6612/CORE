@@ -2,11 +2,19 @@ from . import _base
 from . import _cv2
 from . import _numpy
 
+from . import _error as _e
+
+# Set constant
+DEBUG = False
+_error = _e.Custom_error(
+    module_name="ais_custom_utils_v 2.x",
+    file_name="_label.py")
+
 
 # Label template dict
 class Labels():
     LABEL_DATA_LIST = {
-        "BDD-100K_Object": [
+        "BDD-100K": [
             {"name": "unlabeled",
              "id": 0,
              "train_id": 255,
@@ -337,57 +345,74 @@ class Labels():
              "color": [0x00, 0x00, 0x46]}]
     }
 
-    def __init__(self, data_name, class_name_key, id_key, color_key) -> None:
-        # set data key info
-        self.class_name_key = class_name_key
-        self.id_key = id_key
-        self.color_key = color_key
+    DATA_KEY_LIST = {
+        "BDD-100K_seg": {
+            "name_key": "name",
+            "id_key": "train_id",
+            "color_key": "color",
+            "ignore_id_list": [255, ]
+        }
+    }
+
+    def __init__(self, data_name, using_key) -> None:
+        # set data info
+        self.raw_data = self.LABEL_DATA_LIST[data_name]
+        self.data_key = self.DATA_KEY_LIST[using_key]
 
         # selecte data
-        self.raw_label = self.LABEL_DATA_LIST[data_name]
         self.id_label = {}
         self.name_label = {}
 
         # make class name key label
-        for _data in self.raw_label:
-            self.name_label[_data[self.class_name_key]] = _data
-            self.id_label[_data[self.id_key]] = _data
+        self.label_data_init()
 
-    def id_to_data(self, id):
-        if len(self.raw_label) > id and id >= 0:
-            return self.raw_label[id]
+    def label_data_init(self):
+        # make train_id_label
+        for _data in self.raw_data:
+            if _data[self.data_key["id_key"]] not in self.data_key["ignore_id_list"]:
+                # using this data
+                self.id_label[self.data_key["id_key"]] = _data
+                self.name_label[self.data_key["name_key"]] = _data
+
+    def data_from(self, call, data):
+        # get selected
+        selected_label = self.name_label if isinstance(call, str) else self.id_label
+
+        if call not in selected_label.keys():
+            _error.variable_stop(
+                function_name="Labels.data_from",
+                variable_list=["call", ],
+                AA="Entered parameter 'call' data {} can't find in any label".format(call)
+            )
+
+        # return data
+        if data == "color":
+            return selected_label[call][self.data_key["color_key"]]
+        elif data == "id":
+            return selected_label[call][self.data_key["id_key"]]
+        elif data == "class":
+            return selected_label[call][self.data_key["name_key"]]
         else:
-            return None
+            return selected_label[call]
 
-    def class_name_to_data(self, class_name):
-        if class_name not in self.name_label.keys():
-            return None
-        else:
-            return self.name_label[class_name]
+    def get_color_list(self):
+        color_list = []
+        for _id in sorted(self.id_label.keys()):
+            color_list.append(self.id_label(_id)[self.data_key["color_key"]])
 
-    def class_name_to_id(self, class_name):
-        _data = self.class_name_to_data(class_name)
-        if _data is not None:
-            return self.raw_label.index(_data)
-        else:
-            return -1
+        return color_list
 
-    def get_color(self, call):
-        if isinstance(call, str):
-            data = self.class_name_to_data(call)
-        elif isinstance(call, int):
-            data = self.id_to_data(call)
+    def get_color_map_from(self, class_map, is_last_ch=False):
+        color_list = self.get_color_list()
+        classfication = _numpy.image_extention.class_map_to_classfication(class_map, is_last_ch)
 
-        return data[self.color_key] if data is not None else [0, 0, 0]
+        return color_list[classfication]
+
+    def get_class_map_form(self, color_map):
+        pass
 
     def get_len(self):
-        return len(self.raw_label)
-
-    def class_map_to_seg_map(self):
-        pass
-
-    def seg_map_to_class_map(self):
-        pass
+        return len(self.id_label.keys())
 
 
 class Label_Style_Worker():
@@ -418,7 +443,13 @@ class Label_Style_Worker():
     label_val_class_list = []
 
     def __init__(self, data_folder, label_file_style, is_train) -> None:
-        self.data_root = data_folder if data_folder[:-1] == "/" else data_folder + "/"
+        self.data_root = _base.directory._slash_check(data_folder)
+        if not _base.directory._exist_check(self.data_root):
+            _error.variable_stop(
+                function_name="Label_Style_Worker.__init__",
+                variable_list=["data_folder", ],
+                AA="Entered parameter 'data_folder' directory {} not exist".format(data_folder)
+            )
 
         self.data_category = "train" if is_train else "val"
         self.label_file_style = label_file_style
@@ -565,5 +596,5 @@ class BDD_100K(Label_Style_Worker):
         return base
 
 
-def load_success():
+def load_check():
     print("!!! custom python module ais_utils _label load Success !!!")

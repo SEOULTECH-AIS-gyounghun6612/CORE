@@ -66,6 +66,27 @@ class image_extention():
     def poly_points(pts):
         return np.round(pts).astype(np.int32)
 
+    @staticmethod
+    def class_map_to_classfication(color_map, is_last_ch=False):
+        if 3 == len(color_map.shape):
+            if is_last_ch:
+                color_map = image_extention.conver_to_first_channel(color_map)
+            return np.argmax(color_map, axis=0)
+        else:
+            return color_map
+
+    @staticmethod
+    def classfication_to_class_map(classfication, is_last_ch=False):
+        if 2 == len(classfication.shape):
+            _max = classfication.max() + 1
+            class_map = np.array([[np.eye(_max, _m)[0] for _m in _w] for _w in classfication], dtype=int)
+            if not is_last_ch:
+                class_map = image_extention.conver_to_first_channel(class_map)
+            return class_map
+
+        else:
+            return classfication
+
 
 class RLE():
     size_key = "size"
