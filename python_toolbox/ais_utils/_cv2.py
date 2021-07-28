@@ -37,7 +37,7 @@ class R_option(Enum):
 
 
 # extention about read and write
-class RnW():
+class file():
     # option
     DEBUG = False
 
@@ -48,7 +48,7 @@ class RnW():
     def image_read(self, filename: str, color_option: Color_option):
         if not _base.directory._exist_check(filename, is_file=True):
             _error_message.variable_stop(
-                "cv2_RnW.image_read",
+                "file.image_read",
                 "Have some problem in parameter 'filename'. Not exist")
         # data read
         if color_option == Color_option.BGR:
@@ -76,7 +76,7 @@ class RnW():
         if not _base.file._extension_check(filename, self.IMAGE_EXT):
             if self.DEBUG:
                 _error_message.variable(
-                    "cv2_RnW.image_write",
+                    "file.image_write",
                     "Have some problem in parameter 'filename'. use default ext")
             filename += "jpg" if filename[-1] == "." else ".jpg"
 
@@ -87,7 +87,7 @@ class RnW():
         if is_file:
             if not _base.directory._exist_check(location):
                 _error_message.variable_stop(
-                    "cv2_RnW.image_read",
+                    "file.image_read",
                     "Have some problem in parameter 'location'. Not exist")
         cap = cv2.VideoCapture(location)
         return cap
@@ -99,7 +99,7 @@ class RnW():
         if not _base.file._extension_check(video_format, self.VIDEO_EXT):
             if self.DEBUG:
                 _error_message.variable(
-                    "cv2_RnW.video_write",
+                    "file.video_write",
                     "Have some problem in parameter 'filename'. use default ext")
             video_format = "avi"
             filename += "avi" if filename[-1] == "." else ".avi"
@@ -240,5 +240,5 @@ class augmentation():
         pass
 
 
-def load_success():
+def load_check():
     print("!!! custom python module ais_utils _cv2 load Success !!!")

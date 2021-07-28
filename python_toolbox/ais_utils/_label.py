@@ -589,7 +589,7 @@ class BDD_100K(Label_Style_Worker):
     def data_style_converter(self, selected_item):
         if self.file_style == self.suport_file_style[0]:  # Annotation
             # read input data
-            input_data = _cv2.RnW.image_read(
+            input_data = _cv2.file.image_read(
                 self.input_dir + selected_item[self.label_option["name_key"]],
                 _cv2.Color_option.BGR)
             input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
@@ -616,24 +616,24 @@ class BDD_100K(Label_Style_Worker):
                         draw_color=_id_num if _id_num != -1 else ignore_ch,
                         base=label_holder)
 
-            # _cv2.RnW.image_write("./test/test.jpg", self.label_info.get_color_map_from(label_holder))
+            # _cv2.file.image_write("./test/test.jpg", self.label_info.get_color_map_from(label_holder))
             return input_data, label_holder
 
         elif self.file_style == self.suport_file_style[1]:  # color_map or input only
             # read input data
-            input_data = _cv2.RnW.image_read(selected_item[0], _cv2.Color_option.BGR)
+            input_data = _cv2.file.image_read(selected_item[0], _cv2.Color_option.BGR)
             input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
 
             if self.data_option == "test":
                 return input_data, None
             else:
                 # read label color_map
-                color_map = _cv2.RnW.image_read(selected_item[1], _cv2.Color_option.BGR)
+                color_map = _cv2.file.image_read(selected_item[1], _cv2.Color_option.BGR)
                 color_map = _cv2.base_process.channel_converter(color_map, _cv2.C_position.First)
 
                 class_map = self.label_info.get_class_map_from(color_map)
 
-                # _cv2.RnW.image_write("./test/test.jpg", self.label_info.get_color_map_from(class_map))
+                # _cv2.file.image_write("./test/test.jpg", self.label_info.get_color_map_from(class_map))
 
                 return input_data, class_map
 
