@@ -69,6 +69,7 @@ class Custom_error():
         print_text = self.VARIABLE.format(variable_list, AA)
         assert False, self.error_text.format(function_name, "variable", print_text)
 
+    # fix it later
     def data_type(self, function_name, variable_list, AA):
         """
         Args:
@@ -81,6 +82,7 @@ class Custom_error():
         print_text = self.VARIABLE.format(variable_list, AA)
         print(self.warring_text.format(function_name, "variable", print_text))
 
+    # fix it later
     def data_type_stop(self, function_name, variable_list, AA):
         """
         Args:
@@ -92,6 +94,7 @@ class Custom_error():
         """
         print_text = self.VARIABLE.format(variable_list, AA)
         assert False, self.error_text.format(function_name, "variable", print_text)
+
 
 def load_check():
     pass

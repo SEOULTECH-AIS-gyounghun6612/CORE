@@ -39,6 +39,8 @@ class image_extention():
             return (canvus * 0).astype(np.uint8)
         elif background_color in ["white", 255, [255, 255, 255]]:
             return (canvus * 255).astype(np.uint8)
+        else:
+            return (canvus * background_color).astype(np.uint8)
 
     @staticmethod
     def conver_to_last_channel(image):
@@ -76,6 +78,21 @@ class image_extention():
             return color_map
 
     @staticmethod
+    def color_map_to_class_map(color_map, color_list, is_last_ch=False):
+        if not is_last_ch:
+            color_map = image_extention.conver_to_last_channel(color_map)
+
+        _h, _w, _ = color_map.shape
+        class_map = image_extention.get_canvus([len(color_list), _h, _w])
+        for _id in range(len(color_list)):
+            compare_map = image_extention.conver_to_first_channel(color_map == color_list[_id])
+            class_map[_id] = np.logical_and(compare_map[0], compare_map[1], compare_map[2])
+
+        class_map[-1] = 1 - np.sum(class_map, axis=0)
+
+        return class_map
+
+    @staticmethod
     def classfication_to_class_map(classfication, is_last_ch=False):
         if 2 == len(classfication.shape):
             _max = classfication.max() + 1
@@ -86,6 +103,12 @@ class image_extention():
 
         else:
             return classfication
+
+    @staticmethod
+    def classfication_to_color_map(classfication, color_list):
+        color_list = np.array(color_list)
+
+        return color_list[classfication]
 
 
 class RLE():

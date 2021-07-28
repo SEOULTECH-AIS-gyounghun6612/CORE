@@ -30,7 +30,7 @@ class Labels():
              "categoryId": 0,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0x6F, 0x4A, 0x00]},
+             "color": [0x00, 0x4A, 0x6F]},
             {"name": "ego vehicle",
              "id": 2,
              "train_id": 255,
@@ -62,7 +62,7 @@ class Labels():
              "categoryId": 1,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xFA, 0xAA, 0xA0]},
+             "color": [0xA0, 0xAA, 0xFA]},
             {"name": "rail track",
              "id": 6,
              "train_id": 255,
@@ -70,7 +70,7 @@ class Labels():
              "categoryId": 1,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xE6, 0x96, 0x8C]},
+             "color": [0x8C, 0x96, 0xE6]},
             {"name": "road",
              "id": 7,
              "train_id": 0,
@@ -86,7 +86,7 @@ class Labels():
              "categoryId": 1,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0xF4, 0x23, 0xE8]},
+             "color": [0xE8, 0x23, 0xF4]},
             {"name": "bridge",
              "id": 9,
              "train_id": 255,
@@ -94,7 +94,7 @@ class Labels():
              "categoryId": 2,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0x96, 0x64, 0x64]},
+             "color": [0x64, 0x64, 0x96]},
             {"name": "building",
              "id": 10,
              "train_id": 2,
@@ -110,7 +110,7 @@ class Labels():
              "categoryId": 2,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0xBE, 0x99, 0x99]},
+             "color": [0x99, 0x99, 0xBE]},
             {"name": "garage",
              "id": 12,
              "train_id": 255,
@@ -134,7 +134,7 @@ class Labels():
              "categoryId": 2,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0x96, 0x78, 0x5A]},
+             "color": [0x5A, 0x78, 0x96]},
             {"name": "wall",
              "id": 15,
              "train_id": 3,
@@ -142,7 +142,7 @@ class Labels():
              "categoryId": 2,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0x66, 0x66, 0x9C]},
+             "color": [0x9C, 0x66, 0x66]},
             {"name": "banner",
              "id": 16,
              "train_id": 255,
@@ -150,7 +150,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xFA, 0xAA, 0x64]},
+             "color": [0x64, 0xAA, 0xFA]},
             {"name": "billboard",
              "id": 17,
              "train_id": 255,
@@ -158,7 +158,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xDC, 0xDC, 0xFA]},
+             "color": [0xFA, 0xDC, 0xDC]},
             {"name": "lane divider",
              "id": 18,
              "train_id": 255,
@@ -166,7 +166,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xFF, 0xA5, 0x00]},
+             "color": [0x00, 0xA5, 0xFF]},
             {"name": "parking sign",
              "id": 19,
              "train_id": 255,
@@ -174,7 +174,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0xDC, 0x14, 0x3C]},
+             "color": [0x3C, 0x14, 0xDC]},
             {"name": "pole",
              "id": 20,
              "train_id": 5,
@@ -198,7 +198,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xDC, 0xDC, 0x64]},
+             "color": [0x64, 0xDC, 0xDC]},
             {"name": "traffic cone",
              "id": 23,
              "train_id": 255,
@@ -206,7 +206,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": True,
-             "color": [0xFF, 0x46, 0x00]},
+             "color": [0x00, 0x46, 0xFF]},
             {"name": "traffic device",
              "id": 24,
              "train_id": 255,
@@ -222,7 +222,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0xFA, 0xAA, 0x1E]},
+             "color": [0x1E, 0xAA, 0xFA]},
             {"name": "traffic sign",
              "id": 26,
              "train_id": 7,
@@ -230,7 +230,7 @@ class Labels():
              "categoryId": 3,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0xDC, 0xDC, 0x00]},
+             "color": [0x00, 0xDC, 0xDC]},
             {"name": "traffic sign frame",
              "id": 27,
              "train_id": 255,
@@ -254,7 +254,7 @@ class Labels():
              "categoryId": 4,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0x6B, 0x8E, 0x23]},
+             "color": [0x23, 0x8E, 0x6B]},
             {"name": "sky",
              "id": 30,
              "train_id": 10,
@@ -262,7 +262,7 @@ class Labels():
              "categoryId": 5,
              "hasInstances": False,
              "ignoreInEval": False,
-             "color": [0x46, 0x82, 0xB4]},
+             "color": [0xB4, 0x82, 0x46]},
             {"name": "person",
              "id": 31,
              "train_id": 11,
@@ -270,7 +270,7 @@ class Labels():
              "categoryId": 6,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0xDC, 0x14, 0x3C]},
+             "color": [0x3C, 0x14, 0xDC]},
             {"name": "rider",
              "id": 32,
              "train_id": 12,
@@ -278,7 +278,7 @@ class Labels():
              "categoryId": 6,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0xFF, 0x00, 0x00]},
+             "color": [0x00, 0x00, 0xFF]},
             {"name": "bicycle",
              "id": 33,
              "train_id": 18,
@@ -286,7 +286,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x77, 0x0B, 0x20]},
+             "color": [0x20, 0x0B, 0x77]},
             {"name": "bus",
              "id": 34,
              "train_id": 15,
@@ -294,7 +294,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x00, 0x3C, 0x64]},
+             "color": [0x64, 0x3C, 0x00]},
             {"name": "car",
              "id": 35,
              "train_id": 13,
@@ -302,7 +302,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x00, 0x00, 0x8E]},
+             "color": [0x8E, 0x00, 0x00]},
             {"name": "caravan",
              "id": 36,
              "train_id": 255,
@@ -310,7 +310,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": True,
-             "color": [0x00, 0x00, 0x5A]},
+             "color": [0x5A, 0x00, 0x00]},
             {"name": "motorcycle",
              "id": 37,
              "train_id": 17,
@@ -318,7 +318,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x00, 0x00, 0xE6]},
+             "color": [0xE6, 0x00, 0x00]},
             {"name": "trailer",
              "id": 38,
              "train_id": 255,
@@ -326,7 +326,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": True,
-             "color": [0x00, 0x00, 0x6E]},
+             "color": [0x6E, 0x00, 0x00]},
             {"name": "train",
              "id": 39,
              "train_id": 16,
@@ -334,7 +334,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x00, 0x50, 0x64]},
+             "color": [0x64, 0x50, 0x00]},
             {"name": "truck",
              "id": 40,
              "train_id": 14,
@@ -342,7 +342,7 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x00, 0x00, 0x46]}]
+             "color": [0x46, 0x00, 0x00]}]
     }
 
     DATA_KEY_LIST = {
@@ -350,6 +350,7 @@ class Labels():
             "name_key": "name",
             "id_key": "train_id",
             "color_key": "color",
+            "ignore_id_in_raw": 0,
             "ignore_id_list": [255, ]
         }
     }
@@ -371,8 +372,12 @@ class Labels():
         for _data in self.raw_data:
             if _data[self.data_key["id_key"]] not in self.data_key["ignore_id_list"]:
                 # using this data
-                self.id_label[self.data_key["id_key"]] = _data
-                self.name_label[self.data_key["name_key"]] = _data
+                self.id_label[_data[self.data_key["id_key"]]] = _data
+                self.name_label[_data[self.data_key["name_key"]]] = _data
+
+        _ignore_label_data = self.raw_data[self.data_key["ignore_id_in_raw"]]
+        self.id_label[len(self.id_label.keys())] = _ignore_label_data
+        self.name_label[_ignore_label_data[self.data_key["name_key"]]] = _ignore_label_data
 
     def data_from(self, call, data):
         # get selected
@@ -398,18 +403,24 @@ class Labels():
     def get_color_list(self):
         color_list = []
         for _id in sorted(self.id_label.keys()):
-            color_list.append(self.id_label(_id)[self.data_key["color_key"]])
+            color_list.append(self.id_label[_id][self.data_key["color_key"]])
 
         return color_list
+
+    def get_class_list(self):
+        return sorted(self.name_label.keys())
+
+    def get_ids_list(self):
+        return sorted(self.id_label.keys())
 
     def get_color_map_from(self, class_map, is_last_ch=False):
         color_list = self.get_color_list()
         classfication = _numpy.image_extention.class_map_to_classfication(class_map, is_last_ch)
 
-        return color_list[classfication]
+        return _numpy.image_extention.classfication_to_color_map(classfication, color_list)
 
-    def get_class_map_form(self, color_map):
-        pass
+    def get_class_map_from(self, color_map):
+        return _numpy.image_extention.color_map_to_class_map(color_map, self.get_color_list())
 
     def get_len(self):
         return len(self.id_label.keys())
@@ -418,106 +429,113 @@ class Labels():
 class Label_Style_Worker():
     # label holder
     # label style: annotation
-    annotation_keys = None
     annotation_data = None
 
     # label style: color or grayscale image
-    input_imgs = []
-    label_imgs = []
+    image_list = []
 
     # setting
     # directory parameter
     data_root = None
     input_dir = None
     label_dir = None
-    annotaion_dir = None
 
-    # data call parameter
+    # data info
     input_len = None
-    data_category = None
-    label_file_style = None
+    data_option = None
+    file_style = None
+    suport_file_style = ["Annotation", "Color_map"]
 
     # label class parameter
     # label data class style must be list type
-    label_class_data = None
-    label_val_class_list = []
+    label_info = None
 
-    def __init__(self, data_folder, label_file_style, is_train) -> None:
+    def __init__(self, data_folder, file_style, option) -> None:
         self.data_root = _base.directory._slash_check(data_folder)
         if not _base.directory._exist_check(self.data_root):
             _error.variable_stop(
                 function_name="Label_Style_Worker.__init__",
                 variable_list=["data_folder", ],
-                AA="Entered parameter 'data_folder' directory {} not exist".format(data_folder)
+                AA="Entered parameter 'data_folder' value directory {} not exist".format(data_folder)
             )
 
-        self.data_category = "train" if is_train else "val"
-        self.label_file_style = label_file_style
+        self.data_option = option if option in ["train", "val", "test"] else "test"
+        self.file_style = file_style if (file_style in self.suport_file_style and self.data_option != "test")\
+            else "Color_map"
 
     # common function
-    def worker_initialize(self, label_info):
+    def worker_initialize(self):
+        # label information init
+        self.label_info_init()
+
         # data dir init
         self.input_dir_initialize()
-        # lable data init
-        self.set_label_class_info(label_info)
+        self.label_dir_initialize()
 
         # get data from file
-        if self.label_file_style == "Annotation":
-            self.annotaion_dir_initialize()
+        if self.file_style == "Annotation":
             self.get_annotaion_data()
-        elif self.label_file_style == "Seg_Map":
-            pass
+        elif self.file_style == "Color_map":
+            self.get_colormap_data()
 
     def pick_data(self, item_num):
         # pick item
-        if self.label_file_style == "Annotation":
+        if self.file_style == self.suport_file_style[0]:  # Annotation
             selected_item = self.annotation_data[item_num]
-        elif self.label_file_style == "Seg_Map":
-            pass
+        elif self.file_style == self.suport_file_style[1]:  # Color_map
+            selected_item = self.image_list[item_num]
 
         # conver to data from file for train or val
         return self.data_style_converter(selected_item)
 
     # Individual function
     # # must define
+    def label_info_init(self):
+        pass
+
     def input_dir_initialize(self):
         # parameter "input_dir" data initialize
         pass
 
-    def set_label_class_info(self, label_info):
+    def label_dir_initialize(self):
+        # parameter "annotaion_dir" data initialize
         pass
 
     def data_style_converter(self, selected_item):
         pass
 
     # # optional define
-    def annotaion_dir_initialize(self):
+    def get_annotaion_data(self):
         # parameter "annotaion_dir" data initialize
         pass
 
-    def get_annotaion_data(self):
+    def get_colormap_data(self):
         # parameter "annotaion_dir" data initialize
         pass
 
 
 class BDD_100K(Label_Style_Worker):
-    # directory parameter formatting
-    input_dir = "{}images/{}/{}/"  # root , input_category
-    annotaion_dir = "{0}labels/{1}/polygons/{1}_{2}.json"  # root , label_category, data_style
-
-    # additional data call parameter
-    input_category = None
-    label_category = None
+    label_options = {
+        "sem_seg": {
+            "images": "10k",
+            # color_map file option
+            "Color_map": "colormaps",
+            # annotation file option
+            "Annotation": "polygons",
+            "name_key": "name",
+            "data_key": "labels",
+            "class_key": "category"
+        }
+    }
 
     # label class parameter
 
     def __init__(
             self,
-            data_folder: str,
-            input_category: str,
-            label_style,
+            data_folder,
             label_category,
-            is_train) -> None:
+            file_style,
+            option="train") -> None:
         """
         Args:
             data_folder     : data root directory
@@ -526,73 +544,139 @@ class BDD_100K(Label_Style_Worker):
 
         """
         # basement init
-        super().__init__(data_folder, label_style, is_train)
+        super().__init__(data_folder + "bdd-100k", file_style, option)
 
-        # addditional paramenter init
-        self.input_category = input_category
-        self.label_category = label_category
+        # select the label_option
+        self.label_style = label_category
+        if label_category not in self.label_options.keys():
+            _error.variable_stop(
+                function_name="BDD_100K.__init__",
+                variable_list=["label_category", ],
+                AA="Entered parameter 'label_category' value {} not suport category".format(label_category)
+            )
+        self.label_option = self.label_options[self.label_style]
 
         # init
         self.worker_initialize()
 
     # # must define
+    def label_info_init(self):
+        if self.label_style == "sem_seg":
+            self.label_info = Labels("BDD-100K", "BDD-100K_seg")
+
     def input_dir_initialize(self):
-        self.input_dir = self.input_dir.format(
-            self.data_root,
-            self.input_category,
-            self.data_category)
+        self.input_dir = self.data_root + \
+            "images/{}/".format(self.label_option["images"])
+        if not _base.directory._exist_check(self.input_dir):
+            _error.variable_stop(
+                function_name="BDD_100K",
+                variable_list=["input_dir", ],
+                AA="Directory {} not exist".format(self.input_dir)
+            )
 
-    def set_label_class_info(self, label_info):
-        self.label_class_data = label_info
-
-        if self.label_category == "sem_seg":
-            self.annotation_keys = {"class_name": "category", "draw_style": "poly2d"}
-            self.label_val_class_list = []
+    def label_dir_initialize(self):
+        # In later, add  function about "annotation file exist check" using _error module
+        if self.data_option != "test":
+            self.label_dir = self.data_root + \
+                "labels/{}/{}/".format(self.label_style, self.label_option[self.file_style])
+            if not _base.directory._exist_check(self.label_dir):
+                _error.variable_stop(
+                    function_name="BDD_100K",
+                    variable_list=["label_dir", ],
+                    AA="Directory {} not exist".format(self.label_dir)
+                )
 
     def data_style_converter(self, selected_item):
-        if self.label_file_style == "Annotation":
+        if self.file_style == self.suport_file_style[0]:  # Annotation
             # read input data
-            input_data = _cv2.read_img(
-                self.input_dir + selected_item["name"],
-                color_type=_cv2.COLOR_BGR,
-                is_last_channel=False)
+            input_data = _cv2.RnW.image_read(
+                self.input_dir + selected_item[self.label_option["name_key"]],
+                _cv2.Color_option.BGR)
+            input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
             _, _h, _w = input_data.shape
 
             # make label data from annotation
             anno_datas = selected_item["labels"]
-            holder_ch = self.label_class_data.get_len()
-            label_holder = _numpy.image_extention.get_canvus([holder_ch, _h, _w])
+            ignore_ch = self.label_info.get_len() - 1  # ignore
+            label_holder = _numpy.image_extention.get_canvus(
+                [self.label_info.get_len(), _h, _w],
+                background_color=ignore_ch)
 
             for _data in anno_datas:
-                _anno_class = _data[self.annotation_keys["class_name"]]
-                _data_num = self.label_class_data.class_name_to_id(_anno_class)
+                _member_class = _data[self.label_option["class_key"]]
+                if _member_class in self.label_info.get_class_list():
+                    _id_num = self.label_info.data_from(_member_class, "id")
+                else:
+                    _id_num = -1
 
-                self.draw(
-                    draw_style=self.annotation_keys["draw_style"],
-                    draw_data=_data,
-                    draw_color=255,
-                    base=label_holder[_data_num]) if _data_num != -1 else None
+                if "poly2d" in _data.keys():
+                    self.draw(
+                        draw_style="poly2d",
+                        draw_data=_data["poly2d"],
+                        draw_color=_id_num if _id_num != -1 else ignore_ch,
+                        base=label_holder)
 
+            # _cv2.RnW.image_write("./test/test.jpg", self.label_info.get_color_map_from(label_holder))
             return input_data, label_holder
 
-    # # optional define
-    def annotaion_dir_initialize(self):
-        # In later, add  function about "annotation file exist check" using _error module
-        self.annotaion_dir = \
-            self.annotaion_dir.format(self.data_root, self.label_category, self.data_category)
+        elif self.file_style == self.suport_file_style[1]:  # color_map or input only
+            # read input data
+            input_data = _cv2.RnW.image_read(selected_item[0], _cv2.Color_option.BGR)
+            input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
 
+            if self.data_option == "test":
+                return input_data, None
+            else:
+                # read label color_map
+                color_map = _cv2.RnW.image_read(selected_item[1], _cv2.Color_option.BGR)
+                color_map = _cv2.base_process.channel_converter(color_map, _cv2.C_position.First)
+
+                class_map = self.label_info.get_class_map_from(color_map)
+
+                # _cv2.RnW.image_write("./test/test.jpg", self.label_info.get_color_map_from(class_map))
+
+                return input_data, class_map
+
+    # # optional define
     def get_annotaion_data(self):
-        self.annotation_data = _base.json_file(self.annotaion_dir)
+        self.input_dir = _base.directory._slash_check(self.input_dir + self.data_option)
+        self.annotation_data = \
+            _base.file._json(self.label_dir, "{}_{}.json".format(self.label_style, self.data_option))
         self.input_len = len(self.annotation_data)
 
-    def draw(self, draw_style, draw_data, draw_color, base):
-        if draw_style in draw_data.keys():
-            draw_point_info = draw_data[draw_style]
+    def get_colormap_data(self):
+        # get input list
+        input_imgs = _base.directory._inside_search(
+            searched_dir=self.input_dir + self.data_option,
+            search_option="file",
+            ext=".jpg")
 
-            if draw_style == "poly2d":
-                for _data in draw_point_info:
-                    pts = _cv2.np.around(_data["vertices"]).astype(_cv2.np.int32)
-                    base = _cv2.cv2.fillConvexPoly(base, pts, draw_color).astype(_cv2.np.uint8)
+        # train, val
+        if self.label_dir is not None:
+            label_imgs = _base.directory._inside_search(
+                searched_dir=self.label_dir + self.data_option,
+                search_option="file",
+                ext=".png")
+
+            for _input_img in input_imgs:
+                label_file = _base.file._name_from_directory(_input_img).replace(".jpg", ".png")
+                _label_img = _base.directory._slash_check(self.label_dir + self.data_option) + label_file
+
+                if _label_img in label_imgs:
+                    self.image_list.append([_input_img, _label_img])
+
+            self.input_len = len(self.image_list)
+        # test
+        else:
+            self.image_list.append([input_imgs, ])
+            self.input_len = len(self.image_list)
+
+    def draw(self, draw_style, draw_data, draw_color, base):
+        if draw_style == "poly2d":
+            for _data in draw_data:
+                pts = _data["vertices"]
+                base = _cv2.draw._polygon(base, pts, -1, draw_color)
+
         return base
 
 
