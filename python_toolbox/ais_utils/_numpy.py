@@ -4,7 +4,7 @@ from . import _error
 _error_message = _error.Custom_error("AIS_utils", "_numpy")
 
 
-class np_RnW():
+class file():
     def save_numpy(save_dir, data):
         """
         Args:
@@ -29,6 +29,20 @@ class base_process():
     @staticmethod
     def stack(data_list: list, channel=-1):
         return np.stack(data_list, axis=channel)
+
+    @staticmethod
+    def bincount(array_1D, max_length):
+        array_1D = np.round(array_1D)
+
+        holder = np.bincount(array_1D)
+
+        if len(holder) < max_length:
+            count_list = np.zeros(max_length)
+            count_list[:len(holder)] = holder
+        else:
+            count_list = holder[:max_length]
+
+        return count_list
 
 
 class image_extention():
@@ -184,6 +198,33 @@ class RLE():
             return None
 
 
+class evaluation():
+    @staticmethod
+    def iou(result, label, class_num):
+        # class_in_result_count = base_process.bincount(np.reshape(result, -1), class_num)
+
+        line_label = np.reshape(label, -1)
+        line_result = np.reshape(result, -1)
+
+        category_array_1d = base_process.bincount(line_label * class_num + line_result, class_num * class_num)
+        category_array_2d = np.reshape(category_array_1d, (class_num, class_num))
+
+        _inter = np.diag(category_array_2d)
+        _uni = np.zeros(class_num)
+
+        for _class_ct in range(class_num):
+            _w_range = range(_class_ct * class_num, (_class_ct + 1) * class_num)
+            _h_range = range(_class_ct, class_num * (class_num - 1) + _class_ct + 1, class_num)
+            _uni[_class_ct] = \
+                np.sum(category_array_1d[_w_range]) + np.sum(category_array_1d[_h_range]) - _inter[_class_ct]
+
+        return _inter / _uni
+
+    @staticmethod
+    def miou(result, label, class_num):
+        iou = evaluation.iou(result, label, class_num)
+        return np.mean(iou)
+
 # in later fix it
 # def Neighbor_Confusion_Matrix(
 #         img: np.ndarray, target: np.ndarray, interest: np.ndarray) -> list:
@@ -274,5 +315,5 @@ def Confusion_Matrix_to_value(TP, TN, FN, FP):
     return pre, re, fm
 
 
-def load_success():
+def load_check():
     print("!!! custom python module ais_utils _numpy load Success !!!")
