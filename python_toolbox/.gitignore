@@ -8,14 +8,14 @@ data/
 # tmeporary or test file and directory
 temp.*
 test.*
-test/*
+test/
 
 # build file and directory
-dist/*
-build/*
+dist/
+build/
 
 # vscode option file and directory
-.vscode/*
+.vscode/
 
 # etc
 *.spec
