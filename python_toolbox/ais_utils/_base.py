@@ -1,12 +1,11 @@
 """
 File object
-=====
+-----
     When write down python program, be used custom function.
 
 Requirement
-=====
+-----
     None
-=====
 """
 # Import module
 import json
@@ -31,11 +30,17 @@ class directory():
     SLASH = "/" if OS_THIS == OS_UBUNTU else "\\"
     RELARTION = "." + SLASH
 
-    @classmethod
+    @classmethod  # fix it
     def _slash_check(self, directory):
-        _tmp_ct = -1 if self.OS_THIS == self.OS_UBUNTU else -2
-        _tmp_dir = directory if directory[_tmp_ct:] == self.SLASH else directory + self.SLASH
-        return _tmp_dir
+        # each os's directory divide slash fix
+        directory.replace("\\" if self.OS_THIS == self.OS_UBUNTU else "/", self.SLASH)
+
+        if self._exist_check(directory, True):
+            return directory
+        else:
+            _tmp_ct = -1 if self.OS_THIS == self.OS_UBUNTU else -2
+            _tmp_dir = directory if directory[_tmp_ct:] == self.SLASH else directory + self.SLASH
+            return _tmp_dir
 
     @classmethod
     def _devide(self, directory, point=-1):
@@ -96,46 +101,50 @@ class directory():
 
     @classmethod
     def _make_for_result(self, ):
-        pass
+        _error.not_yet("directory._make_for_result")
 
     @classmethod
     def _inside_search(self, searched_dir, search_option="all", name="*", ext="*"):
         _dir = self._slash_check(searched_dir)
-        _component_name = "*" if search_option == "all" else name
-        if search_option == "all":
-            _component_name = "*"
-            _component_ext = ""
-        else:
-            _component_name = name
-            _component_ext = \
-                "" if ext == "*" else (ext if ext[0] == "." else "." + ext)
+
+        serch_all = search_option == "all"
+        _component_name = "*" if serch_all else name
+        _component_ext = "" if (serch_all or ext == "*") else (ext if ext[0] == "." else "." + ext)
 
         _filter = _dir + _component_name + _component_ext
 
-        return sorted(glob(_dir + _filter))
+        search_list = sorted(glob(_filter))
+
+        if search_option == "directory":
+            search_list = [data for data in search_list if self._exist_check(data)]
+
+        elif search_option == "file":
+            search_list = [data for data in search_list if self._exist_check(data, True)]
+
+        return sorted(search_list)
 
     @staticmethod  # Not yet
     def _compare():
-        pass
-        compare_obj = dir_checker(compare_obj, True)
-        compare_data = compare_obj.split(SLASH)
-        base_dir = dir_checker(base_dir, True)
-        base_data = base_dir.split(SLASH)
+        _error.not_yet("directory._compare")
+        # compare_obj = dir_checker(compare_obj, True)
+        # compare_data = compare_obj.split(SLASH)
+        # base_dir = dir_checker(base_dir, True)
+        # base_data = base_dir.split(SLASH)
 
-        tmp_dir = "." + SLASH
-        same_count = 0
+        # tmp_dir = "." + SLASH
+        # same_count = 0
 
-        for _tmp_folder in base_data:
-            if _tmp_folder in compare_data:
-                same_count += 1
-            else:
-                break
-        if len(base_data) - same_count:
-            for _ct in range(len(base_data) - same_count):
-                tmp_dir += ".." + SLASH
+        # for _tmp_folder in base_data:
+        #     if _tmp_folder in compare_data:
+        #         same_count += 1
+        #     else:
+        #         break
+        # if len(base_data) - same_count:
+        #     for _ct in range(len(base_data) - same_count):
+        #         tmp_dir += ".." + SLASH
 
-        for _folder in compare_data[same_count:]:
-            tmp_dir += _folder + SLASH
+        # for _folder in compare_data[same_count:]:
+        #     tmp_dir += _folder + SLASH
 
     @classmethod
     def _get_main(self, just_name=True):
@@ -143,21 +152,20 @@ class directory():
 
     @staticmethod
     def _del():
-        pass
+        _error.not_yet("directory._del")
 
     @staticmethod
     def _copy():
-        pass
+        _error.not_yet("directory._copy")
 
 
 class file():
     @staticmethod
     def _name_from_directory(dir):
-        _last_component = dir.split(directory.SLASH)[-1]
-        if _last_component.find(".") == -1:
-            return None
+        if directory._exist_check(dir, True):
+            return directory._slash_check(dir).split(directory.SLASH)[-1]
         else:
-            return _last_component
+            return None
 
     @staticmethod
     def _extension_check(file_dir, exts, is_fix=False):
@@ -173,7 +181,7 @@ class file():
             ) if DEBUG else None
 
             # fix
-            new_file_dir = file_dir + "." + exts[0] if is_fix else None
+            file_name = file_dir + "." + exts[0] if is_fix else None
 
         else:
             file_ext = file_name.split(".")[-1]
@@ -183,17 +191,9 @@ class file():
             if (not is_positive) and is_fix:
                 _tem_ct = file_name.find(".")
                 replace_file_name = file_name[:_tem_ct] + "." + exts[0]
-                new_file_dir = file_dir.replace(file_name, replace_file_name)
+                file_name = file_dir.replace(file_name, replace_file_name)
 
-        return [is_positive, new_file_dir] if is_fix else is_positive
-
-    @staticmethod
-    def _load():
-        pass
-
-    @staticmethod
-    def _save():
-        pass
+        return [is_positive, file_name] if is_fix else is_positive
 
     @staticmethod
     def _json(file_dir, file_name, data_dict=None, is_save=False):
@@ -259,11 +259,11 @@ class file():
 
     @staticmethod
     def _del():
-        pass
+        _error.not_yet("file._del")
 
     @staticmethod
-    def _copy_to(dir):
-        pass
+    def _copy_to(dir, file):
+        _error.not_yet("file._copy_to")
 
 
 class etc():
@@ -294,11 +294,11 @@ class etc():
 class server():
     @staticmethod
     def _connect():
-        pass
+        _error.not_yet("server._connect")
 
     @staticmethod
     def _unconnect():
-        pass
+        _error.not_yet("server._unconnect")
 
 
 # FUNCTION
