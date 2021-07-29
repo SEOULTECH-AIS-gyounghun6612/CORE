@@ -120,9 +120,11 @@ class image_extention():
 
     @staticmethod
     def classfication_to_color_map(classfication, color_list):
-        color_list = np.array(color_list)
-
-        return color_list[classfication]
+        if 2 == len(classfication.shape):
+            color_list = np.array(color_list)
+            return color_list[classfication]
+        else:
+            return classfication
 
 
 class RLE():

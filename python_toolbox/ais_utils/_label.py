@@ -346,7 +346,7 @@ class Labels():
     }
 
     DATA_KEY_LIST = {
-        "BDD-100K_seg": {
+        "sem_seg": {
             "name_key": "name",
             "id_key": "train_id",
             "color_key": "color",
@@ -358,6 +358,7 @@ class Labels():
     def __init__(self, data_name, using_key) -> None:
         # set data info
         self.raw_data = self.LABEL_DATA_LIST[data_name]
+        self.label_style = using_key
         self.data_key = self.DATA_KEY_LIST[using_key]
 
         # selecte data
@@ -413,14 +414,18 @@ class Labels():
     def get_ids_list(self):
         return sorted(self.id_label.keys())
 
-    def get_color_map_from(self, class_map, is_last_ch=False):
+    def get_color_map_from(self, classfication):
         color_list = self.get_color_list()
-        classfication = _numpy.image_extention.class_map_to_classfication(class_map, is_last_ch)
-
         return _numpy.image_extention.classfication_to_color_map(classfication, color_list)
 
-    def get_class_map_from(self, color_map):
-        return _numpy.image_extention.color_map_to_class_map(color_map, self.get_color_list())
+    def get_class_map_from(self, color_map, is_last_ch=False):
+        return _numpy.image_extention.color_map_to_class_map(
+            color_map,
+            self.get_color_list(),
+            is_last_ch)
+
+    def get_classfication_from(self, class_map, is_last_ch=False):
+        return _numpy.image_extention.class_map_to_classfication(class_map, is_last_ch)
 
     def get_len(self):
         return len(self.id_label.keys())
@@ -442,7 +447,7 @@ class Label_Style_Worker():
 
     # data info
     input_len = None
-    data_option = None
+    using_option = None
     file_style = None
     suport_file_style = ["Annotation", "Color_map"]
 
@@ -459,14 +464,15 @@ class Label_Style_Worker():
                 AA="Entered parameter 'data_folder' value directory {} not exist".format(data_folder)
             )
 
-        self.data_option = option if option in ["train", "val", "test"] else "test"
-        self.file_style = file_style if (file_style in self.suport_file_style and self.data_option != "test")\
+        self.using_option = option if option in ["train", "val", "test"] else "test"
+        self.is_test = self.using_option != "test"
+        self.file_style = file_style if (file_style in self.suport_file_style and self.is_test)\
             else "Color_map"
 
     # common function
-    def worker_initialize(self):
+    def worker_initialize(self, label):
         # label information init
-        self.label_info_init()
+        self.label_info_init(label)
 
         # data dir init
         self.input_dir_initialize()
@@ -533,8 +539,8 @@ class BDD_100K(Label_Style_Worker):
     def __init__(
             self,
             data_folder,
-            label_category,
             file_style,
+            label,
             option="train") -> None:
         """
         Args:
@@ -546,23 +552,22 @@ class BDD_100K(Label_Style_Worker):
         # basement init
         super().__init__(data_folder + "bdd-100k", file_style, option)
 
-        # select the label_option
-        self.label_style = label_category
-        if label_category not in self.label_options.keys():
-            _error.variable_stop(
-                function_name="BDD_100K.__init__",
-                variable_list=["label_category", ],
-                AA="Entered parameter 'label_category' value {} not suport category".format(label_category)
-            )
-        self.label_option = self.label_options[self.label_style]
-
         # init
-        self.worker_initialize()
+        self.worker_initialize(label)
 
     # # must define
-    def label_info_init(self):
-        if self.label_style == "sem_seg":
-            self.label_info = Labels("BDD-100K", "BDD-100K_seg")
+    def label_info_init(self, label):
+        # select the label_option
+        self.label_info = label
+        self.label_style = label.label_style
+
+        if label.label_style not in self.label_options.keys():
+            _error.variable_stop(
+                function_name="BDD_100K.__init__",
+                variable_list=["label", ],
+                AA="Entered parameter 'label' style {} not suport category".format(label.label_style)
+            )
+        self.label_option = self.label_options[self.label_style]
 
     def input_dir_initialize(self):
         self.input_dir = self.data_root + \
@@ -576,7 +581,7 @@ class BDD_100K(Label_Style_Worker):
 
     def label_dir_initialize(self):
         # In later, add  function about "annotation file exist check" using _error module
-        if self.data_option != "test":
+        if self.is_test:
             self.label_dir = self.data_root + \
                 "labels/{}/{}/".format(self.label_style, self.label_option[self.file_style])
             if not _base.directory._exist_check(self.label_dir):
@@ -624,7 +629,7 @@ class BDD_100K(Label_Style_Worker):
             input_data = _cv2.file.image_read(selected_item[0], _cv2.Color_option.BGR)
             input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
 
-            if self.data_option == "test":
+            if self.using_option == "test":
                 return input_data, None
             else:
                 # read label color_map
@@ -639,28 +644,28 @@ class BDD_100K(Label_Style_Worker):
 
     # # optional define
     def get_annotaion_data(self):
-        self.input_dir = _base.directory._slash_check(self.input_dir + self.data_option)
+        self.input_dir = _base.directory._slash_check(self.input_dir + self.using_option)
         self.annotation_data = \
-            _base.file._json(self.label_dir, "{}_{}.json".format(self.label_style, self.data_option))
+            _base.file._json(self.label_dir, "{}_{}.json".format(self.label_style, self.using_option))
         self.input_len = len(self.annotation_data)
 
     def get_colormap_data(self):
         # get input list
         input_imgs = _base.directory._inside_search(
-            searched_dir=self.input_dir + self.data_option,
+            searched_dir=self.input_dir + self.using_option,
             search_option="file",
             ext=".jpg")
 
         # train, val
         if self.label_dir is not None:
             label_imgs = _base.directory._inside_search(
-                searched_dir=self.label_dir + self.data_option,
+                searched_dir=self.label_dir + self.using_option,
                 search_option="file",
                 ext=".png")
 
             for _input_img in input_imgs:
                 label_file = _base.file._name_from_directory(_input_img).replace(".jpg", ".png")
-                _label_img = _base.directory._slash_check(self.label_dir + self.data_option) + label_file
+                _label_img = _base.directory._slash_check(self.label_dir + self.using_option) + label_file
 
                 if _label_img in label_imgs:
                     self.image_list.append([_input_img, _label_img])
