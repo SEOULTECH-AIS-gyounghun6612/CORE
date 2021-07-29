@@ -7,7 +7,7 @@ setup(
     url="https://github.com/SEOULTECH-AIS-gyounghun6612/python_base_utils.git",
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
-    packages=["utils"],
+    packages=["torch_utils"],
     zip_safe=False,
     install_requires=[
         "pytorch", "ais-python-utils"
