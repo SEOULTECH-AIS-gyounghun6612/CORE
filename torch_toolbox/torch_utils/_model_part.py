@@ -121,7 +121,7 @@ class transformer():
             for attention in self.attentions:
                 multi_holder.append(attention(x))
 
-            merge_tensor = _utils.layer.concat(multi_holder)
+            merge_tensor = _utils.layer._concat(multi_holder)
 
             return self.M_conv(merge_tensor)
 
