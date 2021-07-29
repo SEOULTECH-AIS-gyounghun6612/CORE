@@ -11,6 +11,8 @@ Requirement
 
 # Import module
 import cv2
+import random
+
 from enum import Enum
 from . import _base
 from . import _error
@@ -224,19 +226,37 @@ class trackbar_window():
 
 class augmentation():
     @staticmethod
-    def make_noise():
+    def _make_noise():
         pass
 
-    def rotate(img, center_rate, angle, scale):
+    @staticmethod
+    def _rotate(img, center_rate, angle, scale):
         pass
 
-    def random_crop():
+    @staticmethod
+    def _crop(imgs, size, left_top=[None, None], is_last_ch_imgs=True):
+        if is_last_ch_imgs:
+            h, w, _ = imgs[0].shape
+        else:
+            _, h, w = imgs[0].shape
+
+        crop_imgs = []
+
+        LT_h = random.randrange(h - size[0]) if left_top[0] is None else left_top[0]
+        LT_W = random.randrange(w - size[1]) if left_top[1] is None else left_top[1]
+
+        for _img in imgs:
+            crop_imgs.append(
+                _img[LT_h: LT_h + size[0], LT_W: LT_W + size[1]] if is_last_ch_imgs
+                else _img[:, LT_h: LT_h + size[0], LT_W: LT_W + size[1]])
+
+        return crop_imgs
+
+    @staticmethod
+    def _flip():
         pass
 
-    def flip():
-        pass
-
-    def image_augmentation():
+    def _image_augmentation():
         pass
 
 
