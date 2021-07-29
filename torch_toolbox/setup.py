@@ -10,6 +10,6 @@ setup(
     packages=["torch_utils"],
     zip_safe=False,
     install_requires=[
-        "pytorch", "ais-python-utils"
+        "torch", "ais-python-utils"
     ]
 )
