@@ -35,6 +35,13 @@ class directory():
         # each os's directory divide slash fix
         directory.replace("\\" if self.OS_THIS == self.OS_UBUNTU else "/", self.SLASH)
 
+        return directory
+
+    @classmethod
+    def _last_slash_in_dir_check(self, directory):
+        # each os's directory divide slash fix
+        directory = self._slash_check(directory)
+
         if self._exist_check(directory, True):
             return directory
         else:
@@ -59,7 +66,7 @@ class directory():
     @classmethod
     def _exist_check(self, directory, is_file=False):
         return path.isfile(directory) if is_file\
-            else path.isdir(self._slash_check(directory))
+            else path.isdir(self._last_slash_in_dir_check(directory))
 
     @classmethod
     def _make(self, obj_dirs, root_dir=None):
@@ -78,7 +85,7 @@ class directory():
         # root dir check
         if root_dir is not None:
             # not use relartion
-            _root = self._slash_check(root_dir)
+            _root = self._last_slash_in_dir_check(root_dir)
             if not self._exist_check(_root):
                 _front, _back = self._devide(_root, -1)
                 self._make(_back, _front)
@@ -95,7 +102,7 @@ class directory():
 
             _tem_dir = _root
             for _componant in _dir_componant:
-                _tem_dir = self._slash_check(_tem_dir + _componant)
+                _tem_dir = self._last_slash_in_dir_check(_tem_dir + _componant)
 
                 if not self._exist_check(_tem_dir):
                     mkdir(_tem_dir)
@@ -109,7 +116,7 @@ class directory():
 
     @classmethod
     def _inside_search(self, searched_dir, search_option="all", name="*", ext="*"):
-        _dir = self._slash_check(searched_dir)
+        _dir = self._last_slash_in_dir_check(searched_dir)
 
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else name
@@ -152,7 +159,7 @@ class directory():
 
     @classmethod
     def _get_main(self, just_name=True):
-        return self._devide(getcwd())[-1] if just_name else self._slash_check(getcwd())
+        return self._devide(getcwd())[-1] if just_name else self._last_slash_in_dir_check(getcwd())
 
     @staticmethod
     def _del():
@@ -166,8 +173,9 @@ class directory():
 class file():
     @staticmethod
     def _name_from_directory(dir):
-        if directory._exist_check(dir, True):
-            return directory._slash_check(dir).split(directory.SLASH)[-1]
+        last_companant = directory._slash_check(dir).split(directory.SLASH)[-1]
+        if directory._exist_check(dir, True) or last_companant != "":
+            return last_companant
         else:
             return None
 

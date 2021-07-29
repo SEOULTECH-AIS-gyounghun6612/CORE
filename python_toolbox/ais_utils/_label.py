@@ -456,7 +456,7 @@ class Label_Style_Worker():
     label_info = None
 
     def __init__(self, data_folder, file_style, option) -> None:
-        self.data_root = _base.directory._slash_check(data_folder)
+        self.data_root = _base.directory._last_slash_in_dir_check(data_folder)
         if not _base.directory._exist_check(self.data_root):
             _error.variable_stop(
                 function_name="Label_Style_Worker.__init__",
@@ -638,13 +638,15 @@ class BDD_100K(Label_Style_Worker):
 
                 class_map = self.label_info.get_class_map_from(color_map)
 
-                # _cv2.file.image_write("./test/test.jpg", self.label_info.get_color_map_from(class_map))
+                _cv2.file.image_write(
+                    "./test/test.jpg",
+                    self.label_info.get_color_map_from(self.label_info.get_classfication_from(class_map)))
 
                 return input_data, class_map
 
     # # optional define
     def get_annotaion_data(self):
-        self.input_dir = _base.directory._slash_check(self.input_dir + self.using_option)
+        self.input_dir = _base.directory._last_slash_in_dir_check(self.input_dir + self.using_option)
         self.annotation_data = \
             _base.file._json(self.label_dir, "{}_{}.json".format(self.label_style, self.using_option))
         self.input_len = len(self.annotation_data)
@@ -665,7 +667,8 @@ class BDD_100K(Label_Style_Worker):
 
             for _input_img in input_imgs:
                 label_file = _base.file._name_from_directory(_input_img).replace(".jpg", ".png")
-                _label_img = _base.directory._slash_check(self.label_dir + self.using_option) + label_file
+                _label_img = _base.directory._last_slash_in_dir_check(self.label_dir + self.using_option) + \
+                    label_file
 
                 if _label_img in label_imgs:
                     self.image_list.append([_input_img, _label_img])

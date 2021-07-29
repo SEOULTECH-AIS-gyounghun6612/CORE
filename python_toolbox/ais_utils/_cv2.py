@@ -73,16 +73,16 @@ class file():
         return _read_img
 
     @classmethod
-    def image_write(self, filename: str, image):
-        filename = _base.directory._slash_check(filename)
+    def image_write(self, file_dir: str, image):
+        filename = _base.file._name_from_directory(file_dir)
         if not _base.file._extension_check(filename, self.IMAGE_EXT):
             if self.DEBUG:
                 _error_message.variable(
                     "file.image_write",
                     "Have some problem in parameter 'filename'. use default ext")
-            filename += "jpg" if filename[-1] == "." else ".jpg"
+            file_dir += "jpg" if file_dir[-1] == "." else ".jpg"
 
-        cv2.imwrite(filename, image)
+        cv2.imwrite(file_dir, image)
 
     @staticmethod
     def video_capture(location, is_file=False):
