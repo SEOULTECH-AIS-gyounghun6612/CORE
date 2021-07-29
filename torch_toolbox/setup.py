@@ -10,6 +10,6 @@ setup(
     packages=["utils"],
     zip_safe=False,
     install_requires=[
-        "torch", "numpy"
+        "pytorch", "ais-python-utils"
     ]
 )
