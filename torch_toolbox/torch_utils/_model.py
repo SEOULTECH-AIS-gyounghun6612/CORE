@@ -61,3 +61,7 @@ class transformer():
             after_FFNN = self.batch_norm_02(after_FFNN)
 
             return after_FFNN
+
+
+def load_check():
+    print("!!! _model in custom torch utils load Success !!!")
