@@ -84,17 +84,21 @@ class directory():
                 self._make(_back, _front)
         else:
             # use relartion
-            _root = ""
+            _root = self.RELARTION
             for _ct, _data in enumerate(obj_dirs):
-                if _data.find(self.RELARTION):
-                    obj_dirs[_ct] = self.RELARTION + _data
+                if not _data.find(self.RELARTION):
+                    obj_dirs[_ct] = _data[len(self.RELARTION):]
 
         # make directory
         for _ct, _data in enumerate(obj_dirs):
-            _tem_dir = self._slash_check(_root + self.SLASH + _data)
+            _dir_componant = self._slash_check(_data).split(self.SLASH)
 
-            if not self._exist_check(_tem_dir):
-                mkdir(_tem_dir)
+            _tem_dir = _root
+            for _componant in _dir_componant:
+                _tem_dir = self._slash_check(_tem_dir + _componant)
+
+                if not self._exist_check(_tem_dir):
+                    mkdir(_tem_dir)
             obj_dirs[_ct] = _tem_dir
 
         return obj_dirs
