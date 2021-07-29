@@ -47,8 +47,8 @@ class transformer():
             self.W_v_conv = Conv2d(**V_option)
 
             self.pad = _utils.layer.get_conv_pad(
-                d_size=data_size,
-                k_size=k_size)
+                input_size=data_size,
+                kernel_size=k_size)
             S_option = {
                 "in_channels": QKV_output,
                 "out_channels": QKV_output,
@@ -121,7 +121,7 @@ class transformer():
             for attention in self.attentions:
                 multi_holder.append(attention(x))
 
-            merge_tensor = _utils.concat(multi_holder)
+            merge_tensor = _utils.layer.concat(multi_holder)
 
             return self.M_conv(merge_tensor)
 
