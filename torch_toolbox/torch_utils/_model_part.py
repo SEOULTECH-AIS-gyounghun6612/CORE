@@ -143,3 +143,7 @@ class transformer():
     def segment_embed(batch, size, channel):
         shape = (batch, channel, int(size[0]), int(size[1]))
         return parameter.Parameter(randn(shape, requires_grad=True))
+
+
+def load_check():
+    print("!!! _model_part in custom torch utils load Success !!!")

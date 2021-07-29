@@ -92,3 +92,7 @@ class evaluation():
     def miou(result, label, class_num):
         iou = evaluation.iou(result, label, class_num)
         return iou.mean()
+
+
+def load_check():
+    print("!!! _utils in custom torch utils load Success !!!")
