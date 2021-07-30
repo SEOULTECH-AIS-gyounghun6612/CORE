@@ -26,8 +26,10 @@ class layer():
         return input.view(input.size(0), -1)
 
     @staticmethod
-    def make_edge(input):
+    def _make_edge(input, is_cuda):
         sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
+        if is_cuda:
+            sobel_filter = sobel_filter.cuda()
         sobel = ReLU()(function.adept_kernel(input, sobel_filter))
 
         return Tanh()(sum(sobel, dim=1))
@@ -73,15 +75,6 @@ class function():
 
         return op_conv(input)
 
-    @classmethod
-    def make_edge(self, input, is_cuda):
-        sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
-        if is_cuda:
-            sobel_filter = sobel_filter.cuda()
-        sobel = ReLU()(self.adept_kernel(input, sobel_filter, is_cuda))
-
-        return sum(sobel)
-
 
 class loss():
     @staticmethod
@@ -115,8 +108,8 @@ class loss():
         Return:
             loss
         """
-        output_edge = layer.make_edge(output, is_cuda)
-        target_edge = layer.make_edge(target, is_cuda)
+        output_edge = layer._make_edge(output, is_cuda)
+        target_edge = layer._make_edge(target, is_cuda)
 
         return loss.mse(output_edge, target_edge)
 
