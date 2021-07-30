@@ -74,9 +74,11 @@ class function():
         return op_conv(input)
 
     @classmethod
-    def make_edge(self, input):
+    def make_edge(self, input, is_cuda):
         sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
-        sobel = ReLU()(self.adept_kernel(input, sobel_filter))
+        if is_cuda:
+            sobel_filter = sobel_filter.cuda()
+        sobel = ReLU()(self.adept_kernel(input, sobel_filter, is_cuda))
 
         return sum(sobel)
 
@@ -105,7 +107,7 @@ class loss():
         return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
 
     @staticmethod
-    def edge_loss(output, target):
+    def edge_loss(output, target, is_cuda):
         """
         Args:
             output: [batch, class_num, h, w]
@@ -113,8 +115,8 @@ class loss():
         Return:
             loss
         """
-        output_edge = layer.make_edge(output)
-        target_edge = layer.make_edge(target)
+        output_edge = layer.make_edge(output, is_cuda)
+        target_edge = layer.make_edge(target, is_cuda)
 
         return loss.mse(output_edge, target_edge)
 
