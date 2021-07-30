@@ -61,11 +61,12 @@ class function():
         return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
 
     @staticmethod
-    def adept_kernel(input, fillter):
+    def adept_kernel(input, fillter, is_cuda):
         _h, _w = fillter.shape
         _b, _c, _, _ = input.shape
 
-        op_conv = Conv2d(_c, _c, kernel_size=[_h, _w], padding=1, groups=_c, bias=False)
+        op_conv = Conv2d(_c, _c, kernel_size=[_h, _w], padding=1, groups=_c, bias=False).cuda() \
+            if is_cuda else Conv2d(_c, _c, kernel_size=[_h, _w], padding=1, groups=_c, bias=False)
 
         # fillter = fillter.view(1, 1, _h, _w).repeat(_b, _c, 1, 1)
         fillter = fillter.reshape((1, 1, _h, _w))
