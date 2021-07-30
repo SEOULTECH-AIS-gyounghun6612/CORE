@@ -94,7 +94,7 @@ class loss():
         return MSELoss()(output, target)
 
     @staticmethod
-    def cross_loss(output, target):
+    def cross_loss(output, target, ignore_index=-100):
         """
         Args:
             output: [batch, class_num, h, w]
@@ -102,7 +102,7 @@ class loss():
         Return:
             loss
         """
-        return CrossEntropyLoss()(output, target)
+        return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
 
     @staticmethod
     def edge_loss(output, target):
