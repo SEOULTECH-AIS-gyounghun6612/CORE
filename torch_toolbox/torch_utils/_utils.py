@@ -30,7 +30,7 @@ class layer():
         sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
         if is_cuda:
             sobel_filter = sobel_filter.cuda()
-        sobel = ReLU()(function.adept_kernel(input, sobel_filter))
+        sobel = ReLU()(function.adept_kernel(input, sobel_filter, is_cuda))
 
         return Tanh()(sum(sobel, dim=1))
 
