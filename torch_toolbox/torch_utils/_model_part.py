@@ -46,7 +46,7 @@ class transformer():
             self.W_k_conv = Conv2d(**K_option)
             self.W_v_conv = Conv2d(**V_option)
 
-            self.pad = _utils.layer.get_conv_pad(
+            self.pad = _utils.function.get_conv_pad(
                 input_size=data_size,
                 kernel_size=k_size)
             S_option = {

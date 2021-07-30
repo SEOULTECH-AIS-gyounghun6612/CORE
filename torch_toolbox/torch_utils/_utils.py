@@ -1,4 +1,8 @@
-from torch import cuda, cat, save
+from torch import cuda
+from torch import cat, save, sum
+from torch import tensor, FloatTensor
+from torch.nn import Conv2d
+from torch.nn import ReLU, Tanh
 from torch.nn import MSELoss, CrossEntropyLoss
 
 from ais_utils import _numpy
@@ -22,6 +26,19 @@ class layer():
         return input.view(input.size(0), -1)
 
     @staticmethod
+    def make_edge(input):
+        sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
+        sobel = ReLU()(function.adept_kernel(input, sobel_filter))
+
+        return Tanh()(sum(sobel, dim=1))
+
+
+class function():
+    @staticmethod
+    def to_tensor(array):
+        return FloatTensor(array)
+
+    @staticmethod
     def get_conv_pad(input_size, kernel_size, interval=1, stride=1):
         if type(kernel_size) != list:
             kernel_size = [kernel_size, kernel_size]
@@ -40,6 +57,28 @@ class layer():
         pad_t = pad_ws // 2
 
         return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
+
+    @staticmethod
+    def adept_kernel(input, fillter):
+        _h, _w = fillter.shape
+        _b, _c, _, _ = input.shape
+
+        op_conv = Conv2d(_c, _c, kernel_size=[_h, _w], padding=1, groups=_c, bias=False)
+
+        # fillter = fillter.view(1, 1, _h, _w).repeat(_b, _c, 1, 1)
+        fillter = fillter.reshape((1, 1, _h, _w))
+        fillter = fillter.repeat(_c, 1, 1, 1)
+
+        op_conv.weight.data = fillter
+
+        return op_conv(input)
+
+    @classmethod
+    def make_edge(self, input):
+        sobel_filter = tensor([[-1., -1., -1.], [-1., 8., -1.], [-1., -1., -1.]])
+        sobel = ReLU()(self.adept_kernel(input, sobel_filter))
+
+        return sum(sobel)
 
 
 class loss():
@@ -65,6 +104,20 @@ class loss():
         """
         return CrossEntropyLoss()(output, target)
 
+    @staticmethod
+    def edge_loss(output, target):
+        """
+        Args:
+            output: [batch, class_num, h, w]
+            target: [batch, h, w]
+        Return:
+            loss
+        """
+        output_edge = layer.make_edge(output)
+        target_edge = layer.make_edge(target)
+
+        return loss.mse(output_edge, target_edge)
+
 
 class File():
     @staticmethod
@@ -77,6 +130,10 @@ class File():
                     'model_state_dict': model.state_dict()}
 
         save(save_dic, save_directory)
+
+    @staticmethod
+    def result_save_to(save_dir, result_type, save_format):
+        pass
 
 
 class evaluation():
