@@ -117,15 +117,15 @@ class loss():
 
 class File():
     @staticmethod
-    def model_save_to(save_directory, model):
-        pass
-
-    @staticmethod
-    def model_load_from(save_directory, model, epoch):
+    def model_save_to(save_directory, model, epoch):
         save_dic = {'epoch': epoch,
                     'model_state_dict': model.state_dict()}
 
         save(save_dic, save_directory)
+
+    @staticmethod
+    def model_load_from(save_directory, model, epoch):
+        pass
 
     @staticmethod
     def result_save_to(save_dir, result_type, save_format):
