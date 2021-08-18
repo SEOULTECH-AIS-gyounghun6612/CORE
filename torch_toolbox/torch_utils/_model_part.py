@@ -4,7 +4,74 @@ from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
 from torch.nn import functional as F
 
+import torchvision.models as models
+
 from . import _utils
+
+
+from ais_utils import _error as _e
+_error = _e.Custom_error(
+    module_name="torch_custom_utils_v 1.x",
+    file_name="_model_part.py")
+
+
+class backbone():
+    @staticmethod
+    class resnet(Module):
+        def __init__(self, type=50, trained=True, flatten=False):
+            super(backbone.resnet, self).__init__()
+            self._flat = flatten
+            if type == 50:
+                self._line = models.resnet50(pretrained=trained)
+            elif type == 101:
+                self._line = models.resnet101(pretrained=trained)
+            else:
+                _error.variable(
+                    "backbone.resnet",
+                    "Have some problem in parameter 'type'. use default value 50")
+                type = 50
+                self._line = models.resnet50(pretrained=trained)
+
+            # features parameters doesn't train
+            for _parameters in self._line.conv1.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.bn1.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.relu.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.maxpool.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.layer1.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.layer2.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.layer3.parameters():
+                _parameters.requires_grad = False
+            for _parameters in self._line.layer4.parameters():
+                _parameters.requires_grad = False
+
+            for _parameters in self._line.avgpool.parameters():
+                _parameters.requires_grad = False
+
+            self._line.eval()
+            self._line.fc = None
+
+        def forward(self, x):
+            x = self._line.conv1(x)
+            x = self._line.bn1(x)
+            x = self._line.relu(x)
+            x = self._line.maxpool(x)
+
+            x = self._line.layer1(x)
+            x = self._line.layer2(x)
+            x = self._line.layer3(x)
+            x = self._line.layer4(x)
+
+            x = self._line.avgpool(x)
+            if self._flat:
+                return _utils.layer._flatten(x)
+            else:
+                return x
 
 
 class transformer():
