@@ -76,7 +76,7 @@ class backbone():
     @staticmethod
     class vgg(Module):
         def __init__(self, type=19, trained=True, flatten=False):
-            super(backbone.vgg).__init__()
+            super().__init__()
             self._flat = flatten
             if type == 11:
                 _line = models.vgg11(pretrained=trained)
