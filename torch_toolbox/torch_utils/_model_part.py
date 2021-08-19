@@ -73,6 +73,41 @@ class backbone():
             else:
                 return x
 
+    @staticmethod
+    class vgg(Module):
+        def __init__(self, type=19, trained=True, flatten=False):
+            super(backbone.vgg).__init__()
+            self._flat = flatten
+            if type == 11:
+                _line = models.vgg11(pretrained=trained)
+            if type == 13:
+                _line = models.vgg13(pretrained=trained)
+            elif type == 16:
+                _line = models.vgg16(pretrained=trained)
+            elif type == 19:
+                _line = models.vgg19(pretrained=trained)
+            else:
+                _error.variable(
+                    "backbone.vgg",
+                    "Have some problem in parameter 'type'. use default value 19")
+                type = 19
+                _line = models.vgg19(pretrained=trained)
+
+            self._conv = _line.features
+            self._avgpool = _line.avgpool
+
+            for _parameter in self._conv.parameters():
+                _parameter.requires_grad = False
+
+        def forward(self, x):
+            x = self._conv(x)
+            x = self._avgpool(x)
+
+            if self._flat:
+                return _utils.layer._flatten(x)
+            else:
+                return x
+
 
 class transformer():
     @staticmethod
