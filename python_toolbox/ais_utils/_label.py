@@ -342,11 +342,54 @@ class Labels():
              "categoryId": 7,
              "hasInstances": True,
              "ignoreInEval": False,
-             "color": [0x46, 0x00, 0x00]}]
+             "color": [0x46, 0x00, 0x00]}
+        ],
+        "CDnet_2014": [
+            {"name": "Static",
+             "id": 0,
+             "train_id": 0,
+             "category": "void",
+             "categoryId": 0,
+             "hasInstances": False,
+             "ignoreInEval": False,
+             "color": [0x00, 0x00, 0x00], },
+            {"name": "Hard shadow",
+             "id": 1,
+             "train_id": 0,
+             "category": "void",
+             "categoryId": 0,
+             "hasInstances": False,
+             "ignoreInEval": False,
+             "color": [0x32, 0x32, 0x32], },
+            {"name": "Outside region of interest",
+             "id": 2,
+             "train_id": 0,
+             "category": "void",
+             "categoryId": 0,
+             "hasInstances": False,
+             "ignoreInEval": True,
+             "color": [0x55, 0x55, 0x55], },
+            {"name": "Unknown motion",
+             "id": 3,
+             "train_id": 1,
+             "category": "void",
+             "categoryId": 0,
+             "hasInstances": False,
+             "ignoreInEval": False,
+             "color": [0xAA, 0xAA, 0xAA], },
+            {"name": "Motion",
+             "id": 4,
+             "train_id": 1,
+             "category": "void",
+             "categoryId": 0,
+             "hasInstances": False,
+             "ignoreInEval": False,
+             "color": [0xFF, 0xFF, 0xFF], }
+        ],
     }
 
-    DATA_KEY_LIST = {
-        "sem_seg": {
+    DEFAULT_SETTING = {
+        "CDnet_2014": {
             "name_key": "name",
             "id_key": "train_id",
             "color_key": "color",
@@ -359,7 +402,9 @@ class Labels():
         # set data info
         self.raw_data = self.LABEL_DATA_LIST[data_name]
         self.label_style = using_key
-        self.data_key = self.DATA_KEY_LIST[using_key]
+
+        # in later add safty for human error about using_key
+        self.data_key = self.DEFAULT_SETTING[using_key]
 
         # selecte data
         self.id_label = {}
@@ -438,6 +483,8 @@ class Label_Style_Worker():
 
     # label style: color or grayscale image
     image_list = []
+    input_ext = None
+    label_ext = None
 
     # setting
     # directory parameter
@@ -448,14 +495,19 @@ class Label_Style_Worker():
     # data info
     input_len = None
     using_option = None
-    file_style = None
-    suport_file_style = ["Annotation", "Color_map"]
+    source_style = None
+    surport_source = ["Annotation", "Color_map"]
 
     # label class parameter
     # label data class style must be list type
     label_info = None
+    label_profile = {
+        "label_style": "",
+        "input_dir": "",
+        "label_dir": ""
+    }
 
-    def __init__(self, data_folder, file_style, option) -> None:
+    def __init__(self, data_folder, source_style, option) -> None:
         self.data_root = _base.directory._last_slash_in_dir_check(data_folder)
         if not _base.directory._exist_check(self.data_root):
             _error.variable_stop(
@@ -465,8 +517,9 @@ class Label_Style_Worker():
             )
 
         self.using_option = option if option in ["train", "val", "test"] else "test"
+        # in later fix this paramnets name -> is_not_test
         self.is_test = self.using_option != "test"
-        self.file_style = file_style if (file_style in self.suport_file_style and self.is_test)\
+        self.source_style = source_style if (source_style in self.surport_source and self.is_test)\
             else "Color_map"
 
     # common function
@@ -479,34 +532,59 @@ class Label_Style_Worker():
         self.label_dir_initialize()
 
         # get data from file
-        if self.file_style == "Annotation":
+        if self.source_style == "Annotation":
             self.get_annotaion_data()
-        elif self.file_style == "Color_map":
+        elif self.source_style == "Color_map":
             self.get_colormap_data()
 
     def pick_data(self, item_num):
         # pick item
-        if self.file_style == self.suport_file_style[0]:  # Annotation
+        if self.source_style == self.surport_source[0]:  # Annotation
             selected_item = self.annotation_data[item_num]
-        elif self.file_style == self.suport_file_style[1]:  # Color_map
+        elif self.source_style == self.surport_source[1]:  # Color_map
             selected_item = self.image_list[item_num]
 
         # conver to data from file for train or val
         return self.data_style_converter(selected_item)
 
-    # Individual function
-    # # must define
-    def label_info_init(self):
-        pass
+    def label_info_init(self, label):
+        # lebel_style and label_profile compatibility check
+        self.label_info = label
+        self.label_style = label.label_style
+
+        if label.label_style != self.label_profile["label_style"]:
+            _error.variable_stop(
+                function_name="Label_Style_Worker.__init__",
+                variable_list=["label", ],
+                AA="Entered parameter 'label' style {} not suport category".format(label.label_style)
+            )
 
     def input_dir_initialize(self):
         # parameter "input_dir" data initialize
-        pass
+        self.input_dir = self.data_root + self.label_profile["input_dir"]
+        self.input_dir = _base.directory._last_slash_in_dir_check(self.input_dir)
+        if not _base.directory._exist_check(self.input_dir):
+            _error.variable_stop(
+                function_name="Label_Style_Worker",
+                variable_list=["input_dir", ],
+                AA="Directory {} not exist".format(self.input_dir)
+            )
 
     def label_dir_initialize(self):
         # parameter "annotaion_dir" data initialize
-        pass
+        # In later, add  function about "annotation file exist check" using _error module
+        if self.is_test:
+            self.label_dir = self.data_root + self.label_profile["label_dir"]
+            self.label_dir = _base.directory._last_slash_in_dir_check(self.label_dir)
+            if not _base.directory._exist_check(self.label_dir):
+                _error.variable_stop(
+                    function_name="Label_Style_Worker",
+                    variable_list=["label_dir", ],
+                    AA="Directory {} not exist".format(self.label_dir)
+                )
 
+    # Individual function
+    # # must define
     def data_style_converter(self, selected_item):
         pass
 
@@ -521,17 +599,20 @@ class Label_Style_Worker():
 
 
 class BDD_100K(Label_Style_Worker):
-    label_options = {
-        "sem_seg": {
-            "images": "10k",
-            # color_map file option
-            "Color_map": "colormaps",
-            # annotation file option
-            "Annotation": "polygons",
+    label_profiles = {
+        "sem_seg_Color_map": {
+            "label_style": "sem_seg",
+            "input_dir": "images/10k/",
+            "label_dir": "labels/sem_seg/colormaps/"
+        },
+        "sem_seg_Annotation": {
+            "label_style": "sem_seg",
+            "input_dir": "images/10k/",
+            "label_dir": "labels/sem_seg/polygons/",
             "name_key": "name",
             "data_key": "labels",
             "class_key": "category"
-        }
+        },
     }
 
     # label class parameter
@@ -539,8 +620,8 @@ class BDD_100K(Label_Style_Worker):
     def __init__(
             self,
             data_folder,
-            file_style,
-            label,
+            source_style,
+            label_style="sem_seg",
             option="train") -> None:
         """
         Args:
@@ -549,53 +630,22 @@ class BDD_100K(Label_Style_Worker):
             label_category  : sem_seg,
 
         """
+        # set label_profile
+        super().label_profile = self.label_profiles[label_style + "_" + source_style]
         # basement init
-        super().__init__(data_folder + "bdd-100k", file_style, option)
+        super().__init__(data_folder + "bdd-100k", source_style, option)
+
+        self.input_ext = ".jpg"
+        self.label_ext = ".png"
 
         # init
-        self.worker_initialize(label)
-
-    # # must define
-    def label_info_init(self, label):
-        # select the label_option
-        self.label_info = label
-        self.label_style = label.label_style
-
-        if label.label_style not in self.label_options.keys():
-            _error.variable_stop(
-                function_name="BDD_100K.__init__",
-                variable_list=["label", ],
-                AA="Entered parameter 'label' style {} not suport category".format(label.label_style)
-            )
-        self.label_option = self.label_options[self.label_style]
-
-    def input_dir_initialize(self):
-        self.input_dir = self.data_root + \
-            "images/{}/".format(self.label_option["images"])
-        if not _base.directory._exist_check(self.input_dir):
-            _error.variable_stop(
-                function_name="BDD_100K",
-                variable_list=["input_dir", ],
-                AA="Directory {} not exist".format(self.input_dir)
-            )
-
-    def label_dir_initialize(self):
-        # In later, add  function about "annotation file exist check" using _error module
-        if self.is_test:
-            self.label_dir = self.data_root + \
-                "labels/{}/{}/".format(self.label_style, self.label_option[self.file_style])
-            if not _base.directory._exist_check(self.label_dir):
-                _error.variable_stop(
-                    function_name="BDD_100K",
-                    variable_list=["label_dir", ],
-                    AA="Directory {} not exist".format(self.label_dir)
-                )
+        self.worker_initialize(Labels("BDD-100K", label_style))
 
     def data_style_converter(self, selected_item):
-        if self.file_style == self.suport_file_style[0]:  # Annotation
+        if self.source_style == self.surport_source[0]:  # Annotation
             # read input data
             input_data = _cv2.file.image_read(
-                self.input_dir + selected_item[self.label_option["name_key"]],
+                self.input_dir + selected_item[self.label_profile["name_key"]],
                 _cv2.Color_option.BGR)
             input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
             _, _h, _w = input_data.shape
@@ -603,12 +653,10 @@ class BDD_100K(Label_Style_Worker):
             # make label data from annotation
             anno_datas = selected_item["labels"]
             ignore_ch = self.label_info.get_len() - 1  # ignore
-            label_holder = _numpy.image_extention.get_canvus(
-                [self.label_info.get_len(), _h, _w],
-                background_color=ignore_ch)
+            label_holder = _numpy.image_extention.get_canvus([_h, _w], background_color=ignore_ch)
 
             for _data in anno_datas:
-                _member_class = _data[self.label_option["class_key"]]
+                _member_class = _data[self.label_profile["class_key"]]
                 if _member_class in self.label_info.get_class_list():
                     _id_num = self.label_info.data_from(_member_class, "id")
                 else:
@@ -621,10 +669,9 @@ class BDD_100K(Label_Style_Worker):
                         draw_color=_id_num if _id_num != -1 else ignore_ch,
                         base=label_holder)
 
-            # _cv2.file.image_write("./test/test.jpg", self.label_info.get_color_map_from(label_holder))
             return input_data, label_holder
 
-        elif self.file_style == self.suport_file_style[1]:  # color_map or input only
+        elif self.source_style == self.surport_source[1]:  # color_map or input only
             # read input data
             input_data = _cv2.file.image_read(selected_item[0], _cv2.Color_option.BGR)
             input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
@@ -638,10 +685,6 @@ class BDD_100K(Label_Style_Worker):
 
                 class_map = self.label_info.get_class_map_from(color_map)
 
-                _cv2.file.image_write(
-                    "./test/test.jpg",
-                    self.label_info.get_color_map_from(self.label_info.get_classfication_from(class_map)))
-
                 return input_data, class_map
 
     # # optional define
@@ -651,6 +694,100 @@ class BDD_100K(Label_Style_Worker):
             _base.file._json(self.label_dir, "{}_{}.json".format(self.label_style, self.using_option))
         self.input_len = len(self.annotation_data)
 
+    def get_colormap_data(self):
+        # get input list
+        input_imgs = _base.directory._inside_search(
+            searched_dir=self.input_dir + self.using_option,
+            search_option="file",
+            ext=".jpg")
+
+        # train, val
+        if self.label_dir is not None:
+            label_imgs = _base.directory._inside_search(
+                searched_dir=self.label_dir + self.using_option,
+                search_option="file",
+                ext=".png")
+
+            for _input_img in input_imgs:
+                label_file = _base.file._name_from_directory(_input_img).replace(".jpg", ".png")
+                _label_img = _base.directory._last_slash_in_dir_check(self.label_dir + self.using_option) + \
+                    label_file
+
+                if _label_img in label_imgs:
+                    self.image_list.append([_input_img, _label_img])
+
+            self.input_len = len(self.image_list)
+        # test
+        else:
+            self.image_list.append([input_imgs, ])
+            self.input_len = len(self.image_list)
+
+    def draw(self, draw_style, draw_data, draw_color, base):
+        if draw_style == "poly2d":
+            for _data in draw_data:
+                pts = _data["vertices"]
+                base = _cv2.draw._polygon(base, pts, -1, draw_color)
+
+        return base
+
+
+class CDnet(Label_Style_Worker):
+    label_profiles = {
+        "profile_1": {
+            "label_style": "sem_seg",
+            "input_dir": "",
+            "label_dir": "",
+            "train_list": [
+                "badWeather/blizzard",
+                "badWeather/blizzard",
+                "badWeather/blizzard",
+                "badWeather/blizzard",
+            ],
+            "validation_list": []
+        },
+    }
+
+    def __init__(
+            self,
+            data_root,
+            profile_name="profile_1",
+            option="train") -> None:
+        """
+        Args:
+            data_folder     : data root directory
+            input_category  : 100k or 10k,
+            label_category  : sem_seg,
+
+        """
+        # set label_profile
+        super().label_profile = self.label_profiles[profile_name]
+        # basement init
+        super().__init__(data_root + "CDnet", "Color_map", option)
+
+        self.input_ext = ".jpg"
+        self.label_ext = ".png"
+
+        # init
+        self.worker_initialize(Labels("CDnet_2014", "sem_seg"))
+
+    # # must define
+    def data_style_converter(self, selected_item):
+        # read input data
+        input_data = _cv2.file.image_read(selected_item[0], _cv2.Color_option.BGR)
+        input_data = _cv2.base_process.channel_converter(input_data, _cv2.C_position.First)
+
+        if self.using_option == "test":
+            return input_data, None
+        else:
+            # read label color_map
+            color_map = _cv2.file.image_read(selected_item[1], _cv2.Color_option.BGR)
+            color_map = _cv2.base_process.channel_converter(color_map, _cv2.C_position.First)
+
+            class_map = self.label_info.get_class_map_from(color_map)
+
+            return input_data, class_map
+
+    # # optional define
     def get_colormap_data(self):
         # get input list
         input_imgs = _base.directory._inside_search(

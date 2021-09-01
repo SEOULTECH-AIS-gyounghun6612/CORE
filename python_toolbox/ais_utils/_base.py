@@ -38,6 +38,7 @@ class directory():
         return directory
 
     @classmethod
+    # in later change function name
     def _last_slash_in_dir_check(self, directory):
         # each os's directory divide slash fix
         directory = self._slash_check(directory)
@@ -119,7 +120,7 @@ class directory():
         _dir = self._last_slash_in_dir_check(searched_dir)
 
         serch_all = search_option == "all"
-        _component_name = "*" if serch_all else name
+        _component_name = "*" if serch_all else "*" + name + "*"
         _component_ext = "" if (serch_all or ext == "*") else (ext if ext[0] == "." else "." + ext)
 
         _filter = _dir + _component_name + _component_ext

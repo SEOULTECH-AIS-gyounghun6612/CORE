@@ -82,6 +82,11 @@ class image_extention():
     def poly_points(pts):
         return np.round(pts).astype(np.int32)
 
+    # for data transformation
+    # class map         -> (h, w, class count)
+    # color map         -> (h, w, 3)
+    # classfication map -> (h, w, 1)
+
     @staticmethod
     def class_map_to_classfication(color_map, is_last_ch=False):
         if 3 == len(color_map.shape):
@@ -90,6 +95,10 @@ class image_extention():
             return np.argmax(color_map, axis=0)
         else:
             return color_map
+
+    @staticmethod
+    def class_map_to_color_map(color_map, is_last_ch=False):
+        pass
 
     @staticmethod
     def color_map_to_class_map(color_map, color_list, is_last_ch=False):
@@ -105,6 +114,10 @@ class image_extention():
         class_map[-1] = 1 - np.sum(class_map, axis=0)
 
         return class_map
+
+    @staticmethod
+    def color_map_to_classfication(color_map, color_list, is_last_ch=False):
+        pass
 
     @staticmethod
     def classfication_to_class_map(classfication, is_last_ch=False):
