@@ -1,7 +1,17 @@
 import numpy as np
-from . import _error
+if __package__ == "":
+    import sys
+    from os import path
 
-_error_message = _error.Custom_error("AIS_utils", "_numpy")
+    # add abs_dir
+    sys.path.append(path.dirname(path.abspath(__file__)))
+
+    import _error as _e
+
+else:
+    from . import _error as _e
+
+_error_message = _e.Custom_error("AIS_utils", "_numpy")
 
 
 class file():

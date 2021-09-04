@@ -14,7 +14,17 @@ import platform
 from glob import glob
 from os import path, getcwd, mkdir
 
-from . import _error as _e
+if __package__ == "":
+    import sys
+    from os import path
+
+    # add abs_dir
+    sys.path.append(path.dirname(path.abspath(__file__)))
+
+    import _error as _e
+
+else:
+    from . import _error as _e
 
 # Set constant
 DEBUG = False
