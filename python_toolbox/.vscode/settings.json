@@ -4,7 +4,7 @@
     "python.linting.enabled": true,
     "python.linting.flake8Args": [
         "--max-line-length=110",
-        "--ignore=E402,",
+        "--ignore=E402,F811",
     ],
     "python.pythonPath": "/home/ais-choi-01/.conda/envs/test/bin/python"
 }

@@ -15,15 +15,17 @@ from glob import glob
 from os import path, getcwd, mkdir
 
 if __package__ == "":
+    # if this file in local project
     import sys
-    from os import path
 
-    # add abs_dir
-    sys.path.append(path.dirname(path.abspath(__file__)))
+    # add file dir
+    if path.dirname(path.abspath(__file__)) not in sys.path:
+        sys.path.append(path.dirname(path.abspath(__file__)))
 
     import _error as _e
 
 else:
+    # if this file in package folder
     from . import _error as _e
 
 # Set constant
@@ -41,24 +43,24 @@ class directory():
     RELARTION = "." + SLASH
 
     @classmethod  # fix it
-    def _slash_check(self, directory):
+    def _slash_check(self, directory, is_file=False):
         # each os's directory divide slash fix
-        directory.replace("\\" if self.OS_THIS == self.OS_UBUNTU else "/", self.SLASH)
+        if self.SLASH == "\\":
+            from_dived = "/"
+        else:
+            from_dived = "\\"
+        directory.replace(from_dived, self.SLASH)
+
+        if not is_file:
+            # if checked path is dir, check last slach exist in end of text
+            return directory if directory[-len(self.SLASH):] == self.SLASH \
+                else directory + self.SLASH
 
         return directory
 
     @classmethod
-    # in later change function name
-    def _last_slash_in_dir_check(self, directory):
-        # each os's directory divide slash fix
-        directory = self._slash_check(directory)
-
-        if self._exist_check(directory, True):
-            return directory
-        else:
-            _tmp_ct = -1 if self.OS_THIS == self.OS_UBUNTU else -2
-            _tmp_dir = directory if directory[_tmp_ct:] == self.SLASH else directory + self.SLASH
-            return _tmp_dir
+    def _exist_check(self, directory, is_file=False):
+        return path.isfile(directory) if is_file else path.isdir(directory)
 
     @classmethod
     def _devide(self, directory, point=-1):
@@ -75,11 +77,6 @@ class directory():
         return _front, _back
 
     @classmethod
-    def _exist_check(self, directory, is_file=False):
-        return path.isfile(directory) if is_file\
-            else path.isdir(self._last_slash_in_dir_check(directory))
-
-    @classmethod
     def _make(self, obj_dirs, root_dir=None):
         if isinstance(obj_dirs, str):
             obj_dirs = [obj_dirs, ]
@@ -90,18 +87,19 @@ class directory():
             _error.variable_stop(
                 function_name="directory._make",
                 variable_list=["obj_dirs", ],
-                AA="Entered parameter 'obj_dirs' has unsuitable type data"
+                AA="Error in parameter 'obj_dirs'.\n \
+                    'obj_dirs' has unsuitable type data"
             )
 
         # root dir check
         if root_dir is not None:
-            # not use relartion
-            _root = self._last_slash_in_dir_check(root_dir)
+            # _root check
+            _root = self._slash_check(root_dir)
             if not self._exist_check(_root):
                 _front, _back = self._devide(_root, -1)
                 self._make(_back, _front)
         else:
-            # use relartion
+            # use relartion from __file__
             _root = self.RELARTION
             for _ct, _data in enumerate(obj_dirs):
                 if not _data.find(self.RELARTION):

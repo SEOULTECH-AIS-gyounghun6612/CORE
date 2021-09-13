@@ -1,15 +1,18 @@
 if __package__ == "":
+    # if this file in local project
     import sys
     from os import path
 
-    # add abs_dir
-    sys.path.append(path.dirname(path.abspath(__file__)))
+    # add file dir
+    if path.dirname(path.abspath(__file__)) not in sys.path:
+        sys.path.append(path.dirname(path.abspath(__file__)))
     import _base
     import _cv2
     import _numpy
     import _error as _e
 
 else:
+    # if this file in package folder
     from . import _base
     from . import _cv2
     from . import _numpy
@@ -497,7 +500,7 @@ class Labels():
         return len(self.id_label.keys())
 
 
-class Label_Style_Worker():
+class Label_data_Worker():
     # label holder
     # label style: annotation
     annotation_data = None
@@ -516,7 +519,7 @@ class Label_Style_Worker():
     # data info
     input_len = None
     using_option = None
-    source_style = None
+    source = None
     surport_source = ["Annotation", "Color_map"]
 
     # label class parameter
@@ -528,65 +531,67 @@ class Label_Style_Worker():
         "label_dir": ""
     }
 
-    def __init__(self, data_folder, source_style, option) -> None:
+    def __init__(self, data_folder, source, option) -> None:
+        # set label data root
         self.data_root = _base.directory._last_slash_in_dir_check(data_folder)
         if not _base.directory._exist_check(self.data_root):
             _error.variable_stop(
                 function_name="Label_Style_Worker.__init__",
                 variable_list=["data_folder", ],
-                AA="Entered parameter 'data_folder' directory {} not exist".format(data_folder)
+                AA="Error in parameter 'data_folder'.\n \
+                    Directory {} not exist".format(data_folder)
             )
 
         self.using_option = option if option in ["train", "val", "test"] else "test"
         # in later fix this paramnets name -> is_not_test
         self.is_NOT_test = self.using_option != "test"
-        is_surport_source = source_style in self.surport_source
-        self.source_style = source_style if (is_surport_source and self.is_NOT_test) \
-            else "Color_map"
+        is_surport_source = source in self.surport_source
+        self.source = source if (is_surport_source and self.is_NOT_test) else "Color_map"
 
     # common function
-    def worker_initialize(self, label):
+    def _worker_initialize(self, label):
         # label information init
-        self.label_info_init(label)
+        self._label_info_init(label)
 
         # data dir init
-        self.input_dir_initialize()
-        self.label_dir_initialize()
+        self._input_dir_initialize()
+        self._label_dir_initialize()
 
         # get data from file
-        if self.source_style == "Annotation":
-            self.get_annotaion_data()
-        elif self.source_style == "Color_map":
-            self.get_colormap_data()
+        if self.source == "Annotation":
+            self._get_annotaion_data()
+        elif self.source == "Color_map":
+            self._get_colormap_data()
 
     def pick_data(self, item_num):
         # pick item
-        if self.source_style == self.surport_source[0]:  # Annotation
+        if self.source == self.surport_source[0]:  # Annotation
             selected_item = self.annotation_data[item_num]
-        elif self.source_style == self.surport_source[1]:  # Color_map
+        elif self.source == self.surport_source[1]:  # Color_map
             selected_item = self.image_list[item_num]
 
         # conver to data from file for train or val
         return self.data_style_converter(selected_item)
 
-    def label_info_init(self, label):
+    def _label_info_init(self, label):
         # lebel_style and label_profile compatibility check
         self.label_info = label
         self.label_style = label.label_style
 
-        if label.label_style != self.label_profile["label_style"]:
+        if self.label_style != self.label_profile["label_style"]:
             _error.variable_stop(
                 function_name="Label_Style_Worker.__init__",
                 variable_list=["label", ],
-                AA="Entered parameter 'label' style {} not suport category".format(label.label_style)
+                AA="Error in parameter 'label style'.\n \
+                    Directory {} not exist".format(self.label_style)
             )
 
-    def input_dir_initialize(self):
+    def _input_dir_initialize(self):
         # parameter "input_dir" data initialize
         self.input_dir = self.data_root + self.label_profile["input_dir"]
         self.input_dir = _base.directory._last_slash_in_dir_check(self.input_dir)
 
-    def label_dir_initialize(self):
+    def _label_dir_initialize(self):
         # parameter "annotaion_dir" data initialize
         # In later, add  function about "annotation file exist check" using _error module
         if self.is_NOT_test:
@@ -595,24 +600,24 @@ class Label_Style_Worker():
 
     # Individual function
     # # must define
-    def data_style_converter(self, selected_item):
+    def _data_style_converter(self, selected_item):
         pass
 
     # # optional define
-    def get_annotaion_data(self):
+    def _get_annotaion_data(self):
         # parameter "annotaion_dir" data initialize
         pass
 
-    def get_colormap_data(self):
+    def _get_colormap_data(self):
         # parameter "annotaion_dir" data initialize
         pass
 
-    def label_file_check(self, input_file):
+    def _label_file_check(self, input_file):
         # parameter "annotaion_dir" data initialize
         pass
 
 
-class BDD_100K(Label_Style_Worker):
+class BDD_100K(Label_data_Worker):
     label_profiles = {
         "sem_seg_Color_map": {
             "label_style": "sem_seg",
@@ -745,7 +750,7 @@ class BDD_100K(Label_Style_Worker):
         return base
 
 
-class CDnet(Label_Style_Worker):
+class CDnet(Label_data_Worker):
     label_profiles = {
         "ori_three_class": {
             "label_style": "sem_seg",
@@ -780,7 +785,7 @@ class CDnet(Label_Style_Worker):
         self.label_ext = ".png"
 
         # init
-        self.worker_initialize(Labels("CDnet_2014", "sem_seg"))
+        self._worker_initialize(Labels("CDnet_2014", "sem_seg"))
 
     def data_style_converter(self, selected_item):
         # read input data
