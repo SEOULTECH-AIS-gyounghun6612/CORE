@@ -1,13 +1,6 @@
 import numpy as np
 if __package__ == "":
-    import sys
-    from os import path
-
-    # add abs_dir
-    sys.path.append(path.dirname(path.abspath(__file__)))
-
     import _error as _e
-
 else:
     from . import _error as _e
 

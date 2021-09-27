@@ -15,11 +15,6 @@ import random
 
 from enum import Enum
 if __package__ == "":
-    import sys
-    from os import path
-
-    # add abs_dir
-    sys.path.append(path.dirname(path.abspath(__file__)))
     import _base
     import _numpy
     import _error as _e

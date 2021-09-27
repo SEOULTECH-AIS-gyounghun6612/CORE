@@ -1,11 +1,5 @@
 if __package__ == "":
     # if this file in local project
-    import sys
-    from os import path
-
-    # add file dir
-    if path.dirname(path.abspath(__file__)) not in sys.path:
-        sys.path.append(path.dirname(path.abspath(__file__)))
     import _base
     import _cv2
     import _numpy

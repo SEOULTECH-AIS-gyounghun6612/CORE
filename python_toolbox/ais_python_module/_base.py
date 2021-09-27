@@ -16,12 +16,6 @@ from os import path, getcwd, mkdir
 
 if __package__ == "":
     # if this file in local project
-    import sys
-
-    # add file dir
-    if path.dirname(path.abspath(__file__)) not in sys.path:
-        sys.path.append(path.dirname(path.abspath(__file__)))
-
     import _error as _e
 
 else:
