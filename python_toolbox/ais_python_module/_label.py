@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 if __package__ == "":
     # if this file in local project
     import _base
@@ -18,6 +20,86 @@ DEBUG = False
 _error = _e.Custom_error(
     module_name="ais_custom_utils_v 2.x",
     file_name="_label.py")
+
+label = namedtuple(
+    "label",
+    [
+        "name",
+        "id",
+        "train_id",
+        "category",
+        "categoryId",
+        "hasInstances",
+        "ignoreInEval",
+        "color"
+    ])
+
+
+# Label_lsit template
+class label_tool():
+    DATA_LIST = {}
+    CATEGORY = []
+
+    IGNORE_IDs = [255, ]
+    train_id_dict = {}
+    name_dict = {}
+
+    def __init__(self, label_type) -> None:
+        self.label_type = label_type
+
+        if self._data_list_has_problem():
+            _error.variable_stop(
+                function_name=self.__class__.__name__ + "__init__",
+                variable_list=["DATA_LIST[{}]".format(self.label_type), ],
+                AA="DAta list check again"
+            )
+
+        _ignore_list = []
+        for _data in self.DATA_LIST[self.label_type]:
+            # make train id dict
+            _tem_id = _data.train_id
+            if _tem_id not in self.IGNORE_IDs:
+                # using this data
+                self.train_id_dict[_tem_id] = [_data.id, ] if _tem_id not in self.train_id_dict\
+                    else self.train_id_dict[_tem_id] + [_data.id, ]
+            else:
+                # ignore label collect
+                _ignore_list.append(_data.id)
+
+            # make name dict
+            self.name_dict[_data.name] = _data.id
+
+        # add ignore data in train_id_dict
+        self.train_id_dict[self.get_label_num()] = _ignore_list
+
+    def _data_list_has_problem(self):
+        _flag = True
+        _check = self.DATA_LIST[self.label_type]
+        for _id_ct, _tem_componant in enumerate(_check):
+            if _tem_componant.id != _id_ct:
+                _flag = False
+                break
+        return _flag
+
+    def get_label_num(self):
+        return len(self.train_id_dict)
+
+    def data_call(self, signal, signal_type="name"):
+        if signal_type == "name":  # default
+            # make retrun data from class name
+            _tem_id = self.name_dict[signal]
+            _dada = self.data_call(_tem_id, "id")
+
+        elif signal_type == "train_id":
+            # make retrun data list from train id
+            _data = []
+            for _tem_id in self.train_id_dict(signal):
+                _data.append(self.data_call(_tem_id, "id"))
+
+        else:  # return data
+            return self.DATA_LIST[self.label_type][signal]
+
+        return _dada
 
 
 # Label template dict
