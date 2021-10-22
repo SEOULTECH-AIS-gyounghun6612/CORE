@@ -240,6 +240,53 @@ class evaluation():
         iou = evaluation.iou(result, label, class_num)
         return np.mean(iou)
 
+    @staticmethod
+    class baddeley():
+        def __call__(self, image, target, p) -> float:
+            self.get_value(image, target, p)
+
+        def get_value(self, image, target, p):
+            c = np.sqrt(target.shape * target.shape).item()
+            N = target.shape[0] * target.shape[1]
+
+            tager_edge_points = self.get_edge_points(target)
+            image_edge_points = self.get_edge_points(image)
+
+            # compare target
+            compare_target_list = []
+            compare_image_list = []
+            for _h in range(image.shape[0]):
+                for _w in range(image.shape[1]):
+                    # get w(d(x, A))
+                    compare_target_list.append(min(self.func_d([_h, _w], tager_edge_points), c))
+                    # get w(d(x, B))
+                    compare_image_list.append(min(self.func_d([_h, _w], image_edge_points), c))
+
+            compare_target_list = np.array(compare_target_list)
+            compare_image_list = np.array(compare_image_list)
+
+            # cal |w(d(x, A))-w(d(x, B))|
+            tmp_holder = np.abs(compare_target_list - compare_image_list)
+            return (np.sum(np.power(tmp_holder, p)) / N) ** (1.0 / float(p))
+
+        @staticmethod
+        def get_edge_points(image):
+            _h, _w = image.shape
+            edge_point_holder = []
+            for _h_ct in range(_h):
+                for _w_ct in range(_w):
+                    if image[_h_ct, _w_ct]:
+                        edge_point_holder.append([_h_ct, _w_ct])
+            return np.array(edge_point_holder)
+
+        @staticmethod
+        def func_d(position, edge_points):
+            interval_list = np.abs(edge_points - position)
+            min_interval = interval_list[np.argmin(np.sum(interval_list, 1))]
+
+            return np.sqrt(np.sum(min_interval * min_interval)).item()
+
+
 # in later fix it
 # def Neighbor_Confusion_Matrix(
 #         img: np.ndarray, target: np.ndarray, interest: np.ndarray) -> list:
