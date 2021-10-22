@@ -1,7 +1,7 @@
-# base_utils
+# Python ex module
 
-기본적으로 자주 사용하는 Python 관련 개인 모듈 정리 및 향후 pip 명령어를 활용하여 설치하기 위한 레포지토리  
-Basically, a repository for personal modules related to Python that are frequently used and for installation using pip commands in the future.
+Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈로 설치하기 용이하도록 구성한 레포지토리
+Repository organized by organizing frequently used functions in Python for easy installation as modules.
 
 ## Update plan
 
@@ -14,8 +14,10 @@ Basically, a repository for personal modules related to Python that are frequent
 - [ ] No plan
 
 #### _label.py
-- [ ] 계획 미정
-- [ ] No plan
+- [ ] bdd-100k 라벨처리 코드 작성
+- [ ] Write bdd-100k labeling code
+- [ ] CDnet 2014 라벨처리 코드 작성
+- [ ] CDnet 2014 label processing code writing
 
 #### _error.py
 - [ ] 계획 미정
@@ -25,8 +27,7 @@ Basically, a repository for personal modules related to Python that are frequent
 - [ ] 계획 미정
 - [ ] No plan
 
+
 ## Install
-1. SSH 키 등록
-   - 해당 등록 방법의 경우 연구실 서버내 메뉴얼 참조
-2. 명렁어 입력
-   - pip install "git+ssh://git@github.com/gyounghun6612/base_utils_v2.git"
+1. 설치 명령어
+   - pip install "git+https://github.com/SEOULTECH-AIS-gyounghun6612/python_ex_module.git"
