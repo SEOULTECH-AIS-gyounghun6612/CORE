@@ -105,7 +105,7 @@ class directory():
 
             _tem_dir = _root
             for _componant in _dir_componant:
-                _tem_dir = self._last_slash_in_dir_check(_tem_dir + _componant)
+                _tem_dir = self._slash_check(_tem_dir + _componant)
 
                 if not self._exist_check(_tem_dir):
                     mkdir(_tem_dir)
@@ -119,7 +119,7 @@ class directory():
 
     @classmethod
     def _inside_search(self, searched_dir, search_option="all", name="*", ext="*"):
-        _dir = self._last_slash_in_dir_check(searched_dir)
+        _dir = self._slash_check(searched_dir)
 
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else "*" + name + "*"
@@ -162,7 +162,7 @@ class directory():
 
     @classmethod
     def _get_main(self, just_name=True):
-        return self._devide(getcwd())[-1] if just_name else self._last_slash_in_dir_check(getcwd())
+        return self._devide(getcwd())[-1] if just_name else self._slash_check(getcwd())
 
     @staticmethod
     def _del():
