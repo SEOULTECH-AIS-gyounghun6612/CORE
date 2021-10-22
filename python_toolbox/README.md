@@ -30,4 +30,4 @@ Repository organized by organizing frequently used functions in Python for easy 
 
 ## Install
 1. 설치 명령어
-   - pip install "git+https://github.com/SEOULTECH-AIS-gyounghun6612/python_ex_module.git"
+   - pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/python_ex_module.git
