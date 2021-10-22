@@ -1,7 +1,10 @@
 import numpy as np
-from . import _error
+if __package__ == "":
+    import _error as _e
+else:
+    from . import _error as _e
 
-_error_message = _error.Custom_error("AIS_utils", "_numpy")
+_error_message = _e.Custom_error("AIS_utils", "_numpy")
 
 
 class file():
@@ -82,49 +85,59 @@ class image_extention():
     def poly_points(pts):
         return np.round(pts).astype(np.int32)
 
+    # for data transformation
+    # classfication -> (class count, h, w)
+    # class map     -> (h, w)
+    # color map     -> (h, w, 3)
     @staticmethod
-    def class_map_to_classfication(color_map, is_last_ch=False):
-        if 3 == len(color_map.shape):
-            if is_last_ch:
-                color_map = image_extention.conver_to_first_channel(color_map)
-            return np.argmax(color_map, axis=0)
-        else:
-            return color_map
+    def classfication_to_class_map(classfication, is_last_ch=False):
+        # classfication(class count, h, w) -> class map(h, w, 1)
+        if is_last_ch:
+            classfication = image_extention.conver_to_first_channel(classfication)
+        return np.argmax(classfication, axis=0)
 
     @staticmethod
-    def color_map_to_class_map(color_map, color_list, is_last_ch=False):
+    def class_map_to_color_map(class_map, color_list):
+        # class map(h, w, 1) -> color map(h, w, 3)
+        # if seted "N colors" in "one ID", pick first color in list
+        color_list = np.array([x[0] for x in color_list])
+        return color_list[class_map]
+
+    @staticmethod
+    def color_map_to_classfication(color_map, color_list, is_last_ch=True):
+        # color map(h, w, 3) -> classfication(class count, h, w)
         if not is_last_ch:
             color_map = image_extention.conver_to_last_channel(color_map)
 
+        # make empty classfication
         _h, _w, _ = color_map.shape
-        class_map = image_extention.get_canvus([len(color_list), _h, _w])
-        for _id in range(len(color_list)):
-            compare_map = image_extention.conver_to_first_channel(color_map == color_list[_id])
-            class_map[_id] = np.logical_and(compare_map[0], compare_map[1], compare_map[2])
+        _c = len(color_list)  # color list -> [class 0 color, class 1 color, ...]
+        classfication = image_extention.get_canvus([_c, _h, _w])
 
-        class_map[-1] = 1 - np.sum(class_map, axis=0)
+        # color compare
+        for _id in range(_c - 1):  # last channel : ignore
+            _holder = []  # if seted "N colors" in "one ID", check all color
+            for _color in color_list[_id]:
+                _compare = image_extention.conver_to_first_channel(color_map == _color)
+                _holder.append(np.logical_and(_compare[0], _compare[1], _compare[2]))
 
-        return class_map
+            classfication[_id] = np.sum(_holder, axis=0)
 
-    @staticmethod
-    def classfication_to_class_map(classfication, is_last_ch=False):
-        if 2 == len(classfication.shape):
-            _max = classfication.max() + 1
-            class_map = np.array([[np.eye(_max, _m)[0] for _m in _w] for _w in classfication], dtype=int)
-            if not is_last_ch:
-                class_map = image_extention.conver_to_first_channel(class_map)
-            return class_map
+        classfication[-1] = 1 - np.sum(classfication, axis=0)
 
-        else:
-            return classfication
+        return classfication
 
-    @staticmethod
-    def classfication_to_color_map(classfication, color_list):
-        if 2 == len(classfication.shape):
-            color_list = np.array(color_list)
-            return color_list[classfication]
-        else:
-            return classfication
+    # @staticmethod
+    # def classfication_to_class_map(classfication, is_last_ch=False):
+    #     if 2 == len(classfication.shape):
+    #         _max = classfication.max() + 1
+    #         class_map = np.array([[np.eye(_max, _m)[0] for _m in _w] for _w in classfication], dtype=int)
+    #         if not is_last_ch:
+    #             class_map = image_extention.conver_to_first_channel(class_map)
+    #         return class_map
+
+    #     else:
+    #         return classfication
 
 
 class RLE():
@@ -226,6 +239,53 @@ class evaluation():
     def miou(result, label, class_num):
         iou = evaluation.iou(result, label, class_num)
         return np.mean(iou)
+
+    @staticmethod
+    class baddeley():
+        def __call__(self, image, target, p) -> float:
+            self.get_value(image, target, p)
+
+        def get_value(self, image, target, p):
+            c = np.sqrt(target.shape * target.shape).item()
+            N = target.shape[0] * target.shape[1]
+
+            tager_edge_points = self.get_edge_points(target)
+            image_edge_points = self.get_edge_points(image)
+
+            # compare target
+            compare_target_list = []
+            compare_image_list = []
+            for _h in range(image.shape[0]):
+                for _w in range(image.shape[1]):
+                    # get w(d(x, A))
+                    compare_target_list.append(min(self.func_d([_h, _w], tager_edge_points), c))
+                    # get w(d(x, B))
+                    compare_image_list.append(min(self.func_d([_h, _w], image_edge_points), c))
+
+            compare_target_list = np.array(compare_target_list)
+            compare_image_list = np.array(compare_image_list)
+
+            # cal |w(d(x, A))-w(d(x, B))|
+            tmp_holder = np.abs(compare_target_list - compare_image_list)
+            return (np.sum(np.power(tmp_holder, p)) / N) ** (1.0 / float(p))
+
+        @staticmethod
+        def get_edge_points(image):
+            _h, _w = image.shape
+            edge_point_holder = []
+            for _h_ct in range(_h):
+                for _w_ct in range(_w):
+                    if image[_h_ct, _w_ct]:
+                        edge_point_holder.append([_h_ct, _w_ct])
+            return np.array(edge_point_holder)
+
+        @staticmethod
+        def func_d(position, edge_points):
+            interval_list = np.abs(edge_points - position)
+            min_interval = interval_list[np.argmin(np.sum(interval_list, 1))]
+
+            return np.sqrt(np.sum(min_interval * min_interval)).item()
+
 
 # in later fix it
 # def Neighbor_Confusion_Matrix(

@@ -14,11 +14,17 @@ import cv2
 import random
 
 from enum import Enum
-from . import _base
-from . import _error
-from . import _numpy
+if __package__ == "":
+    import _base
+    import _numpy
+    import _error as _e
 
-_error_message = _error.Custom_error("AIS_utils", "_cv2")
+else:
+    from . import _base
+    from . import _numpy
+    from . import _error as _e
+
+_error_message = _e.Custom_error("AIS_utils", "_cv2")
 
 
 class Color_option(Enum):

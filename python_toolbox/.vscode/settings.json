@@ -4,7 +4,16 @@
     "python.linting.enabled": true,
     "python.linting.flake8Args": [
         "--max-line-length=110",
-        "--ignore=E402,",
+        "--ignore=E402,F811",
     ],
-    "python.pythonPath": "/home/ais-choi-01/.conda/envs/test/bin/python"
+    "python.pythonPath": "/home/ais-choi-01/.conda/envs/test/bin/python",
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./test",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
 }
