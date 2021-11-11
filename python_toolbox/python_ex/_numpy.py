@@ -36,7 +36,6 @@ class base_process():
     @staticmethod
     def bincount(array_1D, max_length):
         array_1D = np.round(array_1D)
-
         holder = np.bincount(array_1D)
 
         if len(holder) < max_length:
@@ -46,6 +45,39 @@ class base_process():
             count_list = holder[:max_length]
 
         return count_list
+
+    @staticmethod
+    def string_to_img(string, h, w, c):
+        return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
+
+
+class operation():
+    @staticmethod
+    def sqrt():
+        pass
+
+    @staticmethod
+    def normal_cut(array, over_cut=1, under_cut=1, direction="outside", output_type="same"):
+        _m = np.mean(array)
+        _std = np.std(array)
+
+        normal = ((array / 1.) - _m) / _std
+
+        under_standard = -under_cut if under_cut >= 0 else 0
+        over_standard = over_cut if over_cut >= 0 else 0
+
+        if direction == "outside":
+            under_cuted = (normal <= under_standard)
+            over_cuted = (normal >= over_standard)
+
+            output = under_cuted + over_cuted
+        else:
+            under_cuted = (normal >= under_standard)
+            over_cuted = (normal <= over_standard)
+
+            output = under_cuted * over_cuted
+
+        return output.astype(array.dtype) if output_type == "same" else output
 
 
 class image_extention():
@@ -85,6 +117,8 @@ class image_extention():
     def poly_points(pts):
         return np.round(pts).astype(np.int32)
 
+
+class tensor_extention():
     # for data transformation
     # classfication -> (class count, h, w)
     # class map     -> (h, w)
@@ -215,9 +249,8 @@ class RLE():
 
 class evaluation():
     @staticmethod
+    # in later fix it
     def iou(result, label, class_num):
-        # class_in_result_count = base_process.bincount(np.reshape(result, -1), class_num)
-
         line_label = np.reshape(label, -1)
         line_result = np.reshape(result, -1)
 
