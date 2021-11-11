@@ -118,7 +118,7 @@ class directory():
         _error.not_yet("directory._make_for_result")
 
     @classmethod
-    def _inside_search(self, searched_dir, search_option="all", name="*", ext="*"):
+    def _inside_search(self, searched_dir, search_option="file", name="*", ext="*"):
         _dir = self._slash_check(searched_dir)
 
         serch_all = search_option == "all"
