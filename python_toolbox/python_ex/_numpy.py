@@ -249,6 +249,20 @@ class RLE():
 
 class evaluation():
     @staticmethod
+    class IoU():
+        def __init__(self, class_num):
+            self.class_num = class_num
+
+        def __call__(self, ouput, label):
+            pass
+
+        def get_iou(self):
+            pass
+
+        def get_miou(self):
+            pass
+
+    @staticmethod
     # in later fix it
     def iou(result, label, class_num):
         line_label = np.reshape(label, -1)

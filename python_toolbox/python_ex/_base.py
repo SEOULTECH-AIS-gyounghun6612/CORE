@@ -176,7 +176,7 @@ class directory():
 class file():
     @staticmethod
     def _name_from_directory(dir):
-        last_companant = directory._slash_check(dir).split(directory.SLASH)[-1]
+        last_companant = directory._slash_check(dir, is_file=True).split(directory.SLASH)[-1]
         if directory._exist_check(dir, True) or last_companant != "":
             return last_companant
         else:

@@ -200,15 +200,18 @@ class base_process():
     @staticmethod
     class blur():
         default = {
-            "gaussian": {},
+            "gaussian": {
+                "ksize": (5, 5),
+                "sigmaX": 0
+            },
             "bilateral": {
                 "d": -1,
-                "sigmaColor": 5,
+                "sigmaColor": 10,
                 "sigmaSpace": 5}}
 
         def __call__(self, image, style):
             if style == "gaussian":
-                pass
+                return cv2.GaussianBlur(image, **self.default[style])
             elif style == "bilateral":
                 return cv2.bilateralFilter(image, **self.default[style])
 
