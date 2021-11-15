@@ -7,7 +7,7 @@ setup(
     url="https://github.com/SEOULTECH-AIS-gyounghun6612/torch_AIS_ex_module.git",
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
-    packages=["torch_utils"],
+    packages=["torch_AIS_ex"],
     zip_safe=False,
     install_requires=[
         "torch", "python-ex"
