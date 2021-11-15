@@ -1,18 +1,42 @@
-from torch import randn
+from torch import randn, save, load
 from torch.nn import Conv2d
 from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
 from torch.nn import functional as F
+from torch.nn import BatchNorm2d
 
 import torchvision.models as models
+from python_ex import _error as _e
 
-from . import _utils
+if __package__ == "":
+    # if this file in local project
+    import _torch_util
+else:
+    # if this file in package folder
+    from . import _torch_util
 
-
-from ais_utils import _error as _e
 _error = _e.Custom_error(
     module_name="torch_custom_utils_v 1.x",
     file_name="_model_part.py")
+
+
+class custom_module(Module):
+    def __init__(self, model_name):
+        super(custom_module, self).__init__()
+        self.model_name = model_name
+
+    def _save_to(self, save_dir, epoch, optim=None):
+        save_dic = {'epoch': epoch,
+                    'model_state_dict': self.state_dict(),
+                    'optimizer_state_dict': optim.state_dict() if optim is not None else ""}
+
+        save(save_dic, save_dir + self.model_name + ".h5")
+
+    def _load_from(self, model_file):
+        checkpoint = load(model_file)
+        self.load_state_dict(checkpoint["model_state_dict"])
+
+        return checkpoint  # if restore train sasseion
 
 
 class backbone():
@@ -69,14 +93,14 @@ class backbone():
 
             x = self._line.avgpool(x)
             if self._flat:
-                return _utils.layer._flatten(x)
+                return _torch_util.layer._flatten(x)
             else:
                 return x
 
     @staticmethod
     class vgg(Module):
         def __init__(self, type=19, trained=True, flatten=False):
-            super().__init__()
+            super(backbone.vgg, self).__init__()
             self._flat = flatten
             if type == 11:
                 _line = models.vgg11(pretrained=trained)
@@ -104,12 +128,13 @@ class backbone():
             x = self._avgpool(x)
 
             if self._flat:
-                return _utils.layer._flatten(x)
+                return _torch_util.layer._flatten(x)
             else:
                 return x
 
 
 class transformer():
+    # in later fix it
     @staticmethod
     class _attention(Module):
         def __init__(
@@ -148,7 +173,7 @@ class transformer():
             self.W_k_conv = Conv2d(**K_option)
             self.W_v_conv = Conv2d(**V_option)
 
-            self.pad = _utils.function.get_conv_pad(
+            self.pad = _torch_util.function.get_conv_pad(
                 input_size=data_size,
                 kernel_size=k_size)
             S_option = {
@@ -223,7 +248,7 @@ class transformer():
             for attention in self.attentions:
                 multi_holder.append(attention(x))
 
-            merge_tensor = _utils.layer._concat(multi_holder)
+            merge_tensor = _torch_util.layer._concat(multi_holder)
 
             return self.M_conv(merge_tensor)
 
@@ -246,6 +271,59 @@ class transformer():
         shape = (batch, channel, int(size[0]), int(size[1]))
         return parameter.Parameter(randn(shape, requires_grad=True))
 
+    @staticmethod
+    class image_encoder(Module):
+        def __init__(self, multi_size, hidden_channel, input_shape, k_size):
+            super(transformer.image_encoder, self).__init__()
 
-def load_check():
-    print("!!! _model_part in custom torch utils load Success !!!")
+            self.self_multi_head = parts.transformer._MHA(
+                multi_size=multi_size,
+                hidden_channel=hidden_channel,
+                input_shape=input_shape,
+                k_size=k_size,
+                is_self=True)
+            self.batch_norm_01 = BatchNorm2d(input_shape[-1])
+            self.FFNN = parts.transformer._FFNN(input_shape[-1], input_shape[-1])
+            self.batch_norm_02 = BatchNorm2d(input_shape[-1])
+
+        def forward(self, x):
+            after_smh = self.self_multi_head(x) + x
+            after_smh = self.batch_norm_01(after_smh)
+            after_FFNN = self.FFNN(after_smh) + after_smh
+            after_FFNN = self.batch_norm_02(after_FFNN)
+
+            return after_FFNN
+
+    @staticmethod
+    class image_decoder(Module):
+        def __init__(self, multi_size, hidden_channel, E_data_shape, D_data_shape, k_size):
+            super(transformer.image_decoder, self).__init__()
+
+            self.self_multi_head = parts.transformer._MHA(
+                multi_size=multi_size,
+                hidden_channel=hidden_channel,
+                input_shape=D_data_shape,
+                k_size=k_size,
+                is_self=True)
+            self.batch_norm_01 = BatchNorm2d(D_data_shape[-1])
+
+            self.multi_head = parts.transformer._MHA(
+                multi_size=multi_size,
+                hidden_channel=hidden_channel,
+                input_shape=[E_data_shape, D_data_shape],
+                k_size=k_size,
+                is_self=False)
+            self.batch_norm_02 = BatchNorm2d(D_data_shape[-1])
+            self.FFNN = parts.transformer._FFNN(D_data_shape[-1], D_data_shape[-1])
+            self.batch_norm_03 = BatchNorm2d(D_data_shape[-1])
+
+        def forward(self, x):
+            E_data, D_data = x
+            after_smh = self.self_multi_head(D_data) + D_data
+            after_smh = self.batch_norm_01(after_smh)
+            after_mh = self.multi_head([after_smh, E_data]) + after_smh
+            after_mh = self.batch_norm_02(after_mh)
+            after_FFNN = self.FFNN(after_mh) + after_mh
+            after_FFNN = self.batch_norm_02(after_FFNN)
+
+            return after_FFNN
