@@ -3,14 +3,14 @@ from collections import namedtuple
 if __package__ == "":
     # if this file in local project
     import _base
-    import _cv2
+    # import _cv2
     import _numpy
     import _error as _e
 
 else:
     # if this file in package folder
     from . import _base
-    from . import _cv2
+    # from . import _cv2
     from . import _numpy
     from . import _error as _e
 
@@ -32,80 +32,73 @@ class information_tool():
     category = {}
 
     IGNORE_IDs = [255, ]
-    train_id_dict = {}
-    name_dict = {}
+    active_id_dict = {}
+    active_name_dict = {}
 
-    def __init__(self, label_type) -> None:
+    def __init__(self, label_type, ignore_ids=None) -> None:
         self.label_type = label_type
+        self.set_active_label(ignore_ids)
 
-        if self._info_dict_has_problem():
-            _error.variable_stop(
-                function_name=self.__class__.__name__ + "__init__",
-                variable_list=["info_dict[{}]".format(self.label_type), ],
-                AA="info_dict check again"
-            )
+    def set_active_label(self, ignore_ids):
+        # selected label list check
+        for _id_ct, _tem_componant in enumerate(self.info_dict[self.label_type]):
+            if _tem_componant.id != _id_ct:
+                # label list has some missing
+                _error.variable_stop(
+                    function_name=self.__class__.__name__ + "__init__",
+                    variable_list=["info_dict[{}]".format(self.label_type), ],
+                    AA="If not label id start 0, change it.\n\
+                        else not, info_dict check again. Label list has some missing.")
 
-        _ignore_list = []
+        # set ignore list
+        _ig_ids = ignore_ids if ignore_ids is not None else self.IGNORE_IDs
+
+        _ignore_list = []  # ignore labels
+        # make active dict
         for _data in self.info_dict[self.label_type]:
-            # make train id dict
             _tem_id = _data.train_id
-            if _tem_id not in self.IGNORE_IDs:
-                # using this data
-                self.train_id_dict[_tem_id] = [_data.id, ] if _tem_id not in self.train_id_dict\
-                    else self.train_id_dict[_tem_id] + [_data.id, ]
-            else:
-                # ignore label collect
+            if _tem_id not in _ig_ids:  # using labels
+                self.active_id_dict[_tem_id] = [_data.id, ] if _tem_id not in self.active_id_dict\
+                    else self.active_id_dict[_tem_id] + [_data.id, ]
+                self.active_name_dict[_data.name] = _tem_id
+            else:  # ignore labels
                 _ignore_list.append(_data.id)
-
-            # make name dict
-            self.name_dict[_data.name] = _data.id
+                self.active_name_dict[_data.name] = -1
 
         # add ignore data in train_id_dict
-        self.train_id_dict[self.get_label_num()] = _ignore_list
-
-    def _info_dict_has_problem(self):
-        _flag = True
-        _check = self.info_dict[self.label_type]
-        for _id_ct, _tem_componant in enumerate(_check):
-            if _tem_componant.id != _id_ct:
-                _flag = False
-                break
-        return _flag
+        self.active_id_dict[-1] = _ignore_list
 
     def get_color_list(self):
         _color_list = []
 
-        for _id in range(self.get_label_num() - 1):
-            _color_list.append(
-                [x.color for x in self.data_call(_id, signal_type="train_id")])
         # ignore label color -> black
         _color_list.append([0x00, 0x00, 0x00])
 
+        # using labels color
+        for _id in range(self.get_label_ct() - 1):
+            _color_list.append(
+                [x.color for x in self.get_data(_id)])
+
         return _color_list
 
-    def get_label_num(self):
-        return len(self.train_id_dict)
+    def get_label_ct(self):
+        return len(self.active_id_dict)
 
-    def get_data(self, signal, signal_type="name"):
-        _data = []
-        if signal_type == "name":  # default
+    def get_data(self, signal):
+        if isinstance(signal, int):
+            # make retrun data list from train id
+            return [self.info_dict[self.label_type][_ct] for _ct in self.active_id_dict[signal]]
+
+        elif isinstance(signal, str):
             # make retrun data from class name
             # signal input convert to id num
-            _tem_id = self.name_dict[signal]
+            _tem_id = self.active_name_dict[signal] if signal in self.active_name_dict.keys()\
+                else -1
             # get data from original
-            _data.append(self.get_data(_tem_id, "id"))
+            return self.get_data(_tem_id)
 
-        elif signal_type == "train_id":
-            # make retrun data list from train id
-            for _tem_id in self.train_id_dict[signal]:
-                # signal input convert to id num
-                # get data from original
-                _data.append(self.get_data(_tem_id, "id"))
-
-        else:  # return data
-            return self.info_dict[self.label_type][signal]
-
-        return _data
+        else:  # incorrect signal
+            pass
 
     # for data transformation term
     # classfication -> (class count, h, w)
@@ -113,16 +106,16 @@ class information_tool():
     # color map     -> (h, w, 3)
 
     def get_color_map_from(self, class_map):
-        return _numpy.image_extention.class_map_to_color_map(class_map, self.get_color_list())
+        return _numpy.tensor_extention.class_map_to_color_map(class_map, self.get_color_list())
 
     def get_classfication_from(self, color_map, is_last_ch=True):
-        return _numpy.image_extention.color_map_to_classfication(
+        return _numpy.tensor_extention.color_map_to_classfication(
             color_map,
             self.get_color_list(),
             is_last_ch)
 
     def get_class_map_from(self, classfication, is_last_ch=False):
-        return _numpy.image_extention.classfication_to_class_map(classfication, is_last_ch)
+        return _numpy.tensor_extention.classfication_to_class_map(classfication, is_last_ch)
 
 
 class data_tool():
@@ -162,9 +155,6 @@ class data_tool():
     label_ext = ".png"
 
     def from_file_process(self):
-        pass
-
-    def get_matched_file_name(self, file_name):  # input_file <-> label_file name convert
         pass
 
     # source_style : annotation
@@ -267,8 +257,8 @@ class BDD_100K(information_tool, data_tool):
         },
     }
 
-    def __init__(self, label_type, data_root, source_style) -> None:
-        information_tool.__init__(label_type)
+    def __init__(self, data_root, source_style, label_type, ignore_ids=None) -> None:
+        information_tool.__init__(label_type, ignore_ids)
         data_tool.__init__(data_root, source_style)
 
     def processing(self, pick_data, call_sign):

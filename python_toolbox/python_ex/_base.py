@@ -118,7 +118,7 @@ class directory():
         _error.not_yet("directory._make_for_result")
 
     @classmethod
-    def _inside_search(self, searched_dir, search_option="all", name="*", ext="*"):
+    def _inside_search(self, searched_dir, search_option="file", name="*", ext="*"):
         _dir = self._slash_check(searched_dir)
 
         serch_all = search_option == "all"
@@ -176,7 +176,7 @@ class directory():
 class file():
     @staticmethod
     def _name_from_directory(dir):
-        last_companant = directory._slash_check(dir).split(directory.SLASH)[-1]
+        last_companant = directory._slash_check(dir, is_file=True).split(directory.SLASH)[-1]
         if directory._exist_check(dir, True) or last_companant != "":
             return last_companant
         else:
