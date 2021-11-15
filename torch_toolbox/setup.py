@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name="AIS_torch_utils",
-    version="1.0.0",
+    name="AIStorch_ex",
+    version="0.1.0",
     description="Custom base code module for python",
     url="https://github.com/SEOULTECH-AIS-gyounghun6612/torch_base_utils.git",
     author="Choi_keonghun & Jun_eins",
@@ -10,6 +10,6 @@ setup(
     packages=["torch_utils"],
     zip_safe=False,
     install_requires=[
-        "torch", "ais-python-utils"
+        "torch", "python-ex"
     ]
 )
