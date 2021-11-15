@@ -3,14 +3,14 @@ from collections import namedtuple
 if __package__ == "":
     # if this file in local project
     import _base
-    import _cv2
+    # import _cv2
     import _numpy
     import _error as _e
 
 else:
     # if this file in package folder
     from . import _base
-    from . import _cv2
+    # from . import _cv2
     from . import _numpy
     from . import _error as _e
 
