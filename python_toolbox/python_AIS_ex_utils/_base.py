@@ -12,7 +12,7 @@ import json
 import platform
 
 from glob import glob
-from os import path, getcwd, mkdir
+from os import path, system, getcwd, mkdir
 
 if __package__ == "":
     # if this file in local project
@@ -308,12 +308,43 @@ class etc():
 
 class server():
     @staticmethod
-    def _connect():
-        _error.not_yet("server._connect")
+    def local_connect(loacal_ip, user_id, password, root_dir, mount_dir, is_container=False):
+        if is_container:
+            # in later make function for docker container
+            _error.not_yet("not support for container system at function server.local_connect")
+            pass
+        else:
+            _command = ""
+            if directory.OS_THIS == directory.OS_WINDOW:
+                _command += "NET USE "
+                _command += "{MountDir}: ".format(MountDir=mount_dir)
+                _command += "\\\\{ServerLocalIp}\\{RootDir} ".format(
+                    ServerLocalIp=loacal_ip,
+                    RootDir=root_dir
+                )
+                _command += "{Password} ".format(Password=password)
+                _command += "/user:{UserName}".format(UserName=user_id)
+
+            elif directory.OS_THIS == directory.OS_UBUNTU:
+                # when use Ubuntu, if want connect AIS server in local network
+                _command += "sudo -S mount -t cifs -o username={UserName}".format(UserName=user_id)
+                _command += ",password={Password}".format(Password=password)
+                _command += ",uid=1000,gid=1000 "
+                _command += "//{ServerLocalIp}/{RootDir} {MountDir}".format(
+                    ServerLocalIp=loacal_ip,
+                    RootDir=root_dir,
+                    MountDir=mount_dir
+                )
+            system(_command)
+            return mount_dir + ":" if directory.OS_THIS == directory.OS_WINDOW else mount_dir
 
     @staticmethod
-    def _unconnect():
-        _error.not_yet("server._unconnect")
+    def _unconnect(mounted_dir):
+        if directory.OS_THIS == directory.OS_WINDOW:
+            system("NET USE {}: /DELETE".format(mounted_dir))
+        elif directory.OS_THIS == directory.OS_UBUNTU:
+            system("fuser -ck {}".format(mounted_dir))
+            system("sudo umount {}".format(mounted_dir))
 
 
 # FUNCTION
