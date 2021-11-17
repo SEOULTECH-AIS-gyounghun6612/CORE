@@ -3,14 +3,14 @@ from collections import namedtuple
 if __package__ == "":
     # if this file in local project
     import _base
-    # import _cv2
+    import _cv2
     import _numpy
     import _error as _e
 
 else:
     # if this file in package folder
     from . import _base
-    # from . import _cv2
+    from . import _cv2
     from . import _numpy
     from . import _error as _e
 
@@ -34,9 +34,11 @@ class information_tool():
     IGNORE_IDs = [255, ]
     active_id_dict = {}
     active_name_dict = {}
+    sequence_tpye_label_list = []
 
     def __init__(self, label_type, ignore_ids=None) -> None:
         self.label_type = label_type
+        self.is_sequence = label_type in self.sequence_tpye_label_list
         self.set_active_label(ignore_ids)
 
     def set_active_label(self, ignore_ids):
@@ -69,17 +71,17 @@ class information_tool():
         self.active_id_dict[-1] = _ignore_list
 
     def get_color_list(self):
-        _color_list = []
-
-        # ignore label color -> black
-        _color_list.append([0x00, 0x00, 0x00])
+        _class_color_list = []
 
         # using labels color
         for _id in range(self.get_label_ct() - 1):
-            _color_list.append(
+            _class_color_list.append(
                 [x.color for x in self.get_data(_id)])
 
-        return _color_list
+        # ignore label color -> black
+        _class_color_list.append([[0x00 for _ct in range(len(_class_color_list[0][0]))], ])
+
+        return _class_color_list
 
     def get_label_ct(self):
         return len(self.active_id_dict)
@@ -106,16 +108,13 @@ class information_tool():
     # color map     -> (h, w, 3)
 
     def get_color_map_from(self, class_map):
-        return _numpy.tensor_extention.class_map_to_color_map(class_map, self.get_color_list())
+        return _numpy.image_extention.class_map_to_color_map(class_map, self.get_color_list())
 
     def get_classfication_from(self, color_map, is_last_ch=True):
-        return _numpy.tensor_extention.color_map_to_classfication(
-            color_map,
-            self.get_color_list(),
-            is_last_ch)
+        return _numpy.image_extention.color_map_to_classfication(color_map, self.get_color_list())
 
     def get_class_map_from(self, classfication, is_last_ch=False):
-        return _numpy.tensor_extention.classfication_to_class_map(classfication, is_last_ch)
+        return _numpy.image_extention.classfication_to_class_map(classfication)
 
 
 class data_tool():
@@ -123,7 +122,7 @@ class data_tool():
     data_root = None
     input_len = 0
 
-    data_list = []
+    data_list = []  # componant: [[input_data, label_data], ...]
     process_config = {}
 
     def __init__(self, data_root, source_style="file") -> None:
@@ -135,67 +134,37 @@ class data_tool():
                 AA="Error in parameter 'data_root'.\n \
                     Directory {} not exist".format(data_root)
             )
+
         self.source_style = source_style
 
     def set_input_len(self):
         self.input_len = len(self.data_list)
 
-    def pick_data(self, item_num, call_sign="train"):
-        return self.processing(self.data_list[item_num], call_sign)
+    def pick_data(self, item_num, shape):
+        return self.make_data_from_list(self.data_list[item_num], shape)
 
-    def processing(self, pick_data, call_sign):
+    def make_data_from_list(self, pick_data, shape):
         pass
 
     # *.from_*_process => make data list from each data source
-    # source_style : file
-    input_folder = None
-    label_folder = None
-
+    # source_style : image file (color_map, masks, ...)
     input_ext = ".jpg"
     label_ext = ".png"
 
-    def from_file_process(self):
+    # source_style : polygon
+    annotation_ext = ".json"
+
+    # make the data list from each source
+    def make_datalist(self, data_type):
         pass
 
-    # source_style : annotation
-    annotation_dir = None
-
-    def from_annotation_process(self):
-        pass
-
-# data label process class template
-# class label_name(information_tool, data_tool):
-#     info_dict = {
-#         label_type: [labels]
-#     }
-#     category = {
-#         label_type: [categorys]
-#     }
-#     process_config = {
-#         config_name: {
-#             "input_dir": "",  # input file dir
-#             "label_dir": "",  # label file dir
-#             additional config info ...
-#         },
-#     }
-#
-#     def __init__(self, label_type, data_root, source_styl) -> None:
-#         information_tool.__init__(label_type)
-#         data_tool.__init__(data_root, source_style)
-#         addtional init code
-#
-#     def get_matched_file_name(self, file_name):
-#         _file_name = _base.file._name_from_directory(file_name)
-#         return _file_name.replace(self.input_ext, self.label_ext).replace("in", "gt")
-#
-#     def processing(self, pick_data, call_sign):
-#         pass
-#
-#     def from_file_process(self):
-#         pass
-#
-#     def from_annotation_process(self):
-#         pass
+    def detector(self, root, is_sequence, ext="*", name="*"):
+        option = {"name": name, "ext": ext}
+        if is_sequence:
+            folder_list = _base.directory._inside_search(root, "directory")
+            return [_base.directory._inside_search(folder, **option) for folder in folder_list]
+        else:
+            return _base.directory._inside_search(root, **option)
 
 
 class BDD_100K(information_tool, data_tool):
@@ -248,33 +217,60 @@ class BDD_100K(information_tool, data_tool):
     }
     process_config = {
         "seg_color_map": {
-            "input_dir": "images/10k/",
-            "label_dir": "labels/sem_seg/colormaps/"
+            "input_dir": "images/10k/{}/",  # data_type
+            "label_dir": "labels/sem_seg/colormaps/{}/"
         },
-        "seg_annotation": {
-            "input_dir": "images/10k/",
-            "label_dir": "labels/sem_seg/polygons/",
+        "seg_polygons": {
+            "input_dir": "images/10k/{}/",
+            "label_dir": "labels/sem_seg/polygons/{}/",
         },
     }
 
-    def __init__(self, data_root, source_style, label_type, ignore_ids=None) -> None:
-        information_tool.__init__(label_type, ignore_ids)
-        data_tool.__init__(data_root, source_style)
+    sequence_tpye_label_list = ["seg_track_20", ]
 
-    def processing(self, pick_data, call_sign):
-        pass
+    def __init__(self, data_root, source_style, label_type, ignore_ids=None):
+        data_tool.__init__(self, data_root, source_style)
+        information_tool.__init__(self, label_type, ignore_ids)
 
-    def from_file_process(self):
-        pass
+        self.active_config = self.process_config["{}_{}".format(label_type, source_style)]
 
-    def from_annotation_process(self):
-        pass
+    def make_data_from_list(self, pick_data, shape):
+        if self.source_style == "polygons":
+            # from annotation
+            pass
+        elif self.source_style == "color_map":
+            if isinstance(pick_data, int):  # test
+                pass
+            elif isinstance(pick_data, tuple):  # train, validation
+                input_array = _cv2.file.image_read(pick_data[0], _cv2.Color_option.BGR)
+                input_array = _cv2.base_process.resize(input_array, shape)
+                label_array = _cv2.file.image_read(pick_data[1], _cv2.Color_option.BGR)
+                label_array = self.get_classfication_from(label_array)
+                label_array = _numpy.image_extention.classfication_resize(label_array, shape)
+
+                return input_array, label_array
+
+    def make_datalist(self, data_type):
+        _input_root = self.data_root + self.active_config["input_dir"]
+        _label_root = self.data_root + self.active_config["label_dir"]
+        _sq = self.is_sequence
+
+        if self.source_style == "polygons":
+            # from json annotation
+            pass
+        elif self.source_style == "color_map":
+            # from color_map image file
+            _label_option = {"root": _label_root.format(data_type), "is_sequence": _sq, "ext": self.label_ext}
+            _input_option = {"root": _input_root.format(data_type), "is_sequence": _sq, "ext": self.input_ext}
+
+            self.data_list = self.detector(**_input_option) if data_type == "test"\
+                else list(zip(self.detector(**_input_option), self.detector(**_label_option)))
 
 
 class CDnet(information_tool, data_tool):
     info_dict = {
         "original": [  # "id", "train_id", "categoryId", "hasInstances", "ignoreInEval", "color", "name"
-            label(0x00, 0x00, 0x01, 0x00, 0x00, [0x00, 0x00, 0x00], "Static"),
+            label(0x00, 0x00, 0x01, 0x00, 0x00, [0x10, 0x10, 0x10], "Static"),
             label(0x01, 0x00, 0x00, 0x00, 0x00, [0x32, 0x32, 0x32], "Hard shadow"),
             label(0x02, 0xFF, 0x00, 0x00, 0x01, [0x55, 0x55, 0x55], "Outside region of interest"),
             label(0x03, 0x01, 0x00, 0x00, 0x00, [0xAA, 0xAA, 0xAA], "Unknown motion"),
@@ -292,9 +288,9 @@ class CDnet(information_tool, data_tool):
         }
     }
 
-    def __init__(self, label_type, data_root, source_style) -> None:
-        information_tool.__init__(label_type)
-        data_tool.__init__(data_root, source_style)
+    def __init__(self, label_type, data_root, source_style, ignore_ids=None) -> None:
+        data_tool.__init__(self, data_root, source_style)
+        information_tool.__init__(self, label_type, ignore_ids)
 
     def get_matched_file_name(self, file_name):
         _file_name = _base.file._name_from_directory(file_name)
