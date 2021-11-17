@@ -117,17 +117,13 @@ class image_extention():
     def poly_points(pts):
         return np.round(pts).astype(np.int32)
 
-
-class tensor_extention():
-    # for data transformation
-    # classfication -> (class count, h, w)
+    # classfication -> (h, w, class count)
     # class map     -> (h, w)
     # color map     -> (h, w, 3)
     @staticmethod
-    def classfication_to_class_map(classfication, is_last_ch=False):
-        # classfication(class count, h, w) -> class map(h, w, 1)
-        if is_last_ch:
-            classfication = image_extention.conver_to_first_channel(classfication)
+    def classfication_to_class_map(classfication):
+        # classfication(h, w, class count) -> class map(h, w, 1)
+        classfication = image_extention.conver_to_first_channel(classfication)
         return np.argmax(classfication, axis=0)
 
     @staticmethod
@@ -135,31 +131,38 @@ class tensor_extention():
         # class map(h, w, 1) -> color map(h, w, 3)
         # if seted "N colors" in "one ID", pick first color in list
         color_list = np.array([x[0] for x in color_list])
-        return color_list[class_map]
+        return color_list[class_map].astype(np.uint8)
 
     @staticmethod
-    def color_map_to_classfication(color_map, color_list, is_last_ch=True):
-        # color map(h, w, 3) -> classfication(class count, h, w)
-        if not is_last_ch:
-            color_map = image_extention.conver_to_last_channel(color_map)
-
+    def color_map_to_classfication(color_map, color_list):
+        # color map(h, w, 3) -> classfication(h, w, class count)
         # make empty classfication
         _h, _w, _ = color_map.shape
-        _c = len(color_list)  # color list -> [class 0 color, class 1 color, ...]
-        classfication = image_extention.get_canvus([_c, _h, _w])
+        _c = len(color_list)  # color list -> [class 0 color, class 1 color, ... ignore color]
+        classfication = image_extention.get_canvus([_h, _w, _c])
 
         # color compare
         for _id in range(_c - 1):  # last channel : ignore
             _holder = []  # if seted "N colors" in "one ID", check all color
             for _color in color_list[_id]:
-                _compare = image_extention.conver_to_first_channel(color_map == _color)
-                _holder.append(np.logical_and(_compare[0], _compare[1], _compare[2]))
+                _holder.append(np.all((color_map == _color), 2))
 
-            classfication[_id] = np.sum(_holder, axis=0)
+            classfication[:, :, _id] = _holder[0].astype(int) if len(_holder) == 1\
+                else np.logical_or(*[data for data in _holder])
 
-        classfication[-1] = 1 - np.sum(classfication, axis=0)
-
+        # make ignore
+        classfication[:, :, -1] = 1 - np.sum(classfication, axis=2).astype(bool).astype(int)
         return classfication
+
+    @staticmethod
+    def classfication_resize(original, size):
+        _pos = np.where(original == 1)
+        _new_pos = [np.round((size[_ct] - 1) * _pos[_ct] / original.shape[_ct]).astype(int) for _ct in range(2)]
+
+        _new = image_extention.get_canvus(size + [original.shape[-1], ])
+        _new[_new_pos[0], _new_pos[1], _pos[-1]] = 1
+
+        return _new
 
     # @staticmethod
     # def classfication_to_class_map(classfication, is_last_ch=False):
