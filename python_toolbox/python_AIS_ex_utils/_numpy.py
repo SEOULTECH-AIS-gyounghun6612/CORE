@@ -156,11 +156,15 @@ class image_extention():
 
     @staticmethod
     def classfication_resize(original, size):
-        _pos = np.where(original == 1)
-        _new_pos = [np.round((size[_ct] - 1) * _pos[_ct] / original.shape[_ct]).astype(int) for _ct in range(2)]
-
         _new = image_extention.get_canvus(size + [original.shape[-1], ])
-        _new[_new_pos[0], _new_pos[1], _pos[-1]] = 1
+
+        _pos = np.where(original == 1)
+        _new_pos = []
+        for _ct in range(len(_pos) - 1):
+            _new_pos.append(np.round((size[_ct] - 1) * _pos[_ct] / original.shape[_ct]).astype(int))
+        _new_pos.append(_pos[-1])
+
+        _new[tuple(_new_pos)] = 1
 
         return _new
 
