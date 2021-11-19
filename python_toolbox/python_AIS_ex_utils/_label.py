@@ -137,8 +137,8 @@ class data_tool():
 
         self.source_style = source_style
 
-    def set_input_len(self):
-        self.input_len = len(self.data_list)
+    def get_data_len(self):
+        return len(self.data_list)
 
     def pick_data(self, item_num, shape):
         return self.make_data_from_list(self.data_list[item_num], shape)
