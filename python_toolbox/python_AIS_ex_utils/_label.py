@@ -303,5 +303,6 @@ class CDnet(information_tool, data_tool):
         pass
 
 
-def load_check():
-    print("!!! custom python module ais_utils _label load Success !!!")
+class COCO_style(information_tool, data_tool):
+    def __init__(self, label_type, ignore_ids=None) -> None:
+        super().__init__(label_type, ignore_ids=ignore_ids)
