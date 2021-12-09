@@ -1,4 +1,5 @@
 import numpy as np
+
 if __package__ == "":
     import _error as _e
 else:
@@ -24,10 +25,39 @@ class file():
 
 
 class base_process():
+    NP_type = {"uint8": np.uint8, "bool": np.bool8, "float32": np.float32}
+
     @staticmethod
     def type_converter(data, to_type):
-        if to_type == "uint8":
-            return data.astype(np.uint8)
+        return data.astype(base_process.NP_type[to_type]) if isinstance(to_type, str)\
+            else data.astype(to_type)
+
+    @staticmethod
+    def get_array(shape, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
+        """
+        Args:
+            shape       :
+            shape_sample:
+            dtype       :
+            value       :
+            norm_option : [mu, std]
+        """
+        _shape = shape_sample.shape if shape_sample is not None else shape
+        if norm_option is not None:  # get normal random
+            return norm_option[1] * np.random.randn(*_shape) + norm_option[0]
+
+        else:
+            if isinstance(value, list):  # random in range
+                array = np.random.rand(*_shape)
+                array = np.round(array) if dtype == "bool" else array * (max(value) - min(value)) + min(value)
+            else:
+                array = np.ones(_shape) * value
+
+            return base_process.type_converter(array, dtype)
+
+    @staticmethod
+    def range_cut(array, range_min, range_max):
+        return np.clip(array, range_min, range_max)
 
     @staticmethod
     def stack(data_list: list, channel=-1):
@@ -81,15 +111,17 @@ class operation():
 
 
 class image_extention():
-    @staticmethod
-    def get_canvus(size, sample=None, background_color=0):
-        canvus = np.ones(size) if sample is None else np.ones_like(sample)
-        if background_color in ["black", 0, [0, 0, 0]]:
-            return (canvus * 0).astype(np.uint8)
-        elif background_color in ["white", 255, [255, 255, 255]]:
-            return (canvus * 255).astype(np.uint8)
-        else:
-            return (canvus * background_color).astype(np.uint8)
+    color_name_dict = {"black": 0, "white": 255}
+
+    @classmethod
+    def get_canvus(self, size, sample=None, color=0):
+        if isinstance(color, list):
+            return base_process.stack([self.get_canvus(size, sample, value=_color) for _color in color])
+        elif isinstance(color, str):
+            _color = self.color_name_dict[color] if color in self.color_name_dict.keys() else 255
+            return base_process.get_array(size, sample, value=_color)
+        elif isinstance(color, int):
+            return base_process.get_array(size, sample, value=color)
 
     @staticmethod
     def conver_to_last_channel(image):
@@ -429,7 +461,3 @@ def Confusion_Matrix_to_value(TP, TN, FN, FP):
     fm = (2 * pre * re) / (pre + re) if pre + re else (2 * pre * re) / (pre + re + 0.00001)
 
     return pre, re, fm
-
-
-def load_check():
-    print("!!! custom python module ais_utils _numpy load Success !!!")
