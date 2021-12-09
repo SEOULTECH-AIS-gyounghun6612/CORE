@@ -24,36 +24,44 @@ class file():
             np.savez(save_dir, data=_array)
 
 
-class base_process():
+class base():
     NP_type = {"uint8": np.uint8, "bool": np.bool8, "float32": np.float32}
 
     @staticmethod
     def type_converter(data, to_type):
-        return data.astype(base_process.NP_type[to_type]) if isinstance(to_type, str)\
+        return data.astype(base.NP_type[to_type]) if isinstance(to_type, str)\
             else data.astype(to_type)
 
     @staticmethod
-    def get_array(shape, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
+    def get_array(sample, is_shape_sample=False, value=[0, 1], dtype="uint8", norm_option=None):
         """
         Args:
-            shape       :
+            sample       :
             shape_sample:
             dtype       :
             value       :
             norm_option : [mu, std]
         """
-        _shape = shape_sample.shape if shape_sample is not None else shape
-        if norm_option is not None:  # get normal random
-            return norm_option[1] * np.random.randn(*_shape) + norm_option[0]
+        if is_shape_sample:
+            # make array like sample's shape
+            _shape = sample.shape
 
-        else:
-            if isinstance(value, list):  # random in range
-                array = np.random.rand(*_shape)
-                array = np.round(array) if dtype == "bool" else array * (max(value) - min(value)) + min(value)
+            if norm_option is not None:  # get normal random
+                return norm_option[1] * np.random.randn(*_shape) + norm_option[0]
             else:
-                array = np.ones(_shape) * value
+                if isinstance(value, list):  # random in range
+                    array = np.random.rand(*_shape)
+                    if dtype in [bool, "bool"]:
+                        array = np.round(array)
+                    else:
+                        array = array * (max(value) - min(value)) + min(value)
+                else:
+                    array = np.ones(_shape) * value
 
-            return base_process.type_converter(array, dtype)
+                return base.type_converter(array, dtype)
+        else:
+            # make array from sample
+            return base.type_converter(np.array(sample), dtype)
 
     @staticmethod
     def range_cut(array, range_min, range_max):
@@ -116,12 +124,12 @@ class image_extention():
     @classmethod
     def get_canvus(self, size, sample=None, color=0):
         if isinstance(color, list):
-            return base_process.stack([self.get_canvus(size, sample, value=_color) for _color in color])
+            return base.stack([self.get_canvus(size, sample, value=_color) for _color in color])
         elif isinstance(color, str):
             _color = self.color_name_dict[color] if color in self.color_name_dict.keys() else 255
-            return base_process.get_array(size, sample, value=_color)
+            return base.get_array(size, sample, value=_color)
         elif isinstance(color, int):
-            return base_process.get_array(size, sample, value=color)
+            return base.get_array(size, sample, value=color)
 
     @staticmethod
     def conver_to_last_channel(image):
@@ -132,7 +140,7 @@ class image_extention():
         else:
             # else image
             divide_data = [image[ct] for ct in range(img_shape[0])]
-            return base_process.stack(divide_data)
+            return base.stack(divide_data)
 
     @staticmethod
     def conver_to_first_channel(image):
@@ -143,7 +151,7 @@ class image_extention():
         else:
             # else image
             divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
-            return base_process.stack(divide_data, 0)
+            return base.stack(divide_data, 0)
 
     @staticmethod
     def poly_points(pts):
@@ -307,7 +315,7 @@ class evaluation():
         line_label = np.reshape(label, -1)
         line_result = np.reshape(result, -1)
 
-        category_array_1d = base_process.bincount(line_label * class_num + line_result, class_num * class_num)
+        category_array_1d = base.bincount(line_label * class_num + line_result, class_num * class_num)
         category_array_2d = np.reshape(category_array_1d, (class_num, class_num))
 
         _inter = np.diag(category_array_2d)

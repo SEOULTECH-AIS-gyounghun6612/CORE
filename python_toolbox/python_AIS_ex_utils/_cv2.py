@@ -168,7 +168,7 @@ class base_process():
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoM:  # convert to [0.0, 1.0] -> [0, 255]
-                return _numpy.base_process.type_converter(image * self.M, "uint8")
+                return _numpy.base.type_converter(image * self.M, "uint8")
             else:
                 return image
         elif form_range == R_option.ZtoM:
@@ -224,7 +224,7 @@ class edge_process():
             holder = _numpy.image_extention.get_canvus(size=image.shape[:2])
             for _ch_ct in range(image.shape[-1]):
                 holder += edge_process.sobel(image[:, :, _ch_ct])
-            return _numpy.base_process.type_converter(holder >= 2, "uint8")
+            return _numpy.base.type_converter(holder >= 2, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
