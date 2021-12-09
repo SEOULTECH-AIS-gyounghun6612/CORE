@@ -1,7 +1,6 @@
-# Python ex module
+# Python EXTENTION utils in AIS
 
 Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈로 설치하기 용이하도록 구성한 레포지토리
-Repository organized by organizing frequently used functions in Python for easy installation as modules.
 
 ## Update plan
 
