@@ -1,11 +1,9 @@
-from torch import cuda
-from torch import cat, sum
-from torch import tensor, FloatTensor
+import torch
 from torch.nn import MSELoss, CrossEntropyLoss
 
-from python_ex import _base
-from python_ex import _numpy
-from python_ex import _error as _e
+from python_AIS_ex_utils import _base
+from python_AIS_ex_utils import _numpy
+# from python_AIS_ex_utils import _error as _e
 
 
 class setting():
@@ -13,18 +11,10 @@ class setting():
 
     @staticmethod
     def is_cuda():
-        return cuda.is_available()
+        return torch.cuda.is_available()
 
 
 class layer():
-    @staticmethod
-    def _concat(layers, dim=1):
-        return cat(layers, dim=1)
-
-    @staticmethod
-    def _flatten(data):
-        return data.view(data.size(0), -1)
-
     @staticmethod
     def get_conv_pad(kernel_size, input_size, interval=1, stride=1):
         if type(kernel_size) != list:
@@ -46,10 +36,26 @@ class layer():
         return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
 
 
-class _np():
+class tensor():
+    torch_type = {
+        "uint8": torch.uint8, "int32": torch.int32, "bool": torch.bool, "float32": torch.float32}
+
+    @classmethod
+    def from_numpy(self, np_array, type="float32"):
+        return torch.tensor(np_array, dtype=self.torch_type[type])
+
     @staticmethod
-    def to_tensor(array):
-        return FloatTensor(array)
+    def to_numpy(tensor, type=None):
+        return tensor.numpy()
+
+    @staticmethod
+    def make_tensor(size, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
+        _np_array = _numpy.base_process.get_array(size, shape_sample, norm_option, dtype, value)
+        return tensor.from_numpy(_np_array, dtype)
+
+    @staticmethod
+    def range_cut(tensor, range_min, rage_max):
+        return torch.clip(tensor, range_min, rage_max)
 
 
 class loss():
@@ -135,9 +141,8 @@ class log():
             "data": self.log_data}
         _base.file._json(save_dir, file_name, save_pakage, True)
 
-    def _plot(self):
+    def get_last_log(self):
         pass
 
-
-def load_check():
-    print("!!! _utils in custom torch utils load Success !!!")
+    def plot(self):
+        pass
