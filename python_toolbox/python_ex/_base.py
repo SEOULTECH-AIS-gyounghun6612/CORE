@@ -221,15 +221,14 @@ class file():
             return (dict)   :
         """
         # directory check
+        file_dir = directory._slash_check(file_dir)
         if not directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
                 _error.variable(
                     function_name="file.json_file",
                     variable_list=["file_dir", ],
-                    AA="Entered directory '{}' not exist. In first make that".format(file_dir)
-                ) if DEBUG else None
-
+                    AA="Entered directory '{}' not exist. In first make that".format(file_dir))
                 directory._make(file_dir)
 
             else:
@@ -241,27 +240,18 @@ class file():
                 )
 
         # file_name check
-        check_result, new_file_name = file._extension_check(file_name, ["json", ], True)
-        if not check_result:
-            # !!!WARING!!! extension not exist in file_name
-            _error.variable(
-                function_name="file.json_file",
-                variable_list=["file_name", ],
-                AA="Extension not exist in entered parameter 'file_name'."
-            ) if DEBUG else None
-            file_name = new_file_name
+        _, file_name = file._extension_check(file_name, ["json", ], True)
 
         # json file process load or save
-        _tmp_dir = file_dir + file_name
         if is_save:
             # json file save
-            _file = open(_tmp_dir, "w")
+            _file = open(file_dir + file_name, "w")
             json.dump(data_dict, _file, indent=4)
         else:
             # json file load
-            if directory._exist_check(_tmp_dir, True):
+            if directory._exist_check(file_dir + file_name, True):
                 # json file exist
-                _file = open(_tmp_dir, "r")
+                _file = open(file_dir + file_name, "r")
                 return json.load(_file)
 
             else:
@@ -269,8 +259,12 @@ class file():
                 _error.variable_stop(
                     function_name="file.json_file",
                     variable_list=["file_dir", "file_name"],
-                    AA="Load file '{}' not exist".format(_tmp_dir)
+                    AA="Load file '{}' not exist".format(file_dir + file_name)
                 )
+
+    @staticmethod
+    def _xml(file_dir, file_name, data_dict=None, is_save=False):
+        pass
 
     @staticmethod
     def _del():
@@ -279,6 +273,10 @@ class file():
     @staticmethod
     def _copy_to(dir, file):
         _error.not_yet("file._copy_to")
+
+
+class process_in_code():
+    pass
 
 
 class etc():

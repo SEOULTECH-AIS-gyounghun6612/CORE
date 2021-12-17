@@ -28,44 +28,71 @@ class base():
     NP_type = {"uint8": np.uint8, "bool": np.bool8, "float32": np.float32}
 
     @staticmethod
-    def type_converter(data, to_type):
-        return data.astype(base.NP_type[to_type]) if isinstance(to_type, str)\
-            else data.astype(to_type)
+    def get_array_from(sample, is_shape=False, value=0, dtype="uint8"):
+        _array = np.ones(sample) * value if is_shape else np.array(sample)
+        return base.type_converter(_array, dtype)
 
     @staticmethod
-    def get_array(sample, is_shape_sample=False, value=[0, 1], dtype="uint8", norm_option=None):
-        """
-        Args:
-            sample       :
-            shape_sample:
-            dtype       :
-            value       :
-            norm_option : [mu, std]
-        """
-        if is_shape_sample:
-            # make array like sample's shape
-            _shape = sample.shape
-
-            if norm_option is not None:  # get normal random
-                return norm_option[1] * np.random.randn(*_shape) + norm_option[0]
-            else:
-                if isinstance(value, list):  # random in range
-                    array = np.random.rand(*_shape)
-                    if dtype in [bool, "bool"]:
-                        array = np.round(array)
-                    else:
-                        array = array * (max(value) - min(value)) + min(value)
-                else:
-                    array = np.ones(_shape) * value
-
-                return base.type_converter(array, dtype)
+    def get_random_array(shape, range=[0, 1], norm_option=None, dtype="uint8"):
+        if norm_option is not None:  # get normal random
+            _array = norm_option[1] * np.random.randn(*shape) + norm_option[0]
         else:
-            # make array from sample
-            return base.type_converter(np.array(sample), dtype)
+            _array = np.random.rand(*shape)
+            _term = max(range) - min(range)
+            _min = min(range)
+
+            _array = (_array * _term) + _min
+
+        return base.type_converter(_array, dtype)
 
     @staticmethod
-    def range_cut(array, range_min, range_max):
-        return np.clip(array, range_min, range_max)
+    def normalization(array):
+        _m = np.mean(array)
+        _std = np.std(array)
+
+        return (base.type_converter(array, float) - _m) / _std
+
+    @staticmethod
+    def type_converter(data, to_type):
+        if to_type in ["uint", "uint8", np.uint8]:
+            _convert = data.astype(np.uint8)
+        elif to_type in ["int32", "int", int]:
+            _convert = data.astype(np.int32)
+        elif to_type in ["int64", ]:
+            _convert = data.astype(np.int64)
+        elif to_type in ["float32", "float", float]:
+            _convert = data.astype(np.float32)
+        elif to_type in ["float64", ]:
+            _convert = data.astype(np.float64)
+        elif to_type in ["bool", bool]:
+            _term = max(data) - min(data)
+            _convert = np.round(data / _term)
+            _convert = _convert.astype(np.bool8)
+        return _convert
+
+    @staticmethod
+    def value_cut(array, value_min, value_max):
+        return np.clip(array, value_min, value_max)
+
+    @staticmethod
+    def range_cut(array, cut_range=[-1, 1], direction="outside", ouput_type="active_map"):
+        under_thread = min(cut_range)
+        over_thread = max(cut_range)
+
+        if direction == "outside":
+            # --here-- under_thread --nope!-- over_thread --here--
+            under_cuted = (array <= under_thread)
+            over_cuted = (array >= over_thread)
+
+            output = np.logical_or(under_cuted, over_cuted)
+        else:
+            # --nope!-- under_thread --here-- over_thread --nope!--
+            under_cuted = (array >= under_thread)
+            over_cuted = (array <= over_thread)
+
+            output = np.logical_and(under_cuted, over_cuted)
+
+        return output if ouput_type == "active_map" else array * base.type_converter(output, int)
 
     @staticmethod
     def stack(data_list: list, channel=-1):
@@ -89,33 +116,10 @@ class base():
         return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
 
 
-class operation():
+class cal():
     @staticmethod
     def sqrt():
         pass
-
-    @staticmethod
-    def normal_cut(array, over_cut=1, under_cut=1, direction="outside", output_type="same"):
-        _m = np.mean(array)
-        _std = np.std(array)
-
-        normal = ((array / 1.) - _m) / _std
-
-        under_standard = -under_cut if under_cut >= 0 else 0
-        over_standard = over_cut if over_cut >= 0 else 0
-
-        if direction == "outside":
-            under_cuted = (normal <= under_standard)
-            over_cuted = (normal >= over_standard)
-
-            output = under_cuted + over_cuted
-        else:
-            under_cuted = (normal >= under_standard)
-            over_cuted = (normal <= over_standard)
-
-            output = under_cuted * over_cuted
-
-        return output.astype(array.dtype) if output_type == "same" else output
 
 
 class image_extention():
