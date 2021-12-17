@@ -9,7 +9,8 @@ setup(
     author_email="dev.gyounghun6612@gmail.com",
     packages=["python_ex"],
     zip_safe=False,
+    python_requires=">= 3.7.0",
     install_requires=[
-        'python >= 3.7.0', 'numpy', 'opencv-python'
+        'numpy', 'opencv-python'
     ]
 )
