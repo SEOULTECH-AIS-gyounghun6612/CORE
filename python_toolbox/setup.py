@@ -10,6 +10,6 @@ setup(
     packages=["python_ex"],
     zip_safe=False,
     install_requires=[
-        'python >= "3.7"', 'numpy', 'opencv-python'
+        'python >= "3.7.0"', 'numpy', 'opencv-python'
     ]
 )
