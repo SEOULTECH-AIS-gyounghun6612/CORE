@@ -12,6 +12,7 @@ Requirement
 # Import module
 import cv2
 import random
+from dataclasses import dataclass
 
 from enum import Enum
 
@@ -264,6 +265,12 @@ class gui_process():
 
 
 class draw():
+    @dataclass
+    class pen():
+        color: list = [255, 255, 255]
+        thickness: int = 1
+        style: str = "solid_line"
+
     @staticmethod
     def _padding(image, padding):
         # make holder -> in later add multi padding option
@@ -330,20 +337,21 @@ class draw():
 
     @staticmethod
     class canvas():
-        figures = None
+        background = None
 
-        draw_object = []
-        past_points = []  # [x, y]
+        object_list = []  #
+        past_points = []  # [point, point, point, point...]
         this_point = []  # [x, y]
 
-        draw_pen = {
-            "base_color": [0x00, 0x00, 0x00],
-            "draw_color": [0x00, 0x00, 0x00],
-            "thickness": 3,
-            "style": "solid_line"}
+        def __init__(self, size) -> None:
+            self.active_pen = draw.pen()
 
-        def clear_canvas(self, size, smaple=None, is_color="white"):
-            self.figures = _numpy.image_extention.get_canvus(size, smaple, is_color)
+        def set_pen(self):
+            pass
+
+        def clear_canvas(self, size, sample=None, is_color=0):
+            self.background = _numpy.base.get_array_from(size, True, is_color) if sample is not None \
+                else _numpy.base.get_array_from(sample, False, is_color)
 
         def set_draw_pen(self, base, color, thickness, style):
             self.draw_pen["base_color"] = base

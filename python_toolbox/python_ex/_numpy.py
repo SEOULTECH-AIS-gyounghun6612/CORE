@@ -9,6 +9,7 @@ _error_message = _e.Custom_error("AIS_utils", "_numpy")
 
 
 class file():
+    @staticmethod
     def save_numpy(save_dir, data):
         """
         Args:
@@ -22,6 +23,79 @@ class file():
             np.savez_compressed(save_dir, data=_array)
         else:
             np.savez(save_dir, data=_array)
+
+    @staticmethod
+    class RLE():
+        size_key = "size"
+        count_key = "counts"
+
+        @classmethod
+        def from_nparray(self, data, order='F'):
+            if data is not None:
+                _size = data.shape
+                _size = (int(_size[0]), int(_size[1]))
+
+                return_RLE = []
+                # zeros
+                if (data == np.zeros_like(data)).all():
+                    return_RLE.append(_size[0] * _size[1])
+                # ones
+                elif (data == np.ones_like(data)).all():
+                    return_RLE.append(0)
+                    return_RLE.append(_size[0] * _size[1])
+                # else
+                else:
+                    _line = data.reshape(_size[0] * _size[1], order=order)
+                    _count_list = []
+
+                    # in later add annotation
+                    for _type in range(2):
+                        _points = np.where(_line == _type)[0]
+                        _filter = _points[1:] - _points[:-1]
+                        _filter = _filter[np.where(_filter != 1)[0]]
+                        _count = _filter[np.where(_filter != 1)[0]] - 1
+
+                        if _points[0]:
+                            _count = np.append((_points[0], ), _count)
+                        _count_list.append(_count)
+
+                    _one_count, _zero_count = _count_list
+
+                    if _line[0]:
+                        _zero_count = np.append((0, ), _zero_count)
+
+                    for _ct in range(len(_one_count)):
+                        return_RLE.append(int(_zero_count[_ct]))
+                        return_RLE.append(int(_one_count[_ct]))
+
+                    _last_count = int(len(_line) - sum(return_RLE))
+                    return_RLE.append(_last_count)
+
+                return {self.size_key: _size, self.count_key: return_RLE}
+
+            else:
+                _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
+                return None
+
+        @classmethod
+        def to_nparray(self, data, order='F'):
+            if data is not None:
+                rle_data = data[self.count_key]
+                array = np.array([], dtype=np.uint8)
+                for _type, _count in enumerate(rle_data):
+                    value = _type % 2
+                    if value:
+                        _tmp = np.ones(_count, dtype=np.uint8)
+                    else:
+                        _tmp = np.zeros(_count, dtype=np.uint8)
+
+                    array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
+
+                array = np.reshape(array, data[self.size_key], order)
+                return array
+            else:
+                _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
+                return None
 
 
 class base():
@@ -99,21 +173,17 @@ class base():
         return np.stack(data_list, axis=channel)
 
     @staticmethod
-    def bincount(array_1D, max_length):
-        array_1D = np.round(array_1D)
-        holder = np.bincount(array_1D)
+    def bincount(array_1D, max_value):
+        array_1D = np.round(array_1D) * (array_1D >= 0)
+        holder = np.bincount(array_1D.reshape(-1))
 
-        if len(holder) < max_length:
-            count_list = np.zeros(max_length)
+        if len(holder) <= max_value:
+            count_list = np.zeros(max_value + 1)
             count_list[:len(holder)] = holder
         else:
-            count_list = holder[:max_length]
+            count_list = holder[:max_value]
 
         return count_list
-
-    @staticmethod
-    def string_to_img(string, h, w, c):
-        return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
 
 
 class cal():
@@ -123,18 +193,6 @@ class cal():
 
 
 class image_extention():
-    color_name_dict = {"black": 0, "white": 255}
-
-    @classmethod
-    def get_canvus(self, size, sample=None, color=0):
-        if isinstance(color, list):
-            return base.stack([self.get_canvus(size, sample, value=_color) for _color in color])
-        elif isinstance(color, str):
-            _color = self.color_name_dict[color] if color in self.color_name_dict.keys() else 255
-            return base.get_array(size, sample, value=_color)
-        elif isinstance(color, int):
-            return base.get_array(size, sample, value=color)
-
     @staticmethod
     def conver_to_last_channel(image):
         img_shape = image.shape
@@ -171,6 +229,14 @@ class image_extention():
         return np.argmax(classfication, axis=0)
 
     @staticmethod
+    def classfication_to_color_map(classfication, color_map):
+        pass
+
+    @staticmethod
+    def class_map_to_classfication(class_map):
+        pass
+
+    @staticmethod
     def class_map_to_color_map(class_map, color_list):
         # class map(h, w, 1) -> color map(h, w, 3)
         # if seted "N colors" in "one ID", pick first color in list
@@ -199,6 +265,10 @@ class image_extention():
         return classfication
 
     @staticmethod
+    def color_map_to_class_map(color_map, color_list):
+        pass
+
+    @staticmethod
     def classfication_resize(original, size):
         _new = image_extention.get_canvus(size + [original.shape[-1], ])
 
@@ -212,90 +282,9 @@ class image_extention():
 
         return _new
 
-    # @staticmethod
-    # def classfication_to_class_map(classfication, is_last_ch=False):
-    #     if 2 == len(classfication.shape):
-    #         _max = classfication.max() + 1
-    #         class_map = np.array([[np.eye(_max, _m)[0] for _m in _w] for _w in classfication], dtype=int)
-    #         if not is_last_ch:
-    #             class_map = image_extention.conver_to_first_channel(class_map)
-    #         return class_map
-
-    #     else:
-    #         return classfication
-
-
-class RLE():
-    size_key = "size"
-    count_key = "counts"
-
-    @classmethod
-    def from_nparray(self, data, order='F'):
-        if data is not None:
-            _size = data.shape
-            _size = (int(_size[0]), int(_size[1]))
-
-            return_RLE = []
-            # zeros
-            if (data == np.zeros_like(data)).all():
-                return_RLE.append(_size[0] * _size[1])
-            # ones
-            elif (data == np.ones_like(data)).all():
-                return_RLE.append(0)
-                return_RLE.append(_size[0] * _size[1])
-            # else
-            else:
-                _line = data.reshape(_size[0] * _size[1], order=order)
-                _count_list = []
-
-                # in later add annotation
-                for _type in range(2):
-                    _points = np.where(_line == _type)[0]
-                    _filter = _points[1:] - _points[:-1]
-                    _filter = _filter[np.where(_filter != 1)[0]]
-                    _count = _filter[np.where(_filter != 1)[0]] - 1
-
-                    if _points[0]:
-                        _count = np.append((_points[0], ), _count)
-                    _count_list.append(_count)
-
-                _one_count, _zero_count = _count_list
-
-                if _line[0]:
-                    _zero_count = np.append((0, ), _zero_count)
-
-                for _ct in range(len(_one_count)):
-                    return_RLE.append(int(_zero_count[_ct]))
-                    return_RLE.append(int(_one_count[_ct]))
-
-                _last_count = int(len(_line) - sum(return_RLE))
-                return_RLE.append(_last_count)
-
-            return {self.size_key: _size, self.count_key: return_RLE}
-
-        else:
-            _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
-            return None
-
-    @classmethod
-    def to_nparray(self, data, order='F'):
-        if data is not None:
-            rle_data = data[self.count_key]
-            array = np.array([], dtype=np.uint8)
-            for _type, _count in enumerate(rle_data):
-                value = _type % 2
-                if value:
-                    _tmp = np.ones(_count, dtype=np.uint8)
-                else:
-                    _tmp = np.zeros(_count, dtype=np.uint8)
-
-                array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
-
-            array = np.reshape(array, data[self.size_key], order)
-            return array
-        else:
-            _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
-            return None
+    @staticmethod
+    def string_to_img(string, h, w, c):
+        return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
 
 
 class evaluation():
@@ -384,6 +373,38 @@ class evaluation():
 
             return np.sqrt(np.sum(min_interval * min_interval)).item()
 
+    @staticmethod
+    class Confustion_Matrix():
+        def Calculate_Confusion_Matrix(array: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
+            """
+            Args:
+                array :
+                target : np.uint8 ndarray
+                interest :
+            Returns:
+                Confusion Matrix (list)
+            """
+            if interest is None:
+                interest = np.ones_like(array, np.uint8)
+            compare = (array == target).astype(np.uint8)
+
+            compare_255 = (compare * 254)  # collect is 254, not 0 -> Tx
+            inv_compare_255 = ((1 - compare) * 254)  # wrong is 254, not 0 -> Fx
+
+            tp = np.logical_and(compare_255, target.astype(bool))       # collect_FG
+            tn = np.logical_and(compare_255, ~(target.astype(bool)))    # collect_BG
+            fn = np.logical_and(inv_compare_255, target.astype(bool))     # wrong_BG
+            fp = np.logical_and(inv_compare_255, ~(target.astype(bool)))  # wrong_FG
+
+            return (tp * interest, tn * interest, fn * interest, fp * interest)
+
+        def Confusion_Matrix_to_value(TP, TN, FN, FP):
+            pre = TP / (TP + FP) if TP + FP else TP / (TP + FP + 0.00001)
+            re = TP / (TP + FN) if TP + FN else TP / (TP + FN + 0.00001)
+            fm = (2 * pre * re) / (pre + re) if pre + re else (2 * pre * re) / (pre + re + 0.00001)
+
+            return pre, re, fm
+
 
 # in later fix it
 # def Neighbor_Confusion_Matrix(
@@ -441,35 +462,3 @@ class evaluation():
 #     output.append(_nb_fp.astype(np.uint8))
 
 #     return output
-
-
-def Calculate_Confusion_Matrix(array: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
-    """
-    Args:
-        array :
-        target : np.uint8 ndarray
-        interest :
-    Returns:
-        Confusion Matrix (list)
-    """
-    if interest is None:
-        interest = np.ones_like(array, np.uint8)
-    compare = (array == target).astype(np.uint8)
-
-    compare_255 = (compare * 254)  # collect is 254, not 0 -> Tx
-    inv_compare_255 = ((1 - compare) * 254)  # wrong is 254, not 0 -> Fx
-
-    tp = np.logical_and(compare_255, target.astype(bool))       # collect_FG
-    tn = np.logical_and(compare_255, ~(target.astype(bool)))    # collect_BG
-    fn = np.logical_and(inv_compare_255, target.astype(bool))     # wrong_BG
-    fp = np.logical_and(inv_compare_255, ~(target.astype(bool)))  # wrong_FG
-
-    return (tp * interest, tn * interest, fn * interest, fp * interest)
-
-
-def Confusion_Matrix_to_value(TP, TN, FN, FP):
-    pre = TP / (TP + FP) if TP + FP else TP / (TP + FP + 0.00001)
-    re = TP / (TP + FN) if TP + FN else TP / (TP + FN + 0.00001)
-    fm = (2 * pre * re) / (pre + re) if pre + re else (2 * pre * re) / (pre + re + 0.00001)
-
-    return pre, re, fm
