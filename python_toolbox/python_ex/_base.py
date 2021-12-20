@@ -275,11 +275,7 @@ class file():
         _error.not_yet("file._copy_to")
 
 
-class process_in_code():
-    pass
-
-
-class etc():
+class process():
     @staticmethod
     def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
         """
@@ -302,6 +298,53 @@ class etc():
         # Print New Line on Complete
         if iteration == total:
             print()
+
+
+class tool_for():
+    @staticmethod
+    class _list():
+        @staticmethod
+        def is_num_over_range(target, obj_num):
+            """
+            Arg:\n
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if isinstance(obj_num, list):
+                _max = max(obj_num)
+            elif isinstance(obj_num, int):
+                _max = obj_num
+                obj_num = [obj_num, ]
+            elif isinstance(obj_num, range):
+                _max = max(obj_num)
+            else:
+                # !!!ERROR!!! wrong type entered
+                _error.data_type(
+                    function_name="tool.list_tool.is_num_over_range",
+                    variable_list=["obj_num", ],
+                    AA="Error in parameter 'obj_num'.\n \
+                        'obj_dirs' has unsuitable type data"
+                )
+                return True
+
+            return _max > (len(target) + 1)
+
+        @staticmethod
+        def del_obj(target, obj_num):
+            """
+            Arg:
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if isinstance(obj_num, (list, range)):
+                for _ct, _num in enumerate(obj_num):
+                    del target[_num - _ct]
+            elif isinstance(obj_num, int):
+                del target[obj_num]
+
+        @staticmethod
+        def clear_list(target):
+            del target[:]
 
 
 class server():
@@ -343,8 +386,3 @@ class server():
         elif directory.OS_THIS == directory.OS_UBUNTU:
             system("fuser -ck {}".format(mounted_dir))
             system("sudo umount {}".format(mounted_dir))
-
-
-# FUNCTION
-def load_check():
-    print("!!! custom python module ais_utils _base load Success !!!")
