@@ -215,10 +215,6 @@ class image_extention():
             divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
             return base.stack(divide_data, 0)
 
-    @staticmethod
-    def poly_points(pts):
-        return np.round(pts).astype(np.int32)
-
     # classfication -> (h, w, class count)
     # class map     -> (h, w)
     # color map     -> (h, w, 3)

@@ -269,7 +269,11 @@ class draw():
     class pen():
         color: list = [255, 255, 255]
         thickness: int = 1
-        style: str = "solid_line"
+
+    @dataclass
+    class point():
+        x: int = 0
+        y: int = 0
 
     @staticmethod
     def _padding(image, padding):
@@ -339,31 +343,36 @@ class draw():
     class canvas():
         background = None
 
-        object_list = []  #
-        past_points = []  # [point, point, point, point...]
-        this_point = []  # [x, y]
+        object_list = []  # draw object list
+        points = []  # [point, point, point, point...]
 
-        def __init__(self, size) -> None:
+        def __init__(self, size=None, sample=None) -> None:
             self.active_pen = draw.pen()
+            if size is not None or sample is not None:
+                self.set_canvas(size, sample, is_color=[255, 255, 255])
 
-        def set_pen(self):
-            pass
+        def set_pen(self, color, thickness=1):
+            self.active_pen.color = color
+            self.active_pen.thickness = thickness
 
-        def clear_canvas(self, size, sample=None, is_color=0):
+        def set_canvas(self, size, sample=None, is_color=0):
             self.background = _numpy.base.get_array_from(size, True, is_color) if sample is not None \
                 else _numpy.base.get_array_from(sample, False, is_color)
 
-        def set_draw_pen(self, base, color, thickness, style):
-            self.draw_pen["base_color"] = base
-            self.draw_pen["draw_color"] = color
-            self.draw_pen["thickness"] = thickness
-            self.draw_pen["style"] = style
-
-        def set_object(self, num):
+        def set_object(self):
             pass
 
-        def del_object(self, num):
-            pass
+        def del_object(self, obj_num):
+            """
+            Arg:\n
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if _base.tool_for._list.is_num_over_range(self.object_list, obj_num):
+                pass  # error : "obj_num" is over range in self object list
+
+            else:
+                _base.tool_for._list.del_obj(self.object_list, obj_num)
 
         def clear_object(self):
             pass
