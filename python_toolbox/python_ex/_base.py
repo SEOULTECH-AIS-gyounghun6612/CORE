@@ -221,15 +221,14 @@ class file():
             return (dict)   :
         """
         # directory check
+        file_dir = directory._slash_check(file_dir)
         if not directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
                 _error.variable(
                     function_name="file.json_file",
                     variable_list=["file_dir", ],
-                    AA="Entered directory '{}' not exist. In first make that".format(file_dir)
-                ) if DEBUG else None
-
+                    AA="Entered directory '{}' not exist. In first make that".format(file_dir))
                 directory._make(file_dir)
 
             else:
@@ -241,27 +240,18 @@ class file():
                 )
 
         # file_name check
-        check_result, new_file_name = file._extension_check(file_name, ["json", ], True)
-        if not check_result:
-            # !!!WARING!!! extension not exist in file_name
-            _error.variable(
-                function_name="file.json_file",
-                variable_list=["file_name", ],
-                AA="Extension not exist in entered parameter 'file_name'."
-            ) if DEBUG else None
-            file_name = new_file_name
+        _, file_name = file._extension_check(file_name, ["json", ], True)
 
         # json file process load or save
-        _tmp_dir = file_dir + file_name
         if is_save:
             # json file save
-            _file = open(_tmp_dir, "w")
+            _file = open(file_dir + file_name, "w")
             json.dump(data_dict, _file, indent=4)
         else:
             # json file load
-            if directory._exist_check(_tmp_dir, True):
+            if directory._exist_check(file_dir + file_name, True):
                 # json file exist
-                _file = open(_tmp_dir, "r")
+                _file = open(file_dir + file_name, "r")
                 return json.load(_file)
 
             else:
@@ -269,8 +259,12 @@ class file():
                 _error.variable_stop(
                     function_name="file.json_file",
                     variable_list=["file_dir", "file_name"],
-                    AA="Load file '{}' not exist".format(_tmp_dir)
+                    AA="Load file '{}' not exist".format(file_dir + file_name)
                 )
+
+    @staticmethod
+    def _xml(file_dir, file_name, data_dict=None, is_save=False):
+        pass
 
     @staticmethod
     def _del():
@@ -281,7 +275,7 @@ class file():
         _error.not_yet("file._copy_to")
 
 
-class etc():
+class process():
     @staticmethod
     def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
         """
@@ -304,6 +298,53 @@ class etc():
         # Print New Line on Complete
         if iteration == total:
             print()
+
+
+class tool_for():
+    @staticmethod
+    class _list():
+        @staticmethod
+        def is_num_over_range(target, obj_num):
+            """
+            Arg:\n
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if isinstance(obj_num, list):
+                _max = max(obj_num)
+            elif isinstance(obj_num, int):
+                _max = obj_num
+                obj_num = [obj_num, ]
+            elif isinstance(obj_num, range):
+                _max = max(obj_num)
+            else:
+                # !!!ERROR!!! wrong type entered
+                _error.data_type(
+                    function_name="tool.list_tool.is_num_over_range",
+                    variable_list=["obj_num", ],
+                    AA="Error in parameter 'obj_num'.\n \
+                        'obj_dirs' has unsuitable type data"
+                )
+                return True
+
+            return _max > (len(target) + 1)
+
+        @staticmethod
+        def del_obj(target, obj_num):
+            """
+            Arg:
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if isinstance(obj_num, (list, range)):
+                for _ct, _num in enumerate(obj_num):
+                    del target[_num - _ct]
+            elif isinstance(obj_num, int):
+                del target[obj_num]
+
+        @staticmethod
+        def clear_list(target):
+            del target[:]
 
 
 class server():
@@ -345,8 +386,3 @@ class server():
         elif directory.OS_THIS == directory.OS_UBUNTU:
             system("fuser -ck {}".format(mounted_dir))
             system("sudo umount {}".format(mounted_dir))
-
-
-# FUNCTION
-def load_check():
-    print("!!! custom python module ais_utils _base load Success !!!")

@@ -1,4 +1,4 @@
-from ais_utils import _cv2
+from python_ex import _cv2
 
 
 class canny_processed(_cv2.image_process):

@@ -12,6 +12,7 @@ Requirement
 # Import module
 import cv2
 import random
+from dataclasses import dataclass
 
 from enum import Enum
 
@@ -168,7 +169,7 @@ class base_process():
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoM:  # convert to [0.0, 1.0] -> [0, 255]
-                return _numpy.base_process.type_converter(image * self.M, "uint8")
+                return _numpy.base.type_converter(image * self.M, "uint8")
             else:
                 return image
         elif form_range == R_option.ZtoM:
@@ -224,7 +225,7 @@ class edge_process():
             holder = _numpy.image_extention.get_canvus(size=image.shape[:2])
             for _ch_ct in range(image.shape[-1]):
                 holder += edge_process.sobel(image[:, :, _ch_ct])
-            return _numpy.base_process.type_converter(holder >= 2, "uint8")
+            return _numpy.base.type_converter(holder >= 2, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
@@ -264,6 +265,16 @@ class gui_process():
 
 
 class draw():
+    @dataclass
+    class pen():
+        color: list = [255, 255, 255]
+        thickness: int = 1
+
+    @dataclass
+    class point():
+        x: int = 0
+        y: int = 0
+
     @staticmethod
     def _padding(image, padding):
         # make holder -> in later add multi padding option
@@ -330,32 +341,38 @@ class draw():
 
     @staticmethod
     class canvas():
-        figures = None
+        background = None
 
-        draw_object = []
-        past_points = []  # [x, y]
-        this_point = []  # [x, y]
+        object_list = []  # draw object list
+        points = []  # [point, point, point, point...]
 
-        draw_pen = {
-            "base_color": [0x00, 0x00, 0x00],
-            "draw_color": [0x00, 0x00, 0x00],
-            "thickness": 3,
-            "style": "solid_line"}
+        def __init__(self, size=None, sample=None) -> None:
+            self.active_pen = draw.pen()
+            if size is not None or sample is not None:
+                self.set_canvas(size, sample, is_color=[255, 255, 255])
 
-        def clear_canvas(self, size, smaple=None, is_color="white"):
-            self.figures = _numpy.image_extention.get_canvus(size, smaple, is_color)
+        def set_pen(self, color, thickness=1):
+            self.active_pen.color = color
+            self.active_pen.thickness = thickness
 
-        def set_draw_pen(self, base, color, thickness, style):
-            self.draw_pen["base_color"] = base
-            self.draw_pen["draw_color"] = color
-            self.draw_pen["thickness"] = thickness
-            self.draw_pen["style"] = style
+        def set_canvas(self, size, sample=None, is_color=0):
+            self.background = _numpy.base.get_array_from(size, True, is_color) if sample is not None \
+                else _numpy.base.get_array_from(sample, False, is_color)
 
-        def set_object(self, num):
+        def set_object(self):
             pass
 
-        def del_object(self, num):
-            pass
+        def del_object(self, obj_num):
+            """
+            Arg:\n
+                target (list) : \n
+                obj_num (int, list[int], range) : \n
+            """
+            if _base.tool_for._list.is_num_over_range(self.object_list, obj_num):
+                pass  # error : "obj_num" is over range in self object list
+
+            else:
+                _base.tool_for._list.del_obj(self.object_list, obj_num)
 
         def clear_object(self):
             pass
