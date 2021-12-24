@@ -275,7 +275,7 @@ class file():
         _error.not_yet("file._copy_to")
 
 
-class process():
+class utils():
     @staticmethod
     def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
         """
