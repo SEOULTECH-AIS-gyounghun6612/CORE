@@ -192,7 +192,7 @@ class cal():
         pass
 
 
-class image_extention():
+class image():
     @staticmethod
     def conver_to_last_channel(image):
         img_shape = image.shape
@@ -221,7 +221,7 @@ class image_extention():
     @staticmethod
     def classfication_to_class_map(classfication):
         # classfication(h, w, class count) -> class map(h, w, 1)
-        classfication = image_extention.conver_to_first_channel(classfication)
+        classfication = image.conver_to_first_channel(classfication)
         return np.argmax(classfication, axis=0)
 
     @staticmethod
@@ -245,7 +245,7 @@ class image_extention():
         # make empty classfication
         _h, _w, _ = color_map.shape
         _c = len(color_list)  # color list -> [class 0 color, class 1 color, ... ignore color]
-        classfication = image_extention.get_canvus([_h, _w, _c])
+        classfication = image.get_canvus([_h, _w, _c])
 
         # color compare
         for _id in range(_c - 1):  # last channel : ignore
@@ -266,7 +266,7 @@ class image_extention():
 
     @staticmethod
     def classfication_resize(original, size):
-        _new = image_extention.get_canvus(size + [original.shape[-1], ])
+        _new = image.get_canvus(size + [original.shape[-1], ])
 
         _pos = np.where(original == 1)
         _new_pos = []
