@@ -12,7 +12,7 @@ Requirement
 # Import module
 import cv2
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from enum import Enum
 
@@ -276,7 +276,7 @@ class gui_process():
 class draw():
     @dataclass
     class pen():
-        color: list = [255, 255, 255]
+        color: list = field(default_factory=list, default=[255, 255, 255])
         thickness: int = 1
 
     @dataclass
@@ -427,7 +427,3 @@ class augmentation():
 
     def image_augmentation():
         pass
-
-
-def load_check():
-    print("!!! custom python module ais_utils _cv2 load Success !!!")
