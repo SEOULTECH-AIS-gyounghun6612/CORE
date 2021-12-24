@@ -249,7 +249,7 @@ class edge():
 
         canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
         if channel is not None:
-            canny_image = base([canny_image, canny_image, canny_image], channel)
+            canny_image = base.image_stack([canny_image, canny_image, canny_image], channel)
 
         return base.range_converter(canny_image, R_option.ZtoM, range)
 
