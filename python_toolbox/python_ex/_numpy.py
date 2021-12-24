@@ -245,7 +245,7 @@ class image():
         # make empty classfication
         _h, _w, _ = color_map.shape
         _c = len(color_list)  # color list -> [class 0 color, class 1 color, ... ignore color]
-        classfication = image.get_canvus([_h, _w, _c])
+        classfication = base.get_array_from([_h, _w, _c], True)
 
         # color compare
         for _id in range(_c - 1):  # last channel : ignore
@@ -266,7 +266,7 @@ class image():
 
     @staticmethod
     def classfication_resize(original, size):
-        _new = image.get_canvus(size + [original.shape[-1], ])
+        _new = base.get_array_from(size + [original.shape[-1], ], True)
 
         _pos = np.where(original == 1)
         _new_pos = []
