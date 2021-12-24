@@ -325,10 +325,13 @@ class evaluation():
 
     @staticmethod
     class baddeley():
-        def __call__(self, image, target, p) -> float:
-            self.get_value(image, target, p)
+        def __init__(self, p) -> None:
+            self.p = p
 
-        def get_value(self, image, target, p):
+        def __call__(self, image, target) -> float:
+            self.get_value(image, target)
+
+        def get_value(self, image, target):
             c = np.sqrt(target.shape * target.shape).item()
             N = target.shape[0] * target.shape[1]
 
@@ -350,7 +353,7 @@ class evaluation():
 
             # cal |w(d(x, A))-w(d(x, B))|
             tmp_holder = np.abs(compare_target_list - compare_image_list)
-            return (np.sum(np.power(tmp_holder, p)) / N) ** (1.0 / float(p))
+            return (np.sum(np.power(tmp_holder, self.p)) / N) ** (1.0 / float(self.p))
 
         @staticmethod
         def get_edge_points(image):
