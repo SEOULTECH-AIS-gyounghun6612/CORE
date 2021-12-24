@@ -132,15 +132,23 @@ class file():
 
 
 # extention about image process
-class base_process():
+class base():
     M = 255
+
+    @staticmethod
+    def image_stack(images, channel_option: C_position):
+        if channel_option:  # stack to last channel
+            _axis = -1
+        else:               # stack to first channel
+            _axis = 0
+        return _numpy.base.stack(images, _axis)
 
     @staticmethod
     def channel_converter(image, channel_option: C_position):
         if channel_option.value:  # [w, h, c]
-            return _numpy.image_extention.conver_to_last_channel(image)
+            return _numpy.image.conver_to_last_channel(image)
         else:  # [c, w, h]
-            return _numpy.image_extention.conver_to_first_channel(image)
+            return _numpy.image.conver_to_first_channel(image)
 
     @staticmethod
     def resize(image, size: list):
@@ -179,21 +187,21 @@ class base_process():
                 return image
 
     @staticmethod
-    def img_cvt(img, cvt_option: CVT_option):
+    def img_cvt(image, cvt_option: CVT_option):
         if cvt_option == CVT_option.GRAY2BGR:
-            return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         elif cvt_option == CVT_option.BGR2GRAY:
-            return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         elif cvt_option == CVT_option.BGR2RGB:
-            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     @staticmethod
-    def filtering(image, array):
+    def filtering(image: _numpy.np.ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.image_extention.get_canvus(size=None, sample=image)
+            holder = _numpy.base.get_array_from(image)
             for _ch_ct in range(image.shape[-1]):
-                holder[:, :, _ch_ct] = base_process.filtering(image[:, :, _ch_ct], array)
+                holder[:, :, _ch_ct] = base.filtering(image[:, :, _ch_ct], array)
             return holder
         else:
             return cv2.filter2D(image, -1, array)
@@ -217,20 +225,22 @@ class base_process():
                 return cv2.bilateralFilter(image, **self.default[style])
 
 
-class edge_process():
+class edge():
     @staticmethod
-    def sobel(image, threshold=1):
+    def sobel(image: _numpy.np.ndarray, threshold=1):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.image_extention.get_canvus(size=image.shape[:2])
+            holder = _numpy.base.get_array_from(image.shape[:2], True)
             for _ch_ct in range(image.shape[-1]):
-                holder += edge_process.sobel(image[:, :, _ch_ct])
+                holder += edge.sobel(image[:, :, _ch_ct])
             return _numpy.base.type_converter(holder >= 2, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
-            return _numpy.operation.normal_cut(cv2.addWeighted(dx, 0.5, dy, 0.5, 0), threshold, threshold)
+            dxy = cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
+
+            return _numpy.base.range_cut(_numpy.base.normalization(dxy), [-threshold, threshold])
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoM, channel=C_position.Last):
@@ -238,11 +248,10 @@ class edge_process():
         _low = ths[1]
 
         canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
-        canny_image = _numpy.image_extention.stack_image(
-            [canny_image, canny_image, canny_image],
-            channel.value)
+        if channel is not None:
+            canny_image = base([canny_image, canny_image, canny_image], channel)
 
-        return base_process.range_converter(canny_image, R_option.ZtoM, range)
+        return base.range_converter(canny_image, R_option.ZtoM, range)
 
 
 class gui_process():
@@ -276,7 +285,7 @@ class draw():
         y: int = 0
 
     @staticmethod
-    def _padding(image, padding):
+    def _padding(image: _numpy.np.ndarray, padding):
         # make holder -> in later add multi padding option
         if isinstance(padding, int):
             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
@@ -295,7 +304,7 @@ class draw():
             _h, _w = image.shape
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
-        _holder = _numpy.image_extention.get_canvus(_holder_shape)
+        _holder = _numpy.base.get_array_from(_holder_shape, True)
         _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
 
         return _holder
@@ -333,7 +342,7 @@ class draw():
 
     @staticmethod
     def _polygon(image, pts, thick, color, is_close=True):
-        pts = _numpy.image_extention.poly_points(pts)
+        pts = _numpy.image.poly_points(pts)
         if thick == -1:
             return cv2.fillConvexPoly(image, pts, color)
         else:

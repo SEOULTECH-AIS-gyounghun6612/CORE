@@ -192,7 +192,7 @@ class cal():
         pass
 
 
-class image_extention():
+class image():
     @staticmethod
     def conver_to_last_channel(image):
         img_shape = image.shape
@@ -221,7 +221,7 @@ class image_extention():
     @staticmethod
     def classfication_to_class_map(classfication):
         # classfication(h, w, class count) -> class map(h, w, 1)
-        classfication = image_extention.conver_to_first_channel(classfication)
+        classfication = image.conver_to_first_channel(classfication)
         return np.argmax(classfication, axis=0)
 
     @staticmethod
@@ -245,7 +245,7 @@ class image_extention():
         # make empty classfication
         _h, _w, _ = color_map.shape
         _c = len(color_list)  # color list -> [class 0 color, class 1 color, ... ignore color]
-        classfication = image_extention.get_canvus([_h, _w, _c])
+        classfication = base.get_array_from([_h, _w, _c], True)
 
         # color compare
         for _id in range(_c - 1):  # last channel : ignore
@@ -266,7 +266,7 @@ class image_extention():
 
     @staticmethod
     def classfication_resize(original, size):
-        _new = image_extention.get_canvus(size + [original.shape[-1], ])
+        _new = base.get_array_from(size + [original.shape[-1], ], True)
 
         _pos = np.where(original == 1)
         _new_pos = []
@@ -325,10 +325,13 @@ class evaluation():
 
     @staticmethod
     class baddeley():
-        def __call__(self, image, target, p) -> float:
-            self.get_value(image, target, p)
+        def __init__(self, p) -> None:
+            self.p = p
 
-        def get_value(self, image, target, p):
+        def __call__(self, image, target) -> float:
+            self.get_value(image, target)
+
+        def get_value(self, image, target):
             c = np.sqrt(target.shape * target.shape).item()
             N = target.shape[0] * target.shape[1]
 
@@ -350,7 +353,7 @@ class evaluation():
 
             # cal |w(d(x, A))-w(d(x, B))|
             tmp_holder = np.abs(compare_target_list - compare_image_list)
-            return (np.sum(np.power(tmp_holder, p)) / N) ** (1.0 / float(p))
+            return (np.sum(np.power(tmp_holder, self.p)) / N) ** (1.0 / float(self.p))
 
         @staticmethod
         def get_edge_points(image):

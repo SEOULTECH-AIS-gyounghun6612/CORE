@@ -112,13 +112,13 @@ class label_tool():
         return _color_list
 
     def get_color_map_from(self, class_map):
-        return _numpy.image_extention.class_map_to_color_map(class_map, self.get_color_list())
+        return _numpy.image.class_map_to_color_map(class_map, self.get_color_list())
 
     def get_classfication_from(self, color_map, is_last_ch=True):
-        return _numpy.image_extention.color_map_to_classfication(color_map, self.get_color_list())
+        return _numpy.image.color_map_to_classfication(color_map, self.get_color_list())
 
     def get_class_map_from(self, classfication, is_last_ch=False):
-        return _numpy.image_extention.classfication_to_class_map(classfication)
+        return _numpy.image.classfication_to_class_map(classfication)
 
 
 class file_tool():
@@ -247,10 +247,10 @@ class BDD_100K(label_tool, file_tool):
                 pass
             elif isinstance(pick_data, tuple):  # train, validation
                 input_array = _cv2.file.image_read(pick_data[0], _cv2.Color_option.BGR)
-                input_array = _cv2.base_process.resize(input_array, shape)
+                input_array = _cv2.base.resize(input_array, shape)
                 label_array = _cv2.file.image_read(pick_data[1], _cv2.Color_option.BGR)
                 label_array = self.get_classfication_from(label_array)
-                label_array = _numpy.image_extention.classfication_resize(label_array, shape)
+                label_array = _numpy.image.classfication_resize(label_array, shape)
 
                 return input_array, label_array
 
