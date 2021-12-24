@@ -276,7 +276,7 @@ class gui_process():
 class draw():
     @dataclass
     class pen():
-        color: list = field(default_factory=list, default=[255, 255, 255])
+        color: list = field(default=[255, 255, 255])
         thickness: int = 1
 
     @dataclass
