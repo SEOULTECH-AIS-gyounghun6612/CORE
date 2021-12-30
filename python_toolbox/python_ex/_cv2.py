@@ -137,7 +137,7 @@ class base():
 
     @staticmethod
     def image_stack(images, channel_option: C_position):
-        if channel_option:  # stack to last channel
+        if channel_option.value:  # stack to last channel
             _axis = -1
         else:               # stack to first channel
             _axis = 0
