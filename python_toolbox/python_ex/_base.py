@@ -13,6 +13,8 @@ import platform
 
 from glob import glob
 from os import path, system, getcwd, mkdir
+from typing import List, Dict
+
 
 if __package__ == "":
     # if this file in local project
@@ -339,6 +341,53 @@ class utils():
         # Print New Line on Complete
         if iteration == total:
             print()
+
+    class log():
+        log_holder: Dict = {}
+
+        def __init__(self, names: List[Dict or str]) -> None:
+            """
+            """
+            self.set_log_holder(names)
+
+        def set_log_holder(self, structure: List, root: dict = None):
+            _root = self.log_holder if root is None else root
+
+            # structure -> List[str or dict]; dict => {str: List[str or dict]}
+            for _comp in structure:
+                if isinstance(_comp, dict):   # _comp is {str: List[str or dict]}
+                    for _rt_name in _comp.keys():
+                        _root[_rt_name] = {}
+                        self.set_log_holder(_comp[_rt_name], _root[_rt_name])
+                elif isinstance(_comp, str):   # _comp is str
+                    _root[_comp] = []
+
+        def update(self, data: Dict, holder: dict = None):
+            _holder = self.log_holder if holder is None else holder
+
+            # data -> dict; dict => {str: dict or list[float] or float}
+            for _rt_name in data.keys():
+                if _rt_name in _holder.keys():
+                    _pick = data[_rt_name]  # _pick => List[float] or dict
+
+                    if isinstance(_pick, dict):  # go to low classfication
+                        self.update(_pick, _holder[_rt_name])
+                    elif isinstance(_pick, list):  # log update
+                        _holder[_rt_name] += _pick
+                    else:  # log update
+                        _holder[_rt_name].append(_pick)
+
+        def log_save(self, log_info, save_dir, file_name="log.json"):
+            save_pakage = {
+                "info": log_info,
+                "data": self.log_holder}
+            file._json(save_dir, file_name, save_pakage, True)
+
+        def get_last_log(self):
+            pass
+
+        def plot(self):
+            pass
 
 
 class tool_for():
