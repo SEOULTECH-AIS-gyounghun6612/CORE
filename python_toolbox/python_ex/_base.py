@@ -384,8 +384,8 @@ class utils():
                 "data": self.log_holder}
             file._json(save_dir, file_name, save_pakage, True)
 
-        def set_log_info(self, info: Dict[str, Any]):
-            self.log_info = info
+        def add_log_info(self, key: str, value: Any):
+            self.log_info[key] = value
 
         def plot(self):
             pass
