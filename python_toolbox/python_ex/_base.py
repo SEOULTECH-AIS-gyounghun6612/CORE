@@ -13,7 +13,7 @@ import platform
 
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import List, Dict
+from typing import Any, List, Dict
 
 
 if __package__ == "":
@@ -342,6 +342,7 @@ class utils():
             print()
 
     class log():
+        log_info: Dict[str, Dict] = {}
         log_holder: Dict[str, List] = {}
 
         def __init__(self, parameters: List[Dict or str]) -> None:
@@ -377,14 +378,14 @@ class utils():
                     else:  # _pick is float; log update
                         _holder[_rt_name].append(_pick)
 
-        def log_save(self, log_info, save_dir, file_name="log.json"):
+        def log_save(self, save_dir, file_name="log.json"):
             save_pakage = {
-                "info": log_info,
+                "info": self.log_info,
                 "data": self.log_holder}
             file._json(save_dir, file_name, save_pakage, True)
 
-        def get_last_log(self):
-            pass
+        def set_log_info(self, info: Dict[str, Any]):
+            self.log_info = info
 
         def plot(self):
             pass
