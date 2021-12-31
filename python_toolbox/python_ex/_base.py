@@ -345,22 +345,22 @@ class utils():
     class log():
         log_holder: Dict[str, List] = {}
 
-        def __init__(self, names: List[Dict or str]) -> None:
+        def __init__(self, parameters: List[Dict or str]) -> None:
             """
             """
-            self.set_log_holder(names)
+            self.set_log_holder(parameters)
 
-        def set_log_holder(self, structure: List, root: dict = None):
+        def set_log_holder(self, parameters: List, root: dict = None):
             _root = self.log_holder if root is None else root
 
-            # structure -> List[str or dict]; dict => Dict[str, List[str or dict]]
-            for _comp in structure:
-                if isinstance(_comp, dict):   # _comp is Dict[str, List[str or dict]]
-                    for _rt_name in _comp.keys():
+            # parameters -> List[str or dict]; dict => Dict[str, List[str or dict]]
+            for _parameter in parameters:
+                if isinstance(_parameter, dict):   # _parameter is Dict[str, List[str or dict]]
+                    for _rt_name in _parameter.keys():
                         _root[_rt_name] = {}
-                        self.set_log_holder(_comp[_rt_name], _root[_rt_name])
-                elif isinstance(_comp, str):   # _comp is str
-                    _root[_comp] = []
+                        self.set_log_holder(_parameter[_rt_name], _root[_rt_name])
+                elif isinstance(_parameter, str):   # _parameter is str
+                    _root[_parameter] = []
 
         def update(self, data: Dict, holder: dict = None):
             _holder = self.log_holder if holder is None else holder
