@@ -10,6 +10,7 @@ Requirement
 # Import module
 import json
 import platform
+import time
 
 from glob import glob
 from os import path, system, getcwd, mkdir
@@ -340,6 +341,10 @@ class utils():
         # Print New Line on Complete
         if iteration == total:
             print()
+
+    @staticmethod
+    def time_stemp(is_text=False):
+        return time.localtime() if is_text else time.time()
 
     class log():
         log_info: Dict[str, Dict] = {}
