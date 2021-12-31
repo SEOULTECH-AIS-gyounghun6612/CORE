@@ -174,7 +174,6 @@ class directory():
     def _copy():
         _error.not_yet("directory._copy")
 
-    @staticmethod
     class server():
         @staticmethod
         def local_connect(loacal_ip, user_id, password, root_dir, mount_dir, is_container=False):
@@ -392,7 +391,6 @@ class utils():
 
 
 class tool_for():
-    @staticmethod
     class _list():
         @staticmethod
         def is_num_over_range(target, obj_num):

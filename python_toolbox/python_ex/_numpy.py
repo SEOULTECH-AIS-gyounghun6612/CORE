@@ -24,7 +24,6 @@ class file():
         else:
             np.savez(save_dir, data=_array)
 
-    @staticmethod
     class RLE():
         size_key = "size"
         count_key = "counts"
@@ -284,7 +283,6 @@ class image():
 
 
 class evaluation():
-    @staticmethod
     class IoU():
         def __init__(self, class_num):
             self.class_num = class_num
@@ -323,7 +321,6 @@ class evaluation():
         iou = evaluation.iou(result, label, class_num)
         return np.mean(iou)
 
-    @staticmethod
     class baddeley():
         def __init__(self, p) -> None:
             self.p = p
@@ -372,7 +369,6 @@ class evaluation():
 
             return np.sqrt(np.sum(min_interval * min_interval)).item()
 
-    @staticmethod
     class Confustion_Matrix():
         def Calculate_Confusion_Matrix(array: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
             """

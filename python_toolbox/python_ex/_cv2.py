@@ -348,7 +348,6 @@ class draw():
         else:
             return cv2.polylines(image, pts, is_close, color, thick)
 
-    @staticmethod
     class canvas():
         background = None
 
