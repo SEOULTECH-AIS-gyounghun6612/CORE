@@ -347,6 +347,7 @@ class utils():
 
         def __init__(self, parameters: List[Dict or str]) -> None:
             """
+            parameters: logging parameters => List[Dict[str, List[Dict[...] or str]] or str]
             """
             self.set_log_holder(parameters)
 
