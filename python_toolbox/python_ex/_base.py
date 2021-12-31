@@ -343,7 +343,7 @@ class utils():
             print()
 
     class log():
-        log_holder: Dict = {}
+        log_holder: Dict[str, List] = {}
 
         def __init__(self, names: List[Dict or str]) -> None:
             """
@@ -353,9 +353,9 @@ class utils():
         def set_log_holder(self, structure: List, root: dict = None):
             _root = self.log_holder if root is None else root
 
-            # structure -> List[str or dict]; dict => {str: List[str or dict]}
+            # structure -> List[str or dict]; dict => Dict[str, List[str or dict]]
             for _comp in structure:
-                if isinstance(_comp, dict):   # _comp is {str: List[str or dict]}
+                if isinstance(_comp, dict):   # _comp is Dict[str, List[str or dict]]
                     for _rt_name in _comp.keys():
                         _root[_rt_name] = {}
                         self.set_log_holder(_comp[_rt_name], _root[_rt_name])
@@ -365,16 +365,16 @@ class utils():
         def update(self, data: Dict, holder: dict = None):
             _holder = self.log_holder if holder is None else holder
 
-            # data -> dict; dict => {str: dict or list[float] or float}
+            # data -> dict; dict => Dict[str, dict or List[float] or float]
             for _rt_name in data.keys():
                 if _rt_name in _holder.keys():
-                    _pick = data[_rt_name]  # _pick => List[float] or dict
+                    _pick = data[_rt_name]  # _pick => dict or List[float] or float
 
-                    if isinstance(_pick, dict):  # go to low classfication
+                    if isinstance(_pick, dict):  # _pick is dict; go to low classfication
                         self.update(_pick, _holder[_rt_name])
-                    elif isinstance(_pick, list):  # log update
+                    elif isinstance(_pick, list):  # _pick is List[float]; log update
                         _holder[_rt_name] += _pick
-                    else:  # log update
+                    else:  # _pick is float; log update
                         _holder[_rt_name].append(_pick)
 
         def log_save(self, log_info, save_dir, file_name="log.json"):
