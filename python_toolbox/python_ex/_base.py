@@ -99,7 +99,7 @@ class directory():
 
     @classmethod
     def _make_for_result(self, root_dir: str = None):
-        return self._make(f"./result/{utils.time_stemp(True)}/", root_dir)
+        return self._make(f"result/{utils.time_stemp(True)}/", root_dir)
 
     @classmethod
     def _inside_search(self, searched_dir: str, search_option="file", name="*", ext="*"):
