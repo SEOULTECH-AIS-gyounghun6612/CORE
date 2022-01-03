@@ -55,8 +55,8 @@ class directory():
         return directory
 
     @classmethod
-    def _exist_check(self, directory: str, is_file: bool = False) -> bool:
-        return path.isfile(directory) if is_file else path.isdir(directory)
+    def _exist_check(self, directory: str) -> bool:
+        return path.isdir(directory)
 
     @classmethod
     def _devide(self, directory: str, point: int = -1) -> List[str]:
@@ -117,7 +117,7 @@ class directory():
             search_list = [data for data in search_list if self._exist_check(data)]
 
         elif search_option == "file":
-            search_list = [data for data in search_list if self._exist_check(data, True)]
+            search_list = [data for data in search_list if file._exist_check(data)]
 
         return sorted(search_list)
 
@@ -189,7 +189,7 @@ class directory():
 class file():
     @classmethod
     def _exist_check(self, file_path: str) -> bool:
-        return path.isdir(file_path)
+        return path.isfile(file_path)
 
     @classmethod
     def _name_from_path(self, file_path: str) -> str:

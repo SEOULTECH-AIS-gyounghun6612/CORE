@@ -62,7 +62,7 @@ class file():
 
     @classmethod
     def image_read(self, filename: str, color_option: Color_option):
-        if not _base.directory._exist_check(filename, is_file=True):
+        if not _base.file._exist_check(filename):
             _error_message.variable_stop(
                 "file.image_read",
                 ["filename", ],
