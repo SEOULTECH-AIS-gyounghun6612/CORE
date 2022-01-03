@@ -89,7 +89,7 @@ class file():
 
     @classmethod
     def image_write(self, file_dir: str, image):
-        filename = _base.file._name_from_directory(file_dir)
+        filename = _base.file._name_from_path(file_dir)
         if not _base.file._extension_check(filename, self.IMAGE_EXT):
             if self.DEBUG:
                 _error_message.variable(

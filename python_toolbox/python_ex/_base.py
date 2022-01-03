@@ -37,10 +37,9 @@ class directory():
     OS_WINDOW = "Windows"
     OS_UBUNTU = "Linux"
     SLASH = "/" if OS_THIS == OS_UBUNTU else "\\"
-    RELARTION = "." + SLASH
 
     @classmethod  # fix it
-    def _slash_check(self, directory, is_file=False):
+    def _slash_check(self, directory: str, is_file: bool = False) -> str:
         # each os's directory divide slash fix
         if self.SLASH == "\\":
             from_dived = "/"
@@ -56,11 +55,11 @@ class directory():
         return directory
 
     @classmethod
-    def _exist_check(self, directory, is_file=False):
+    def _exist_check(self, directory: str, is_file: bool = False) -> bool:
         return path.isfile(directory) if is_file else path.isdir(directory)
 
     @classmethod
-    def _devide(self, directory, point=-1):
+    def _devide(self, directory: str, point: int = -1) -> List[str]:
         _dir = self._slash_check(directory)
         _comp = _dir.split(self.SLASH)[:-1]
 
@@ -74,54 +73,36 @@ class directory():
         return _front, _back
 
     @classmethod
-    def _make(self, obj_dirs, root_dir=None):
-        if isinstance(obj_dirs, str):
-            obj_dirs = [obj_dirs, ]
-        elif isinstance(obj_dirs, list):
-            pass
-        else:
-            # !!!ERROR!!! wrong type entered
-            _error.variable_stop(
-                function_name="directory._make",
-                variable_list=["obj_dirs", ],
-                AA="Error in parameter 'obj_dirs'.\n \
-                    'obj_dirs' has unsuitable type data"
-            )
+    def _relative_root(self, just_name: bool = False) -> str:
+        return self._devide(getcwd())[-1] if just_name else self._slash_check(getcwd())
 
-        # root dir check
+    @classmethod
+    def _make(self, obj_dir: str, root_dir: str = None) -> str:
         if root_dir is not None:
-            # _root check
-            _root = self._slash_check(root_dir)
-            if not self._exist_check(_root):
-                _front, _back = self._devide(_root, -1)
+            # use root directory
+            # root directory check
+            _dir = self._slash_check(root_dir)
+            if not self._exist_check(_dir):
+                # if root directory not exist, make it
+                _front, _back = self._devide(_dir, -1)
                 self._make(_back, _front)
         else:
-            # use relartion from __file__
-            _root = self.RELARTION
-            for _ct, _data in enumerate(obj_dirs):
-                if not _data.find(self.RELARTION):
-                    obj_dirs[_ct] = _data[len(self.RELARTION):]
+            # use relative root directory (= cwd)
+            _dir = self._relative_root()
 
         # make directory
-        for _ct, _data in enumerate(obj_dirs):
-            _dir_componant = self._slash_check(_data).split(self.SLASH)
+        for _part in self._slash_check(obj_dir).split(self.SLASH):
+            _dir = self._slash_check(_dir + _part)
+            mkdir(_dir) if not self._exist_check(_dir) else None
 
-            _tem_dir = _root
-            for _componant in _dir_componant:
-                _tem_dir = self._slash_check(_tem_dir + _componant)
-
-                if not self._exist_check(_tem_dir):
-                    mkdir(_tem_dir)
-            obj_dirs[_ct] = _tem_dir
-
-        return obj_dirs
+        return _dir
 
     @classmethod
-    def _make_for_result(self, ):
-        _error.not_yet("directory._make_for_result")
+    def _make_for_result(self, root_dir: str = None):
+        return self._make(f"./result/{utils.time_stemp(True)}/", root_dir)
 
     @classmethod
-    def _inside_search(self, searched_dir, search_option="file", name="*", ext="*"):
+    def _inside_search(self, searched_dir: str, search_option="file", name="*", ext="*"):
         _dir = self._slash_check(searched_dir)
 
         serch_all = search_option == "all"
@@ -163,10 +144,6 @@ class directory():
         # for _folder in compare_data[same_count:]:
         #     tmp_dir += _folder + SLASH
 
-    @classmethod
-    def _get_main(self, just_name=True):
-        return self._devide(getcwd())[-1] if just_name else self._slash_check(getcwd())
-
     @staticmethod
     def _del():
         _error.not_yet("directory._del")
@@ -177,38 +154,31 @@ class directory():
 
     class server():
         @staticmethod
-        def local_connect(loacal_ip, user_id, password, root_dir, mount_dir, is_container=False):
+        def local_connect(
+                ip_num: str,
+                user_id: str,
+                password: str,
+                root_dir: str,
+                mount_dir: str,
+                is_container: bool = False):
+
             if is_container:
                 # in later make function for docker container
                 _error.not_yet("not support for container system at function server.local_connect")
                 pass
             else:
-                _command = ""
                 if directory.OS_THIS == directory.OS_WINDOW:
-                    _command += "NET USE "
-                    _command += "{MountDir}: ".format(MountDir=mount_dir)
-                    _command += "\\\\{ServerLocalIp}\\{RootDir} ".format(
-                        ServerLocalIp=loacal_ip,
-                        RootDir=root_dir
-                    )
-                    _command += "{Password} ".format(Password=password)
-                    _command += "/user:{UserName}".format(UserName=user_id)
+                    _command = f"NET USE {mount_dir}: \\\\{ip_num}\\{root_dir} {password} /user:{user_id}"
 
                 elif directory.OS_THIS == directory.OS_UBUNTU:
-                    # when use Ubuntu, if want connect AIS server in local network
-                    _command += "sudo -S mount -t cifs -o username={UserName}".format(UserName=user_id)
-                    _command += ",password={Password}".format(Password=password)
-                    _command += ",uid=1000,gid=1000 "
-                    _command += "//{ServerLocalIp}/{RootDir} {MountDir}".format(
-                        ServerLocalIp=loacal_ip,
-                        RootDir=root_dir,
-                        MountDir=mount_dir
-                    )
+                    _command = "sudo -S mount -t cifs -o uid=1000,gid=1000,"
+                    _command += f"username={user_id},password={password} //{ip_num}/{root_dir} {mount_dir}"
+
                 system(_command)
                 return mount_dir + ":" if directory.OS_THIS == directory.OS_WINDOW else mount_dir
 
         @staticmethod
-        def _unconnect(mounted_dir):
+        def _unconnect(mounted_dir: str):
             if directory.OS_THIS == directory.OS_WINDOW:
                 system("NET USE {}: /DELETE".format(mounted_dir))
             elif directory.OS_THIS == directory.OS_UBUNTU:
@@ -217,17 +187,21 @@ class directory():
 
 
 class file():
-    @staticmethod
-    def _name_from_directory(dir):
-        last_companant = directory._slash_check(dir, is_file=True).split(directory.SLASH)[-1]
-        if directory._exist_check(dir, True) or last_companant != "":
+    @classmethod
+    def _exist_check(self, file_path: str) -> bool:
+        return path.isdir(file_path)
+
+    @classmethod
+    def _name_from_path(self, file_path: str) -> str:
+        last_companant = directory._slash_check(file_path, is_file=True).split(directory.SLASH)[-1]
+        if self._exist_check(file_path) or last_companant != "":
             return last_companant
         else:
             return None
 
     @staticmethod
     def _extension_check(file_dir, exts, is_fix=False):
-        file_name = file._name_from_directory(file_dir)
+        file_name = file._name_from_path(file_dir)
         is_positive = False
 
         if file_name is None:
@@ -253,8 +227,8 @@ class file():
 
         return [is_positive, file_name] if is_fix else is_positive
 
-    @staticmethod
-    def _json(file_dir, file_name, data_dict=None, is_save=False):
+    @classmethod
+    def _json(self, file_dir, file_name, data_dict=None, is_save=False):
         """
         Args:
             save_dir        :
@@ -292,7 +266,7 @@ class file():
             json.dump(data_dict, _file, indent=4)
         else:
             # json file load
-            if directory._exist_check(file_dir + file_name, True):
+            if self._exist_check(file_dir + file_name):
                 # json file exist
                 _file = open(file_dir + file_name, "r")
                 return json.load(_file)
@@ -344,7 +318,7 @@ class utils():
 
     @staticmethod
     def time_stemp(is_text=False):
-        return time.localtime() if is_text else time.time()
+        return time.strftime("%Y-%m-%d", time.localtime()) if is_text else time.time()
 
     class log():
         log_info: Dict[str, Dict] = {}
@@ -397,6 +371,7 @@ class utils():
 
 
 class tool_for():
+    @staticmethod
     class _list():
         @staticmethod
         def is_num_over_range(target, obj_num):
