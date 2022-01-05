@@ -1,4 +1,6 @@
+from typing import Any, List, Dict
 import numpy as np
+from numpy import ndarray
 
 if __package__ == "":
     import _error as _e
@@ -280,6 +282,69 @@ class image():
     @staticmethod
     def string_to_img(string, h, w, c):
         return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
+
+
+class log():
+    log_info: Dict[str, str] = {}
+    log_holder: Dict[str, Dict] = {}
+
+    def __init__(self, parameters: Dict[str, Dict]) -> None:
+        """
+        parameters: logging parameters
+        """
+        self.set_log_holder(parameters)
+
+    def set_log_holder(self, logging_tree: Dict[str, Dict], root: dict = None):
+        _root = self.log_holder if root is None else root
+
+        for _node_name in logging_tree.keys():
+            _under_nodes_names = logging_tree[_node_name].keys()
+            if len(_under_nodes_names):  # _under_nodes exist
+                """
+                logging_root
+                  L ...
+                  L _logging_node => logging_tree[_node_name] !!! here !!!
+                      L _under_nodes => _logging_node[_under_node_name]
+                      L ...
+                  L ...
+                """
+                _root[_node_name] = {}
+                self.set_log_holder(logging_tree[_node_name], _root[_node_name])
+            else:  # _under_nodes not exist
+                """
+                logging_root
+                  L ...
+                  L _node_name  !!! here !!!
+                  L ...
+                """
+                _root[_node_name] = np.array([])
+
+    def info_update(self, key: str, value: Any):
+        self.log_info[key] = value
+
+    def update(self, data: Dict, holder: Dict = None):
+        _holder = self.log_holder if holder is None else holder
+
+        # data -> dict; dict => Dict[str, dict or ndarray]
+        for _node_name in data.keys():
+            if _node_name in _holder.keys():
+                _node_data = data[_node_name]
+                if isinstance(_node_data, dict):  # go to under data node
+                    self.update(_node_data, _holder[_node_name])
+                else:  # data update
+                    _holder[_node_name] = np.append(_holder[_node_name], np.array(_node_data))
+
+    def save(self, save_dir, file_name="log.json"):
+        save_pakage = {
+            "info": self.log_info,
+            "data": self.log_holder}
+        file._json(save_dir, file_name, save_pakage, True)
+
+    def load():
+        pass
+
+    def plot(self):
+        pass
 
 
 class evaluation():

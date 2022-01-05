@@ -14,7 +14,7 @@ import time
 
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, List, Dict
+from typing import List
 
 
 if __package__ == "":
@@ -319,55 +319,6 @@ class utils():
     @staticmethod
     def time_stemp(is_text=False):
         return time.strftime("%Y-%m-%d", time.localtime()) if is_text else time.time()
-
-    class log():
-        log_info: Dict[str, Dict] = {}
-        log_holder: Dict[str, List] = {}
-
-        def __init__(self, parameters: List[Dict or str]) -> None:
-            """
-            parameters: logging parameters => List[Dict[str, List[Dict[...] or str]] or str]
-            """
-            self.set_log_holder(parameters)
-
-        def set_log_holder(self, parameters: List, root: dict = None):
-            _root = self.log_holder if root is None else root
-
-            # parameters -> List[str or dict]; dict => Dict[str, List[str or dict]]
-            for _parameter in parameters:
-                if isinstance(_parameter, dict):   # _parameter is Dict[str, List[str or dict]]
-                    for _rt_name in _parameter.keys():
-                        _root[_rt_name] = {}
-                        self.set_log_holder(_parameter[_rt_name], _root[_rt_name])
-                elif isinstance(_parameter, str):   # _parameter is str
-                    _root[_parameter] = []
-
-        def update(self, data: Dict, holder: dict = None):
-            _holder = self.log_holder if holder is None else holder
-
-            # data -> dict; dict => Dict[str, dict or List[float] or float]
-            for _rt_name in data.keys():
-                if _rt_name in _holder.keys():
-                    _pick = data[_rt_name]  # _pick => dict or List[float] or float
-
-                    if isinstance(_pick, dict):  # _pick is dict; go to low classfication
-                        self.update(_pick, _holder[_rt_name])
-                    elif isinstance(_pick, list):  # _pick is List[float]; log update
-                        _holder[_rt_name] += _pick
-                    else:  # _pick is float; log update
-                        _holder[_rt_name].append(_pick)
-
-        def log_save(self, save_dir, file_name="log.json"):
-            save_pakage = {
-                "info": self.log_info,
-                "data": self.log_holder}
-            file._json(save_dir, file_name, save_pakage, True)
-
-        def add_log_info(self, key: str, value: Any):
-            self.log_info[key] = value
-
-        def plot(self):
-            pass
 
 
 class tool_for():
