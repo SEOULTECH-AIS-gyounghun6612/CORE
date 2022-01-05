@@ -98,8 +98,14 @@ class directory():
         return _dir
 
     @classmethod
-    def _make_for_result(self, root_dir: str = None):
-        return self._make(f"result/{utils.time_stemp(True)}/", root_dir)
+    def _make_for_result(self, date=None, root_dir: str = None):
+        if date is None:
+            _date = utils.time_stemp(True)
+        else:
+            _date = date
+        return self._make(f"result/{_date}/", root_dir)
+
+
 
     @classmethod
     def _inside_search(self, searched_dir: str, search_option="file", name="*", ext="*"):
