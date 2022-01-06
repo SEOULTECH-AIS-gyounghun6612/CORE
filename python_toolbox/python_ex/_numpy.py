@@ -345,7 +345,10 @@ class log():
             if isinstance(_node_data, dict):  # go to under data node
                 _copy[_node_name] = self.data_convert(_node_data)
             else:  # data update
-                _copy[_node_name] = _copy[_node_name].tolist()
+                try:
+                    _copy[_node_name] = _copy[_node_name].item()
+                except ValueError:
+                    _copy[_node_name] = _copy[_node_name].tolist()
 
         return _copy
 
@@ -353,7 +356,7 @@ class log():
         save_pakage = {
             "info": self.log_info,
             "data": self.data_convert()}
-        _base.file._json(save_dir, file_name, save_pakage, True)
+        return save_pakage if save_dir is None else _base.file._json(save_dir, file_name, save_pakage, True)
 
     def load():
         pass
