@@ -3,9 +3,11 @@ import numpy as np
 from numpy import ndarray
 
 if __package__ == "":
+    import _base
     import _error as _e
 else:
     from . import _error as _e
+    from . import _base
 
 _error_message = _e.Custom_error("AIS_utils", "_numpy")
 
@@ -338,7 +340,7 @@ class log():
         save_pakage = {
             "info": self.log_info,
             "data": self.log_holder}
-        file._json(save_dir, file_name, save_pakage, True)
+        _base.file._json(save_dir, file_name, save_pakage, True)
 
     def load():
         pass
