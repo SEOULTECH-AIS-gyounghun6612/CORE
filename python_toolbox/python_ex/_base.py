@@ -105,8 +105,6 @@ class directory():
             _date = date
         return self._make(f"result/{_date}/", root_dir)
 
-
-
     @classmethod
     def _inside_search(self, searched_dir: str, search_option="file", name="*", ext="*"):
         _dir = self._slash_check(searched_dir)
