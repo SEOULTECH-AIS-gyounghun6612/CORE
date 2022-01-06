@@ -288,7 +288,7 @@ class image():
 
 class log():
     log_info: Dict[str, str] = {}
-    log_holder: Dict[str, Dict] = {}
+    log_data: Dict[str, ndarray] = {}
 
     def __init__(self, parameters: Dict[str, Dict]) -> None:
         """
@@ -297,7 +297,7 @@ class log():
         self.set_log_holder(parameters)
 
     def set_log_holder(self, logging_tree: Dict[str, Dict], root: dict = None):
-        _root = self.log_holder if root is None else root
+        _root = self.log_data if root is None else root
 
         for _node_name in logging_tree.keys():
             _under_nodes_names = logging_tree[_node_name].keys()
@@ -325,7 +325,7 @@ class log():
         self.log_info[key] = value
 
     def update(self, data: Dict, holder: Dict = None):
-        _holder = self.log_holder if holder is None else holder
+        _holder = self.log_data if holder is None else holder
 
         # data -> dict; dict => Dict[str, dict or ndarray]
         for _node_name in data.keys():
@@ -336,10 +336,23 @@ class log():
                 else:  # data update
                     _holder[_node_name] = np.append(_holder[_node_name], np.array(_node_data))
 
+    def data_convert(self, holder=None):
+        _holder = self.log_data if holder is None else holder
+        _copy = _holder.copy()
+
+        for _node_name in _holder.keys():
+            _node_data = _holder[_node_name]
+            if isinstance(_node_data, dict):  # go to under data node
+                _copy[_node_name] = self.data_convert(_node_data)
+            else:  # data update
+                _copy[_node_name] = _copy[_node_name].tolist()
+
+        return _copy
+
     def save(self, save_dir, file_name="log.json"):
         save_pakage = {
             "info": self.log_info,
-            "data": self.log_holder}
+            "data": self.data_convert()}
         _base.file._json(save_dir, file_name, save_pakage, True)
 
     def load():
