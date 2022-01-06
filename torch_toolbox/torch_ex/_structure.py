@@ -1,19 +1,50 @@
-from collections import namedtuple
-from os import stat
+from dataclasses import dataclass, field, asdict
+from typing import Dict
 
 from torch import save, load, cat
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
-from torch.nn import Conv2d, BatchNorm2d, AdaptiveAvgPool2d
+from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d
 from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid
 
 import torchvision.models as models
 from torchsummary import summary as ModelSummary
-from python_AIS_ex_utils import _error as _e
+from python_ex import _error as _e
 
 _error = _e.Custom_error(
     module_name="torch_custom_utils_v 1.x",
     file_name="_model_part.py")
+
+
+class opt():
+    @dataclass
+    class backbone_opt():
+        use_flat: bool = True
+        use_avg_pooling: bool = True
+
+    @dataclass
+    class fc_opt():
+        in_features: int
+        out_features: int
+
+    @dataclass
+    class conv_opt():
+        in_channels: int
+        out_channels: int
+        kernel_size: int
+        stride: int = 1
+        padding: int = 0
+        groups: int = 1
+
+    @dataclass
+    class norm_opt():
+        norm_type: str
+        parameter: Dict = field(default_factory=dict)  # in later make this dataclass
+
+    @dataclass
+    class active_opt():
+        active_type: str
+        parameter: Dict = field(default_factory=dict)  # in later make this dataclass
 
 
 class custom_module(Module):
@@ -36,44 +67,65 @@ class custom_module(Module):
 
 
 class layer():
-    conv_opt = namedtuple("conv_opt", ["stride", "padding", "groups"])
-    norm_opt = namedtuple("norm_opt", ["normalization", "parameter"])
-    active_opt = namedtuple("active_opt", ["activation", "parameter"])
-
     @staticmethod
     def concatenate(layers, dim=1):
         return cat(layers, dim=dim)
 
     @staticmethod
-    class ConvBlock(Module):
-        def __init__(self, in_ch, out_ch, k_size, conv_option, norm_option=None, activation_opt=None):
-            super(layer.ConvBlock, self).__init__()
+    class FcBlock(Module):
+        def __init__(self, Fc_opt: opt.fc_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
+            super(layer.FcBlock, self).__init__()
 
-            _option = {} if conv_option is None \
-                else {
-                    "stride": conv_option.stride,
-                    "padding": conv_option.padding,
-                    "groups": conv_option.groups}
-
-            self.conv_i = Conv2d(in_ch, out_ch, k_size, **_option)
+            self.fc_i = Linear(**asdict(Fc_opt))
 
             # batch normalization
-            if norm_option is None:
-                self.conv_i_bn = None
-            elif norm_option.normalization == "BatchNorm2d":
-                self.conv_i_bn = BatchNorm2d(out_ch, **norm_option.parameter)
+            if norm_opt is None:
+                self.fc_i_bn = None
+            elif norm_opt.norm_type == "BatchNorm":
+                self.fc_i_bn = BatchNorm1d(Fc_opt.out_features, **norm_opt.parameter)
 
             # activation setting
-            if activation_opt is None:
+            if active_opt is None:
+                self.fc_i_act = None
+            elif active_opt.active_type == "ReLU":
+                self.fc_i_act = ReLU(**active_opt.parameter)
+            elif active_opt.active_type == "LeakyReLU":
+                self.fc_i_act = LeakyReLU(**active_opt.parameter)
+            elif active_opt.active_type == "Tanh":
+                self.fc_i_act = Tanh(**active_opt.parameter)
+            elif active_opt.active_type == "Sigmoid":
+                self.fc_i_act = Sigmoid(**active_opt.parameter)
+
+        def forward(self, x):
+            x = self.fc_i(x)
+            x = self.fc_i_bn(x) if self.fc_i_bn is not None else x
+            x = self.fc_i_act(x) if self.fc_i_act is not None else x
+            return x
+
+    @staticmethod
+    class ConvBlock(Module):
+        def __init__(self, conv_opt: opt.conv_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
+            super(layer.ConvBlock, self).__init__()
+
+            self.conv_i = Conv2d(**asdict(conv_opt))
+
+            # batch normalization
+            if norm_opt is None:
+                self.conv_i_bn = None
+            elif norm_opt.norm_type == "BatchNorm":
+                self.conv_i_bn = BatchNorm2d(conv_opt.out_channels, **norm_opt.parameter)
+
+            # activation setting
+            if active_opt is None:
                 self.conv_i_act = None
-            elif activation_opt.activation == "ReLU":
-                self.conv_i_act = ReLU(**activation_opt.parameter)
-            elif activation_opt.activation == "LeakyReLU":
-                self.conv_i_act = LeakyReLU(**activation_opt.parameter)
-            elif activation_opt.activation == "Tanh":
-                self.conv_i_act = Tanh()
-            elif activation_opt.activation == "Sigmoid":
-                self.conv_i_act = Sigmoid()
+            elif active_opt.active_type == "ReLU":
+                self.conv_i_act = ReLU(**active_opt.parameter)
+            elif active_opt.active_type == "LeakyReLU":
+                self.conv_i_act = LeakyReLU(**active_opt.parameter)
+            elif active_opt.active_type == "Tanh":
+                self.conv_i_act = Tanh(**active_opt.parameter)
+            elif active_opt.active_type == "Sigmoid":
+                self.conv_i_act = Sigmoid(**active_opt.parameter)
 
         def forward(self, x):
             x = self.conv_i(x)
@@ -81,13 +133,13 @@ class layer():
             x = self.conv_i_act(x) if self.conv_i_act is not None else x
             return x
 
-    @stat
+    @staticmethod
     class attention(Module):
         def __init__(self) -> None:
             super().__init__()
 
     @staticmethod
-    class kernel_attention(Module):
+    class kernel_attention(Module):  # fix it
         def __init__(self, in_ch, out_ch, k_size, multi_head) -> None:
             super(layer.kernel_attention, self).__init__()
 
@@ -97,14 +149,14 @@ class layer():
             elif isinstance(k_size, list):
                 k_size
 
-            conv_option = layer.conv_opt(stride=1, padding=1, groups=in_ch)
+            # conv_option = layer.conv_opt(stride=1, padding=1, groups=in_ch)
             self.Q_conv = layer.ConvBlock(in_ch, in_ch, k_size)
 
 
 class backbone():
     @staticmethod
     class resnet(Module):
-        def __init__(self, type=50, trained=False, last_layer=None):
+        def __init__(self, type=50, train=False, option: opt.backbone_opt = opt.backbone_opt()):
             """
             args:
                 type
@@ -112,38 +164,38 @@ class backbone():
                 last_layer
             """
             super(backbone.resnet, self).__init__()
-            self._flat_option = last_layer
+            self.opt = option
             if type == 50:
-                self._line = models.resnet50(pretrained=trained)
+                self._line = models.resnet50(pretrained=not train)
             elif type == 101:
-                self._line = models.resnet101(pretrained=trained)
+                self._line = models.resnet101(pretrained=not train)
             else:
                 _error.variable(
                     "backbone.resnet",
                     "Have some problem in parameter 'type'. use default value 50")
                 type = 50
-                self._line = models.resnet50(pretrained=trained)
+                self._line = models.resnet50(pretrained=not train)
 
             # features parameters doesn't train
             for _parameters in self._line.conv1.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.bn1.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.relu.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.maxpool.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.layer1.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.layer2.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.layer3.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
             for _parameters in self._line.layer4.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
 
             for _parameters in self._line.avgpool.parameters():
-                _parameters.requires_grad = trained
+                _parameters.requires_grad = train
 
             # delete classfication module
             self._line.fc = None
@@ -157,57 +209,47 @@ class backbone():
             x = self._line.layer1(x)
             x = self._line.layer2(x)
             x = self._line.layer3(x)
-            x = self._line.layer4(x)
+            x = self._line.layer4(x)  # x shape : batch_size, 2048, h/8, w/8
 
-            if self._flat_option == "fc_flat":
-                return x.view(x.size(0), -1)  # batch_size, 2048 * 32 * 32
-            elif self._flat_option == "conv_flat":
-                return self._line.avgpool(x)  # batch_size, 2048, 1, 1
-            else:
-                return x  # batch_size, 2048, 32, 32
+            if self.opt.use_avg_pooling:
+                x = self._line.avgpool(x)  # x shape : batch_size, 2048, 1, 1
+            return x.view(x.size(0), -1) if self.opt.use_flat else x
 
         def sumarry(self, input_shape):
             ModelSummary(self, input_shape)
 
     @staticmethod
     class vgg(Module):
-        def __init__(self, type=19, trained=False, last_layer=None):
+        def __init__(self, type=19, train=False, option: opt.backbone_opt = opt.backbone_opt()):
             super(backbone.vgg, self).__init__()
-            self._flat_option = last_layer
+            self.opt = option
             if type == 11:
-                _line = models.vgg11(pretrained=trained)
+                _line = models.vgg11(pretrained=not train)
             if type == 13:
-                _line = models.vgg13(pretrained=trained)
+                _line = models.vgg13(pretrained=not train)
             elif type == 16:
-                _line = models.vgg16(pretrained=trained)
+                _line = models.vgg16(pretrained=not train)
             elif type == 19:
-                _line = models.vgg19(pretrained=trained)
+                _line = models.vgg19(pretrained=not train)
             else:
                 _error.variable(
                     "backbone.vgg",
                     "Have some problem in parameter 'type'. use default value 19")
                 type = 19
-                _line = models.vgg19(pretrained=trained)
+                _line = models.vgg19(pretrained=not train)
 
             self._conv = _line.features
             self._avgpool = _line.avgpool
 
             for _parameter in self._conv.parameters():
-                _parameter.requires_grad = False
-
-            if last_layer == "conv_flat":
-                self._last_layer = AdaptiveAvgPool2d(1)
+                _parameter.requires_grad = train
 
         def forward(self, x):
-            x = self._conv(x)
-            x = self._avgpool(x)
+            x = self._conv(x)  # x shape : batch_size, 512, 7, 7
 
-            if self._flat_option == "fc_flat":
-                return x.view(x.size(0), -1)  # batch_size, 512 * 7 * 7
-            elif self._flat_option == "conv_flat":
-                return self._last_layer(x)  # batch_size, 512, 1, 1
-            else:
-                return x  # batch_size, 512, 7, 7
+            if self.opt.use_avg_pooling:
+                x = self._avgpool(x)  # x shape : batch_size, 512, 1, 1
+            return x.view(x.size(0), -1) if self.opt.use_flat else x
 
         def sumarry(self, input_shape):
             ModelSummary(self, input_shape)

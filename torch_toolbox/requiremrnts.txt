@@ -1,2 +1,2 @@
-ais-python-utils=2.*
+python_ex
 pytorch>=1.8
