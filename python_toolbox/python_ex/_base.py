@@ -98,11 +98,11 @@ class directory():
         return _dir
 
     @classmethod
-    def _make_for_result(self, date=None, root_dir: str = None):
-        if date is None:
+    def _make_for_result(self, folder=None, root_dir: str = None):
+        if folder is None:
             _date = utils.time_stemp(True)
         else:
-            _date = date
+            _date = folder
         return self._make(f"result/{_date}/", root_dir)
 
     @classmethod
@@ -315,7 +315,7 @@ class utils():
         percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + '-' * (length - filledLength)
-        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end="\r")
+        print(f'\r{prefix} |{bar}| {percent:>4.1f}% {suffix}', end="\r")
         # Print New Line on Complete
         if iteration == total:
             print()
