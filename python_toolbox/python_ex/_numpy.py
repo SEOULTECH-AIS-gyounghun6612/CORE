@@ -1,6 +1,6 @@
 from typing import Any, List, Dict
 import numpy as np
-from numpy import ndarray
+from numpy import float32, ndarray
 
 if __package__ == "":
     import _base
@@ -123,14 +123,14 @@ class base():
         return base.type_converter(_array, dtype)
 
     @staticmethod
-    def normalization(array):
+    def normalization(array: ndarray):
         _m = np.mean(array)
         _std = np.std(array)
 
         return (base.type_converter(array, float) - _m) / _std
 
     @staticmethod
-    def type_converter(data, to_type):
+    def type_converter(data: ndarray, to_type):
         if to_type in ["uint", "uint8", np.uint8]:
             _convert = data.astype(np.uint8)
         elif to_type in ["int32", "int", int]:
@@ -162,6 +162,16 @@ class base():
             over_cuted = (array >= over_thread)
 
             output = np.logical_or(under_cuted, over_cuted)
+        elif direction == "upper":
+            # --nope!-- under_thread --nope!-- over_thread --here--
+            over_cuted = (array >= over_thread)
+
+            output = over_cuted
+        elif direction == "under":
+            # --here-- under_thread --nope!-- over_thread --nope!--
+            under_cuted = (array <= under_thread)
+
+            output = under_cuted
         else:
             # --nope!-- under_thread --here-- over_thread --nope!--
             under_cuted = (array >= under_thread)
@@ -174,6 +184,10 @@ class base():
     @staticmethod
     def stack(data_list: list, channel=-1):
         return np.stack(data_list, axis=channel)
+
+    # @staticmethod
+    # def shift(data: ndarray, axis: int, diretion: int):
+    #     pass
 
     @staticmethod
     def bincount(array_1D, max_value):
@@ -191,13 +205,81 @@ class base():
 
 class cal():
     @staticmethod
-    def sqrt():
-        pass
+    def distance(delta_x: ndarray, delta_y: ndarray, is_euclid: bool):
+        if is_euclid:
+            return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
+        else:
+            return np.abs(delta_x, dtype=np.float32) + np.abs(delta_y, dtype=np.float32)
+
+    @staticmethod
+    def get_direction(delta_x: ndarray, delta_y: ndarray, sector: int = 8, is_half_cut: bool = True):
+        """
+        if sector count is even (2n)
+        +0 ~ +pi -> n sector, n block (size pi / n)
+        -0 ~ -pi -> n sector, n block (size pi / n)
+
+        if sector count is odd (2n + 1) => 2 * (2n + 1)
+        +0 ~ +pi -> 2n + 1 sector, n block (size 2 * pi / (2n + 1)) -> left pi / (2n + 1)
+        -0 ~ -pi -> 2m + 1 sector, n block (size 2 * pi / (2nm + 1)) -> left pi / (2n + 1)
+        last one is left sector (2 * pi / (2n + 1))
+        """
+        _block = sector if sector % 2 else sector / 2
+        _block_to_sector = 2 if sector % 2 else 1
+        _term = _block_to_sector * np.pi / _block
+        _bais = _term / 2
+
+        # get theta
+        theta = np.arctan2(delta_y, delta_x)
+
+        if is_half_cut and not(sector % 2):
+            theta = theta + np.pi * (theta < 0)
+            sector = int(sector / 2)
+
+        # theta convert to direction -> start in 180 dgree (clockwize)
+        _tmp_holder = []
+        _theta = theta.copy()
+        for _ct in range(sector):
+            _th = np.pi - (_bais + _term * _ct)
+            _filterd = (_theta >= _th)
+            _tmp_holder.append(_filterd)
+            _theta = _theta - _theta * _filterd
+
+        _tmp_holder[0] = np.logical_or(_tmp_holder[0], theta == _theta)
+        _tmp_holder = base.stack(_tmp_holder)
+        _direction = np.argmax(_tmp_holder, -1)
+
+        return _direction
 
 
 class image():
     @staticmethod
-    def conver_to_last_channel(image):
+    def distance(delta_x: ndarray, delta_y: ndarray):
+        return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
+
+    @staticmethod
+    def image_shift(image: ndarray, direction: int, step_size: int = 1):
+        holder = np.zeros_like(image)
+        if direction == 0:
+            holder[:, :-step_size] = image[:, step_size:]  # left
+        elif direction == 1:
+            holder[:-step_size, :-step_size] = image[step_size:, step_size:]  # left top
+        elif direction == 2:
+            holder[:-step_size, :] = image[step_size:, :]  # top
+        elif direction == 3:
+            holder[:-step_size, step_size:] = image[step_size:, :-step_size]  # right top
+        elif direction == 4:
+            holder[:, step_size:] = image[:, :-step_size]  # right
+        elif direction == 5:
+            holder[step_size:, step_size:] = image[:-step_size, :-step_size]  # right down
+        elif direction == 6:
+            holder[step_size:, :] = image[:-step_size, :]  # down
+        elif direction == 7:
+            holder[step_size:, :-step_size] = image[:-step_size, step_size:]  # left down
+
+        return holder
+
+    @staticmethod
+    def conver_to_last_channel(image: ndarray):
         img_shape = image.shape
         if len(img_shape) == 2:
             # gray iamge
@@ -217,6 +299,21 @@ class image():
             # else image
             divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
             return base.stack(divide_data, 0)
+
+    @staticmethod
+    def direction_check(object_data: ndarray, direction_array: ndarray, check_list: List[int], is_bidirectional: bool = True):
+        filtered = np.zeros_like(object_data)
+        for _direction in check_list:
+            _tmp_direction_check = np.ones_like(object_data)
+            _label = image.image_shift(object_data, _direction, 1)
+            _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
+            if is_bidirectional:
+                _label = image.image_shift(object_data, _direction + 4, 1)
+                _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
+
+            filtered += _tmp_direction_check
+
+        return filtered
 
     # classfication -> (h, w, class count)
     # class map     -> (h, w)

@@ -10,6 +10,7 @@ Requirement
 """
 
 # Import module
+from typing import List
 import cv2
 import random
 from dataclasses import dataclass, field
@@ -61,7 +62,7 @@ class file():
     VIDEO_EXT = ["mp4", "avi", ".mp4", ".avi"]
 
     @classmethod
-    def image_read(self, filename: str, color_option: Color_option):
+    def image_read(self, filename: str, color_option: Color_option = Color_option.BGR):
         if not _base.file._exist_check(filename):
             _error_message.variable_stop(
                 "file.image_read",
@@ -204,7 +205,7 @@ class base():
                 holder[:, :, _ch_ct] = base.filtering(image[:, :, _ch_ct], array)
             return holder
         else:
-            return cv2.filter2D(image, -1, array)
+            return cv2.filter2D(image, cv2.CV_64F, array)
 
     @staticmethod
     class blur():
@@ -226,21 +227,64 @@ class base():
 
 
 class edge():
+    class gradient():
+        @staticmethod
+        def sobel(image: _numpy.ndarray, is_euclid: bool = True):
+            if len(image.shape) > 2:
+                # color image
+                delta_holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                direction_holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                for _ch_ct in range(image.shape[-1]):
+                    result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
+                    delta_holder += result[0]
+                    direction_holder += result[1]
+
+                return delta_holder / 3, (direction_holder / 3).round()
+            else:
+                dx = base.filtering(image, _numpy.base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
+                dy = base.filtering(image, _numpy.base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dxy = _numpy.cal.distance(dx, dy, is_euclid)
+                direction = _numpy.cal.get_direction(dx, dy)
+                return dxy, direction
+
     @staticmethod
-    def sobel(image: _numpy.np.ndarray, threshold=1):
+    def gradient_to_edge(gradient: List[_numpy.ndarray], threshold: List[int] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
+        # gradient -> [delta, direction]
+        _delta = gradient[0]
+        _filterd = _numpy.base.range_cut(_numpy.base.normalization(_delta), [threshold, ], "upper")
+
+        if is_edge_shrink:
+            _direction = gradient[1]
+            _edge = _numpy.image.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
+        else:
+            _edge = (_filterd != 0)
+
+        return _edge if is_active_map else _numpy.base.type_converter(255 * _edge, "uint")
+
+    @staticmethod
+    def sobel(image: _numpy.np.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.base.get_array_from(image.shape[:2], True)
+            holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
             for _ch_ct in range(image.shape[-1]):
-                holder += edge.sobel(image[:, :, _ch_ct])
-            return _numpy.base.type_converter(holder >= 2, "uint8")
+                holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
+            holder = (holder >= 2)
+            return holder if is_active_map else _numpy.base.type_converter(255 * holder, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
-            dxy = cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
+            dxy = _numpy.cal.distance(dx, dy) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
+            _edge = _numpy.base.range_cut(_numpy.base.normalization(dxy), [-threshold, threshold], ouput_type="value")
 
-            return _numpy.base.range_cut(_numpy.base.normalization(dxy), [-threshold, threshold])
+            if is_edge_shrink:
+                direction = _numpy.cal.get_direction(dx, dy)
+                _edge = _numpy.image.direction_check(_edge, direction, [0, 1, 2, 3])
+
+            else:
+                _edge = (_edge != 0)
+
+            return _edge if is_active_map else _numpy.base.type_converter(255 * _edge, "uint")
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoM, channel=C_position.Last):
