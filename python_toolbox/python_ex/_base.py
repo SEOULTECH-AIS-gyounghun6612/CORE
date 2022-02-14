@@ -106,21 +106,16 @@ class directory():
         return self._make(f"result/{_date}/", root_dir)
 
     @classmethod
-    def _inside_search(self, searched_dir: str, search_option="file", name="*", ext="*"):
-        _dir = self._slash_check(searched_dir)
-
+    def _inside_search(self, searched_dir: str, search_option="all", name="*", ext="*"):
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else "*" + name + "*"
-        _component_ext = "" if (serch_all or ext == "*") else (ext if ext[0] == "." else "." + ext)
+        _component_ext = "" if serch_all else (ext if ext[0] == "." else "." + ext)
 
-        _filter = _dir + _component_name + _component_ext
+        search_list = sorted(glob(self._slash_check(searched_dir) + _component_name + _component_ext))
 
-        search_list = sorted(glob(_filter))
-
-        if search_option == "directory":
+        if search_option in ["directory", "dir"]:
             search_list = [data for data in search_list if self._exist_check(data)]
-
-        elif search_option == "file":
+        elif search_option in ["file", ]:
             search_list = [data for data in search_list if file._exist_check(data)]
 
         return sorted(search_list)
