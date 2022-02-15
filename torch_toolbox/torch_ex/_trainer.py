@@ -1,65 +1,67 @@
 # from random import sample
-from math import inf, log10, floor
+from dataclasses import asdict
+from math import inf
 from collections import deque
 from typing import List
 from python_ex._base import utils, directory
+
+from torch.optim import Optimizer
 
 if __package__ == "":
     # if this file in local project
     from torch_ex._base import torch_utils, opt, log
     from torch_ex._structure import custom_module
-    from torch_ex import _dataloader
+    from torch_ex import _data_process
 else:
     # if this file in package folder
     from ._base import torch_utils, opt, log
     from ._structure import custom_module
-    from . import _dataloader
-
-
-class opimizer():
-    pass
+    from . import _data_process
 
 
 class Deeplearnig():
     def __init__(self, learnig_opt: opt._learning.base, log_opt: opt._log, data_opt: opt._data):
         self.learning_opt = learnig_opt
 
+        # log_opt and log
         self.log_opt = log_opt
         self.log: log = log(opt=self.log_opt)
-        self.data_opt = data_opt
-        self.data_worker = _dataloader.data_worker(self.data_opt)
-        self.dataloader = self.data_worker.get_dataloader(self.learning_opt.Modes)
 
-        self.model = None
-        self.optim = None
+        # data_opt and dataloader
+        _batch_size = learnig_opt.Batch_size
+        _num_workers = learnig_opt.Num_workers
+        self.dataloader = [
+            _data_process.dataloader._make(
+                _data_process.dataset.basement(data_opt, train_style),
+                _batch_size,
+                _num_workers,
+                train_style == "train") for train_style in learnig_opt.Train_style
+        ]
 
         self.learning_option_logging()
 
-    def set_model_n_optim(self, model: custom_module, optim, file_dir=None):
+        # model and optim
+        self.model: custom_module = None
+        self.optim: Optimizer = None
+
+    def learning_option_logging(self):
+        learning_info = {}
+        learning_info["date"] = utils.time_stemp(True)
+        learning_info = asdict(self.learning_opt)
+        self.log.info_update("learning", learning_info)
+        # self.log.info_update("dataloader", self.data_worker.info)
+
+    def set_model_n_optim(self, model: custom_module, optim: Optimizer, file_dir: str = None):
         self.model = model.cuda() if self.learning_opt.is_cuda else model
         self.optim = optim(self.model.parameters(), self.learning_opt.Learning_rate)
 
         if file_dir is not None:
             self.load_model_n_optim(file_dir)
 
-    def load_model_n_optim(self, file_dir):
+    def load_model_n_optim(self, file_dir: str):
         check_point = self.model._load_from(file_dir)
         if check_point["optimizer_state_dict"] is not None:
             self.optim.load_state_dict(check_point["optimizer_state_dict"])
-
-    def print_Progress_Bar(self, learning_mode, epoch, data_num, decimals=1, length=25, fill='█'):
-        _e_num_ct = floor(log10(self.learning_opt.Max_epochs)) + 1
-        _epoch = f"{epoch}".rjust(_e_num_ct, " ")
-        _epochs = f"{self.learning_opt.Max_epochs}".rjust(_e_num_ct, " ")
-
-        data_size = self.log.log_info["dataloader"][learning_mode]["data_length"]
-        _d_num_ct = floor(log10(data_size)) + 1
-        _data_num = f"{data_num}".rjust(_d_num_ct, " ")
-        _data_size = f"{data_size}".rjust(_d_num_ct, " ")
-
-        _prefix = f"{learning_mode} {_epoch}/{_epochs} {_data_num}/{_data_size}"
-
-        utils.Progress_Bar(data_num, data_size, _prefix, self.log.get_log_display(learning_mode), decimals, length, fill)
 
     def data_jump_to_gpu(self, datas):
         # if use gpu dataset move to datas
@@ -71,10 +73,6 @@ class Deeplearnig():
     def get_loss(self, _epoch, datas):
         # cal loss, update log
         pass
-
-    def learning_option_logging(self):
-        self.log.info_update("date", utils.time_stemp(True))
-        self.log.info_update("dataloader", self.data_worker.info)
 
 
 class Reinforcment():
@@ -119,11 +117,15 @@ class Reinforcment():
     class A2C(Deeplearnig):
         def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log, dataloader_opt: opt._data):
             super().__init__(learnig_opt, log_opt, dataloader_opt)
-
+            self.learning_opt = learnig_opt
             self.model: List[custom_module] = []  # [actor, critic]
             self.optim = []
 
-        def play(self, episode, mode: str = "train", display=True, save_root=None):
+        def play(self, epoch, mode: str = "train", display=True, save_root=None):
+            # for display, progressbar
+            self.log.this_mode = mode
+            self.log.this_epoch = epoch
+
             if mode == "train":
                 [_model.train() for _model in self.model]
             else:
@@ -148,13 +150,13 @@ class Reinforcment():
                         if _ep_done:
                             break
 
-                    self.print_Progress_Bar(mode, episode, data_num)
+                    self.log.progress_bar(data_num)
 
             # result save
-            save_dir = directory._make(f"{episode}/", self.log_opt.Save_root)
+            save_dir = directory._make(f"{epoch}/", self.log_opt.Save_root)
 
             for _model in self.model:
-                _model._save_to(save_dir, episode)
+                _model._save_to(save_dir, epoch)
 
             self.log.save("train_log.json" if mode != "test" else "test_log.json")
 
@@ -171,6 +173,30 @@ class Reinforcment():
                     check_point = self.model[_ct]._load_from(_file)
                     if check_point["optimizer_state_dict"] is not None:
                         self.optim[_ct].load_state_dict(check_point["optimizer_state_dict"])
+
+        def reward_converter(self, raw_reward, ep_done):
+            _reward_holder = raw_reward * 0.0
+
+            _ths = self.learning_opt.Reward_th
+            _values = self.learning_opt.Reward_value
+
+            if not self.learning_opt.Reward_relation_range:
+                for _ct, _reward_th in enumerate(_ths):
+                    _reward_holder += (raw_reward >= _reward_th) * _values[_ct]
+                _reward_holder += (raw_reward < _ths[-1]) * _values[-1]
+
+            else:
+                pass
+
+            _under = ep_done * 1.0
+            _reward_holder = (_reward_holder * (1 - _under)) + (_values[-1] * _under)
+
+            _reward = torch_utils._tensor.from_numpy(_reward_holder)
+            _reward = _reward.cuda() if self.learning_opt.is_cuda else _reward
+            ep_done = torch_utils._tensor.from_numpy(ep_done)
+            ep_done = ep_done.cuda() if self.learning_opt.is_cuda else ep_done
+
+            return _reward, ep_done
 
         def data_jump_to_gpu(self, datas):
             # if use gpu dataset move to datas

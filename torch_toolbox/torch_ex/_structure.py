@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field, asdict
 from typing import Dict
 
-from torch import save, load, cat
+from torch import save, load, cat, mean, Tensor
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
 from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d
 from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid
+from torch.nn import MSELoss, CrossEntropyLoss
 
 import torchvision.models as models
 from torchsummary import summary as ModelSummary
@@ -45,6 +46,34 @@ class opt():
     class active_opt():
         active_type: str
         parameter: Dict = field(default_factory=dict)  # in later make this dataclass
+
+
+class loss():
+    @staticmethod
+    def mse(output, target) -> Tensor:
+        """
+        Args:
+            output: [batch, c, h, w]
+            target: [batch, c, h, w]
+        Return:
+            loss
+        """
+        return MSELoss()(output, target)
+
+    @staticmethod
+    def cross_entropy(output, target, ignore_index=-100):
+        """
+        Args:
+            output: [batch, class_num, h, w]
+            target: [batch, h, w]
+        Return:
+            loss
+        """
+        return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
+
+    @staticmethod
+    def mean_loss(output, target):
+        return mean(output * target)
 
 
 class custom_module(Module):

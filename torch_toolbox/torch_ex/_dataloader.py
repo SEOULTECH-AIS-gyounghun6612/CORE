@@ -10,6 +10,11 @@ else:
     from . import _base
 
 
+class dataloader():
+    def __init__(self) -> None:
+        pass
+
+
 class data_worker():
     def __init__(self, opt: _base.opt._data) -> None:
         self.opt = opt
