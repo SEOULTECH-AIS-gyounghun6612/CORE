@@ -1,6 +1,6 @@
 from typing import Any, List, Dict
 import numpy as np
-from numpy import float32, ndarray
+from numpy import ndarray
 
 if __package__ == "":
     import _base
@@ -145,6 +145,8 @@ class base():
             _term = max(data) - min(data)
             _convert = np.round(data / _term)
             _convert = _convert.astype(np.bool8)
+        else:
+            _convert = data
         return _convert
 
     @staticmethod
