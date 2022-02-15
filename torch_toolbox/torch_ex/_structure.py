@@ -8,6 +8,8 @@ from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d
 from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid
 from torch.nn import MSELoss, CrossEntropyLoss
 
+from torch.optim import Optimizer
+
 import torchvision.models as models
 from torchsummary import summary as ModelSummary
 from python_ex import _error as _e
@@ -48,7 +50,7 @@ class opt():
         parameter: Dict = field(default_factory=dict)  # in later make this dataclass
 
 
-class loss():
+class loss_function():
     @staticmethod
     def mse(output, target) -> Tensor:
         """
@@ -81,7 +83,7 @@ class custom_module(Module):
         super(custom_module, self).__init__()
         self.model_name = model_name
 
-    def _save_to(self, save_dir, epoch, optim=None):
+    def _save_to(self, save_dir, epoch, optim: Optimizer = None):
         save_dic = {'epoch': epoch,
                     'model_state_dict': self.state_dict(),
                     'optimizer_state_dict': optim.state_dict() if optim is not None else None}

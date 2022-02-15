@@ -2,15 +2,15 @@
 from dataclasses import asdict
 from math import inf
 from collections import deque
-from typing import List
+from typing import List, Tuple
 from python_ex._base import utils, directory
 
-from torch.optim import Optimizer
+from torch.nn.modules.loss import _Loss
 
 if __package__ == "":
     # if this file in local project
     from torch_ex._base import torch_utils, opt, log
-    from torch_ex._structure import custom_module
+    from torch_ex._structure import custom_module, Tensor, Optimizer
     from torch_ex import _data_process
 else:
     # if this file in package folder
@@ -30,13 +30,13 @@ class Deeplearnig():
         # data_opt and dataloader
         _batch_size = learnig_opt.Batch_size
         _num_workers = learnig_opt.Num_workers
-        self.dataloader = [
-            _data_process.dataloader._make(
+        self.dataloader = {}
+        for train_style in learnig_opt.Train_style:
+            self.dataloader[train_style] = _data_process.dataloader._make(
                 _data_process.dataset.basement(data_opt, train_style),
                 _batch_size,
                 _num_workers,
-                train_style == "train") for train_style in learnig_opt.Train_style
-        ]
+                train_style == "train")
 
         self.learning_option_logging()
 
@@ -119,48 +119,9 @@ class Reinforcment():
             super().__init__(learnig_opt, log_opt, dataloader_opt)
             self.learning_opt = learnig_opt
             self.model: List[custom_module] = []  # [actor, critic]
-            self.optim = []
+            self.optim: List[Optimizer] = []  # [actor, critic]
 
-        def play(self, epoch, mode: str = "train", display=True, save_root=None):
-            # for display, progressbar
-            self.log.this_mode = mode
-            self.log.this_epoch = epoch
-
-            if mode == "train":
-                [_model.train() for _model in self.model]
-            else:
-                [_model.eval() for _model in self.model]
-
-            data_num = 0
-            for _state in self.dataloader[mode]:
-                data_num += _state[0].shape[0]
-                _ep_done = torch_utils._tensor.holder([self.data_opt.Batch_size, 1], True, 0)
-                _state = self.data_jump_to_gpu(_state)
-                for _step_ct in range(self.learning_opt.Max_step):
-                    _action, _ep_done = self.act(_state, _ep_done)
-                    _state, _each_loss_list, _ep_done = self.get_loss(_step_ct, _state, _action, _ep_done, mode)
-
-                    if mode == "train":
-                        for _ct, _each_loss in enumerate(_each_loss_list):
-                            self.optim[_ct].zero_grad()
-                            _each_loss.backward()
-                            self.optim[_ct].step()
-
-                    if self.data_opt.Batch_size < 2:
-                        if _ep_done:
-                            break
-
-                    self.log.progress_bar(data_num)
-
-            # result save
-            save_dir = directory._make(f"{epoch}/", self.log_opt.Save_root)
-
-            for _model in self.model:
-                _model._save_to(save_dir, epoch)
-
-            self.log.save("train_log.json" if mode != "test" else "test_log.json")
-
-        def set_model_n_optim(self, model: List[custom_module], optim, file_dir=None):
+        def set_model_n_optim(self, model: List[custom_module], optim: List[Optimizer], file_dir: str = None):
             _is_cuda = self.learning_opt.is_cuda
             _lr = self.learning_opt.Learning_rate
 
@@ -173,6 +134,45 @@ class Reinforcment():
                     check_point = self.model[_ct]._load_from(_file)
                     if check_point["optimizer_state_dict"] is not None:
                         self.optim[_ct].load_state_dict(check_point["optimizer_state_dict"])
+
+        def play(self, epoch: int, mode: str = "train", display: bool = True, save_root: str = None):
+            # for display, progressbar
+            self.log.this_mode = mode
+            self.log.this_epoch = epoch
+
+            if mode == "train":
+                [_model.train() for _model in self.model]
+            else:
+                [_model.eval() for _model in self.model]
+
+            data_num = 0
+            for _state in self.dataloader[mode]:
+                data_num += _state[0].shape[0]
+                _ep_done = torch_utils._tensor.holder([self.learning_opt.Batch_size, 1], True, 0)
+                _state = self.data_jump_to_gpu(_state)
+                for _step_ct in range(self.learning_opt.Max_step):
+                    _action, _ep_done = self.act(_state, _ep_done)
+                    _state, _each_loss_list, _ep_done = self.get_loss(_step_ct, _state, _action, _ep_done, mode)
+
+                    if mode == "train":
+                        for _ct, _each_loss in enumerate(_each_loss_list):
+                            self.optim[_ct].zero_grad()
+                            _each_loss.backward()
+                            self.optim[_ct].step()
+
+                    if self.learning_opt.Batch_size < 2:
+                        if _ep_done:
+                            break
+
+                    self.log.progress_bar(data_num)
+
+            # result save
+            save_dir = directory._make(f"{epoch}/", self.log_opt.Save_root)
+
+            for _model in self.model:
+                _model._save_to(save_dir, epoch)
+
+            self.log.save("train_log.json" if mode != "test" else "test_log.json")
 
         def reward_converter(self, raw_reward, ep_done):
             _reward_holder = raw_reward * 0.0
@@ -198,19 +198,20 @@ class Reinforcment():
 
             return _reward, ep_done
 
-        def data_jump_to_gpu(self, datas):
+        def data_jump_to_gpu(self, datas: List[Tensor]):
             # if use gpu dataset move to datas
             pass
 
-        def act(self, state, ep_done):
+        def act(self, state: Tensor, ep_done: bool):
             pass
 
-        def get_reward(self, state, action, ep_done):
+        def get_reward(self, state: Tensor, action: Tensor, ep_done: bool):
             # make next state from action and reward
             pass
 
-        def get_loss(self, step, state, action, ep_done, mode):
+        def get_loss(self, step: int, state: Tensor, action: Tensor, ep_done: bool, mode: str) -> Tuple[Tensor, List[_Loss], Tensor]:
             # cal loss, update log
+            # return [state, loss, ep_done]
             pass
 
     class A3C(Deeplearnig):
