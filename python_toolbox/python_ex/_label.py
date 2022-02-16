@@ -133,8 +133,9 @@ class style():
             },
         }
 
-        def __init__(self, label_style) -> None:
+        def __init__(self, label_style, file_style) -> None:
             self.label_style = label_style
+            self.file_style = file_style
 
         def get_data_directory(self, learning_style: str):
             pass
@@ -142,7 +143,7 @@ class style():
         def make_data(self, datas: List):
             pass
 
-    class BDD_100k():
+    class BDD_100k(basement):
         label_ = {
             "directory": {
                 "seg": {
@@ -200,11 +201,11 @@ class style():
             }
         }
 
-        def __init__(self) -> None:
-            pass
+        def __init__(self, label_style, file_style) -> None:
+            super().__init__(label_style, file_style)
 
-        def get_data_directory(self, data_style: str, learning_style: str):
-            return self.label_["directory"]
+        def get_data_directory(self, learning_style: str):
+            pass
 
         def make_data(self, datas: List):
             pass
