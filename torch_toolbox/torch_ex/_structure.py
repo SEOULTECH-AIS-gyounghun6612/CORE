@@ -14,6 +14,8 @@ import torchvision.models as models
 from torchsummary import summary as ModelSummary
 from python_ex import _error as _e
 
+from torch.nn.modules.loss import _Loss
+
 _error = _e.Custom_error(
     module_name="torch_custom_utils_v 1.x",
     file_name="_model_part.py")
@@ -52,7 +54,7 @@ class opt():
 
 class loss_function():
     @staticmethod
-    def mse(output, target) -> Tensor:
+    def mse(output, target) -> _Loss:
         """
         Args:
             output: [batch, c, h, w]
@@ -63,7 +65,7 @@ class loss_function():
         return MSELoss()(output, target)
 
     @staticmethod
-    def cross_entropy(output, target, ignore_index=-100):
+    def cross_entropy(output, target, ignore_index=-100) -> _Loss:
         """
         Args:
             output: [batch, class_num, h, w]
@@ -74,7 +76,7 @@ class loss_function():
         return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
 
     @staticmethod
-    def mean_loss(output, target):
+    def mean_loss(output, target) -> Tensor:
         return mean(output * target)
 
 

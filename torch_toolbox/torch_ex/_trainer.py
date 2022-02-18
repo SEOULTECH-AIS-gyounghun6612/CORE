@@ -5,17 +5,16 @@ from collections import deque
 from typing import List, Tuple
 from python_ex._base import utils, directory
 
-from torch.nn.modules.loss import _Loss
 
 if __package__ == "":
     # if this file in local project
     from torch_ex._base import torch_utils, opt, log
-    from torch_ex._structure import custom_module, Tensor, Optimizer
+    from torch_ex._structure import custom_module, Tensor, Optimizer, _Loss
     from torch_ex import _data_process
 else:
     # if this file in package folder
     from ._base import torch_utils, opt, log
-    from ._structure import custom_module
+    from ._structure import custom_module, Tensor, Optimizer, _Loss
     from . import _data_process
 
 
