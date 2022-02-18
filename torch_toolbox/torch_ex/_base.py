@@ -31,6 +31,7 @@ class opt():
         Num_workers: int
         Data_read_process: process.basement
         Data_style: style.basement
+        Data_size: List[str] = field(default_factory=list)
 
     class _learning():
         @dataclass
@@ -62,11 +63,11 @@ class torch_utils():
             return torch_utils._tensor.from_numpy(_array, dtype)
 
         @classmethod
-        def from_numpy(self, np_array, dtype=None):
+        def from_numpy(self, np_array, dtype="float32"):
             return tensor(_numpy.base.type_converter(np_array, dtype))
 
         @staticmethod
-        def to_numpy(tensor: Tensor, dtype=None) -> _numpy.np.ndarray:
+        def to_numpy(tensor: Tensor, dtype="float32") -> _numpy.np.ndarray:
             try:
                 _array = tensor.numpy()
             except RuntimeError:

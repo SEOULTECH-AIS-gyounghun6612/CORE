@@ -51,7 +51,6 @@ class Deeplearnig():
                 train_style == "train")
 
         # self.log.info_update("dataloader", self.data_worker.info)
-        pass
 
     def set_model_n_optim(self, model: custom_module, optim: Optimizer, file_dir: str = None):
         self.model = model.cuda() if self.learning_opt.is_cuda else model
@@ -79,24 +78,9 @@ class Deeplearnig():
 
 class Reinforcment():
     class DQN(Deeplearnig):
-        def __init__(
-            self, action_size, memory_size, is_cuda,
-            discount=0.9, explore=[1, 0.1, 0.99]
-        ):
-            self.is_cuda = is_cuda
-
-            self.action_size = action_size
-            self.discount = discount
-            self.exp = deque(maxlen=memory_size)
-
-            self.explore_rate, self.explore_min, self.explore_decay = explore
-
-            self.model = None
-            self.back_up = None
-            self.optimizer = None
-
-        def set_model(self):
-            pass
+        def __init__(self, learning_opt: opt._learning.reinforcement, log_opt: opt._log):
+            super().__init__(learning_opt, log_opt)
+            self.back_up_model: custom_module = None
 
         def get_action(self, input):
             pass
@@ -117,9 +101,8 @@ class Reinforcment():
             pass
 
     class A2C(Deeplearnig):
-        def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log, dataloader_opt: opt._data):
-            super().__init__(learnig_opt, log_opt, dataloader_opt)
-            self.learning_opt = learnig_opt
+        def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log):
+            super().__init__(learnig_opt, log_opt)
             self.model: List[custom_module] = []  # [actor, critic]
             self.optim: List[Optimizer] = []  # [actor, critic]
 
@@ -150,7 +133,7 @@ class Reinforcment():
             data_num = 0
             for _state in self.dataloader[mode]:
                 data_num += _state[0].shape[0]
-                _ep_done = torch_utils._tensor.holder([self.learning_opt.Batch_size, 1], True, 0)
+                _ep_done = torch_utils._tensor.holder([self.dataloader[mode].batch_size, 1], True, 0)
                 _state = self.data_jump_to_gpu(_state)
                 for _step_ct in range(self.learning_opt.Max_step):
                     _action, _ep_done = self.act(_state, _ep_done)
@@ -162,7 +145,7 @@ class Reinforcment():
                             _each_loss.backward()
                             self.optim[_ct].step()
 
-                    if self.learning_opt.Batch_size < 2:
+                    if self.dataloader[mode].batch_size < 2:
                         if _ep_done:
                             break
 
