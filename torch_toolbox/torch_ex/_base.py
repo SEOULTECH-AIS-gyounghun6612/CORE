@@ -27,6 +27,8 @@ class opt():
     @dataclass
     class _data():
         # info
+        Batch_size: int
+        Num_workers: int
         Data_read_process: process.basement
         Data_style: style.basement
 
@@ -34,8 +36,6 @@ class opt():
         @dataclass
         class base():
             Max_epochs: int
-            Batch_size: int
-            Num_workers: int
             Train_style: List[str] = field(default_factory=list)
 
             # DEFAULTED VALUE

@@ -41,8 +41,8 @@ class Deeplearnig():
 
     def set_data_process(self, data_opt: opt._data):
         # data_opt and dataloader
-        _batch_size = self.learning_opt.Batch_size
-        _num_workers = self.learning_opt.Num_workers
+        _batch_size = data_opt.Batch_size
+        _num_workers = data_opt.Num_workers
         self.dataloader = {}
         for train_style in self.learning_opt.Train_style:
             self.dataloader[train_style] = _data_process.dataloader._make(
