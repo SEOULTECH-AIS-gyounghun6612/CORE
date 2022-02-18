@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List
 from math import log10, floor
 
@@ -33,10 +33,10 @@ class opt():
     class _learning():
         @dataclass
         class base():
-            Train_style: List[str]
             Max_epochs: int
             Batch_size: int
             Num_workers: int
+            Train_style: List[str] = field(default_factory=list)
 
             # DEFAULTED VALUE
             Learning_rate: float = 0.001
@@ -44,13 +44,13 @@ class opt():
 
         @dataclass
         class reinforcement(base):
-            Action_size: List[int] = [256, 256]
+            Action_size: List[int] = field(default_factory=list)
             Memory_size: int = 1000
             Discount: float = 0.99
             Max_step: int = 100
 
-            Reward_th: List[float] = [0.5, ]
-            Reward_value: List[float] = [0.1, ]
+            Reward_th: List[float] = field(default_factory=list)
+            Reward_value: List[float] = field(default_factory=list)
             Reward_relation_range: int = 80
 
 

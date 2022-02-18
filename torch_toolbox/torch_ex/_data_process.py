@@ -20,9 +20,7 @@ class dataset():
             return self.data.get_len()
 
         def __getitem__(self, index):
-            data = self.data.pick_data(index)
-            data = self.data_style.make_data(data)
-
+            data = self.data_style.make_data(self.data, index)
             return [torch_utils._tensor.from_numpy(_data) for _data in data]
 
 

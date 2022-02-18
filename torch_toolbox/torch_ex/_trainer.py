@@ -20,23 +20,12 @@ else:
 
 
 class Deeplearnig():
-    def __init__(self, learnig_opt: opt._learning.base, log_opt: opt._log, data_opt: opt._data):
-        self.learning_opt = learnig_opt
+    def __init__(self, learning_opt: opt._learning.base, log_opt: opt._log):
+        self.learning_opt = learning_opt
 
         # log_opt and log
         self.log_opt = log_opt
         self.log: log = log(opt=self.log_opt)
-
-        # data_opt and dataloader
-        _batch_size = learnig_opt.Batch_size
-        _num_workers = learnig_opt.Num_workers
-        self.dataloader = {}
-        for train_style in learnig_opt.Train_style:
-            self.dataloader[train_style] = _data_process.dataloader._make(
-                _data_process.dataset.basement(data_opt, train_style),
-                _batch_size,
-                _num_workers,
-                train_style == "train")
 
         self.learning_option_logging()
 
@@ -49,7 +38,21 @@ class Deeplearnig():
         learning_info["date"] = utils.time_stemp(True)
         learning_info = asdict(self.learning_opt)
         self.log.info_update("learning", learning_info)
+
+    def set_data_process(self, data_opt: opt._data):
+        # data_opt and dataloader
+        _batch_size = self.learning_opt.Batch_size
+        _num_workers = self.learning_opt.Num_workers
+        self.dataloader = {}
+        for train_style in self.learning_opt.Train_style:
+            self.dataloader[train_style] = _data_process.dataloader._make(
+                _data_process.dataset.basement(data_opt, train_style),
+                _batch_size,
+                _num_workers,
+                train_style == "train")
+
         # self.log.info_update("dataloader", self.data_worker.info)
+        pass
 
     def set_model_n_optim(self, model: custom_module, optim: Optimizer, file_dir: str = None):
         self.model = model.cuda() if self.learning_opt.is_cuda else model
@@ -76,7 +79,7 @@ class Deeplearnig():
 
 
 class Reinforcment():
-    class DQN():
+    class DQN(Deeplearnig):
         def __init__(
             self, action_size, memory_size, is_cuda,
             discount=0.9, explore=[1, 0.1, 0.99]
