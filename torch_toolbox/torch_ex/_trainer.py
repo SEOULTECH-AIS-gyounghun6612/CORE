@@ -2,7 +2,7 @@
 from dataclasses import asdict
 from math import inf
 from collections import deque
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 from python_ex._base import utils, directory
 
 
@@ -42,15 +42,13 @@ class Deeplearnig():
         # data_opt and dataloader
         _batch_size = data_opt.Batch_size
         _num_workers = data_opt.Num_workers
-        self.dataloader = {}
+        self.dataloader: Dict[str, _data_process.DataLoader] = {}
+        _dataloader_log = {}
         for train_style in self.learning_opt.Train_style:
-            self.dataloader[train_style] = _data_process.dataloader._make(
-                _data_process.dataset.basement(data_opt, train_style),
-                _batch_size,
-                _num_workers,
-                train_style == "train")
-
-        # self.log.info_update("dataloader", self.data_worker.info)
+            _temp_dataset = _data_process.dataset.basement(data_opt, train_style)
+            self.dataloader[train_style] = _data_process.dataloader._make(_temp_dataset, _batch_size, _num_workers, train_style == "train")
+            _dataloader_log[train_style] = {"data_length": _temp_dataset.__len__()}
+        self.log.info_update("dataloader", _dataloader_log)
 
     def set_model_n_optim(self, model: custom_module, optim: Optimizer, file_dir: str = None):
         self.model = model.cuda() if self.learning_opt.is_cuda else model
@@ -120,7 +118,7 @@ class Reinforcment():
                     if check_point["optimizer_state_dict"] is not None:
                         self.optim[_ct].load_state_dict(check_point["optimizer_state_dict"])
 
-        def play(self, epoch: int, mode: str = "train", display: bool = True, save_root: str = None):
+        def play(self, epoch: int, mode: str = "train", display: bool = False, save_root: str = None):
             # for display, progressbar
             self.log.this_mode = mode
             self.log.this_epoch = epoch
@@ -137,7 +135,7 @@ class Reinforcment():
                 _state = self.data_jump_to_gpu(_state)
                 for _step_ct in range(self.learning_opt.Max_step):
                     _action, _ep_done = self.act(_state, _ep_done)
-                    _state, _each_loss_list, _ep_done = self.get_loss(_step_ct, _state, _action, _ep_done, mode)
+                    _state, _each_loss_list, _ep_done = self.get_loss(mode, _step_ct, _state, _action, _ep_done, display, save_root)
 
                     if mode == "train":
                         for _ct, _each_loss in enumerate(_each_loss_list):
@@ -187,16 +185,16 @@ class Reinforcment():
             # if use gpu dataset move to datas
             pass
 
-        def act(self, state: Tensor, ep_done: bool):
+        def act(self, state: Tensor, ep_done: Tensor):
+            pass
+
+        def get_loss(self, mode: str, step: int, state: Tensor, action: Tensor, ep_done: bool, display: bool, save_root: str) -> Tuple[Tensor, List[_Loss], Tensor]:
+            # cal loss, update log
+            # return [state, loss, ep_done]
             pass
 
         def get_reward(self, state: Tensor, action: Tensor, ep_done: bool):
             # make next state from action and reward
-            pass
-
-        def get_loss(self, step: int, state: Tensor, action: Tensor, ep_done: bool, mode: str) -> Tuple[Tensor, List[_Loss], Tensor]:
-            # cal loss, update log
-            # return [state, loss, ep_done]
             pass
 
     class A3C(Deeplearnig):
