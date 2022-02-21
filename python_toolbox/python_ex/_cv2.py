@@ -62,7 +62,7 @@ class file():
     VIDEO_EXT = ["mp4", "avi", ".mp4", ".avi"]
 
     @classmethod
-    def image_read(self, filename: str, color_option: Color_option = Color_option.BGR):
+    def image_read(self, filename: str, color_option: Color_option = Color_option.BGR) -> _numpy.ndarray:
         if not _base.file._exist_check(filename):
             _error_message.variable_stop(
                 "file.image_read",
