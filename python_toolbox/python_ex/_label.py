@@ -76,7 +76,7 @@ class process():
         def get_len(self):
             return len(self.data_list)
 
-        def pick_data(self, item_num):
+        def pick_data(self, item_num) -> List[List]:
             return self.data_list[item_num]
 
         def make_datalist(self, data_paths: List[List[str]]):
@@ -95,7 +95,7 @@ class process():
             Returns:
                 None
             """
-            super().__init__(data_root_directory, data_exts)
+            super().__init__(data_root_directory, data_exts, is_sequence)
 
         def get_list_in(self, directory: str, ext: str, is_sequence: bool) -> List:
             if is_sequence:
@@ -112,8 +112,15 @@ class process():
             # outer => pick input or label parameters
             # inter => make data list, that exist in file path. used function zip(), this data re-group about each data 0 channel
             #          ([datas in path 0, datas in path 1, datas in path 2, ...]) --zip()--> ([data 0 in each path, data 1 in each path, data 2 in each path, ...])
-            data_list = [zip(*[self.get_list_in(_path, _ext) for _path, _ext in zip(_paths, _exts)]) for _paths, _exts in zip(data_paths, self.data_exts)]
-            self.data_list = zip(*data_list)
+
+            data_list = []
+            for _paths, _exts, _squences in zip(data_paths, self.data_exts, self.data_sequence):
+                temp_holder = []
+                for _path, _ext, _sq in zip(_paths, _exts, _squences):
+                    temp_holder.append(self.get_list_in(_path, _ext, _sq))
+                data_list.append(zip(*temp_holder))
+
+            self.data_list = list(zip(*data_list))
 
     class from_annotation_file(basement):
         """
@@ -140,7 +147,7 @@ class style():
         def get_data_directory(self, learning_style: str):
             pass
 
-        def make_data(self, datas: List):
+        def make_data(self, data: process.basement, index: List, data_size):
             pass
 
     class BDD_100k(basement):
@@ -207,7 +214,7 @@ class style():
         def get_data_directory(self, learning_style: str):
             pass
 
-        def make_data(self, datas: List):
+        def make_data(self, data: process.basement, index, data_size):
             pass
 
     class CDnet():
