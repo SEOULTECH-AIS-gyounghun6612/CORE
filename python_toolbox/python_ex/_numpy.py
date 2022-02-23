@@ -1,4 +1,6 @@
-from typing import Any, List, Dict
+from ast import alias
+from dataclasses import dataclass
+from typing import Any, List, Dict, Union
 import numpy as np
 from numpy import ndarray
 
@@ -102,10 +104,14 @@ class file():
 
 
 class base():
-    NP_type = {"uint8": np.uint8, "bool": np.bool8, "float32": np.float32}
+    @dataclass
+    class np_dtype():
+        np_uint8: alias     = np.uint8
+        np_bool: alias      = np.bool8
+        np_float32: alias   = np.float32
 
     @staticmethod
-    def get_array_from(sample, is_shape=False, value=0, dtype="uint8"):
+    def get_array_from(sample, is_shape=False, value=0, dtype: alias = np_dtype.np_uint8):
         _array = np.ones(sample) * value if is_shape else np.array(sample)
         return base.type_converter(_array, dtype)
 
@@ -130,7 +136,8 @@ class base():
         return (base.type_converter(array, float) - _m) / _std
 
     @staticmethod
-    def type_converter(data: ndarray, to_type):
+    def type_converter(data: ndarray, to_type: alias):
+        # fix it
         if to_type in ["uint", "uint8", np.uint8]:
             _convert = data.astype(np.uint8)
         elif to_type in ["int32", "int", int]:
@@ -385,82 +392,77 @@ class image():
         return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
 
 
-class log():
-    log_info: Dict[str, str] = {}
-    log_data: Dict[str, ndarray] = {}
+class labeled_holder():
+    info: Dict[str, Any] = {}
 
-    def __init__(self, parameters: Dict[str, Dict]) -> None:
-        """
-        parameters: logging parameters
-        """
-        self.set_log_holder(parameters)
+    data: Dict[str, Union[Dict, ndarray]] = {}
+    holder: Dict[str, Union[Dict, None]] = {}
 
-    def set_log_holder(self, logging_tree: Dict[str, Dict], root: dict = None):
-        _root = self.log_data if root is None else root
+    def __init__(self, info: Dict[str, Any], label: Dict[str, Union[Dict, str, list]], dtype: alias = base.np_dtype.np_float32) -> None:
+        self.holder_info = info
+        self.set_label(label, self.data, self.holder, dtype=dtype)
 
-        for _node_name in logging_tree.keys():
-            _under_nodes_names = logging_tree[_node_name].keys()
-            if len(_under_nodes_names):  # _under_nodes exist
-                """
-                logging_root
-                  L ...
-                  L _logging_node => logging_tree[_node_name] !!! here !!!
-                      L _under_nodes => _logging_node[_under_node_name]
-                      L ...
-                  L ...
-                """
-                _root[_node_name] = {}
-                self.set_log_holder(logging_tree[_node_name], _root[_node_name])
-            else:  # _under_nodes not exist
-                """
-                logging_root
-                  L ...
-                  L _node_name  !!! here !!!
-                  L ...
-                """
-                _root[_node_name] = np.array([])
+    def set_info(self, info: Dict[str, Any]):
+        for _info_key in info.keys():
+            self.holder_info[_info_key] = info[_info_key]
 
-    def info_update(self, key: str, value: Any):
-        self.log_info[key] = value
+    def set_label(self, label: Dict[str, Union[Dict, alias]], data_root: dict = None, holder_root: dict = None):
+        # root check
+        if data_root is None and holder_root is None:
+            data_root = {}
+            holder_root = {}
+        else:
+            assert data_root.keys() == holder_root.keys()
 
-    def update(self, data: Dict, holder: Dict = None):
-        _holder = self.log_data if holder is None else holder
+        # set label holder
+        for _label_name in label.keys():
+            data_root[_label_name] = {}
+            holder_root[_label_name] = {}
 
-        # data -> dict; dict => Dict[str, dict or ndarray]
-        for _node_name in data.keys():
-            if _node_name in _holder.keys():
-                _node_data = data[_node_name]
-                if isinstance(_node_data, dict):  # go to under data node
-                    self.update(_node_data, _holder[_node_name])
-                else:  # data update
-                    _holder[_node_name] = np.append(_holder[_node_name], np.array(_node_data))
+            label_node = label[_label_name]
 
-    def data_convert(self, holder=None):
-        _holder = self.log_data if holder is None else holder
-        _copy = _holder.copy()
+            if isinstance(label_node, dict):  # Nodes exist over 2 levels below.
+                self.set_label(label_node, data_root[_label_name], holder_root[_label_name])
 
-        for _node_name in _holder.keys():
-            _node_data = _holder[_node_name]
-            if isinstance(_node_data, dict):  # go to under data node
-                _copy[_node_name] = self.data_convert(_node_data)
+            elif isinstance(label_node, alias):  # end point node
+                data_root[_label_name] = np.array([], dtype=label_node)
+                holder_root[_label_name] = None
+
+    def update(self, data_holder: Dict[str, Union[Dict, int, float, str, None]], root: Dict[str, Union[Dict, ndarray]] = None):
+        for _node_key in data_holder.keys():
+            _holder_node = data_holder[_node_key]
+
+            if isinstance(_holder_node, dict):  # go to under node
+                self.update(_holder_node, self.data[_node_key])
+
             else:  # data update
-                try:
-                    _copy[_node_name] = _copy[_node_name].item()
-                except ValueError:
-                    _copy[_node_name] = _copy[_node_name].tolist()
+                if root is None:
+                    self.data[_node_key] = np.append(self.data[_node_key], np.array(_holder_node))
+                else:
+                    root[_node_key] = np.append(root[_node_key], np.array(_holder_node))
+                _holder_node = None
 
-        return _copy
+    def __data_converter(self, data: Dict[str, Union[Dict, ndarray]] = None):
+        converted_data = {}
+        for _node_key in (self.data.keys() if data is None else data.keys()):
+            _node = self.data[_node_key] if data is None else data[_node_key]
 
-    def save(self, save_dir, file_name="log.json"):
+            if isinstance(_node, dict):  # go to under node
+                _converted_data = self.__data_converter(_node)
+                converted_data[_node_key] = _converted_data
+            else:  # log data(np.array) convert to list
+                converted_data[_node_key] = _node.tolist()
+        return converted_data
+
+    def save(self, save_dir: str, file_name: str = "log.json"):
+        _convert_data = self.__data_converter()
         save_pakage = {
-            "info": self.log_info,
-            "data": self.data_convert()}
-        return save_pakage if save_dir is None else _base.file._json(save_dir, file_name, save_pakage, True)
+            "info": self.info,
+            "data": _convert_data}
 
-    def load():
-        pass
+        _base.file._json(save_dir, file_name, save_pakage, True)
 
-    def plot(self):
+    def load(self):
         pass
 
 
