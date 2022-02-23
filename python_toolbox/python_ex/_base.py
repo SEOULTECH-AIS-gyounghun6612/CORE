@@ -14,7 +14,7 @@ import time
 
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import List
+from typing import Any, Dict, List, Union
 
 
 if __package__ == "":
@@ -98,7 +98,7 @@ class directory():
         return _dir
 
     @classmethod
-    def _make_for_result(self, folder=None, root_dir: str = None):
+    def _make_for_result(self, folder: str = None, root_dir: str = None):
         if folder is None:
             _date = utils.time_stemp(True)
         else:
@@ -106,7 +106,7 @@ class directory():
         return self._make(f"result/{_date}/", root_dir)
 
     @classmethod
-    def _inside_search(self, searched_dir: str, search_option="all", name="*", ext="*"):
+    def _inside_search(self, searched_dir: str, search_option: str = "all", name: str = "*", ext: str = "*"):
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else "*" + name + "*"
         _component_ext = "" if serch_all else (ext if ext[0] == "." else "." + ext)
@@ -153,14 +153,7 @@ class directory():
 
     class server():
         @staticmethod
-        def local_connect(
-                ip_num: str,
-                user_id: str,
-                password: str,
-                root_dir: str,
-                mount_dir: str,
-                is_container: bool = False):
-
+        def local_connect(ip_num: str, user_id: str, password: str, root_dir: str, mount_dir: str, is_container: bool = False):
             if is_container:
                 # in later make function for docker container
                 _error.not_yet("not support for container system at function server.local_connect")
@@ -199,7 +192,7 @@ class file():
             return None
 
     @staticmethod
-    def _extension_check(file_dir, exts, is_fix=False):
+    def _extension_check(file_dir, exts: str, is_fix: bool = False):
         file_name = file._name_from_path(file_dir)
         is_positive = False
 
@@ -227,7 +220,7 @@ class file():
         return [is_positive, file_name] if is_fix else is_positive
 
     @classmethod
-    def _json(self, file_dir, file_name, data_dict=None, is_save=False):
+    def _json(self, file_dir: str, file_name: str, data_dict: Dict = None, is_save: bool = False):
         """
         Args:
             save_dir        :
@@ -293,7 +286,7 @@ class file():
 
 class utils():
     @staticmethod
-    def Progress_Bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
+    def Progress_Bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
         """
         Call in a loop to create terminal progress bar
         Args:
@@ -321,10 +314,9 @@ class utils():
 
 
 class tool_for():
-    @staticmethod
     class _list():
         @staticmethod
-        def is_num_over_range(target, obj_num):
+        def is_num_over_range(target: list, obj_num: Union[int, list, range]) -> bool:
             """
             Arg:\n
                 target (list) : \n
@@ -350,7 +342,7 @@ class tool_for():
             return _max > (len(target) + 1)
 
         @staticmethod
-        def del_obj(target, obj_num):
+        def del_obj(target: list, obj_num: Union[int, list, range]):
             """
             Arg:
                 target (list) : \n
@@ -363,5 +355,28 @@ class tool_for():
                 del target[obj_num]
 
         @staticmethod
-        def clear_list(target):
+        def clear_list(target: list):
             del target[:]
+
+    # class _dict():
+    #     @classmethod
+    #     def dict_to_labeling_holder(cls, dictionary: Dict[str, Union[Dict, str, list]], _root: Dict, Endpoint_holder: Any = None):
+    #         for _node_name in dictionary.keys():
+    #             _node_value = dictionary[_node_name]
+
+    #         if isinstance(_node_value, dict):  # Nodes exist over 2 levels below.
+    #             _root[_node_name] = cls.dict_to_labeling_holder(_node_value, {})
+
+    #         elif isinstance(_node_value, list):  # Nodes exist in 1 level below.
+    #             _root[_node_name] = {}
+    #             for _name in _node_value:
+    #                 _root[_node_name][_name] = Endpoint_holder
+
+    #         elif isinstance(_node_value, str):  # end point node
+    #             _root[_node_name] = {}
+    #             _root[_node_name][_node_value] = Endpoint_holder
+
+    #         else:
+    #             pass
+
+    #         return _root
