@@ -157,6 +157,10 @@ class style():
                     "color_map": {
                         "input_dir": "images/10k/{}/",  # data_type
                         "label_dir": "labels/sem_seg/colormaps/{}/"}
+                },
+                "100k": {
+                    "color_map": {
+                        "input_dir": "images/100k/{}/"}
                 }
             },
             "list": {   # "id", "train_id", "categoryId", "hasInstances", "ignoreInEval", "color", "name"
