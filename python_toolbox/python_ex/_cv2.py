@@ -142,7 +142,7 @@ class base():
             _axis = -1
         else:               # stack to first channel
             _axis = 0
-        return _numpy.base.stack(images, _axis)
+        return _numpy.np_base.stack(images, _axis)
 
     @staticmethod
     def channel_converter(image, channel_option: C_position):
@@ -178,7 +178,7 @@ class base():
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoM:  # convert to [0.0, 1.0] -> [0, 255]
-                return _numpy.base.type_converter(image * self.M, "uint8")
+                return _numpy.np_base.type_converter(image * self.M, "uint8")
             else:
                 return image
         elif form_range == R_option.ZtoM:
@@ -200,7 +200,7 @@ class base():
     def filtering(image: _numpy.np.ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.base.get_array_from(image)
+            holder = _numpy.np_base.get_array_from(image)
             for _ch_ct in range(image.shape[-1]):
                 holder[:, :, _ch_ct] = base.filtering(image[:, :, _ch_ct], array)
             return holder
@@ -232,8 +232,8 @@ class edge():
         def sobel(image: _numpy.ndarray, is_euclid: bool = True):
             if len(image.shape) > 2:
                 # color image
-                delta_holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
-                direction_holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                delta_holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                direction_holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
                 for _ch_ct in range(image.shape[-1]):
                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
                     delta_holder += result[0]
@@ -241,8 +241,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = base.filtering(image, _numpy.base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
-                dy = base.filtering(image, _numpy.base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dx = base.filtering(image, _numpy.np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
+                dy = base.filtering(image, _numpy.np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
                 dxy = _numpy.cal.distance(dx, dy, is_euclid)
                 direction = _numpy.cal.get_direction(dx, dy)
                 return dxy, direction
@@ -251,7 +251,7 @@ class edge():
     def gradient_to_edge(gradient: List[_numpy.ndarray], threshold: List[int] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
         # gradient -> [delta, direction]
         _delta = gradient[0]
-        _filterd = _numpy.base.range_cut(_numpy.base.normalization(_delta), [threshold, ], "upper")
+        _filterd = _numpy.np_base.range_cut(_numpy.np_base.normalization(_delta), [threshold, ], "upper")
 
         if is_edge_shrink:
             _direction = gradient[1]
@@ -259,23 +259,23 @@ class edge():
         else:
             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else _numpy.base.type_converter(255 * _edge, "uint")
+        return _edge if is_active_map else _numpy.np_base.type_converter(255 * _edge, "uint")
 
     @staticmethod
     def sobel(image: _numpy.np.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+            holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
             for _ch_ct in range(image.shape[-1]):
                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
             holder = (holder >= 2)
-            return holder if is_active_map else _numpy.base.type_converter(255 * holder, "uint8")
+            return holder if is_active_map else _numpy.np_base.type_converter(255 * holder, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
             dxy = _numpy.cal.distance(dx, dy) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = _numpy.base.range_cut(_numpy.base.normalization(dxy), [-threshold, threshold], ouput_type="value")
+            _edge = _numpy.np_base.range_cut(_numpy.np_base.normalization(dxy), [-threshold, threshold], ouput_type="value")
 
             if is_edge_shrink:
                 direction = _numpy.cal.get_direction(dx, dy)
@@ -284,7 +284,7 @@ class edge():
             else:
                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else _numpy.base.type_converter(255 * _edge, "uint")
+            return _edge if is_active_map else _numpy.np_base.type_converter(255 * _edge, "uint")
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoM, channel=C_position.Last):
@@ -348,7 +348,7 @@ class draw():
             _h, _w = image.shape
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
-        _holder = _numpy.base.get_array_from(_holder_shape, True)
+        _holder = _numpy.np_base.get_array_from(_holder_shape, True)
         _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
 
         return _holder
@@ -408,8 +408,8 @@ class draw():
             self.active_pen.thickness = thickness
 
         def set_canvas(self, size, sample=None, is_color=0):
-            self.background = _numpy.base.get_array_from(size, True, is_color) if sample is not None \
-                else _numpy.base.get_array_from(sample, False, is_color)
+            self.background = _numpy.np_base.get_array_from(size, True, is_color) if sample is not None \
+                else _numpy.np_base.get_array_from(sample, False, is_color)
 
         def set_object(self):
             pass
