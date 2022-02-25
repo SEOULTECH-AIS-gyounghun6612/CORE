@@ -103,9 +103,10 @@ class file():
                 return None
 
 
-class base():
+class np_base():
     @dataclass
     class np_dtype():
+        np_int32: alias       = np.int32
         np_uint8: alias     = np.uint8
         np_bool: alias      = np.bool8
         np_float32: alias   = np.float32
@@ -113,7 +114,7 @@ class base():
     @staticmethod
     def get_array_from(sample, is_shape=False, value=0, dtype: alias = np_dtype.np_uint8):
         _array = np.ones(sample) * value if is_shape else np.array(sample)
-        return base.type_converter(_array, dtype)
+        return np_base.type_converter(_array, dtype)
 
     @staticmethod
     def get_random_array(shape, range=[0, 1], norm_option=None, dtype="uint8"):
@@ -126,14 +127,14 @@ class base():
 
             _array = (_array * _term) + _min
 
-        return base.type_converter(_array, dtype)
+        return np_base.type_converter(_array, dtype)
 
     @staticmethod
     def normalization(array: ndarray):
         _m = np.mean(array)
         _std = np.std(array)
 
-        return (base.type_converter(array, float) - _m) / _std
+        return (np_base.type_converter(array, float) - _m) / _std
 
     @staticmethod
     def type_converter(data: ndarray, to_type: alias):
@@ -188,7 +189,7 @@ class base():
 
             output = np.logical_and(under_cuted, over_cuted)
 
-        return output if ouput_type == "active_map" else array * base.type_converter(output, int)
+        return output if ouput_type == "active_map" else array * np_base.type_converter(output, int)
 
     @staticmethod
     def stack(data_list: list, channel=-1):
@@ -254,7 +255,7 @@ class cal():
             _theta = _theta - _theta * _filterd
 
         _tmp_holder[0] = np.logical_or(_tmp_holder[0], theta == _theta)
-        _tmp_holder = base.stack(_tmp_holder)
+        _tmp_holder = np_base.stack(_tmp_holder)
         _direction = np.argmax(_tmp_holder, -1)
 
         return _direction
@@ -296,7 +297,7 @@ class image():
         else:
             # else image
             divide_data = [image[ct] for ct in range(img_shape[0])]
-            return base.stack(divide_data)
+            return np_base.stack(divide_data)
 
     @staticmethod
     def conver_to_first_channel(image):
@@ -307,7 +308,7 @@ class image():
         else:
             # else image
             divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
-            return base.stack(divide_data, 0)
+            return np_base.stack(divide_data, 0)
 
     @staticmethod
     def direction_check(object_data: ndarray, direction_array: ndarray, check_list: List[int], is_bidirectional: bool = True):
@@ -354,7 +355,7 @@ class image():
         # make empty classfication
         _h, _w, _ = color_map.shape
         _c = len(color_list)  # color list -> [class 0 color, class 1 color, ... ignore color]
-        classfication = base.get_array_from([_h, _w, _c], True)
+        classfication = np_base.get_array_from([_h, _w, _c], True)
 
         # color compare
         for _id in range(_c - 1):  # last channel : ignore
@@ -375,7 +376,7 @@ class image():
 
     @staticmethod
     def classfication_resize(original, size):
-        _new = base.get_array_from(size + [original.shape[-1], ], True)
+        _new = np_base.get_array_from(size + [original.shape[-1], ], True)
 
         _pos = np.where(original == 1)
         _new_pos = []
@@ -398,9 +399,9 @@ class labeled_holder():
     data: Dict[str, Union[Dict, ndarray]] = {}
     holder: Dict[str, Union[Dict, None]] = {}
 
-    def __init__(self, info: Dict[str, Any], label: Dict[str, Union[Dict, str, list]], dtype: alias = base.np_dtype.np_float32) -> None:
-        self.holder_info = info
-        self.set_label(label, self.data, self.holder, dtype=dtype)
+    def __init__(self, label: Dict[str, Union[Dict, alias]], info: Dict[str, Any]) -> None:
+        self.set_label(label, self.data, self.holder)
+        self.holder_info = info if info is not None else {}
 
     def set_info(self, info: Dict[str, Any]):
         for _info_key in info.keys():
@@ -486,7 +487,7 @@ class evaluation():
         line_label = np.reshape(label, -1)
         line_result = np.reshape(result, -1)
 
-        category_array_1d = base.bincount(line_label * class_num + line_result, class_num * class_num)
+        category_array_1d = np_base.bincount(line_label * class_num + line_result, class_num * class_num)
         category_array_2d = np.reshape(category_array_1d, (class_num, class_num))
 
         _inter = np.diag(category_array_2d)
