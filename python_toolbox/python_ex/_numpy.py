@@ -1,4 +1,3 @@
-from ast import alias
 from dataclasses import dataclass
 from typing import Any, List, Dict, Union
 import numpy as np
@@ -106,13 +105,13 @@ class file():
 class np_base():
     @dataclass
     class np_dtype():
-        np_int32: alias       = np.int32
-        np_uint8: alias     = np.uint8
-        np_bool: alias      = np.bool8
-        np_float32: alias   = np.float32
+        np_int32: type      = np.int32
+        np_uint8: type      = np.uint8
+        np_bool: type       = np.bool8
+        np_float32: type    = np.float32
 
     @staticmethod
-    def get_array_from(sample, is_shape=False, value=0, dtype: alias = np_dtype.np_uint8):
+    def get_array_from(sample, is_shape=False, value=0, dtype: type = np_dtype.np_uint8):
         _array = np.ones(sample) * value if is_shape else np.array(sample)
         return np_base.type_converter(_array, dtype)
 
@@ -137,24 +136,14 @@ class np_base():
         return (np_base.type_converter(array, float) - _m) / _std
 
     @staticmethod
-    def type_converter(data: ndarray, to_type: alias):
+    def type_converter(data: ndarray, to_type: type):
         # fix it
-        if to_type in ["uint", "uint8", np.uint8]:
-            _convert = data.astype(np.uint8)
-        elif to_type in ["int32", "int", int]:
-            _convert = data.astype(np.int32)
-        elif to_type in ["int64", ]:
-            _convert = data.astype(np.int64)
-        elif to_type in ["float32", "float", float]:
-            _convert = data.astype(np.float32)
-        elif to_type in ["float64", ]:
-            _convert = data.astype(np.float64)
-        elif to_type in ["bool", bool]:
+        if to_type in ["bool", bool]:
             _term = max(data) - min(data)
             _convert = np.round(data / _term)
             _convert = _convert.astype(np.bool8)
         else:
-            _convert = data
+            _convert = data.astype(to_type)
         return _convert
 
     @staticmethod
@@ -399,15 +388,15 @@ class labeled_holder():
     data: Dict[str, Union[Dict, ndarray]] = {}
     holder: Dict[str, Union[Dict, None]] = {}
 
-    def __init__(self, label: Dict[str, Union[Dict, alias]], info: Dict[str, Any]) -> None:
+    def __init__(self, label: Dict[str, Union[Dict, type]], info: Dict[str, Any]) -> None:
         self.set_label(label, self.data, self.holder)
-        self.holder_info = info if info is not None else {}
+        self.info = info if info is not None else {}
 
     def set_info(self, info: Dict[str, Any]):
         for _info_key in info.keys():
-            self.holder_info[_info_key] = info[_info_key]
+            self.info[_info_key] = info[_info_key]
 
-    def set_label(self, label: Dict[str, Union[Dict, alias]], data_root: dict = None, holder_root: dict = None):
+    def set_label(self, label: Dict[str, Union[Dict, type]], data_root: dict = None, holder_root: dict = None):
         # root check
         if data_root is None and holder_root is None:
             data_root = {}
@@ -425,22 +414,21 @@ class labeled_holder():
             if isinstance(label_node, dict):  # Nodes exist over 2 levels below.
                 self.set_label(label_node, data_root[_label_name], holder_root[_label_name])
 
-            elif isinstance(label_node, alias):  # end point node
+            elif isinstance(label_node, type):  # end point node
                 data_root[_label_name] = np.array([], dtype=label_node)
                 holder_root[_label_name] = None
 
     def update(self, data_holder: Dict[str, Union[Dict, int, float, str, None]], root: Dict[str, Union[Dict, ndarray]] = None):
+        root = self.data if root is None else root
+
         for _node_key in data_holder.keys():
             _holder_node = data_holder[_node_key]
 
             if isinstance(_holder_node, dict):  # go to under node
-                self.update(_holder_node, self.data[_node_key])
+                self.update(_holder_node, root[_node_key])
 
             else:  # data update
-                if root is None:
-                    self.data[_node_key] = np.append(self.data[_node_key], np.array(_holder_node))
-                else:
-                    root[_node_key] = np.append(root[_node_key], np.array(_holder_node))
+                root[_node_key] = np.append(root[_node_key], np.array(_holder_node))
                 _holder_node = None
 
     def __data_converter(self, data: Dict[str, Union[Dict, ndarray]] = None):

@@ -122,6 +122,8 @@ class process():
 
             self.data_list = list(zip(*data_list))
 
+            return self.data_list
+
     class from_annotation_file(basement):
         """
         from image file
@@ -218,7 +220,7 @@ class style():
         def get_data_directory(self, learning_style: str):
             pass
 
-        def make_data(self, data: process.basement, index, data_size):
+        def make_data(self, file_list: List[str], index, data_size):
             pass
 
     class CDnet():
