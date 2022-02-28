@@ -235,6 +235,12 @@ class cv_base():
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
         _holder = _numpy.np_base.get_array_from(_holder_shape, True)
+
+        _t_pad = _t_pad if _t_pad else None
+        _b_pad = -_b_pad if _b_pad else None
+        _l_pad = _l_pad if _l_pad else None
+        _r_pad = -_r_pad if _r_pad else None
+
         _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
 
         return _holder
