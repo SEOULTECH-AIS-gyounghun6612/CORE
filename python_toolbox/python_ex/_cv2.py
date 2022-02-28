@@ -10,8 +10,7 @@ Requirement
 """
 
 # Import module
-from ctypes import Union
-from typing import List
+from typing import List, Union
 import cv2
 import random
 from dataclasses import dataclass, field
