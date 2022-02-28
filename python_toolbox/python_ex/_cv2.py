@@ -10,6 +10,7 @@ Requirement
 """
 
 # Import module
+from ctypes import Union
 from typing import List
 import cv2
 import random
@@ -43,7 +44,7 @@ class C_position(Enum):
 
 
 class R_option(Enum):
-    ZtoM = 0  # [0, 255]
+    ZtoFF = 0  # [0, 255]
     ZtoO = 1  # [0, 1.0]
 
 
@@ -53,7 +54,11 @@ class CVT_option(Enum):
     BGR2RGB = 2
 
 
-# extention about read and write
+class Image_direction(Enum):
+    Hight = 0
+    width = 1
+
+
 class file():
     # option
     DEBUG = False
@@ -111,7 +116,7 @@ class file():
         return cap
 
     @classmethod  # in later fix
-    def video_write(self, filename, video_size, frame=30):
+    def video_write(self, filename: str, video_size, frame=30):
         video_format = filename.split("/")[-1].split(".")[-1]
 
         if not _base.file._extension_check(video_format, self.VIDEO_EXT):
@@ -132,10 +137,7 @@ class file():
         return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
 
 
-# extention about image process
-class base():
-    M = 255
-
+class cv_base():
     @staticmethod
     def image_stack(images, channel_option: C_position):
         if channel_option.value:  # stack to last channel
@@ -177,13 +179,13 @@ class base():
     @classmethod
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
-            if to_range == R_option.ZtoM:  # convert to [0.0, 1.0] -> [0, 255]
-                return _numpy.np_base.type_converter(image * self.M, "uint8")
+            if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
+                return _numpy.np_base.type_converter(image * 0xff, "uint8")
             else:
                 return image
-        elif form_range == R_option.ZtoM:
+        elif form_range == R_option.ZtoFF:
             if to_range == R_option.ZtoO:  # convert to [0, 255] -> [0.0, 1.0]
-                return image / 255
+                return image / 0xFF
             else:
                 return image
 
@@ -202,12 +204,57 @@ class base():
             # color image
             holder = _numpy.np_base.get_array_from(image)
             for _ch_ct in range(image.shape[-1]):
-                holder[:, :, _ch_ct] = base.filtering(image[:, :, _ch_ct], array)
+                holder[:, :, _ch_ct] = cv_base.filtering(image[:, :, _ch_ct], array)
             return holder
         else:
             return cv2.filter2D(image, cv2.CV_64F, array)
 
     @staticmethod
+    def padding(image: _numpy.np.ndarray, padding: Union[int, List[int]]):
+        """
+        padding
+            int  A              -> [top : A, bottom: A, left : A, right: A]\n
+            list [A, B]         -> [top : A, bottom: A, left : B, right: B]\n
+            list [A, B, C, D]   -> [top : A, bottom: B, left : C, right: D]\n
+        """
+        # make holder -> in later add multi padding option
+        if isinstance(padding, int):
+            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
+        elif isinstance(padding, list):
+            if len(padding) == 2:
+                # [hight_pad, width_pad]
+                _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
+            elif len(padding) == 4:
+                # [top, bottom, left, right]
+                _t_pad, _b_pad, _l_pad, _r_pad = padding
+
+        if len(image.shape) == 3:
+            _h, _w, _c = image.shape
+            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad), _c]
+        elif len(image.shape) == 2:
+            _h, _w = image.shape
+            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
+
+        _holder = _numpy.np_base.get_array_from(_holder_shape, True)
+        _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
+
+        return _holder
+
+    @staticmethod
+    def unpadding(image: _numpy.np.ndarray, padding: Union[int, List[int]]):
+        # make holder -> in later add multi padding option
+        if isinstance(padding, int):
+            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
+        elif isinstance(padding, list):
+            if len(padding) == 2:
+                # [hight_pad, width_pad]
+                _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
+            elif len(padding) == 4:
+                # [top, bottom, left, right]
+                _t_pad, _b_pad, _l_pad, _r_pad = padding
+
+        return image[_t_pad: -_b_pad, _l_pad: -_r_pad]
+
     class blur():
         default = {
             "gaussian": {
@@ -241,8 +288,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = base.filtering(image, _numpy.np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
-                dy = base.filtering(image, _numpy.np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dx = cv_base.filtering(image, _numpy.np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
+                dy = cv_base.filtering(image, _numpy.np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
                 dxy = _numpy.cal.distance(dx, dy, is_euclid)
                 direction = _numpy.cal.get_direction(dx, dy)
                 return dxy, direction
@@ -259,7 +306,7 @@ class edge():
         else:
             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else _numpy.np_base.type_converter(255 * _edge, "uint")
+        return _edge if is_active_map else _numpy.np_base.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
     def sobel(image: _numpy.np.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
@@ -269,7 +316,7 @@ class edge():
             for _ch_ct in range(image.shape[-1]):
                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
             holder = (holder >= 2)
-            return holder if is_active_map else _numpy.np_base.type_converter(255 * holder, "uint8")
+            return holder if is_active_map else _numpy.np_base.type_converter(0xFF * holder, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
@@ -284,18 +331,18 @@ class edge():
             else:
                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else _numpy.np_base.type_converter(255 * _edge, "uint")
+            return _edge if is_active_map else _numpy.np_base.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
-    def canny(gray_image, ths, k_size=3, range=R_option.ZtoM, channel=C_position.Last):
+    def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=C_position.Last):
         _high = ths[0]
         _low = ths[1]
 
         canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
         if channel is not None:
-            canny_image = base.image_stack([canny_image, canny_image, canny_image], channel)
+            canny_image = cv_base.image_stack([canny_image, canny_image, canny_image], channel)
 
-        return base.range_converter(canny_image, R_option.ZtoM, range)
+        return cv_base.range_converter(canny_image, R_option.ZtoFF, range)
 
 
 class gui_process():
@@ -320,7 +367,7 @@ class gui_process():
 class draw():
     @dataclass
     class pen():
-        color: list = field(default_factory=lambda: [255, 255, 255])
+        color: list = field(default_factory=lambda: [0xFF, 0xFF, 0xFF])
         thickness: int = 1
 
     @dataclass
@@ -328,60 +375,70 @@ class draw():
         x: int = 0
         y: int = 0
 
-    @staticmethod
-    def _padding(image: _numpy.np.ndarray, padding):
-        # make holder -> in later add multi padding option
-        if isinstance(padding, int):
-            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
-        elif isinstance(padding, list):
-            if len(padding) == 2:
-                # [hight_pad, weidth_pad]
-                pass
-            elif len(padding) == 4:
-                # [top, bottom, left, right]
-                pass
+    class text_position(Enum):
+        Inside = 0b10000
+        Outside = 0b00000
+        Top = 0b00001
+        Middle = 0b00010
+        Bottom = 0b00000
+        Left = 0b00100
+        Normal = 0b01000
+        Right = 0b00000
 
+    @staticmethod
+    def merge(image: List[_numpy.np.ndarray], direction: Image_direction, interval: int = 10):
+        _merge_img = image[0]
+        if direction == Image_direction.Hight:
+            for _img in image[1:]:
+                _merge_img = cv_base.padding(_merge_img, [0, interval, 0, 0])
+                _merge_img = cv2.vconcat(_merge_img, _img)
+        else:  # width
+            for _img in image[1:]:
+                _merge_img = cv_base.padding(_merge_img, [0, 0, 0, interval])
+                _merge_img = cv2.hconcat(_merge_img, _img)
+
+        return _merge_img
+
+    @staticmethod
+    def text(image: _numpy.np.ndarray, text: str):
+        [_text_w, _text_h], _ = cv2.getTextSize(text=text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
+        text_padding = 10
         if len(image.shape) == 3:
             _h, _w, _c = image.shape
-            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad), _c]
+            _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding), _c]
+            _tpye_image_size = [_h + _text_h, _w, _c]
+
         elif len(image.shape) == 2:
             _h, _w = image.shape
-            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
+            _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding)]
+            _tpye_image_size = [_h + _text_h, _w]
 
-        _holder = _numpy.np_base.get_array_from(_holder_shape, True)
-        _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
+        _text_shell = _numpy.np_base.get_array_from(_text_shell_size, True, 0xFF)
+        cv2.putText(img=_text_shell,
+                    text=text,
+                    org=(text_padding, _text_h + text_padding),
+                    fontScale=1,
+                    thickness=2,
+                    fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                    color=0)
 
-        return _holder
+        _text_shell = cv_base.resize(_text_shell, [_text_h, _w])
+        _tpye_image = _numpy.np_base.get_array_from(_tpye_image_size, True, 0xFF)
+        _tpye_image[:_h, :, :] = image
+        _tpye_image[_h:, :, :] = _text_shell
 
-    @staticmethod
-    def _unpadding(image, padding):
-        # make holder -> in later add multi padding option
-        if isinstance(padding, int):
-            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
-        elif isinstance(padding, list):
-            if len(padding) == 2:
-                # [hight_pad, weidth_pad]
-                pass
-            elif len(padding) == 4:
-                # [top, bottom, left, right]
-                pass
-
-        return image[_t_pad: -_b_pad, _l_pad: -_r_pad]
+        return _tpye_image
 
     @staticmethod
-    def _text(image, text):
+    def rectangle():
         pass
 
     @staticmethod
-    def _rectangle():
+    def circle():
         pass
 
     @staticmethod
-    def _circle():
-        pass
-
-    @staticmethod
-    def _oval():
+    def oval():
         pass
 
     @staticmethod
@@ -401,7 +458,7 @@ class draw():
         def __init__(self, size=None, sample=None) -> None:
             self.active_pen = draw.pen()
             if size is not None or sample is not None:
-                self.set_canvas(size, sample, is_color=[255, 255, 255])
+                self.set_canvas(size, sample, is_color=[0xFF, 0xFF, 0xFF])
 
         def set_pen(self, color, thickness=1):
             self.active_pen.color = color
