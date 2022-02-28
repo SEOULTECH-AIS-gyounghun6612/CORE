@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 
 from enum import Enum
 
+from numpy import ndarray
+
 if __package__ == "":
     import _base
     import _numpy
@@ -347,8 +349,9 @@ class edge():
 
 class gui_process():
     @staticmethod
-    def display(image, dispaly_window):
-        pass
+    def display(image: ndarray, dispaly_window: str, ms_delay: int = -1):
+        cv2.imshow(dispaly_window, image)
+        return cv2.waitKeyEx(ms_delay)
 
     def image_cover():
         pass
