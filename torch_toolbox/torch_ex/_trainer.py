@@ -1,83 +1,148 @@
 # from random import sample
 from dataclasses import asdict
 from math import inf
-from collections import deque
-from typing import Dict, List, Tuple
+from collections import deque, namedtuple
+from typing import Dict, List, Tuple, Union, Deque
+
 from python_ex._base import utils, directory
 
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._base import torch_utils, opt, log
-    from torch_ex._structure import custom_module, Tensor, Optimizer, _Loss
+    from torch_ex._base import opt, log
+    from torch_ex._structure import custom_module, Tensor, Optimizer  # , _Loss
     from torch_ex import _data_process
 else:
     # if this file in package folder
-    from ._base import torch_utils, opt, log
-    from ._structure import custom_module, Tensor, Optimizer, _Loss
+    from ._base import opt, log
+    from ._structure import custom_module, Tensor, Optimizer  # , _Loss
     from . import _data_process
 
 
 class Deeplearnig():
-    def __init__(self, learning_opt: opt._learning.base, log_opt: opt._log):
-        self.learning_opt = learning_opt
+    class basement():
+        def __init__(self, learning_opt: opt._learning.base, log_opt: opt._log, data_opt: opt._data):
+            # set learning option
+            self.learning_opt = learning_opt
 
-        # log_opt and log
-        self.log_opt = log_opt
-        self.log: log = log(opt=self.log_opt)
+            # set log
+            self.log: log = log(opt=log_opt, info=None)
+            self.log.set_info({"Learning date": utils.time_stemp(is_text=True)})
+            self.log.set_info({"Train_opt": asdict(self.learning_opt)})
 
-        self.learning_option_logging()
+            # set dataloader
+            self.set_data_process(learning_opt.Learnig_style, data_opt)
 
-        # model and optim
-        self.model: custom_module = None
-        self.optim: Optimizer = None
+            # model and optim
+            self.model: Union[custom_module, List[custom_module]] = None
+            self.optim: Union[Optimizer, List[Optimizer]] = None
 
-    def learning_option_logging(self):
-        learning_info = {}
-        learning_info["date"] = utils.time_stemp(True)
-        learning_info = asdict(self.learning_opt)
-        self.log.info_update("learning", learning_info)
+        def set_data_process(self, learning_style: List[str], data_opt: opt._data):
+            # dataloader from data option
+            _batch_size = data_opt.Batch_size
+            _num_workers = data_opt.Num_workers
 
-    def set_data_process(self, data_opt: opt._data):
-        # data_opt and dataloader
-        _batch_size = data_opt.Batch_size
-        _num_workers = data_opt.Num_workers
-        self.dataloader: Dict[str, _data_process.DataLoader] = {}
-        _dataloader_log = {}
-        for train_style in self.learning_opt.Train_style:
-            _temp_dataset = _data_process.dataset.basement(data_opt, train_style)
-            self.dataloader[train_style] = _data_process.dataloader._make(_temp_dataset, _batch_size, _num_workers, train_style == "train")
-            _dataloader_log[train_style] = {"data_length": _temp_dataset.__len__()}
-        self.log.info_update("dataloader", _dataloader_log)
+            # dataloader
+            self.dataloader: Dict[str, _data_process.DataLoader] = {}
 
-    def set_model_n_optim(self, model: custom_module, optim: Optimizer, file_dir: str = None):
-        self.model = model.cuda() if self.learning_opt.is_cuda else model
-        self.optim = optim(self.model.parameters(), self.learning_opt.Learning_rate)
+            #  holder for logging
+            _dataloader_log = {}
 
-        if file_dir is not None:
-            self.load_model_n_optim(file_dir)
+            for _style in learning_style:
+                _temp_dataset = _data_process.dataset.basement(data_opt, _style)
+                # When learning style is "train", Dataloader parameter shuffle is True. Else set False
+                self.dataloader[_style] = _data_process.dataloader._make(_temp_dataset, _batch_size, _num_workers, _style == "train")
+                _dataloader_log[_style] = {"data_length": _temp_dataset.__len__()}
+            self.log.set_info({"Dataloader": _dataloader_log})
 
-    def load_model_n_optim(self, file_dir: str):
-        check_point = self.model._load_from(file_dir)
-        if check_point["optimizer_state_dict"] is not None:
-            self.optim.load_state_dict(check_point["optimizer_state_dict"])
+        def set_model_n_optim(self, model: custom_module, optim: Optimizer, learning_rate: float, file_dir: str = None):
+            model = model.cuda() if self.learning_opt.is_cuda else model
+            optim = optim(model.parameters(), learning_rate)
 
-    def data_jump_to_gpu(self, datas):
-        # if use gpu dataset move to datas
-        pass
+            if file_dir is not None:
+                check_point = model._load_from(file_dir)
+                if check_point["optimizer_state_dict"] is not None:
+                    optim.load_state_dict(check_point["optimizer_state_dict"])
 
-    def fit(self, mode="train"):
-        pass
+            return model, optim
 
-    def get_loss(self, _epoch, datas):
-        # cal loss, update log
-        pass
+        def save_model_and_optim(self, epoch: int, model: custom_module, save_dir: str, optim: Optimizer = None):
+            save_dir = directory._slash_check(save_dir)
+            model._save_to(save_dir=save_dir, epoch=epoch, optim=optim)
+
+        def data_jump_to_gpu(self, data_list: List[Tensor]):
+            # if use gpu dataset move to datas
+            pass
+
+        def fit(self, epoch: int, mode: str = "train", is_display: bool = False, save_root: str = None):
+            if mode == "train":
+                [_model.train() for _model in self.model] if isinstance(self.model, list) else self.model.train()
+            else:
+                [_model.eval() for _model in self.model] if isinstance(self.model, list) else self.model.eval()
+
+        def result_save(self, mode: str, epoch: int, save_root: str):
+            pass
 
 
 class Reinforcment():
-    class DQN(Deeplearnig):
-        def __init__(self, learning_opt: opt._learning.reinforcement, log_opt: opt._log):
-            super().__init__(learning_opt, log_opt)
+    play_memory = namedtuple("play_memory", ["state", "action", "reward", "next_state", "ep_done"])
+
+    class basement(Deeplearnig.basement):
+        learning_opt: opt._learning.reinforcement = None
+
+        def __init__(self, learning_opt: opt._learning.reinforcement, log_opt: opt._log, data_opt: opt._data):
+            super().__init__(learning_opt, log_opt, data_opt)
+
+            self.memory: Deque[Reinforcment.play_memory] = deque([], maxlen=learning_opt.Memory_size)
+
+        def fit(self, epoch: int, mode: str = "train", is_display: bool = False, save_root: str = None):
+            super().fit(epoch, mode, is_display, save_root)
+            _data_loader = self.dataloader[mode]
+            _data_num = 0
+
+            save_root = directory._make(f"{mode}/", f"{save_root}")
+            save_dir = directory._make(f"{epoch}/", f"{save_root}")
+
+            for _state in _data_loader:  # minibatch
+                _state, _ep_done, _state_ct = self.data_jump_to_gpu(_state)
+
+                for _step_ct in range(self.learning_opt.Max_step):  # step
+                    _action = self.act(_state)
+                    _next_state, _ep_done = self.play(mode, _data_num, _step_ct, _action, _state, _ep_done, is_display, save_dir)
+
+                    if mode != "test":
+                        self.replay(mode)
+                        self.learning_opt.Exploration_threshold *= self.learning_opt.Exploration_discount
+
+                    _state = _next_state
+
+                _data_num = self.log.progress_bar(epoch, mode, _data_num, _state_ct)
+
+            # result save
+            self.result_save(mode, epoch, save_root)
+
+        def act(self, state: Tensor) -> Tuple[Tensor, Tensor]:
+            pass
+
+        def get_reward(self, state, ep_done):
+            pass
+
+        def play(self, mode: str, data_num: int, step_ct: int, action: Tensor, state: Tensor, _ep_done: Tensor, is_display: bool, save_root: str) -> Tuple[Tensor, Tensor]:
+            pass
+
+        def dump_to_memory(self, state, action, reward, next_state, ep_done):
+            self.memory.append(Reinforcment.play_memory(state, action, reward, next_state, ep_done))
+
+        def replay(self):
+            pass
+
+        def result_save(self, mode: str, epoch: int, save_root: str):
+            pass
+
+    class DQN(basement):
+        def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log, data_opt: opt._data):
+            super().__init__(learnig_opt, log_opt, data_opt)
+
             self.back_up_model: custom_module = None
 
         def get_action(self, input):
@@ -86,116 +151,25 @@ class Reinforcment():
         def get_reward(self, action):
             pass
 
-        def play(self, episode_num, dataloader, is_train_mode=True, display=True, savedir=None):
-            pass
-
         def replay(self):
             pass
 
-        def load_from(self, dir):
-            pass
+    class A2C(basement):
+        def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log, data_opt: opt._data):
+            super().__init__(learnig_opt, log_opt, data_opt)
 
-        def save_to(self, dir):
-            pass
-
-    class A2C(Deeplearnig):
-        def __init__(self, learnig_opt: opt._learning.reinforcement, log_opt: opt._log):
-            super().__init__(learnig_opt, log_opt)
             self.model: List[custom_module] = []  # [actor, critic]
             self.optim: List[Optimizer] = []  # [actor, critic]
 
-        def set_model_n_optim(self, model: List[custom_module], optim: List[Optimizer], file_dir: str = None):
-            _is_cuda = self.learning_opt.is_cuda
-            _lr = self.learning_opt.Learning_rate
+        def set_model_n_optim(self, models: List[custom_module], optims: List[Optimizer], file_dir: List[str] = None):
+            _learning_rates = self.learning_opt.Learning_rate
+            _learning_rates = _learning_rates if isinstance(_learning_rates, list) else [_learning_rates for _ct in range(len(models))]
+            _file_dir = file_dir if isinstance(file_dir, list) else [file_dir for _ct in range(len(models))]
 
-            for _ct, [_model, _optim] in enumerate(zip(model, optim)):
-                self.model.append(_model.cuda() if _is_cuda else _model)
-                self.optim.append(_optim(self.model[_ct].parameters(), _lr))
-
-            if file_dir is not None:
-                for _ct, _file in enumerate(file_dir):
-                    check_point = self.model[_ct]._load_from(_file)
-                    if check_point["optimizer_state_dict"] is not None:
-                        self.optim[_ct].load_state_dict(check_point["optimizer_state_dict"])
-
-        def play(self, epoch: int, mode: str = "train", display: bool = False, save_root: str = None):
-            # for display, progressbar
-            self.log.this_mode = mode
-            self.log.this_epoch = epoch
-
-            if mode == "train":
-                [_model.train() for _model in self.model]
-            else:
-                [_model.eval() for _model in self.model]
-
-            data_num = 0
-            for _state in self.dataloader[mode]:
-                data_num += _state[0].shape[0]
-                _ep_done = torch_utils._tensor.holder([self.dataloader[mode].batch_size, 1], True, 0)
-                _state = self.data_jump_to_gpu(_state)
-                for _step_ct in range(self.learning_opt.Max_step):
-                    _action, _ep_done = self.act(_state, _ep_done)
-                    _state, _each_loss_list, _ep_done = self.get_loss(mode, _step_ct, _state, _action, _ep_done, display, save_root)
-
-                    if mode == "train":
-                        for _ct, _each_loss in enumerate(_each_loss_list):
-                            self.optim[_ct].zero_grad()
-                            _each_loss.backward()
-                            self.optim[_ct].step()
-
-                    if self.dataloader[mode].batch_size < 2:
-                        if _ep_done:
-                            break
-
-                    self.log.progress_bar(data_num)
-
-            # result save
-            save_dir = directory._make(f"{epoch}/", self.log_opt.Save_root)
-
-            for _model in self.model:
-                _model._save_to(save_dir, epoch)
-
-            self.log.save("train_log.json" if mode != "test" else "test_log.json")
-
-        def reward_converter(self, raw_reward, ep_done):
-            _reward_holder = raw_reward * 0.0
-
-            _ths = self.learning_opt.Reward_th
-            _values = self.learning_opt.Reward_value
-
-            if not self.learning_opt.Reward_relation_range:
-                for _ct, _reward_th in enumerate(_ths):
-                    _reward_holder += (raw_reward >= _reward_th) * _values[_ct]
-                _reward_holder += (raw_reward < _ths[-1]) * _values[-1]
-
-            else:
-                pass
-
-            _under = ep_done * 1.0
-            _reward_holder = (_reward_holder * (1 - _under)) + (_values[-1] * _under)
-
-            _reward = torch_utils._tensor.from_numpy(_reward_holder)
-            _reward = _reward.cuda() if self.learning_opt.is_cuda else _reward
-            ep_done = torch_utils._tensor.from_numpy(ep_done)
-            ep_done = ep_done.cuda() if self.learning_opt.is_cuda else ep_done
-
-            return _reward, ep_done
-
-        def data_jump_to_gpu(self, datas: List[Tensor]):
-            # if use gpu dataset move to datas
-            pass
-
-        def act(self, state: Tensor, ep_done: Tensor):
-            pass
-
-        def get_loss(self, mode: str, step: int, state: Tensor, action: Tensor, ep_done: bool, display: bool, save_root: str) -> Tuple[Tensor, List[_Loss], Tensor]:
-            # cal loss, update log
-            # return [state, loss, ep_done]
-            pass
-
-        def get_reward(self, state: Tensor, action: Tensor, ep_done: bool):
-            # make next state from action and reward
-            pass
+            for _model, _optim, _lr, _file in zip(models, optims, _learning_rates, _file_dir):
+                [model, optim] = super().set_model_n_optim(_model, _optim, _lr, _file)
+                self.model.append(model)
+                self.optim.append(optim)
 
     class A3C(Deeplearnig):
         def __init__(self, thred, action_size, is_cuda, Learning_rate, discount=0.9):

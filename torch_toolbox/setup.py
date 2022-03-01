@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="torch_ex",
-    version="0.0.1",
+    version="1.0.0",
     description="Custom base code module for pytorch",
     url="https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git",
     author="Choi_keonghun & Jun_eins",

@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field, asdict
 from typing import Dict
 
-from torch import save, load, cat, mean, Tensor
+from torch import save, load, mean, Tensor
+
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
 from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d
@@ -13,8 +14,6 @@ from torch.optim import Optimizer
 import torchvision.models as models
 from torchsummary import summary as ModelSummary
 from python_ex import _error as _e
-
-from torch.nn.modules.loss import _Loss
 
 _error = _e.Custom_error(
     module_name="torch_custom_utils_v 1.x",
@@ -54,7 +53,7 @@ class opt():
 
 class loss_function():
     @staticmethod
-    def mse(output, target) -> _Loss:
+    def mse_loss(output, target) -> Tensor:
         """
         Args:
             output: [batch, c, h, w]
@@ -65,7 +64,7 @@ class loss_function():
         return MSELoss()(output, target)
 
     @staticmethod
-    def cross_entropy(output, target, ignore_index=-100) -> _Loss:
+    def cross_entropy_loss(output, target, ignore_index=-100) -> Tensor:
         """
         Args:
             output: [batch, class_num, h, w]
@@ -100,11 +99,6 @@ class custom_module(Module):
 
 
 class layer():
-    @staticmethod
-    def concatenate(layers, dim=1):
-        return cat(layers, dim=dim)
-
-    @staticmethod
     class FcBlock(Module):
         def __init__(self, Fc_opt: opt.fc_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
             super(layer.FcBlock, self).__init__()
@@ -135,7 +129,6 @@ class layer():
             x = self.fc_i_act(x) if self.fc_i_act is not None else x
             return x
 
-    @staticmethod
     class ConvBlock(Module):
         def __init__(self, conv_opt: opt.conv_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
             super(layer.ConvBlock, self).__init__()
@@ -166,12 +159,10 @@ class layer():
             x = self.conv_i_act(x) if self.conv_i_act is not None else x
             return x
 
-    @staticmethod
     class attention(Module):
         def __init__(self) -> None:
             super().__init__()
 
-    @staticmethod
     class kernel_attention(Module):  # fix it
         def __init__(self, in_ch, out_ch, k_size, multi_head) -> None:
             super(layer.kernel_attention, self).__init__()
