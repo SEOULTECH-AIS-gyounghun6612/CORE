@@ -209,7 +209,7 @@ class cv_base():
             return cv2.filter2D(image, cv2.CV_64F, array)
 
     @staticmethod
-    def padding(image: _numpy.np.ndarray, padding: Union[int, List[int]]):
+    def padding(image: _numpy.np.ndarray, padding: Union[int, List[int]], value: int):
         """
         padding
             int  A              -> [top : A, bottom: A, left : A, right: A]\n
@@ -234,7 +234,7 @@ class cv_base():
             _h, _w = image.shape
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
-        _holder = _numpy.np_base.get_array_from(_holder_shape, True)
+        _holder = _numpy.np_base.get_array_from(_holder_shape, True, value)
 
         _t_pad = _t_pad if _t_pad else None
         _b_pad = -_b_pad if _b_pad else None
@@ -392,15 +392,15 @@ class draw():
         Right = 0b00000
 
     @staticmethod
-    def merge(image: List[_numpy.np.ndarray], direction: Image_direction, interval: int = 10):
+    def merge(image: List[_numpy.np.ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
         _merge_img = image[0]
         if direction == Image_direction.Hight:
             for _img in image[1:]:
-                _merge_img = cv_base.padding(_merge_img, [0, interval, 0, 0])
+                _merge_img = cv_base.padding(_merge_img, [0, interval, 0, 0], interval_color)
                 _merge_img = cv2.vconcat(_merge_img, _img)
         else:  # width
             for _img in image[1:]:
-                _merge_img = cv_base.padding(_merge_img, [0, 0, 0, interval])
+                _merge_img = cv_base.padding(_merge_img, [0, 0, 0, interval], interval_color)
                 _merge_img = cv2.hconcat(_merge_img, _img)
 
         return _merge_img
@@ -430,8 +430,8 @@ class draw():
 
         _text_shell = cv_base.resize(_text_shell, [_text_h, _w])
         _tpye_image = _numpy.np_base.get_array_from(_tpye_image_size, True, 0xFF)
-        _tpye_image[:_h, :, :] = image
-        _tpye_image[_h:, :, :] = _text_shell
+        _tpye_image[:_h, :] = image
+        _tpye_image[_h:, :] = _text_shell
 
         return _tpye_image
 
