@@ -397,11 +397,11 @@ class draw():
         if direction == Image_direction.Hight:
             for _img in image[1:]:
                 _merge_img = cv_base.padding(_merge_img, [0, interval, 0, 0], interval_color)
-                _merge_img = cv2.vconcat(_merge_img, _img)
+                _merge_img = cv2.vconcat((_merge_img, _img))
         else:  # width
             for _img in image[1:]:
                 _merge_img = cv_base.padding(_merge_img, [0, 0, 0, interval], interval_color)
-                _merge_img = cv2.hconcat(_merge_img, _img)
+                _merge_img = cv2.hconcat((_merge_img, _img))
 
         return _merge_img
 
