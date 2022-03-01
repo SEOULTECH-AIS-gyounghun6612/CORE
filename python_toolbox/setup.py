@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="python_ex",
-    version="0.0.1",
+    version="1.0.0",
     description="Custom base code module for python",
     url="https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git",
     author="Choi_keonghun & Jun_eins",
