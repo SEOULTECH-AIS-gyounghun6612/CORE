@@ -241,7 +241,7 @@ class cv_base():
         _l_pad = _l_pad if _l_pad else None
         _r_pad = -_r_pad if _r_pad else None
 
-        _holder[_t_pad: -_b_pad, _l_pad: -_r_pad] = image
+        _holder[_t_pad: _b_pad, _l_pad: _r_pad] = image
 
         return _holder
 
