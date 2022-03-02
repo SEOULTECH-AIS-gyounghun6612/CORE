@@ -517,7 +517,7 @@ class evaluation():
             self.p = p
 
         def __call__(self, image: ndarray, target: ndarray) -> float:
-            self.get_value(image, target)
+            return self.get_value(image, target)
 
         def get_value(self, image: ndarray, target: ndarray):
             c = np.sqrt(np.sum(np.array(target.shape) * np.array(target.shape))).item()
