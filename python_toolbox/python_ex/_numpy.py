@@ -181,7 +181,7 @@ class np_base():
         return output if ouput_type == "active_map" else array * np_base.type_converter(output, int)
 
     @staticmethod
-    def range_converter(array: ndarray, from_range: List[Union[int, float]], to_range: List[Union[int, float]], dtype: np_dtype):
+    def range_converter(array: ndarray, from_range: List[Union[int, float]], to_range: List[Union[int, float]], dtype: np_dtype) -> ndarray:
         _from_range_max = from_range[0]
         _from_range_min = from_range[1]
         _from_term = _from_range_max - _from_range_min
@@ -520,45 +520,36 @@ class evaluation():
             self.get_value(image, target)
 
         def get_value(self, image: ndarray, target: ndarray):
-            c = np.sqrt(target.shape * target.shape).item()
+            c = np.sqrt(np.sum(np.array(target.shape) * np.array(target.shape))).item()
             N = target.shape[0] * target.shape[1]
+            _h_map = np.array([np.ones(target.shape[1]) * _h_map for _h_map in range(target.shape[0])])
+            _w_map = np.array([list(range(target.shape[1])) for _ct in range(target.shape[0])])
 
-            tager_edge_points = self.get_edge_points(target)
-            image_edge_points = self.get_edge_points(image)
+            tager_edge_points = np.where(target >= 1)
+            if len(tager_edge_points[0]):
+                _h_target_map = np.abs(_h_map[:, :, np.newaxis] - (np.ones((list(target.shape) + [1, ])) * tager_edge_points[0]))
+                _w_target_map = np.abs(_w_map[:, :, np.newaxis] - (np.ones((list(target.shape) + [1, ])) * tager_edge_points[1]))
 
-            # compare target
-            compare_target_list = []
-            compare_image_list = []
-            for _h in range(image.shape[0]):
-                for _w in range(image.shape[1]):
-                    # get w(d(x, A))
-                    compare_target_list.append(min(self.func_d([_h, _w], tager_edge_points), c))
-                    # get w(d(x, B))
-                    compare_image_list.append(min(self.func_d([_h, _w], image_edge_points), c))
+                _target_map = np.min(np.sqrt((_h_target_map * _h_target_map) + (_w_target_map * _w_target_map)), -1) / c
+                _target_map = np.where(_target_map >= 1, 1, _target_map)
 
-            compare_target_list = np.array(compare_target_list)
-            compare_image_list = np.array(compare_image_list)
+            else:
+                _target_map = np.zeros(target.shape)
+
+            image_edge_points = np.where(image >= 1)
+            if len(image_edge_points[0]):
+                _h_image_map = np.abs(_h_map[:, :, np.newaxis] - (np.ones((list(image.shape) + [1, ])) * image_edge_points[0]))
+                _w_image_map = np.abs(_w_map[:, :, np.newaxis] - (np.ones((list(image.shape) + [1, ])) * image_edge_points[1]))
+
+                _image_map = np.min(np.sqrt((_h_image_map * _h_image_map) + (_w_image_map * _w_image_map)), -1) / c
+                _image_map = np.where(_image_map >= 1, 1, _image_map)
+
+            else:
+                _image_map = np.zeros(image.shape)
 
             # cal |w(d(x, A))-w(d(x, B))|
-            tmp_holder = np.abs(compare_target_list - compare_image_list)
-            return (np.sum(np.power(tmp_holder, self.p)) / N) ** (1.0 / float(self.p))
-
-        @staticmethod
-        def get_edge_points(image: ndarray) -> ndarray:
-            _h, _w = image.shape
-            edge_point_holder = []
-            for _h_ct in range(_h):
-                for _w_ct in range(_w):
-                    if image[_h_ct, _w_ct]:
-                        edge_point_holder.append([_h_ct, _w_ct])
-            return np.array(edge_point_holder)
-
-        @staticmethod
-        def func_d(position, edge_points: ndarray) -> ndarray:
-            interval_list = np.abs(edge_points - position)
-            min_interval = interval_list[np.argmin(np.sum(interval_list, 1))]
-
-            return np.sqrt(np.sum(min_interval * min_interval)).item()
+            _edge_compare = np.abs(_target_map - _image_map)
+            return (np.sum(np.power(_edge_compare, self.p)) / N) ** (1.0 / float(self.p))
 
     class Confustion_Matrix():
         def Calculate_Confusion_Matrix(array: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
