@@ -181,6 +181,24 @@ class np_base():
         return output if ouput_type == "active_map" else array * np_base.type_converter(output, int)
 
     @staticmethod
+    def range_converter(array: ndarray, from_range: List[Union[int, float]], to_range: List[Union[int, float]], dtype: np_dtype):
+        _from_range_max = from_range[0]
+        _from_range_min = from_range[1]
+        _from_term = _from_range_max - _from_range_min
+
+        _to_range_max = to_range[0]
+        _to_range_min = to_range[1]
+        _to_term = _to_range_max - _to_range_min
+
+        _convert = (array - _from_range_min) / _from_term
+        _convert = (_convert * _to_term) + _to_range_min
+
+        if dtype in [np_base.np_dtype.np_uint8, np_base.np_dtype.np_int32]:
+            _convert = np.round(_convert)
+
+        return np_base.type_converter(_convert, dtype)
+
+    @staticmethod
     def stack(data_list: list, channel=-1):
         return np.stack(data_list, axis=channel)
 
@@ -495,13 +513,13 @@ class evaluation():
         return np.mean(iou)
 
     class baddeley():
-        def __init__(self, p) -> None:
+        def __init__(self, p: int = 2) -> None:
             self.p = p
 
-        def __call__(self, image, target) -> float:
+        def __call__(self, image: ndarray, target: ndarray) -> float:
             self.get_value(image, target)
 
-        def get_value(self, image, target):
+        def get_value(self, image: ndarray, target: ndarray):
             c = np.sqrt(target.shape * target.shape).item()
             N = target.shape[0] * target.shape[1]
 
@@ -526,7 +544,7 @@ class evaluation():
             return (np.sum(np.power(tmp_holder, self.p)) / N) ** (1.0 / float(self.p))
 
         @staticmethod
-        def get_edge_points(image):
+        def get_edge_points(image: ndarray) -> ndarray:
             _h, _w = image.shape
             edge_point_holder = []
             for _h_ct in range(_h):
@@ -536,7 +554,7 @@ class evaluation():
             return np.array(edge_point_holder)
 
         @staticmethod
-        def func_d(position, edge_points):
+        def func_d(position, edge_points: ndarray) -> ndarray:
             interval_list = np.abs(edge_points - position)
             min_interval = interval_list[np.argmin(np.sum(interval_list, 1))]
 
