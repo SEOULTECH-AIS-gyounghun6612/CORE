@@ -51,7 +51,8 @@ class opt():
             # Reward_relation_range: int = 80
 
             # action option
-            Action_size: Union[int, List[int]] = field(default_factory=list)
+            Action_size: List[Union[int, List[int]]] = field(default_factory=list)
+            Action_range: List[List[int]] = field(default_factory=list)  # [[Max, Min]]
 
             # replay option
             Memory_size: int = 1000
