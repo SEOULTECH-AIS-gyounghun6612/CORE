@@ -142,7 +142,7 @@ class np_base():
             _term = max(data) - min(data)
             _convert = np.round(data / _term)
             _convert = _convert.astype(np.bool8)
-        else:
+        elif to_type is not None:
             _convert = data.astype(to_type)
         return _convert
 
