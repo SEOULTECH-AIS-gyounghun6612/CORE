@@ -144,6 +144,8 @@ class np_base():
             _convert = _convert.astype(np.bool8)
         elif to_type is not None:
             _convert = data.astype(to_type)
+        else:
+            _convert = data
         return _convert
 
     @staticmethod
