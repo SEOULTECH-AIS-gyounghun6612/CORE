@@ -55,7 +55,7 @@ class log():
                 else:
                     self.info[_key] = info[_key]  # False -> (over)write
 
-    def get_info(self, name: str = None):
+    def get_info(self, name: str = None) -> Dict:
         return self.info[name] if name in self.info.keys() else self.info
 
     def add_data(self, data: Dict, mode: logging_option = logging_option.ADD, save_point: Dict = None):
@@ -77,7 +77,7 @@ class log():
                 else:
                     save_point[_key] = _contents  # False -> (over)write
 
-    def get_data(self, name: Union[List[str], str] = None, serch_point: Dict = None, range_st: int = 0, range_ed: int = None) -> Dict:
+    def get_data(self, name: Union[List[str], str] = None, serch_point: Dict = None, range_st: int = 0, range_ed: int = None) -> Dict[str, list]:
         serch_point = self.data if serch_point is None else serch_point
 
         if name is None:
