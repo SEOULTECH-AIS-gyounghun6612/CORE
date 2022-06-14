@@ -1,5 +1,14 @@
 from setuptools import setup
 
+
+requirments_package = [
+    'numpy',
+    'opencv-python',
+    'pyyaml']
+
+# dependency_links = [
+#     '']
+
 setup(
     name="python_ex",
     version="1.0.0",
@@ -9,8 +18,7 @@ setup(
     author_email="dev.gyounghun6612@gmail.com",
     packages=["python_ex"],
     python_requires=">= 3.7.0",
-    install_requires=[
-        'numpy', 'opencv-python', 'pyyaml'
-    ],
+    install_requires=requirments_package,
+    package_data={"": ["data_file/*.json"]},
     zip_safe=False
 )
