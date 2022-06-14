@@ -19,6 +19,6 @@ setup(
     packages=["python_ex"],
     python_requires=">= 3.7.0",
     install_requires=requirments_package,
-    package_data={"": ["data_file/*.json"]},
+    package_data={"python_ex": ["data_file/*.json"]},
     zip_safe=False
 )

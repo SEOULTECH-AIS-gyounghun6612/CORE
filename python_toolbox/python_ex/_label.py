@@ -132,7 +132,7 @@ class label_process():
         Label_list: Dict[label_style, List[label]] = {}
         Label_category: Dict[label_style, List[str]] = {}
 
-        def __init__(self, label_style: label_style, file_style: file_style, data_size) -> None:
+        def __init__(self, label_style: label_style, file_style: file_style, data_size: List[int]) -> None:
             self.label_style = label_style
             self.file_style = file_style
 
@@ -1157,6 +1157,10 @@ class label_process():
         def __init__(self, label_style: label_style, file_style: file_style, data_size) -> None:
             self.Lable_name = "imagenet_1k"
             super().__init__(label_style, file_style, data_size)
+
+        def get_label_list(self):
+            if self.learning_mode == label_style.CLASSIFICATION:
+                data = _base.file._json()
 
         def get_data_directory(self) -> str:
             return self.Directory[self.label_style]
