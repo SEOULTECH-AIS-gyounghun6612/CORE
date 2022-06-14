@@ -16,13 +16,13 @@ class logging_option(Enum):
 
 
 class log():
-    def __init__(self, info: Dict = {}, data: Dict = {}, save_dir: str = None, file_name: str = "log.json"):
+    def __init__(self, info: Dict = {}, data: Dict = {}, save_dir: str = None, file_name: str = "log.json", is_resotre: bool = False):
         self.save_dir = save_dir
         self.file_name = file_name
 
         _diretory = _base.directory._slash_check(f"{save_dir}/{file_name}", True)
 
-        if _base.file._exist_check(_diretory):
+        if _base.file._exist_check(_diretory) and is_resotre:
             self.load()
         else:
             self.info: Dict[str, Union[list, str, int]] = {}
