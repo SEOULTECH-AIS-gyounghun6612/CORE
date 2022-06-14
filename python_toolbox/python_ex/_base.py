@@ -9,12 +9,13 @@ Requirement
 """
 # Import module
 import json
+import yaml
 import platform
 import time
 
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, Dict, List, Union
+from typing import Dict, List, Union
 
 
 if __package__ == "":
@@ -192,7 +193,7 @@ class file():
             return None
 
     @staticmethod
-    def _extension_check(file_dir, exts: str, is_fix: bool = False):
+    def _extension_check(file_dir, exts: List[str], is_fix: bool = False):
         file_name = file._name_from_path(file_dir)
         is_positive = False
 
@@ -267,6 +268,58 @@ class file():
                 # !!!ERROR!!! load json file not exist
                 _error.variable_stop(
                     function_name="file.json_file",
+                    variable_list=["file_dir", "file_name"],
+                    AA="Load file '{}' not exist".format(file_dir + file_name)
+                )
+
+    @classmethod
+    def _yaml(self, file_dir: str, file_name: str, data_dict: Dict = None, is_save: bool = False):
+        """
+        Args:
+            save_dir        :
+            file_name       :
+            data_dict       :
+        Returns:
+            return (dict)   :
+        """
+        # directory check
+        file_dir = directory._slash_check(file_dir)
+        if not directory._exist_check(file_dir):
+            if is_save:
+                # !!!WARING!!! save directory not exist
+                _error.variable(
+                    function_name="file.yaml_file",
+                    variable_list=["file_dir", ],
+                    AA="Entered directory '{}' not exist. In first make that".format(file_dir))
+                directory._make(file_dir)
+
+            else:
+                # !!!ERROR!!! load directory not exist
+                _error.variable_stop(
+                    function_name="file.yaml_file",
+                    variable_list=["file_dir", ],
+                    AA="Entered directory '{}' not exist".format(file_dir)
+                )
+
+        # file_name check
+        _, file_name = file._extension_check(file_name, ["yml", 'yaml'], True)
+
+        # yaml file process load or save
+        if is_save:
+            # json file save
+            _file = open(file_dir + file_name, "w")
+            yaml.dump(data_dict, _file, indent=4)
+        else:
+            # yaml file load
+            if self._exist_check(file_dir + file_name):
+                # yaml file exist
+                _file = open(file_dir + file_name, "r")
+                return yaml.load(_file)
+
+            else:
+                # !!!ERROR!!! load yaml file not exist
+                _error.variable_stop(
+                    function_name="file.yaml_file",
                     variable_list=["file_dir", "file_name"],
                     AA="Load file '{}' not exist".format(file_dir + file_name)
                 )
