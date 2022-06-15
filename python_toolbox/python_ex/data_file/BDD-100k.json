@@ -1,0 +1,496 @@
+{
+    "seg": [
+        {
+            "ID": 0,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                0,
+                0
+            ],
+            "name": "unlabeled"
+        },
+        {
+            "ID": 1,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                74,
+                111
+            ],
+            "name": "dynamic"
+        },
+        {
+            "ID": 2,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                0,
+                0
+            ],
+            "name": "ego vehicle"
+        },
+        {
+            "ID": 3,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                81,
+                0,
+                81
+            ],
+            "name": "ground"
+        },
+        {
+            "ID": 4,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                0,
+                0
+            ],
+            "name": "static"
+        },
+        {
+            "ID": 5,
+            "Train_ID": 255,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                160,
+                170,
+                250
+            ],
+            "name": "parking"
+        },
+        {
+            "ID": 6,
+            "Train_ID": 255,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                140,
+                150,
+                230
+            ],
+            "name": "rail track"
+        },
+        {
+            "ID": 7,
+            "Train_ID": 0,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                128,
+                64,
+                128
+            ],
+            "name": "road"
+        },
+        {
+            "ID": 8,
+            "Train_ID": 1,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                232,
+                35,
+                244
+            ],
+            "name": "sidewalk"
+        },
+        {
+            "ID": 9,
+            "Train_ID": 255,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                100,
+                100,
+                150
+            ],
+            "name": "bridge"
+        },
+        {
+            "ID": 10,
+            "Train_ID": 2,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                70,
+                70,
+                70
+            ],
+            "name": "building"
+        },
+        {
+            "ID": 11,
+            "Train_ID": 4,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                153,
+                153,
+                190
+            ],
+            "name": "fence"
+        },
+        {
+            "ID": 12,
+            "Train_ID": 255,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                180,
+                100,
+                180
+            ],
+            "name": "garage"
+        },
+        {
+            "ID": 13,
+            "Train_ID": 255,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                180,
+                165,
+                180
+            ],
+            "name": "guard rail"
+        },
+        {
+            "ID": 14,
+            "Train_ID": 255,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                90,
+                120,
+                150
+            ],
+            "name": "tunnel"
+        },
+        {
+            "ID": 15,
+            "Train_ID": 3,
+            "Cateogry_ID": 2,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                156,
+                102,
+                102
+            ],
+            "name": "wall"
+        },
+        {
+            "ID": 16,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                100,
+                170,
+                250
+            ],
+            "name": "banner"
+        },
+        {
+            "ID": 17,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                250,
+                220,
+                220
+            ],
+            "name": "billboard"
+        },
+        {
+            "ID": 18,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                165,
+                255
+            ],
+            "name": "lane divider"
+        },
+        {
+            "ID": 19,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                60,
+                20,
+                220
+            ],
+            "name": "parking sign"
+        },
+        {
+            "ID": 20,
+            "Train_ID": 5,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                153,
+                153,
+                153
+            ],
+            "name": "pole"
+        },
+        {
+            "ID": 21,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                153,
+                153,
+                153
+            ],
+            "name": "polegroup"
+        },
+        {
+            "ID": 22,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                100,
+                220,
+                220
+            ],
+            "name": "street light"
+        },
+        {
+            "ID": 23,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                0,
+                70,
+                255
+            ],
+            "name": "traffic cone"
+        },
+        {
+            "ID": 24,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                220,
+                220,
+                220
+            ],
+            "name": "traffic device"
+        },
+        {
+            "ID": 25,
+            "Train_ID": 6,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                30,
+                170,
+                250
+            ],
+            "name": "traffic light"
+        },
+        {
+            "ID": 26,
+            "Train_ID": 7,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                0,
+                220,
+                220
+            ],
+            "name": "traffic sign"
+        },
+        {
+            "ID": 27,
+            "Train_ID": 255,
+            "Cateogry_ID": 3,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                250,
+                170,
+                250
+            ],
+            "name": "traffic sign frame"
+        },
+        {
+            "ID": 28,
+            "Train_ID": 9,
+            "Cateogry_ID": 4,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                152,
+                251,
+                152
+            ],
+            "name": "terrain"
+        },
+        {
+            "ID": 29,
+            "Train_ID": 8,
+            "Cateogry_ID": 4,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                35,
+                142,
+                107
+            ],
+            "name": "vegetation"
+        },
+        {
+            "ID": 30,
+            "Train_ID": 10,
+            "Cateogry_ID": 5,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                180,
+                130,
+                70
+            ],
+            "name": "sky"
+        },
+        {
+            "ID": 31,
+            "Train_ID": 11,
+            "Cateogry_ID": 6,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                60,
+                20,
+                220
+            ],
+            "name": "person"
+        },
+        {
+            "ID": 32,
+            "Train_ID": 12,
+            "Cateogry_ID": 6,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                0,
+                0,
+                255
+            ],
+            "name": "rider"
+        },
+        {
+            "ID": 33,
+            "Train_ID": 18,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                32,
+                11,
+                119
+            ],
+            "name": "bicycle"
+        },
+        {
+            "ID": 34,
+            "Train_ID": 15,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                100,
+                60,
+                0
+            ],
+            "name": "bus"
+        },
+        {
+            "ID": 35,
+            "Train_ID": 13,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                142,
+                0,
+                0
+            ],
+            "name": "car"
+        },
+        {
+            "ID": 36,
+            "Train_ID": 255,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                90,
+                0,
+                0
+            ],
+            "name": "caravan"
+        },
+        {
+            "ID": 37,
+            "Train_ID": 17,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                230,
+                0,
+                0
+            ],
+            "name": "motorcycle"
+        },
+        {
+            "ID": 38,
+            "Train_ID": 255,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                110,
+                0,
+                0
+            ],
+            "name": "trailer"
+        },
+        {
+            "ID": 39,
+            "Train_ID": 16,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                100,
+                80,
+                0
+            ],
+            "name": "train"
+        },
+        {
+            "ID": 40,
+            "Train_ID": 14,
+            "Cateogry_ID": 7,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                70,
+                0,
+                0
+            ],
+            "name": "truck"
+        }
+    ]
+}

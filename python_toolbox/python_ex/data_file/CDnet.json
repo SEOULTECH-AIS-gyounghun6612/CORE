@@ -1,0 +1,64 @@
+{
+    "seg": [
+        {
+            "ID": 0,
+            "Train_ID": 0,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                16,
+                16,
+                16
+            ],
+            "name": "Static"
+        },
+        {
+            "ID": 1,
+            "Train_ID": 0,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                50,
+                50,
+                50
+            ],
+            "name": "Hard shadow"
+        },
+        {
+            "ID": 2,
+            "Train_ID": 255,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 1,
+            "Class_color": [
+                85,
+                85,
+                85
+            ],
+            "name": "Outside region of interest"
+        },
+        {
+            "ID": 3,
+            "Train_ID": 1,
+            "Cateogry_ID": 0,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                170,
+                170,
+                170
+            ],
+            "name": "Unknown motion"
+        },
+        {
+            "ID": 4,
+            "Train_ID": 2,
+            "Cateogry_ID": 1,
+            "Ignore_in_eval": 0,
+            "Class_color": [
+                255,
+                255,
+                255
+            ],
+            "name": "Motion"
+        }
+    ]
+}
