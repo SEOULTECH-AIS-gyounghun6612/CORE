@@ -1,31 +1,28 @@
 from torch.utils.data import DataLoader, Dataset
 
 if __package__ == "":
-    from _base import opt, torch_utils
+    from _torch_base import learing_mode, opt, torch_utils
 
 else:
-    from ._base import opt, torch_utils
+    from ._torch_base import learing_mode, opt, torch_utils
 
 
 class dataset():
     class basement(Dataset):
-        def __init__(self, data_option: opt._data, learnig_style: str) -> None:
+        def __init__(self, opt: opt._dataloader, mode: learing_mode):
             super().__init__()
-            self.data_size = data_option.Data_size
-            self.data_style = data_option.Data_style
-
-            _File_process = data_option.File_process
-            self.data = _File_process.make_datalist(self.data_style.get_data_directory(learnig_style))
+            self.data_process = opt.Data_process
+            self.data_process.set_learning_mode(mode.value)
+            self.data_profile = self.data_process.get_data_profile(opt.Data_label_style, opt.Data_file_style)
 
         def __len__(self):
-            return len(self.data)
+            return len(self.data_profile.Input)
 
         def __getitem__(self, index):
-            data = self.data_style.make_data(self.data, index, self.data_size)
+            data = self.data_process.work(self.data_profile, index)
             return [torch_utils._tensor.from_numpy(_data, "float32") for _data in data]
 
 
-class dataloader():
-    @staticmethod
-    def _make(dataset: dataset.basement, batch: int, worker: int, is_shuffle: bool):
-        return DataLoader(dataset, batch_size=batch, num_workers=worker, shuffle=is_shuffle)
+def make_dataloader(opt: opt._dataloader, mode: learing_mode, dataset_function: dataset.basement = dataset.basement):
+    _dataset = dataset_function(opt, mode)
+    return DataLoader(_dataset, batch_size=opt.Batch_size, num_workers=opt.Num_workers, shuffle=(mode.value == learing_mode.TRAIN.value))

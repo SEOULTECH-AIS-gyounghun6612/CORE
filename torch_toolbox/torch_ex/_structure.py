@@ -5,8 +5,8 @@ from torch import save, load, mean, Tensor
 
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch.nn import Module
-from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d
-from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid
+from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d, LayerNorm
+from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid, GELU
 from torch.nn import MSELoss, CrossEntropyLoss
 
 from torch.optim import Optimizer
@@ -32,13 +32,17 @@ class opt():
         out_features: int
 
     @dataclass
-    class conv_opt():
-        in_channels: int
-        out_channels: int
+    class conv_opt(fc_opt):
         kernel_size: int
         stride: int = 1
         padding: int = 0
         groups: int = 1
+
+    class attention():
+        @dataclass
+        class mixer():
+            block_size: int
+            mixing_type: str = None
 
     @dataclass
     class norm_opt():
@@ -159,8 +163,11 @@ class layer():
             x = self.conv_i_act(x) if self.conv_i_act is not None else x
             return x
 
-    class attention(Module):
-        def __init__(self) -> None:
+    class AttentionBlock(Module):
+        def __init__(
+                self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
+                mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
+                act_layer=GELU, norm_layer=LayerNorm) -> None:
             super().__init__()
 
     class kernel_attention(Module):  # fix it
