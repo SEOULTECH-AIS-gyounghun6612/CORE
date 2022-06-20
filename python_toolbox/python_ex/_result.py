@@ -20,7 +20,7 @@ class log():
         self.save_dir = save_dir
         self.file_name = file_name
 
-        _diretory = _base.directory._slash_check(f"{save_dir}/{file_name}", True)
+        _diretory = _base.directory._slash_check(f"{save_dir}{file_name}", True)
 
         if _base.file._exist_check(_diretory) and is_resotre:
             self.load()
@@ -28,7 +28,7 @@ class log():
             self.info: Dict[str, Union[list, str, int]] = {}
             self.add_info(info)
             self.data: Dict[str, Union[list, dict]] = {}
-            self.add_data(self.data, data, logging_option.OVERWRITE)
+            self.add_data(data, logging_option.OVERWRITE)
 
     def add_info(self, info: Dict, mode: logging_option = logging_option.OVERWRITE, save_point: Dict = None):
         if save_point is None:
