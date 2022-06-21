@@ -18,9 +18,9 @@ else:
     from ._data_process import dataset, DataLoader, make_dataloader
 
 
-class Deeplearnig():
-    class basement():
-        def __init__(self, result_dir: str = None, log_file: str = None, learning_mode: learing_mode = learing_mode.TRAIN, is_resotre: bool = False, **opts):
+class Learning_process():
+    class End_to_End():
+        def __init__(self, result_dir: str = None, log_file: str = None, is_resotre: bool = False, **opts):
             self.save_root = result_dir
             self.log_file_name = "learning_log.json" if log_file is None else log_file
 
@@ -28,34 +28,37 @@ class Deeplearnig():
             if is_resotre:
                 self.log = history.learning_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_resotre=is_resotre)
 
+                opts = self.log.file_data_to_opts()
+                self.learning_opt: opt._learning.base = opts["learning_opt"]
+                self.dataloader_opt: opt._dataloader = opts["dataloader_opt"]
+
             else:
-                self.learning_opt: opt._learning.base = opts["base"]
-                self.dataloader_opt: opt._dataloader = opts["dataloader"]
+                self.learning_opt: opt._learning.base = opts["learning_opt"]
+                self.dataloader_opt: opt._dataloader = opts["dataloader_opt"]
 
                 self.log = history.learning_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.log_file_name)
 
             # set dataloader
-            self.dataloaders: Dict[str, DataLoader] = {}
-            for _mode in self.log.info["Learning_mode"]:
-                self.dataloaders[_mode] = None
+            self.set_data_process()
 
             # model and optim
             self.model: Union[custom_module, List[custom_module]] = None
             self.optim: Union[Optimizer, List[Optimizer]] = None
 
             # set learning mode -> default: train
-            self.set_learning_mode(learning_mode)
+            self.set_learning_mode(self.learning_opt.Learning_mode[0])
 
         # --- additional editing be unnecessary, when except make a new learning_trainer --- #
         def set_learning_mode(self, learing_mode: learing_mode):
-            self.active_mode = learing_mode.value
+            self.active_mode = learing_mode
+            self.log.active_mode(learing_mode)
 
         def set_data_process(self):
             # dataloader dict
-            self.dataloaders: Dict[str, DataLoader] = {}
+            self.dataloaders: Dict[learing_mode, DataLoader] = {}
 
             for _learning_mode in self.learning_opt.Learning_mode:
-                self.dataloaders[_learning_mode.value] = make_dataloader(dataset.basement, self.dataloader_opt, _learning_mode)
+                self.dataloaders[_learning_mode] = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
 
         def set_model_n_optim(self, model: custom_module, optim: Optimizer, learning_rate: float, file_dir: str = None):
             model = model.cuda() if self.log.info["Learning opt"]["Use_cuda"] else model
