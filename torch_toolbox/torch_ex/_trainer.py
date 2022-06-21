@@ -2,19 +2,19 @@
 # from math import inf
 # from collections import deque, namedtuple
 from typing import Dict, List, Union
+from torch.optim import Adam, Optimizer
 
 from python_ex._base import directory
-
 
 if __package__ == "":
     # if this file in local project
     from torch_ex._torch_base import learing_mode, opt, history
-    from torch_ex._structure import custom_module, Tensor, Optimizer  # , _Loss
+    from torch_ex._structure import custom_module, Tensor  # , _Loss
     from torch_ex._data_process import dataset, DataLoader, make_dataloader
 else:
     # if this file in package folder
     from ._torch_base import learing_mode, opt, history
-    from ._structure import custom_module, Tensor, Optimizer  # , _Loss
+    from ._structure import custom_module, Tensor  # , _Loss
     from ._data_process import dataset, DataLoader, make_dataloader
 
 

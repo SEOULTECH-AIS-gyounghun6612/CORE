@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 from math import log10, floor
 
-from torch import Tensor, cuda, tensor, clip, stack, distributions, cat
+from torch import Tensor, cuda, tensor, stack, clip, distributions, cat
 from torch.nn import Module, ModuleList
 
 from python_ex._numpy import np_base, ndarray, evaluation
@@ -32,11 +32,22 @@ class opt():
         Data_label_style: Label_style
         Data_file_style: File_style
 
-        def opt_to_file(self):
-            ...
+        def opt_to_file_data(self):
+            data = {
+                # dataloader setting
+                "Batch_size": self.Batch_size,
+                "Num_workers": self.Num_workers,
 
-        def file_to_opt(self):
-            ...
+                # dataset setting
+                "Data_process": {
+                    "import_style": self.Data_process.Lable_name,
+                    "augmentation": self.Data_process.Root_dir,
+                    "root": self.Data_process.Root_dir},
+                "Data_label_style": self.Data_label_style.value,
+                "Data_file_style": self.Data_file_style.value,
+            }
+
+            return data
 
     class _learning():
         @dataclass
@@ -61,10 +72,7 @@ class opt():
             # About GPU system
             Use_cuda: bool = cuda.is_available()
 
-            def opt_to_file(self):
-                ...
-
-            def file_to_opt(self):
+            def opt_to_file_data(self):
                 ...
 
         @dataclass
@@ -143,6 +151,10 @@ class torch_utils():
 
     class _layer():
         @staticmethod
+        def position_encoding():
+            ...
+
+        @staticmethod
         def get_conv_pad(kernel_size, input_size, interval=1, stride=1):
             if type(kernel_size) != list:
                 kernel_size = [kernel_size, kernel_size]
@@ -201,7 +213,6 @@ class history():
                         holder[_Learning_mode][parameter] = []
 
             super().__init__(data=holder, save_dir=save_dir, file_name=file_name, is_resotre=is_resotre)
-            self.active_mode = learing_mode.TRAIN  # default -> train
 
         def set_logging_mode(self, learing_mode: learing_mode):
             self.active_mode = learing_mode.value
@@ -221,6 +232,11 @@ class history():
                 if _param in _data.keys():
                     _debugging_string += f"{_param} {sum(_data[_param]) / data_count},"
             return _debugging_string
+
+        def file_data_to_opts(self) -> Dict[str]:
+            for _opt_key in self.info.keys():
+                ...
+            ...
 
         def progress_bar(self, epoch: int, data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             def make_count_string(this_count, max_value):  # [3/25] -> [03/25]
