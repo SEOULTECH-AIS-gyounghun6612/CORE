@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field, asdict
-from typing import Dict
+from dataclasses import dataclass, asdict
 
 from torch import save, load, mean, Tensor
 
@@ -26,33 +25,64 @@ class opt():
         use_flat: bool = True
         use_avg_pooling: bool = True
 
-    @dataclass
-    class fc_opt():
-        in_features: int
-        out_features: int
-
-    @dataclass
-    class conv_opt(fc_opt):
-        kernel_size: int
-        stride: int = 1
-        padding: int = 0
-        groups: int = 1
-
-    class attention():
+    class layer():
         @dataclass
-        class mixer():
-            block_size: int
-            mixing_type: str = None
+        class fc_opt():
+            in_features: int
+            out_features: int
+            bias: bool = True
 
-    @dataclass
-    class norm_opt():
-        norm_type: str
-        parameter: Dict = field(default_factory=dict)  # in later make this dataclass
+        @dataclass
+        class conv_opt():
+            in_channels: int
+            out_channels: int
+            kernel_size: int
+            stride: int = 1
+            padding: int = 0
+            dilation: int = 1
+            groups: int = 1
+            bias: bool = True
 
-    @dataclass
-    class active_opt():
-        active_type: str
-        parameter: Dict = field(default_factory=dict)  # in later make this dataclass
+        @dataclass
+        class attention():
+            ...
+
+        @dataclass
+        class norm_opt():
+            norm_type: str
+
+            num_features: int
+            eps: float = 1e-5
+            momentum: float = 0.1
+            affine: bool = True
+            track_running_stats: bool = True
+
+            def to_parameters(self):
+                if self.norm_type == "BatchNorm":
+                    return {"num_features": self.num_features, "eps": self.eps, "momentum": self.momentum, "affine": self.affine, "track_running_stats": self.track_running_stats}
+                else:
+                    return {}
+
+        @dataclass
+        class active_opt():
+            active_type: str
+
+            # ReLU - basement
+            inplace: bool = True
+
+            # LeakyReLU
+            negative_slope: float = 0.01
+
+            # Tanh, Sigmoid
+            # empty
+
+            def to_parameters(self):
+                if self.active_type == "ReLU":
+                    return {"inplace": self.inplace}
+                elif self.active_type == "LeakyReLU":
+                    return {"inplace": self.inplace, "negative_slope": self.negative_slope}
+                else:
+                    return {}
 
 
 class loss_function():
@@ -88,6 +118,9 @@ class custom_module(Module):
         super(custom_module, self).__init__()
         self.model_name = model_name
 
+    def sumarry(self, input_shape):
+        ModelSummary(self, input_shape)
+
     def _save_to(self, save_dir, epoch, optim: Optimizer = None):
         save_dic = {'epoch': epoch,
                     'model_state_dict': self.state_dict(),
@@ -101,91 +134,79 @@ class custom_module(Module):
 
         return checkpoint  # if restore train sasseion
 
+    def forward(self, x):
+        ...
+
+    def set_layers(self, **parameters):
+        ...
+
 
 class layer():
-    class FcBlock(Module):
-        def __init__(self, Fc_opt: opt.fc_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
-            super(layer.FcBlock, self).__init__()
+    #
+    @staticmethod
+    def __make_norm_layer(out_features: int, dimension: int, opt: opt.layer.norm_opt) -> Module:
+        # normalization setting
+        if opt is None:
+            return None
+        elif opt.norm_type == "BatchNorm":
+            if dimension == 1:
+                return BatchNorm1d(out_features, **opt.to_parameters())
 
-            self.fc_i = Linear(**asdict(Fc_opt))
+            elif dimension == 2:
+                return BatchNorm2d(out_features, **opt.to_parameters())
 
-            # batch normalization
-            if norm_opt is None:
-                self.fc_i_bn = None
-            elif norm_opt.norm_type == "BatchNorm":
-                self.fc_i_bn = BatchNorm1d(Fc_opt.out_features, **norm_opt.parameter)
+    @staticmethod
+    def __make_activate_layer(opt: opt.layer.active_opt) -> Module:
+        # activation setting
+        if opt is None:
+            return None
+        elif opt.active_type == "ReLU":
+            return ReLU(**opt.to_parameters())
+        elif opt.active_type == "LeakyReLU":
+            return LeakyReLU(**opt.to_parameters())
+        elif opt.active_type == "Tanh":
+            return Tanh(**opt.to_parameters())
+        elif opt.active_type == "Sigmoid":
+            return Sigmoid(**opt.to_parameters())
 
-            # activation setting
-            if active_opt is None:
-                self.fc_i_act = None
-            elif active_opt.active_type == "ReLU":
-                self.fc_i_act = ReLU(**active_opt.parameter)
-            elif active_opt.active_type == "LeakyReLU":
-                self.fc_i_act = LeakyReLU(**active_opt.parameter)
-            elif active_opt.active_type == "Tanh":
-                self.fc_i_act = Tanh(**active_opt.parameter)
-            elif active_opt.active_type == "Sigmoid":
-                self.fc_i_act = Sigmoid(**active_opt.parameter)
+    # layer block
+    class _Fc(Module):
+        def __init__(self, layer_opt: opt.layer.fc_opt, norm_opt: opt.layer.norm_opt = None, active_opt: opt.layer.active_opt = None):
+            super(layer._Fc, self).__init__()
 
-        def forward(self, x):
-            x = self.fc_i(x)
-            x = self.fc_i_bn(x) if self.fc_i_bn is not None else x
-            x = self.fc_i_act(x) if self.fc_i_act is not None else x
-            return x
-
-    class ConvBlock(Module):
-        def __init__(self, conv_opt: opt.conv_opt, norm_opt: opt.norm_opt = None, active_opt: opt.active_opt = None):
-            super(layer.ConvBlock, self).__init__()
-
-            self.conv_i = Conv2d(**asdict(conv_opt))
-
-            # batch normalization
-            if norm_opt is None:
-                self.conv_i_bn = None
-            elif norm_opt.norm_type == "BatchNorm":
-                self.conv_i_bn = BatchNorm2d(conv_opt.out_channels, **norm_opt.parameter)
-
-            # activation setting
-            if active_opt is None:
-                self.conv_i_act = None
-            elif active_opt.active_type == "ReLU":
-                self.conv_i_act = ReLU(**active_opt.parameter)
-            elif active_opt.active_type == "LeakyReLU":
-                self.conv_i_act = LeakyReLU(**active_opt.parameter)
-            elif active_opt.active_type == "Tanh":
-                self.conv_i_act = Tanh(**active_opt.parameter)
-            elif active_opt.active_type == "Sigmoid":
-                self.conv_i_act = Sigmoid(**active_opt.parameter)
+            self.liner = Linear(**asdict(layer_opt))
+            self.norm = layer.__make_norm_layer(layer_opt.out_features, 1, norm_opt)
+            self.activate = layer.__make_activate_layer(active_opt)
 
         def forward(self, x):
-            x = self.conv_i(x)
-            x = self.conv_i_bn(x) if self.conv_i_bn is not None else x
-            x = self.conv_i_act(x) if self.conv_i_act is not None else x
+            x = self.liner(x)
+            x = self.norm(x) if self.norm is not None else x
+            x = self.activate(x) if self.activate is not None else x
             return x
 
-    class AttentionBlock(Module):
+    class _Conv2D(Module):
+        def __init__(self, layer_opt: opt.layer.conv_opt, norm_opt: opt.layer.norm_opt = None, active_opt: opt.layer.active_opt = None):
+            super(layer._Conv2D, self).__init__()
+
+            self.liner = Conv2d(**asdict(layer_opt))
+            self.norm = layer.__make_norm_layer(layer_opt.out_channels, 2, norm_opt)
+            self.activate = layer.__make_activate_layer(active_opt)
+
+        def forward(self, x):
+            x = self.liner(x)
+            x = self.norm(x) if self.norm is not None else x
+            x = self.activate(x) if self.activate is not None else x
+            return x
+
+    class _Attention(Module):
         def __init__(
                 self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                 mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
                 act_layer=GELU, norm_layer=LayerNorm) -> None:
             super().__init__()
 
-    class kernel_attention(Module):  # fix it
-        def __init__(self, in_ch, out_ch, k_size, multi_head) -> None:
-            super(layer.kernel_attention, self).__init__()
-
-            if isinstance(k_size, int):
-                k_size = [k_size, k_size]
-
-            elif isinstance(k_size, list):
-                k_size
-
-            # conv_option = layer.conv_opt(stride=1, padding=1, groups=in_ch)
-            self.Q_conv = layer.ConvBlock(in_ch, in_ch, k_size)
-
 
 class backbone():
-    @staticmethod
     class resnet(Module):
         def __init__(self, type=50, train=False, option: opt.backbone_opt = opt.backbone_opt()):
             """
@@ -249,7 +270,6 @@ class backbone():
         def sumarry(self, input_shape):
             ModelSummary(self, input_shape)
 
-    @staticmethod
     class vgg(Module):
         def __init__(self, type=19, train=False, option: opt.backbone_opt = opt.backbone_opt()):
             super(backbone.vgg, self).__init__()
