@@ -6,8 +6,8 @@ requirments_package = [
     'opencv-python',
     'pyyaml']
 
-# dependency_links = [
-#     '']
+dependency_links = []
+package_opt = {"python_ex": ["data_file/*.json"]}
 
 setup(
     name="python_ex",
@@ -18,7 +18,8 @@ setup(
     author_email="dev.gyounghun6612@gmail.com",
     packages=["python_ex"],
     python_requires=">= 3.7.0",
+    dependency_links=dependency_links,
     install_requires=requirments_package,
-    package_data={"python_ex": ["data_file/*.json"]},
+    package_data=package_opt,
     zip_safe=False
 )
