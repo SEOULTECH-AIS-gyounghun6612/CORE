@@ -11,11 +11,13 @@ if __package__ == "":
     # if this file in local project
     from torch_ex._torch_base import learing_mode, opt, history
     from torch_ex._structure import module, Optimizer  # , _Loss
+    from torch_ex._structure import opt as structure_opt
     from torch_ex._data_process import dataset, DataLoader, make_dataloader
 else:
     # if this file in package folder
     from ._torch_base import learing_mode, opt, history
     from ._structure import module, Optimizer  # , _Loss
+    from ._structure import opt as structure_opt
     from ._data_process import dataset, DataLoader, make_dataloader
 
 
@@ -61,19 +63,20 @@ class Learning_process():
                 self.dataloaders[_learning_mode] = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
-        def set_model_n_optim(self, model: Union[module.custom, List[module.custom]], optim: Union[Optimizer, List[Optimizer]]):
+        def set_model_n_optim(self, model: Union[module.custom, List[module.custom]], optim: Union[structure_opt.optim, List[structure_opt.optim]]):
             _model_list = [model, ] if not isinstance(model, list) else model
             _optim_list = [optim, ] if not isinstance(optim, list) else optim
 
             for _count, [_model, _optim] in enumerate(zip(_model_list, _optim_list)):
                 self.model.append(_model.cuda() if self.learning_opt.Use_cuda else _model)
                 if self.last_epoch:
+                    ...
                     # make model save dir from log informatton
                     # model save dir = save_dir / last_epoch / {model_name}.h5
-                    _check_point = self.model[_count]._load_from(...)
-                    self.optim.append(_optim.load_state_dict(_check_point["optimizer_state_dict"]))
-                else:
-                    self.optim.append(_optim(self.model[_count].parameters(), self.learning_opt.LR_initail))
+                    # _check_point = self.model[_count]._load_from(...)
+                    # self.optim.append(_optim.load_state_dict(_check_point["optimizer_state_dict"]))
+
+                self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail), )
 
         def save_model_and_optim(self, epoch: int):
             # in later make save folder function in log (epoch (int) -> save folder (str))

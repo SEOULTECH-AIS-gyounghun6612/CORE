@@ -114,14 +114,13 @@ class opt():
             else:  # Tanh, Sigmoid
                 return {}
 
+    @dataclass
     class optim():
-        optimize_type: List[str]
+        optimize_type: str
 
-        def to_parameters(self):
-            if self.optimize_type:
-                ...
-            else:  # Adam
-                return {}
+        def make(self, model: Module, Learning_rate: float) -> Optimizer:
+            if self.optimize_type == "Adam":
+                return Adam(model.parameters(), Learning_rate)
 
 
 class loss():
@@ -150,13 +149,6 @@ class loss():
     @staticmethod
     def mean_loss(output, target) -> torch.Tensor:
         return torch.mean(output * target)
-
-
-class optim():
-    @staticmethod
-    def make(model: Module, optim_opt: opt.optim, Learning_rate: float) -> Optimizer:
-        if optim_opt.optimize_type == "Adam":
-            return Adam(model.parameters(), Learning_rate)
 
 
 class module():
