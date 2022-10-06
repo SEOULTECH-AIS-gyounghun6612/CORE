@@ -76,7 +76,7 @@ class Learning_process():
                     # _check_point = self.model[_count]._load_from(...)
                     # self.optim.append(_optim.load_state_dict(_check_point["optimizer_state_dict"]))
 
-                self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail), )
+                self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail[_count]), )
 
         def save_model_and_optim(self, epoch: int):
             # in later make save folder function in log (epoch (int) -> save folder (str))
