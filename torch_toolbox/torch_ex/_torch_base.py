@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from math import log10, floor
 
 from torch import Tensor, cuda, tensor, stack, clip, distributions, cat
-from torch.nn import Module, ModuleList
 
 from python_ex._numpy import np_base, ndarray, evaluation
 from python_ex._result import log
@@ -62,12 +61,12 @@ class opt():
             This_epoch: int
 
             # About Leraning_rate
-            LR_initail: float = 0.005
-            LR_discount: float = 0.1
+            LR_initail: List[float] = field(default_factory=lambda: [0.005, ])
+            LR_discount: List[float] = field(default_factory=lambda: [0.1, ])
 
             # About logging
             Logging_parameters: Dict[learing_mode, List[str]] = field(default_factory=dict)     # Dict[Learning_mode: str, Logging_parameter: List[str]]
-            Debugging_paramerters: Dict[learing_mode, List[str]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
+            Display_paramerters: Dict[learing_mode, List[str]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
 
             # About GPU system
             Use_cuda: bool = cuda.is_available()
@@ -182,10 +181,6 @@ class torch_utils():
 
             return tmp_layer
 
-        @staticmethod
-        def make_module_list(layers: List[Module]):
-            return ModuleList(layers)
-
     class _evaluation():
         @staticmethod
         def iou(result: Tensor, label: Tensor, class_num) -> Tensor:
@@ -233,7 +228,7 @@ class history():
                     _debugging_string += f"{_param} {sum(_data[_param]) / data_count},"
             return _debugging_string
 
-        def file_data_to_opts(self) -> Dict[str]:
+        def file_data_to_opts(self) -> Dict[str, Any]:
             for _opt_key in self.info.keys():
                 ...
             ...
