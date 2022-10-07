@@ -270,7 +270,7 @@ class cal():
         return _direction
 
 
-class image():
+class image_process():
     @staticmethod
     def distance(delta_x: ndarray, delta_y: ndarray):
         return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
@@ -324,15 +324,24 @@ class image():
         filtered = np.zeros_like(object_data)
         for _direction in check_list:
             _tmp_direction_check = np.ones_like(object_data)
-            _label = image.image_shift(object_data, _direction, 1)
+            _label = image_process.image_shift(object_data, _direction, 1)
             _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
             if is_bidirectional:
-                _label = image.image_shift(object_data, _direction + 4, 1)
+                _label = image_process.image_shift(object_data, _direction + 4, 1)
                 _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
 
             filtered += _tmp_direction_check
 
         return filtered
+
+    @staticmethod
+    def color_finder(image: ndarray, color_list: Union[int, List[int]]):
+        _holder: List[ndarray] = []
+        for _color in color_list:
+            _finded = np.all((image == _color), 2) if isinstance(_color, list) else (image == _color)
+            _holder.append(_finded)
+
+        return _holder[0].astype(int) if len(_holder) == 1 else np.logical_or(*[data for data in _holder])
 
     # classfication -> (h, w, class count)
     # class map     -> (h, w)
@@ -340,7 +349,7 @@ class image():
     @staticmethod
     def classfication_to_class_map(classfication):
         # classfication(h, w, class count) -> class map(h, w, 1)
-        classfication = image.conver_to_first_channel(classfication)
+        classfication = image_process.conver_to_first_channel(classfication)
         return np.argmax(classfication, axis=0)
 
     @staticmethod

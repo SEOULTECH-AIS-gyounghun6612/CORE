@@ -10,7 +10,7 @@ Requirement
 """
 
 # Import module
-from typing import List, Union
+from typing import Dict, List, Union
 import cv2
 import random
 from dataclasses import dataclass, field
@@ -499,6 +499,23 @@ class draw():
 class augmentation():
     def __call__(self, **option):
         pass
+
+    @staticmethod
+    def _colormap_to_classification(color_map: _numpy.np.ndarray, label_info: Dict[int, List], size: List[int]):
+        _h, _w = size
+        _label_ids = sorted(label_info.keys())
+
+        _classfication = _numpy.np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=_numpy.np_base.np_dtype.np_uint8)
+
+        # color compare
+        for _label_id in _label_ids[:-1]:  # last channel : ignore
+            _color_list = [_info[0] for _info in label_info[_label_id]]
+            _finder = _numpy.image_process.color_finder(color_map, _color_list).astype(_numpy.np_base.np_dtype.np_uint8)
+            _classfication[:, :, _label_id] = cv_base.resize(_finder, size)
+
+        # make ignore
+        _classfication[:, :, -1] = 1 - _numpy.np.sum(_classfication, axis=2).astype(_numpy.np_base.np_dtype.np_bool).astype(_numpy.np_base.np_dtype.np_uint8)
+        return _classfication
 
     @staticmethod
     def _make_noise():

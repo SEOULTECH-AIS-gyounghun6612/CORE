@@ -1,11 +1,11 @@
 {
-    "seg": [
+    "sem_seg": [
         {
             "ID": 0,
             "Train_ID": 255,
             "Cateogry_ID": 0,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 0,
                 0
@@ -17,7 +17,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 0,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 74,
                 111
@@ -29,7 +29,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 0,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 0,
                 0
@@ -41,7 +41,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 0,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 81,
                 0,
                 81
@@ -53,7 +53,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 0,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 0,
                 0
@@ -65,7 +65,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 1,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 160,
                 170,
                 250
@@ -77,7 +77,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 1,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 140,
                 150,
                 230
@@ -89,7 +89,7 @@
             "Train_ID": 0,
             "Cateogry_ID": 1,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 128,
                 64,
                 128
@@ -101,7 +101,7 @@
             "Train_ID": 1,
             "Cateogry_ID": 1,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 232,
                 35,
                 244
@@ -113,7 +113,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 100,
                 100,
                 150
@@ -125,7 +125,7 @@
             "Train_ID": 2,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 70,
                 70,
                 70
@@ -137,7 +137,7 @@
             "Train_ID": 4,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 153,
                 153,
                 190
@@ -149,7 +149,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 180,
                 100,
                 180
@@ -161,7 +161,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 180,
                 165,
                 180
@@ -173,7 +173,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 90,
                 120,
                 150
@@ -185,7 +185,7 @@
             "Train_ID": 3,
             "Cateogry_ID": 2,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 156,
                 102,
                 102
@@ -197,7 +197,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 100,
                 170,
                 250
@@ -209,7 +209,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 250,
                 220,
                 220
@@ -221,7 +221,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 165,
                 255
@@ -233,7 +233,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 60,
                 20,
                 220
@@ -245,7 +245,7 @@
             "Train_ID": 5,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 153,
                 153,
                 153
@@ -257,7 +257,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 153,
                 153,
                 153
@@ -269,7 +269,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 100,
                 220,
                 220
@@ -281,7 +281,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 0,
                 70,
                 255
@@ -293,7 +293,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 220,
                 220,
                 220
@@ -305,7 +305,7 @@
             "Train_ID": 6,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 30,
                 170,
                 250
@@ -317,7 +317,7 @@
             "Train_ID": 7,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 0,
                 220,
                 220
@@ -329,7 +329,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 3,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 250,
                 170,
                 250
@@ -341,7 +341,7 @@
             "Train_ID": 9,
             "Cateogry_ID": 4,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 152,
                 251,
                 152
@@ -353,7 +353,7 @@
             "Train_ID": 8,
             "Cateogry_ID": 4,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 35,
                 142,
                 107
@@ -365,7 +365,7 @@
             "Train_ID": 10,
             "Cateogry_ID": 5,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 180,
                 130,
                 70
@@ -377,7 +377,7 @@
             "Train_ID": 11,
             "Cateogry_ID": 6,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 60,
                 20,
                 220
@@ -389,7 +389,7 @@
             "Train_ID": 12,
             "Cateogry_ID": 6,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 0,
                 0,
                 255
@@ -401,7 +401,7 @@
             "Train_ID": 18,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 32,
                 11,
                 119
@@ -413,7 +413,7 @@
             "Train_ID": 15,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 100,
                 60,
                 0
@@ -425,7 +425,7 @@
             "Train_ID": 13,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 142,
                 0,
                 0
@@ -437,7 +437,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 90,
                 0,
                 0
@@ -449,7 +449,7 @@
             "Train_ID": 17,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 230,
                 0,
                 0
@@ -461,7 +461,7 @@
             "Train_ID": 255,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 1,
-            "Class_color": [
+            "Class_info": [
                 110,
                 0,
                 0
@@ -473,7 +473,7 @@
             "Train_ID": 16,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 100,
                 80,
                 0
@@ -485,7 +485,7 @@
             "Train_ID": 14,
             "Cateogry_ID": 7,
             "Ignore_in_eval": 0,
-            "Class_color": [
+            "Class_info": [
                 70,
                 0,
                 0
