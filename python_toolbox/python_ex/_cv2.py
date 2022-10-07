@@ -20,11 +20,13 @@ from enum import Enum
 if __package__ == "":
     import _base
     import _numpy
+    from _numpy import np_base, np_dtype
     import _error as _e
 
 else:
     from . import _base
     from . import _numpy
+    from ._numpy import np_base, np_dtype
     from . import _error as _e
 
 _error_message = _e.Custom_error("AIS_utils", "_cv2")
@@ -143,17 +145,17 @@ class cv_base():
             _axis = -1
         else:               # stack to first channel
             _axis = 0
-        return _numpy.np_base.stack(images, _axis)
+        return np_base.stack(images, _axis)
 
     @staticmethod
     def channel_converter(image, channel_option: C_position):
         if channel_option.value:  # [w, h, c]
-            return _numpy.image.conver_to_last_channel(image)
+            return _numpy.image_process.conver_to_last_channel(image)
         else:  # [c, w, h]
-            return _numpy.image.conver_to_first_channel(image)
+            return _numpy.image_process.conver_to_first_channel(image)
 
     @staticmethod
-    def resize(image, size: list):
+    def resize(image: _numpy.ndarray, size: list):
         _h, _w = image.shape[:2]
         _interpolation = cv2.INTER_AREA
 
@@ -179,7 +181,7 @@ class cv_base():
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
-                return _numpy.np_base.type_converter(image * 0xff, "uint8")
+                return np_base.type_converter(image * 0xff, "uint8")
             else:
                 return image
         elif form_range == R_option.ZtoFF:
@@ -198,10 +200,10 @@ class cv_base():
             return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     @staticmethod
-    def filtering(image: _numpy.np.ndarray, array):
+    def filtering(image: _numpy.ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.np_base.get_array_from(image)
+            holder = np_base.get_array_from(image)
             for _ch_ct in range(image.shape[-1]):
                 holder[:, :, _ch_ct] = cv_base.filtering(image[:, :, _ch_ct], array)
             return holder
@@ -209,7 +211,7 @@ class cv_base():
             return cv2.filter2D(image, cv2.CV_64F, array)
 
     @staticmethod
-    def padding(image: _numpy.np.ndarray, padding: Union[int, List[int]], value: int):
+    def padding(image: _numpy.ndarray, padding: Union[int, List[int]], value: int):
         """
         padding
             int  A              -> [top : A, bottom: A, left : A, right: A]\n
@@ -234,7 +236,7 @@ class cv_base():
             _h, _w = image.shape
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
-        _holder = _numpy.np_base.get_array_from(_holder_shape, True, value)
+        _holder = np_base.get_array_from(_holder_shape, True, value)
 
         _t_pad = _t_pad if _t_pad else None
         _b_pad = -_b_pad if _b_pad else None
@@ -246,7 +248,7 @@ class cv_base():
         return _holder
 
     @staticmethod
-    def unpadding(image: _numpy.np.ndarray, padding: Union[int, List[int]]):
+    def unpadding(image: _numpy.ndarray, padding: Union[int, List[int]]):
         # make holder -> in later add multi padding option
         if isinstance(padding, int):
             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
@@ -284,8 +286,8 @@ class edge():
         def sobel(image: _numpy.ndarray, is_euclid: bool = True):
             if len(image.shape) > 2:
                 # color image
-                delta_holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
-                direction_holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                delta_holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                direction_holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
                 for _ch_ct in range(image.shape[-1]):
                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
                     delta_holder += result[0]
@@ -293,8 +295,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = cv_base.filtering(image, _numpy.np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
-                dy = cv_base.filtering(image, _numpy.np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dx = cv_base.filtering(image, np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
+                dy = cv_base.filtering(image, np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
                 dxy = _numpy.cal.distance(dx, dy, is_euclid)
                 direction = _numpy.cal.get_direction(dx, dy)
                 return dxy, direction
@@ -303,40 +305,40 @@ class edge():
     def gradient_to_edge(gradient: List[_numpy.ndarray], threshold: List[int] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
         # gradient -> [delta, direction]
         _delta = gradient[0]
-        _filterd = _numpy.np_base.range_cut(_numpy.np_base.normalization(_delta), [threshold, ], "upper")
+        _filterd = np_base.range_cut(np_base.normalization(_delta), [threshold, ], "upper")
 
         if is_edge_shrink:
             _direction = gradient[1]
-            _edge = _numpy.image.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
+            _edge = _numpy.image_process.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
         else:
             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else _numpy.np_base.type_converter(0xFF * _edge, "uint")
+        return _edge if is_active_map else np_base.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
-    def sobel(image: _numpy.np.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
+    def sobel(image: _numpy.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
         if len(image.shape) > 2:
             # color image
-            holder = _numpy.np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+            holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
             for _ch_ct in range(image.shape[-1]):
                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
             holder = (holder >= 2)
-            return holder if is_active_map else _numpy.np_base.type_converter(0xFF * holder, "uint8")
+            return holder if is_active_map else np_base.type_converter(0xFF * holder, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
             dxy = _numpy.cal.distance(dx, dy) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = _numpy.np_base.range_cut(_numpy.np_base.normalization(dxy), [-threshold, threshold], ouput_type="value")
+            _edge = np_base.range_cut(np_base.normalization(dxy), [-threshold, threshold], ouput_type="value")
 
             if is_edge_shrink:
                 direction = _numpy.cal.get_direction(dx, dy)
-                _edge = _numpy.image.direction_check(_edge, direction, [0, 1, 2, 3])
+                _edge = _numpy.image_process.direction_check(_edge, direction, [0, 1, 2, 3])
 
             else:
                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else _numpy.np_base.type_converter(0xFF * _edge, "uint")
+            return _edge if is_active_map else np_base.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=C_position.Last):
@@ -352,7 +354,7 @@ class edge():
 
 class gui_process():
     @staticmethod
-    def display(image: _numpy.np.ndarray, dispaly_window: str, ms_delay: int = -1):
+    def display(image: _numpy.ndarray, dispaly_window: str, ms_delay: int = -1):
         cv2.imshow(dispaly_window, image)
         return cv2.waitKeyEx(ms_delay)
 
@@ -392,7 +394,7 @@ class draw():
         Right = 0b00000
 
     @staticmethod
-    def merge(image: List[_numpy.np.ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
+    def merge(image: List[_numpy.ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
         _merge_img = image[0]
         if direction == Image_direction.Hight:
             for _img in image[1:]:
@@ -406,7 +408,7 @@ class draw():
         return _merge_img
 
     @staticmethod
-    def text(image: _numpy.np.ndarray, text: str):
+    def text(image: _numpy.ndarray, text: str):
         [_text_w, _text_h], _ = cv2.getTextSize(text=text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
         text_padding = 10
         if len(image.shape) == 3:
@@ -419,7 +421,7 @@ class draw():
             _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding)]
             _tpye_image_size = [_h + _text_h, _w]
 
-        _text_shell = _numpy.np_base.get_array_from(_text_shell_size, True, 0xFF)
+        _text_shell = np_base.get_array_from(_text_shell_size, True, 0xFF)
         cv2.putText(img=_text_shell,
                     text=text,
                     org=(text_padding, _text_h + text_padding),
@@ -429,7 +431,7 @@ class draw():
                     color=0)
 
         _text_shell = cv_base.resize(_text_shell, [_text_h, _w])
-        _tpye_image = _numpy.np_base.get_array_from(_tpye_image_size, True, 0xFF)
+        _tpye_image = np_base.get_array_from(_tpye_image_size, True, 0xFF)
         _tpye_image[:_h, :] = image
         _tpye_image[_h:, :] = _text_shell
 
@@ -449,7 +451,7 @@ class draw():
 
     @staticmethod
     def _polygon(image, pts, thick, color, is_close=True):
-        pts = _numpy.image.poly_points(pts)
+        pts = _numpy.image_process.poly_points(pts)
         if thick == -1:
             return cv2.fillConvexPoly(image, pts, color)
         else:
@@ -471,8 +473,8 @@ class draw():
             self.active_pen.thickness = thickness
 
         def set_canvas(self, size, sample=None, is_color=0):
-            self.background = _numpy.np_base.get_array_from(size, True, is_color) if sample is not None \
-                else _numpy.np_base.get_array_from(sample, False, is_color)
+            self.background = np_base.get_array_from(size, True, is_color) if sample is not None \
+                else np_base.get_array_from(sample, False, is_color)
 
         def set_object(self):
             pass
@@ -501,20 +503,22 @@ class augmentation():
         pass
 
     @staticmethod
-    def _colormap_to_classification(color_map: _numpy.np.ndarray, label_info: Dict[int, List], size: List[int]):
+    def _colormap_to_classification(color_map: _numpy.ndarray, label_info: Dict[int, List], size: List[int]):
         _h, _w = size
         _label_ids = sorted(label_info.keys())
 
-        _classfication = _numpy.np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=_numpy.np_base.np_dtype.np_uint8)
+        _classfication = np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=np_dtype.np_uint8)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
             _color_list = [_info[0] for _info in label_info[_label_id]]
-            _finder = _numpy.image_process.color_finder(color_map, _color_list).astype(_numpy.np_base.np_dtype.np_uint8)
+            _finder = _numpy.image_process.color_finder(color_map, _color_list).astype(np_dtype.np_uint8)
             _classfication[:, :, _label_id] = cv_base.resize(_finder, size)
 
         # make ignore
-        _classfication[:, :, -1] = 1 - _numpy.np.sum(_classfication, axis=2).astype(_numpy.np_base.np_dtype.np_bool).astype(_numpy.np_base.np_dtype.np_uint8)
+        _setted = _numpy.np.sum(_classfication, axis=2)
+        _setted = np_base.type_converter(np_base.type_converter(_setted, np_dtype.np_bool), np_dtype.np_uint8)
+        _classfication[:, :, -1] = 1 - _setted
         return _classfication
 
     @staticmethod

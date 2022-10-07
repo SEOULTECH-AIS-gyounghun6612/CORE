@@ -13,6 +13,14 @@ else:
 _error_message = _e.Custom_error("AIS_utils", "_numpy")
 
 
+@dataclass
+class np_dtype():
+    np_int32: type      = np.int32
+    np_uint8: type      = np.uint8
+    np_bool: type       = np.bool8
+    np_float32: type    = np.float32
+
+
 class file():
     @staticmethod
     def save_numpy(save_dir, data):
@@ -103,12 +111,6 @@ class file():
 
 
 class np_base():
-    @dataclass
-    class np_dtype():
-        np_int32: type      = np.int32
-        np_uint8: type      = np.uint8
-        np_bool: type       = np.bool8
-        np_float32: type    = np.float32
 
     @staticmethod
     def get_array_from(sample, is_shape=False, value=0, dtype: type = np_dtype.np_uint8):
@@ -195,7 +197,7 @@ class np_base():
         _convert = (array - _from_range_min) / _from_term
         _convert = (_convert * _to_term) + _to_range_min
 
-        if dtype in [np_base.np_dtype.np_uint8, np_base.np_dtype.np_int32]:
+        if dtype in [np_dtype.np_uint8, np_dtype.np_int32]:
             _convert = np.round(_convert)
 
         return np_base.type_converter(_convert, dtype)

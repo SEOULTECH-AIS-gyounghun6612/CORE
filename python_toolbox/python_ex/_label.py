@@ -7,14 +7,14 @@ if __package__ == "":
     # if this file in local project
     from _base import directory, file
     import _cv2
-    import _numpy
+    from _numpy import np_base, np_dtype
     import _error as _e
 
 else:
     # if this file in package folder
     from ._base import directory, file
     from . import _cv2
-    from . import _numpy
+    from ._numpy import np_base, np_dtype
     from . import _error as _e
 
 
@@ -169,7 +169,7 @@ class Label_process():
             if data.File_style == File_style.IMAGE_FILE:
                 picked_image = _cv2.file.image_read(data.Input[index])
                 picked_image = _cv2.cv_base.resize(picked_image, [224, 224])
-                picked_label = _numpy.np_base.get_array_from(len(_label_list), True, dtype=_numpy.np_base.np_dtype.np_float32)
+                picked_label = np_base.get_array_from(len(_label_list), True, dtype=np_dtype.np_float32)
 
             return [picked_image, picked_label]
 
@@ -220,8 +220,10 @@ class Label_process():
                 picked_label = _cv2.file.image_read(data.Label[index])
 
             picked_image = _cv2.cv_base.resize(picked_image, self.data_size)
-            
+            picked_image = np_base.type_converter(picked_image, np_dtype.np_float32)
+
             picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self.Label_info, self.data_size)
+            picked_label = np_base.type_converter(picked_label, np_dtype.np_float32)
 
             return [picked_image, picked_label]
 
