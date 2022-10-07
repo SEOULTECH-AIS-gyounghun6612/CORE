@@ -93,11 +93,14 @@ class Learning_process():
             # if use gpu dataset move to datas
             ...
 
-        def fit(self, epoch: int = 0, mode: str = "train", is_display: bool = False, save_root: str = None):
+        def fit(self, epoch: int = 0, mode: learing_mode = learing_mode.TRAIN, is_display: bool = False, save_root: str = None):
             if mode == "train":
                 [_model.train() for _model in self.model]
             else:
                 [_model.eval() for _model in self.model]
+            ...
+
+        def work(self, save_root: str = None):
             ...
 
         def result_save(self, mode: str, epoch: int, save_root: str):

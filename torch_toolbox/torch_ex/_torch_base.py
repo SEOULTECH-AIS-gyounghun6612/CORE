@@ -4,7 +4,7 @@ from math import log10, floor
 
 from torch import Tensor, cuda, tensor, stack, clip, distributions, cat
 
-from python_ex._numpy import np_base, ndarray, evaluation
+from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
 from python_ex._result import log
 from python_ex._base import directory, utils
 from python_ex._label import Label_process, Label_style, File_style
@@ -109,16 +109,16 @@ class torch_utils():
 
     class _tensor():
         @staticmethod
-        def holder(sample, is_shape: bool = False, value: int = 0, dtype: type = np_base.np_dtype.np_float32):
+        def holder(sample, is_shape: bool = False, value: int = 0, dtype: type = np_dtype.np_float32):
             _array = np_base.get_array_from(sample, is_shape, value, dtype)
             return torch_utils._tensor.from_numpy(_array, dtype)
 
         @classmethod
-        def from_numpy(self, np_array: ndarray, dtype: type = np_base.np_dtype.np_float32):
+        def from_numpy(self, np_array: ndarray, dtype: type = np_dtype.np_float32):
             return tensor(np_base.type_converter(np_array, dtype))
 
         @staticmethod
-        def to_numpy(tensor: Tensor, dtype: type = np_base.np_dtype.np_float32) -> ndarray:
+        def to_numpy(tensor: Tensor, dtype: type = np_dtype.np_float32) -> ndarray:
             try:
                 _array = tensor.numpy()
             except RuntimeError:
