@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Tuple, Union
 from math import log10, floor
 
 from torch import Tensor, cuda, tensor, stack, clip, distributions, cat
+from torch.nn import Module
+from torch.optim import Optimizer, Adam
 
 from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
 from python_ex._result import log
@@ -105,6 +107,103 @@ class opt():
             Exploration_threshold: int = 1.0
             Exploration_discount: float = 0.99
             Exploration_Minimum: int = 1.0
+
+    class _layer_opt():
+        @dataclass
+        class backbone():
+            type: int
+
+            is_pretrained: bool = True
+            is_trainable: bool = False
+
+            use_flat: bool = False
+            use_avg_pooling: bool = False
+
+        @dataclass
+        class fc():
+            in_features: int
+            out_features: int
+            bias: bool = True
+
+        @dataclass
+        class conv2d():
+            in_channels: int
+            out_channels: int
+            kernel_size: int
+            stride: int = 1
+            padding: int = 0
+            dilation: int = 1
+            groups: int = 1
+            bias: bool = True
+
+        @dataclass
+        class attention():
+            attention_type: str
+            input_dim: int
+            output_dim: int
+            head_count: int
+
+            def __init__(self, attention_type: str, input_dim: int, output_dim: int, num_head: int):
+                self.attention_type = attention_type
+                self.input_dim = input_dim
+                self.head_count = num_head
+                self.output_dim = output_dim + (output_dim % self.head_count) if (output_dim % num_head) else output_dim
+
+            def get_head_dim(self):
+                return self.output_dim // self.head_count
+
+        @dataclass
+        class postion_encoding():
+            encoding_type: str
+            max_len: int
+
+            def __init__(self, attention_type: str, input_dim: int, output_dim: int, num_head: int):
+                ...
+
+        @dataclass
+        class norm2d():
+            norm_type: str
+
+            num_features: int
+            eps: float = 1e-5
+            momentum: float = 0.1
+            affine: bool = True
+            track_running_stats: bool = True
+
+            def to_parameters(self):
+                if self.norm_type == "BatchNorm":
+                    return {"num_features": self.num_features, "eps": self.eps, "momentum": self.momentum, "affine": self.affine, "track_running_stats": self.track_running_stats}
+                else:
+                    return {}
+
+        @dataclass
+        class active_function():
+            active_type: str
+
+            # ReLU - basement
+            inplace: bool = True
+
+            # LeakyReLU
+            negative_slope: float = 0.01
+
+            # Tanh, Sigmoid
+            # empty
+
+            def to_parameters(self):
+                if self.active_type == "ReLU":
+                    return {"inplace": self.inplace}
+                elif self.active_type == "LeakyReLU":
+                    return {"inplace": self.inplace, "negative_slope": self.negative_slope}
+                else:  # Tanh, Sigmoid
+                    return {}
+
+    @dataclass
+    class _optim_opt():
+        optimize_type: str
+
+        def make(self, model: Module, Learning_rate: float) -> Optimizer:
+            if self.optimize_type == "Adam":
+                return Adam(model.parameters(), Learning_rate)
 
 
 class torch_utils():

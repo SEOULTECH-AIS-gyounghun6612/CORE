@@ -9,15 +9,13 @@ from python_ex._base import directory
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import learing_mode, opt, debug
-    from torch_ex._structure import module, Optimizer  # , _Loss
-    from torch_ex._structure import opt as structure_opt
+    from torch_ex._torch_base import learing_mode, opt, debug, Optimizer
+    from torch_ex._structure import module  # , _Loss
     from torch_ex._data_process import dataset, DataLoader, make_dataloader
 else:
     # if this file in package folder
-    from ._torch_base import learing_mode, opt, debug
-    from ._structure import module, Optimizer  # , _Loss
-    from ._structure import opt as structure_opt
+    from ._torch_base import learing_mode, opt, debug, Optimizer
+    from ._structure import module  # , _Loss
     from ._data_process import dataset, DataLoader, make_dataloader
 
 
@@ -67,7 +65,7 @@ class Learning_process():
                 self.dataloaders[_learning_mode] = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
-        def set_learning_model(self, block_list: List[Tuple[module.custom_module, structure_opt.optim]], is_resotre: bool):
+        def set_learning_model(self, block_list: List[Tuple[module.custom_module, opt._optim_opt]], is_resotre: bool):
             for _count, [_module, _optim] in enumerate(block_list):
                 self.model.append(_module.cuda() if self.learning_opt.Use_cuda else _module)
 
