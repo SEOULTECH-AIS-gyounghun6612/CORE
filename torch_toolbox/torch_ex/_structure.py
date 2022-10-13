@@ -4,7 +4,7 @@ from math import sqrt, log
 
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
 from torch import Tensor, save, load, float
-from torch import zeros, mean, matmul, sin, cos, exp, arange
+from torch import zeros, mean, matmul, sin, cos, exp, arange, argmax
 from torch.nn import Module, init, functional, ModuleList, Sequential
 from torch.nn import parameter
 from torch.nn import Linear, Conv2d, ConvTranspose2d, BatchNorm1d, BatchNorm2d  # , LayerNorm
@@ -49,11 +49,11 @@ class loss():
         """
         Args:
             output: [batch, class_num, h, w]
-            target: [batch, h, w]
+            target: [batch, class_num, h, w]
         Return:
-            loss
+            loss value
         """
-        return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
+        return CrossEntropyLoss(ignore_index=ignore_index)(output, argmax(target, dim=1))
 
     @staticmethod
     def mean_loss(output, target) -> Tensor:
