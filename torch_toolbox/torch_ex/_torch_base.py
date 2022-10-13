@@ -7,7 +7,7 @@ from torch.nn import Module
 from torch.optim import Optimizer, Adam
 
 from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
-from python_ex._result import log
+from python_ex._result import log, logging_option
 from python_ex._base import directory, utils
 from python_ex._label import Label_process, Label_style, File_style
 
@@ -32,23 +32,6 @@ class opt():
         Data_process: Label_process.label_basement
         Data_label_style: Label_style
         Data_file_style: File_style
-
-        def opt_to_file_data(self):
-            data = {
-                # dataloader setting
-                "Batch_size": self.Batch_size,
-                "Num_workers": self.Num_workers,
-
-                # dataset setting
-                "Data_process": {
-                    "import_style": self.Data_process.Lable_name,
-                    "augmentation": self.Data_process.Root_dir,
-                    "root": self.Data_process.Root_dir},
-                "Data_label_style": self.Data_label_style.value,
-                "Data_file_style": self.Data_file_style.value,
-            }
-
-            return data
 
     class _learning():
         @dataclass
@@ -326,6 +309,15 @@ class debug():
 
         def set_logging_mode(self, learing_mode: learing_mode):
             self.active_mode = learing_mode
+
+        def info_update(self, name: str, data: Any, is_overwrite: bool = False):
+            _flag = name in self.info.keys()
+
+            if is_overwrite and _flag:
+                self.add_info({name: data}, logging_option.OVERWRITE)
+
+            else:
+                self.add_info({name: data}, logging_option.ADD)
 
         def update(self, data: Dict):
             self.add_data(data, save_point=self.data[self.active_mode])

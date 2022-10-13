@@ -47,6 +47,9 @@ class Learning_process():
             # set dataloader
             self.set_data_process()
 
+            # Update log; count of data in each mode
+            self.log.info_update()
+
             # model and optim
             self.model: List[module.custom_module] = []
             self.optim: List[Optimizer] = []
@@ -69,7 +72,9 @@ class Learning_process():
             self.dataloaders: Dict[learing_mode, DataLoader] = {}
 
             for _learning_mode in self.learning_opt.Learning_mode:
-                self.dataloaders[_learning_mode] = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
+                _dataloader = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
+                self.dataloaders[_learning_mode] = _dataloader
+                self.log.info_update("dataloader", {_learning_mode: {"data_count": _dataloader.dataset.__len__(), "batch_size": _dataloader.batch_size}})
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
         def set_learning_model(self, block_list: List[Tuple[module.custom_module, opt._optim_opt]], is_resotre: bool):
