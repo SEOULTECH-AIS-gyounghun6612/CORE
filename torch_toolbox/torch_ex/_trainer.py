@@ -9,13 +9,13 @@ from python_ex._base import directory
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import learing_mode, opt, history
+    from torch_ex._torch_base import learing_mode, opt, debug
     from torch_ex._structure import module, Optimizer  # , _Loss
     from torch_ex._structure import opt as structure_opt
     from torch_ex._data_process import dataset, DataLoader, make_dataloader
 else:
     # if this file in package folder
-    from ._torch_base import learing_mode, opt, history
+    from ._torch_base import learing_mode, opt, debug
     from ._structure import module, Optimizer  # , _Loss
     from ._structure import opt as structure_opt
     from ._data_process import dataset, DataLoader, make_dataloader
@@ -30,7 +30,7 @@ class Learning_process():
 
             # set logging process
             if self.last_epoch:
-                self.log = history.learning_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_resotre=self.last_epoch)
+                self.log = debug.process_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_resotre=self.last_epoch)
 
                 opts = self.log.file_data_to_opts()
                 self.learning_opt: opt._learning.base = opts["learning_opt"]
@@ -40,7 +40,7 @@ class Learning_process():
                 self.learning_opt: opt._learning.base = opts["learning_opt"]
                 self.dataloader_opt: opt._dataloader = opts["dataloader_opt"]
 
-                self.log = history.learning_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.log_file_name)
+                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.log_file_name)
 
             # set dataloader
             self.set_data_process()
@@ -93,17 +93,14 @@ class Learning_process():
             # if use gpu dataset move to datas
             ...
 
-        def fit(self, epoch: int = 0, mode: learing_mode = learing_mode.TRAIN, is_display: bool = False, save_root: str = None):
+        def fit(self, epoch: int = 0, mode: learing_mode = learing_mode.TRAIN, is_display: bool = True, is_debug_save: bool = True):
             if mode == "train":
                 [_model.train() for _model in self.model]
             else:
                 [_model.eval() for _model in self.model]
             ...
 
-        def work(self, save_root: str = None):
-            ...
-
-        def result_save(self, mode: str, epoch: int, save_root: str):
+        def result_save(self, mode: str, epoch: int):
             ...
         # --- -------------------------------------- --- #
 

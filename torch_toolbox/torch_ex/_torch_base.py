@@ -196,8 +196,15 @@ class torch_utils():
             return iou.mean()
 
 
-class history():
-    class learning_log(log):
+class debug():
+    @staticmethod
+    def make_result_directory(try_name: str = None, root_dir: str = None):
+        _root = directory._relative_root() if root_dir is None else root_dir
+        _date = utils.time_stemp(True) if try_name is None else try_name
+
+        return directory._make(f"result/{_date}/", _root)
+
+    class process_log(log):
         def __init__(self, logging_parameter: Dict[str, List[str]], save_dir: str, file_name: str, is_resotre: bool = False):
             holder = {}
 
