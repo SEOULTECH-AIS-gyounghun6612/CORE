@@ -99,14 +99,6 @@ class directory():
         return _dir
 
     @classmethod
-    def _make_for_result(self, folder: str = None, root_dir: str = None):
-        if folder is None:
-            _date = utils.time_stemp(True)
-        else:
-            _date = folder
-        return self._make(f"result/{_date}/", root_dir)
-
-    @classmethod
     def _inside_search(self, searched_dir: str, search_option: str = "all", name: str = "*", ext: str = "*"):
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else "*" + name + "*"
