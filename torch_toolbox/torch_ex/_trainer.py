@@ -54,8 +54,15 @@ class Learning_process():
             # set learning mode -> default: train
             self.set_learning_mode(self.learning_opt.Learning_mode[0])
 
-        def set_learning_mode(self, learing_mode: learing_mode):
-            self.active_mode = learing_mode
+        def set_learning_mode(self, mode: learing_mode):
+            # set log state
+            self.log.set_logging_mode(mode)
+
+            # set model state
+            if mode == learing_mode.TRAIN:
+                [_model.train() for _model in self.model]
+            else:
+                [_model.eval() for _model in self.model]
 
         def set_data_process(self):
             # dataloader dict
@@ -91,10 +98,6 @@ class Learning_process():
             ...
 
         def fit(self, epoch: int = 0, mode: learing_mode = learing_mode.TRAIN, is_display: bool = True, is_debug_save: bool = True):
-            if mode == "train":
-                [_model.train() for _model in self.model]
-            else:
-                [_model.eval() for _model in self.model]
             ...
 
         def result_save(self, mode: str, epoch: int):
