@@ -325,7 +325,7 @@ class debug():
             super().__init__(data=holder, save_dir=save_dir, file_name=file_name, is_resotre=is_restore)
 
         def set_logging_mode(self, learing_mode: learing_mode):
-            self.active_mode = learing_mode.value
+            self.active_mode = learing_mode
 
         def update(self, data: Dict):
             self.add_data(data, save_point=self.data[self.active_mode])
