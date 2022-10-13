@@ -25,57 +25,43 @@ class log():
         if _base.file._exist_check(_diretory) and is_resotre:
             self.load()
         else:
-            self.info: Dict[str, Union[list, str, int]] = {}
-            self.add_info(info)
+            self.annotation: Dict[str, Union[list, str, int]] = {}
+            self.add(info)
             self.data: Dict[str, Union[list, dict]] = {}
-            self.add_data(data, logging_option.OVERWRITE)
+            self.add(data, logging_option.OVERWRITE, self.data)
 
-    def add_info(self, info: Dict, mode: logging_option = logging_option.OVERWRITE, save_point: Dict = None):
+    def add(self, block: Dict, mode: logging_option = logging_option.ADD, save_point: Dict = None):
         if save_point is None:
-            save_point = self.info
+            save_point = self.annotation
 
-        for _key in info.keys():
-            _flag = _key in self.info.keys() and mode.value  # if added data's key already exist in log's it, check that write mode
-
-            if isinstance(info[_key], Dict):
-                save_point[_key] = {}
-                self.add_info(info[_key], mode, save_point[_key])
-
-            else:
-                if _flag:
-                    if isinstance(self.info[_key], str):
-                        self.info[_key] = f'{self.info[_key]}\n{info[_key]}'
-                    else:
-                        # Due to "ADD" write option, data type must be set "list"
-                        if not isinstance(self.info[_key], list):
-                            self.info[_key] = [self.info[_key], ]
-
-                        self.info[_key].append(info[_key])
-
-                else:
-                    self.info[_key] = info[_key]  # False -> (over)write
-
-    def get_info(self, name: str = None) -> Dict:
-        return self.info[name] if name in self.info.keys() else self.info
-
-    def add_data(self, data: Dict, mode: logging_option = logging_option.ADD, save_point: Dict = None):
-        if save_point is None:
-            save_point = self.data
-
-        for _key in data.keys():
+        for _key in block.keys():
             _flag = _key in save_point.keys() and mode.value  # if added data's key already exist in log's it, check that write mode
 
-            if isinstance(data[_key], Dict):
-                save_point[_key] = {}
-                self.add_data(data[_key], mode, save_point[_key])
+            if isinstance(block[_key], Dict):
+                save_point = save_point[_key] if _flag else {}
+                self.add(block[_key], mode, save_point)
 
             else:
-                _contents = data[_key] if isinstance(data[_key], list) else [data[_key], ]
-                if _flag:
-                    # Due to "ADD" write option, data type must be set "list"
-                    save_point[_key] += _contents
+                # add
+                if _flag and mode.value:
+                    if isinstance(save_point[_key], str):
+                        save_point[_key] = f'{self.annotation[_key]}\n{block[_key]}'
+                    else:
+                        # if save_point is not a list, convert that to list for add new data.
+                        if not isinstance(save_point[_key], list):
+                            save_point[_key] = [save_point[_key], ]
+
+                        if not isinstance(block[_key], list):
+                            save_point[_key].append(block[_key])
+                        else:
+                            save_point[_key] += block[_key]
+
+                # (over)write
                 else:
-                    save_point[_key] = _contents  # False -> (over)write
+                    save_point[_key] = block[_key]  # False -> (over)write
+
+    def get_annotation(self, name: str = None) -> Dict:
+        return self.annotation[name] if name in self.annotation.keys() else self.annotation
 
     def get_data(self, name: Union[List[str], str] = None, serch_point: Dict = None, range_st: int = 0, range_ed: int = None) -> Dict[str, list]:
         serch_point = self.data if serch_point is None else serch_point
@@ -105,12 +91,12 @@ class log():
 
     def load(self):
         save_pakage = _base.file._json(self.save_dir, self.file_name)
-        self.add_info(save_pakage["info"])
-        self.add_data(save_pakage["data"], logging_option.OVERWRITE)
+        self.add(save_pakage["annotation"])
+        self.add(save_pakage["data"], self.data)
 
     def save(self):
         save_pakage = {
-            "info": self.info,
+            "annotation": self.annotation,
             "data": self.data}
 
         _base.file._json(self.save_dir, self.file_name, save_pakage, True)
