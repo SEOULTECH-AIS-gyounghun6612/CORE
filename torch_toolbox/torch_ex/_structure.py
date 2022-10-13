@@ -152,9 +152,9 @@ class loss():
 
 
 class module():
-    class custom(Module):
+    class custom_module(Module):
         def __init__(self, model_name):
-            super(module.custom, self).__init__()
+            super(module.custom_module, self).__init__()
             self.model_name = model_name
 
         def sumarry(self, input_shape):

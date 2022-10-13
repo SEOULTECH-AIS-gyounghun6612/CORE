@@ -10,7 +10,7 @@ Data_root = "/home/ais-choi-01/DATA/Data/"
 Result_root = directory._make_for_result(folder="../result_example/", root_dir=directory._relative_root())
 
 # Learning_opt
-learning_opt = opt._learning.base(
+learning_opt = opt._learning.E2E(
     # Infomation about train
     Learning_date=utils.time_stemp(is_text=True),
     Learning_detail="",

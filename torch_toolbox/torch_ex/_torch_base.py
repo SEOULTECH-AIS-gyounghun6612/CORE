@@ -51,10 +51,19 @@ class opt():
     class _learning():
         @dataclass
         class base():
-            # Infomation about train
+            # Infomation about learning
+            Learing_name: str
             Learning_date: str
             Learning_detail: str
 
+            # Debugging parameter for learning
+            Save_root: str
+
+            def make_save_directorty(self):
+                return debug.make_result_directory(self.Learing_name, self.Save_root)
+
+        @dataclass
+        class E2E(base):
             # About Learning type and style
             Learning_mode: List[learing_mode]
             Max_epochs: int
@@ -75,7 +84,7 @@ class opt():
                 ...
 
         @dataclass
-        class reinforcement(base):
+        class reinforcement(E2E):
             # reinforcement train option
             Max_step: int = 100
 
@@ -205,16 +214,16 @@ class debug():
         return directory._make(f"result/{_date}/", _root)
 
     class process_log(log):
-        def __init__(self, logging_parameter: Dict[str, List[str]], save_dir: str, file_name: str, is_resotre: bool = False):
+        def __init__(self, logging_parameter: Dict[str, List[str]], save_dir: str, file_name: str, is_restore: bool = False):
             holder = {}
 
-            if not is_resotre:
+            if not is_restore:
                 for _Learning_mode in logging_parameter.keys():
                     holder[_Learning_mode] = {}
                     for parameter in logging_parameter[_Learning_mode]:
                         holder[_Learning_mode][parameter] = []
 
-            super().__init__(data=holder, save_dir=save_dir, file_name=file_name, is_resotre=is_resotre)
+            super().__init__(data=holder, save_dir=save_dir, file_name=file_name, is_resotre=is_restore)
 
         def set_logging_mode(self, learing_mode: learing_mode):
             self.active_mode = learing_mode.value
