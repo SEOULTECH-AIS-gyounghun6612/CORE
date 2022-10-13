@@ -1,7 +1,7 @@
 # from random import sample
 # from math import inf
 # from collections import deque, namedtuple
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple
 from torch import Tensor
 
 from python_ex._base import directory
@@ -22,31 +22,35 @@ else:
 
 
 class Learning_process():
-    class End_to_End():
-        def __init__(self, result_dir: str = None, log_file: str = None, last_epoch: int = 0, **opts):
-            self.last_epoch = last_epoch
-            self.save_root = result_dir
+    class base():
+        def __init__(self, learning_opt: opt._learning.base, dataloader_opt: opt._dataloader) -> None:
+            # set learning base option
+            self.learning_opt = learning_opt
+            self.dataloader_opt = dataloader_opt
+
+            # set base parameter
+            self.save_root = self.learning_opt.make_save_directorty()
+
+    class End_to_End(base):
+        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, log_file: str = None, is_restore: bool = False) -> None:
+            # for anootation
+            self.learning_opt: opt._learning.E2E
+
+            super().__init__(learning_opt, dataloader_opt)
             self.log_file_name = "learning_log.json" if log_file is None else log_file
 
             # set logging process
-            if self.last_epoch:
-                self.log = debug.process_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_resotre=self.last_epoch)
-
-                opts = self.log.file_data_to_opts()
-                self.learning_opt: opt._learning.base = opts["learning_opt"]
-                self.dataloader_opt: opt._dataloader = opts["dataloader_opt"]
+            if is_restore:
+                self.log = debug.process_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_restore=is_restore)
 
             else:
-                self.learning_opt: opt._learning.base = opts["learning_opt"]
-                self.dataloader_opt: opt._dataloader = opts["dataloader_opt"]
-
                 self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.log_file_name)
 
             # set dataloader
             self.set_data_process()
 
             # model and optim
-            self.model: List[module.custom] = []
+            self.model: List[module.custom_module] = []
             self.optim: List[Optimizer] = []
 
             # set learning mode -> default: train
@@ -63,22 +67,17 @@ class Learning_process():
                 self.dataloaders[_learning_mode] = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
-        def set_model_n_optim(self, model: Union[module.custom, List[module.custom]], optim: Union[structure_opt.optim, List[structure_opt.optim]]):
-            _model_list = [model, ] if not isinstance(model, list) else model
-            _optim_list = [optim, ] if not isinstance(optim, list) else optim
+        def set_learning_model(self, block_list: List[Tuple[module.custom_module, structure_opt.optim]], is_resotre: bool):
+            for _count, [_module, _optim] in enumerate(block_list):
+                self.model.append(_module.cuda() if self.learning_opt.Use_cuda else _module)
 
-            for _count, [_model, _optim] in enumerate(zip(_model_list, _optim_list)):
-                self.model.append(_model.cuda() if self.learning_opt.Use_cuda else _model)
-                if self.last_epoch:
+                if is_resotre:
                     ...
-                    # make model save dir from log informatton
-                    # model save dir = save_dir / last_epoch / {model_name}.h5
-                    # _check_point = self.model[_count]._load_from(...)
-                    # self.optim.append(_optim.load_state_dict(_check_point["optimizer_state_dict"]))
 
-                self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail[_count]), )
+                else:
+                    self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail[_count]), )
 
-        def save_model_and_optim(self, epoch: int):
+        def save_learning_moduel(self, epoch: int):
             # in later make save folder function in log (epoch (int) -> save folder (str))
             save_folder = directory._make(f"{epoch}/", self.save_root)
             for _ct, _model in enumerate(self.model):
