@@ -38,8 +38,9 @@ class log():
             _flag = _key in save_point.keys() and mode.value  # if added data's key already exist in log's it, check that write mode
 
             if isinstance(block[_key], Dict):
-                save_point = save_point[_key] if _flag else {}
-                self.add(block[_key], mode, save_point)
+                if not _flag:
+                    save_point[_key] = {}
+                self.add(block[_key], mode, save_point[_key])
 
             else:
                 # add
@@ -58,7 +59,7 @@ class log():
 
                 # (over)write
                 else:
-                    save_point[_key] = block[_key]  # False -> (over)write
+                    save_point[_key] = block[_key]
 
     def get_annotation(self, name: str = None) -> Dict:
         return self.annotation[name] if name in self.annotation.keys() else self.annotation
