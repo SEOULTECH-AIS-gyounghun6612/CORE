@@ -32,22 +32,23 @@ class Learning_process():
     class End_to_End(base):
         def __init__(self, learning_opt: opt._learning.E2E = None, dataloader_opt: opt._dataloader = None, log_file: str = None, is_restore: bool = False) -> None:
             # for anootation
-            self.learning_opt: opt._learning.E2E
-
-            super().__init__(learning_opt, dataloader_opt)
             log_file = "learning_log.json" if log_file is None else log_file
 
-            # restore from log file
+            # set log
             if is_restore:
+                # get log data from log file
                 self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=is_restore)
+                # restore trainer opts from log
                 [learning_opt, dataloader_opt] = self.trainer_restore(log_file)
 
-            # make trainer
             else:
-                assert (learning_opt is None or dataloader_opt is None)  # in later fix it
-                super().__init__(learning_opt, dataloader_opt)
-                # set logging process
+                # make new log
+                self.learning_opt: opt._learning.E2E
                 self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=log_file)
+
+            # make trainer
+            assert (learning_opt is None and dataloader_opt is None)  # in later fix it; used function in python_ex (_error.py)
+            super().__init__(learning_opt, dataloader_opt)
 
             # set dataloader
             self.set_data_process()
@@ -56,14 +57,13 @@ class Learning_process():
             self.model: List[module.custom_module] = []
             self.optim: List[Optimizer] = []
 
-            # set learning mode -> default: train
+            # set learning mode -> default: First mode in learning_opt
             self.set_learning_mode(self.learning_opt.Learning_mode[0])
 
         def trainer_restore(self, log_file) -> Tuple[opt._learning.E2E, opt._dataloader]:
             # set logging process
             self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=True)
-            return self.log.get_opt()
-            ...
+            return self.log.get_restore_opt()  # make it get_restore_opt
 
         def set_learning_mode(self, mode: learing_mode):
             # set log state
