@@ -20,17 +20,8 @@ else:
 
 
 class Learning_process():
-    class base():
-        def __init__(self, learning_opt: opt._learning.base, dataloader_opt: opt._dataloader) -> None:
-            # set learning base option
-            self.learning_opt = learning_opt
-            self.dataloader_opt = dataloader_opt
-
-            # set base parameter
-            self.save_root = self.learning_opt.make_save_directorty()
-
-    class End_to_End(base):
-        def __init__(self, learning_opt: opt._learning.E2E = None, dataloader_opt: opt._dataloader = None, log_file: str = None, is_restore: bool = False) -> None:
+    class End_to_End():
+        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, log_file: str = None, is_restore: bool = False) -> None:
             # for anootation
             log_file = "learning_log.json" if log_file is None else log_file
 
@@ -39,16 +30,18 @@ class Learning_process():
                 # get log data from log file
                 self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=is_restore)
                 # restore trainer opts from log
-                [learning_opt, dataloader_opt] = self.trainer_restore(log_file)
+                [self.learning_opt, self.dataloader_opt] = self.trainer_restore(log_file)
 
             else:
+                # set learning base option
+                self.learning_opt = learning_opt
+                self.dataloader_opt = dataloader_opt
+
                 # make new log
-                self.learning_opt: opt._learning.E2E
                 self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=log_file)
 
-            # make trainer
-            assert (learning_opt is None and dataloader_opt is None)  # in later fix it; used function in python_ex (_error.py)
-            super().__init__(learning_opt, dataloader_opt)
+            # set base parameter
+            self.save_root = self.learning_opt.make_save_directorty()
 
             # set dataloader
             self.set_data_process()

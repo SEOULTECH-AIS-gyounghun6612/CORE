@@ -35,26 +35,21 @@ class opt():
 
     class _learning():
         @dataclass
-        class base():
+        class E2E():
             # Infomation about learning
             Learing_name: str
             Learning_date: str
             Learning_detail: str
 
-            # Debugging parameter for learning
-            Save_root: str
-
-            def make_save_directorty(self):
-                return debug.make_result_directory(self.Learing_name, self.Save_root)
-
-        @dataclass
-        class E2E(base):
             # About Learning type and style
             Learning_mode: List[learing_mode]
             Max_epochs: int
             This_epoch: int
 
-            # About Leraning_rate
+            # Debugging parameter for learning
+            Save_root: str
+
+            # About Optimizer
             LR_initail: List[float] = field(default_factory=lambda: [0.005, ])
             LR_discount: List[float] = field(default_factory=lambda: [0.1, ])
 
@@ -64,6 +59,9 @@ class opt():
 
             # About GPU system
             Use_cuda: bool = cuda.is_available()
+
+            def make_save_directorty(self):
+                return debug.make_result_directory(self.Learing_name, self.Save_root)
 
             def opt_to_file_data(self):
                 ...
@@ -310,33 +308,33 @@ class debug():
         def set_logging_mode(self, learing_mode: learing_mode):
             self.active_mode = learing_mode
 
-        def info_update(self, name: str, data: Any, is_overwrite: bool = False):
-            _flag = name in self.info.keys()
+        def annotation_update(self, name: str, data: Any, is_overwrite: bool = False):
+            _flag = name in self.annotation.keys()
 
             if is_overwrite and _flag:
-                self.add_info({name: data}, logging_option.OVERWRITE)
+                self.add({name: data}, logging_option.OVERWRITE)
 
             else:
-                self.add_info({name: data}, logging_option.ADD)
+                self.add({name: data}, logging_option.ADD)
 
         def update(self, data: Dict):
-            self.add_data(data, save_point=self.data[self.active_mode])
+            self.add(data, save_point=self.data[self.active_mode])
 
         def get_debugging_string(self, epoch: int, data_count: int, max_data_count: int) -> str:
             _data_st = max_data_count * epoch
             _data_ed = max_data_count * epoch + data_count
 
-            _data = self.get_data(self.info["Debugging_paramerters"][self.active_mode], self.data[self.active_mode], _data_st, _data_ed)
+            _data = self.get_data(self.annotation["Debugging_paramerters"][self.active_mode], self.data[self.active_mode], _data_st, _data_ed)
 
             _debugging_string = ""
 
-            for _param in self.info["Debugging_paramerters"][self.active_mode]:
+            for _param in self.annotation["Debugging_paramerters"][self.active_mode]:
                 if _param in _data.keys():
                     _debugging_string += f"{_param} {sum(_data[_param]) / data_count},"
             return _debugging_string
 
         def file_data_to_opts(self) -> Dict[str, Any]:
-            for _opt_key in self.info.keys():
+            for _opt_key in self.annotation.keys():
                 ...
             ...
 
