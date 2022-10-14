@@ -177,10 +177,12 @@ class file():
         return path.isfile(file_path)
 
     @classmethod
-    def _name_from_path(self, file_path: str) -> str:
-        last_companant = directory._slash_check(file_path, is_file=True).split(directory.SLASH)[-1]
-        if self._exist_check(file_path) or last_companant != "":
-            return last_companant
+    def _name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
+        file_path = directory._slash_check(file_path, is_file=True)
+        if self._exist_check(file_path):
+            _file_dir, _file_name = path.split(file_path)
+
+            return _file_name if just_file_name else [_file_dir, _file_name]
         else:
             return None
 
