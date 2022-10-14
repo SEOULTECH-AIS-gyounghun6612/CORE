@@ -4,7 +4,7 @@
 from typing import Dict, List, Tuple
 from torch import Tensor
 
-from python_ex._base import directory
+from python_ex._base import directory, file
 
 
 if __package__ == "":
@@ -21,27 +21,25 @@ else:
 
 class Learning_process():
     class End_to_End():
-        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, log_file: str = None, is_restore: bool = False) -> None:
-            # for anootation
-            log_file = "learning_log.json" if log_file is None else log_file
+        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, restore_file: str = None) -> None:
+            is_restore = file._exist_check(restore_file)
 
             # set log
             if is_restore:
-                # get log data from log file
-                self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=is_restore)
                 # restore trainer opts from log
-                [self.learning_opt, self.dataloader_opt] = self.trainer_restore(log_file)
+                self.learning_opt, self.dataloader_opt = self.trainer_restore()
+                self.save_root = self.learning_opt.make_save_directorty()
 
             else:
                 # set learning base option
                 self.learning_opt = learning_opt
                 self.dataloader_opt = dataloader_opt
 
-                # make new log
-                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=log_file)
+                # set base parameter
+                self.save_root = self.learning_opt.make_save_directorty()
 
-            # set base parameter
-            self.save_root = self.learning_opt.make_save_directorty()
+                # make new log
+                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.learning_opt.Log_file)
 
             # set dataloader
             self.set_data_process()
@@ -53,9 +51,11 @@ class Learning_process():
             # set learning mode -> default: First mode in learning_opt
             self.set_learning_mode(self.learning_opt.Learning_mode[0])
 
-        def trainer_restore(self, log_file) -> Tuple[opt._learning.E2E, opt._dataloader]:
-            # set logging process
-            self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=True)
+        def trainer_restore(self, restore_file) -> Tuple[opt._learning.E2E, opt._dataloader]:
+            _file_dir, _file_name = file._name_from_path(restore_file, False)
+
+            # get log data from log file
+            self.log = debug.process_log({}, save_dir=_file_dir, file_name=_file_name, is_restore=True)
             return self.log.get_restore_opt()  # make it get_restore_opt
 
         def set_learning_mode(self, mode: learing_mode):

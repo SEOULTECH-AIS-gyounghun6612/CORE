@@ -54,6 +54,7 @@ class opt():
             LR_discount: List[float] = field(default_factory=lambda: [0.1, ])
 
             # About logging
+            Log_file: str = "learning_log.json"
             Logging_parameters: Dict[learing_mode, List[str]] = field(default_factory=dict)     # Dict[Learning_mode: str, Logging_parameter: List[str]]
             Display_paramerters: Dict[learing_mode, List[str]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
 
