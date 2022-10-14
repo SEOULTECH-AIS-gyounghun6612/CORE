@@ -274,7 +274,7 @@ class torch_utils():
 
     class _evaluation():
         @staticmethod
-        def iou(result: Tensor, label: Tensor, class_num) -> Tensor:
+        def iou(result: Tensor, label: Tensor, class_num: int) -> ndarray:
             np_result = result.cpu().detach().numpy()
             np_label = label.cpu().detach().numpy()
 
@@ -282,9 +282,9 @@ class torch_utils():
             return iou
 
         @staticmethod
-        def miou(result, label, class_num):
-            iou = evaluation.iou(result, label, class_num)
-            return iou.mean()
+        def miou(result: Tensor, label: Tensor, class_num: int) -> ndarray:
+            iou = torch_utils._evaluation.iou(result, label, class_num)
+            return iou, iou.mean()
 
 
 class debug():
