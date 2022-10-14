@@ -30,25 +30,27 @@ class Learning_process():
             self.save_root = self.learning_opt.make_save_directorty()
 
     class End_to_End(base):
-        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, log_file: str = None, is_restore: bool = False) -> None:
+        def __init__(self, learning_opt: opt._learning.E2E = None, dataloader_opt: opt._dataloader = None, log_file: str = None, is_restore: bool = False) -> None:
             # for anootation
             self.learning_opt: opt._learning.E2E
 
             super().__init__(learning_opt, dataloader_opt)
-            self.log_file_name = "learning_log.json" if log_file is None else log_file
+            log_file = "learning_log.json" if log_file is None else log_file
 
-            # set logging process
+            # restore from log file
             if is_restore:
-                self.log = debug.process_log({}, save_dir=self.save_root, file_name=self.log_file_name, is_restore=is_restore)
+                self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=is_restore)
+                [learning_opt, dataloader_opt] = self.trainer_restore(log_file)
 
+            # make trainer
             else:
-                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.log_file_name)
+                assert (learning_opt is None or dataloader_opt is None)  # in later fix it
+                super().__init__(learning_opt, dataloader_opt)
+                # set logging process
+                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=log_file)
 
             # set dataloader
             self.set_data_process()
-
-            # Update log; count of data in each mode
-            self.log.info_update()
 
             # model and optim
             self.model: List[module.custom_module] = []
@@ -56,6 +58,12 @@ class Learning_process():
 
             # set learning mode -> default: train
             self.set_learning_mode(self.learning_opt.Learning_mode[0])
+
+        def trainer_restore(self, log_file) -> Tuple[opt._learning.E2E, opt._dataloader]:
+            # set logging process
+            self.log = debug.process_log({}, save_dir=self.save_root, file_name=log_file, is_restore=True)
+            return self.log.get_opt()
+            ...
 
         def set_learning_mode(self, mode: learing_mode):
             # set log state
@@ -72,8 +80,11 @@ class Learning_process():
             self.dataloaders: Dict[learing_mode, DataLoader] = {}
 
             for _learning_mode in self.learning_opt.Learning_mode:
+                # set dataloader in each learning mode
                 _dataloader = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
                 self.dataloaders[_learning_mode] = _dataloader
+
+                # Update log; count of data in each mode
                 self.log.info_update("dataloader", {_learning_mode: {"data_count": _dataloader.dataset.__len__(), "batch_size": _dataloader.batch_size}})
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
@@ -94,7 +105,7 @@ class Learning_process():
                 _model._save_to(save_dir=save_folder, epoch=epoch, optim=self.optim[_ct])
 
         def save_log(self):
-            self.log.save(self.save_root, self.log_file_name)
+            self.log.save()
         # --- -------------------------------------------------------------------------- --- #
 
         # --- must edit function, when before use it --- #
