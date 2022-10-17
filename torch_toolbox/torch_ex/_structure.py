@@ -8,7 +8,7 @@ from torch import zeros, mean, matmul, sin, cos, exp, arange, argmax
 from torch.nn import Module, init, functional, ModuleList, Sequential
 from torch.nn import parameter
 from torch.nn import Linear, Conv2d, ConvTranspose2d, BatchNorm1d, BatchNorm2d  # , LayerNorm
-from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid  # , GELU
+from torch.nn import ReLU, LeakyReLU, Tanh, Sigmoid, GELU
 from torch.nn import MSELoss, CrossEntropyLoss
 from torch.optim import Optimizer
 from torchsummary import summary as ModelSummary
@@ -107,14 +107,14 @@ class module():
             return None
         elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
             return ReLU(**active_opt.to_parameters())
-        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
+        elif active_opt.active_type == opt._layer_opt.active_name.LeakyReLU:
             return LeakyReLU(**active_opt.to_parameters())
-        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
+        elif active_opt.active_type == opt._layer_opt.active_name.Tanh:
             return Tanh(**active_opt.to_parameters())
-        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
+        elif active_opt.active_type == opt._layer_opt.active_name.Sigmoid:
             return Sigmoid(**active_opt.to_parameters())
-        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
-            return Sigmoid(**active_opt.to_parameters())
+        elif active_opt.active_type == opt._layer_opt.active_name.GELU:
+            return GELU(**active_opt.to_parameters())
 
     @ staticmethod
     def make_module_list(list: List[Module]) -> ModuleList:

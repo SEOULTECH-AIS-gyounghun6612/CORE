@@ -78,7 +78,7 @@ class Learning_process():
                 self.dataloaders[_learning_mode] = _dataloader
 
                 # Update log; count of data in each mode
-                self.log.info_update("dataloader", {_learning_mode: {"data_count": _dataloader.dataset.__len__(), "batch_size": _dataloader.batch_size}})
+                self.log.annotation_update("dataloader", {_learning_mode: {"data_count": _dataloader.dataset.__len__(), "batch_size": _dataloader.batch_size}})
 
         # --- additional editing be optinary, when except make a new learning_trainer --- #
         def set_learning_model(self, block_list: List[Tuple[module.custom_module, opt._optim_opt]], is_resotre: bool):
