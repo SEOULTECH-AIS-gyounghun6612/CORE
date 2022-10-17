@@ -158,6 +158,13 @@ class opt():
                 else:
                     return {}
 
+        class active_name(Enum):
+            ReLU = 0
+            LeakyReLU = 1
+            Tanh = 2
+            Sigmoid = 3
+            GELU = 4
+
         @dataclass
         class active_function():
             active_type: str
@@ -172,9 +179,9 @@ class opt():
             # empty
 
             def to_parameters(self):
-                if self.active_type == "ReLU":
+                if self.active_type == opt._layer_opt.active_name.ReLU:
                     return {"inplace": self.inplace}
-                elif self.active_type == "LeakyReLU":
+                elif self.active_type == opt._layer_opt.active_name.LeakyReLU:
                     return {"inplace": self.inplace, "negative_slope": self.negative_slope}
                 else:  # Tanh, Sigmoid
                     return {}

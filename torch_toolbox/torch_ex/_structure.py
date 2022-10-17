@@ -62,7 +62,7 @@ class loss():
 
 class module():
     class custom_module(Module):
-        def __init__(self, model_name):
+        def __init__(self, model_name: str):
             super(module.custom_module, self).__init__()
             self.model_name = model_name
 
@@ -105,13 +105,15 @@ class module():
         # activation setting
         if active_opt is None:
             return None
-        elif active_opt.active_type == "ReLU":
+        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
             return ReLU(**active_opt.to_parameters())
-        elif active_opt.active_type == "LeakyReLU":
+        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
             return LeakyReLU(**active_opt.to_parameters())
-        elif active_opt.active_type == "Tanh":
+        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
             return Tanh(**active_opt.to_parameters())
-        elif active_opt.active_type == "Sigmoid":
+        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
+            return Sigmoid(**active_opt.to_parameters())
+        elif active_opt.active_type == opt._layer_opt.active_name.ReLU:
             return Sigmoid(**active_opt.to_parameters())
 
     @ staticmethod
