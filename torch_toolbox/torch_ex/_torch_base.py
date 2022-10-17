@@ -15,6 +15,18 @@ from python_ex._label import Label_process, Label_style, File_style
 from enum import Enum
 
 
+class Learning_config():
+    ...
+
+
+class Datalaoder_config():
+    ...
+
+
+class Layout_config():
+    ...
+
+
 class learing_mode(Enum):
     TRAIN = "train"
     VALIDATION = "val"
@@ -48,6 +60,9 @@ class opt():
 
             # Debugging parameter for learning
             Save_root: str
+
+            # Abour Model
+            Model_structure: Dict[str, Any] = field(default_factory=dict)
 
             # About Optimizer
             LR_initail: List[float] = field(default_factory=lambda: [0.005, ])
