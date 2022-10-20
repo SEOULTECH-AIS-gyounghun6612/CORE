@@ -225,7 +225,7 @@ class Label_process():
             picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self.Label_info, self.data_size)
             picked_label = np_base.type_converter(picked_label, np_dtype.np_float32)
 
-            return [picked_image, picked_label]
+            return [picked_image, picked_label, index]
 
     class PASCAL():
         ...

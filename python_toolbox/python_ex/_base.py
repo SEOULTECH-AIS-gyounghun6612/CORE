@@ -179,12 +179,8 @@ class file():
     @classmethod
     def _name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
         file_path = directory._slash_check(file_path, is_file=True)
-        if self._exist_check(file_path):
-            _file_dir, _file_name = path.split(file_path)
-
-            return _file_name if just_file_name else [_file_dir, _file_name]
-        else:
-            return None
+        _file_dir, _file_name = path.split(file_path)
+        return _file_name if just_file_name else [_file_dir, _file_name]
 
     @staticmethod
     def _extension_check(file_dir, exts: List[str], is_fix: bool = False):
