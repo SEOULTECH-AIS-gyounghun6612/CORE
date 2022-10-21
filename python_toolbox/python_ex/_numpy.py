@@ -274,6 +274,26 @@ class cal():
 
 class image_process():
     @staticmethod
+    def image_normalization(image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+        _, _, _c = image.shape
+        _norm_image = np_base.get_array_from(image, dtype=np_dtype.np_float32)
+
+        for _ct_c in range(_c):
+            _norm_image[:, :, _ct_c] = ((image[:, :, _ct_c] / 255) - mean[_ct_c]) / std[_ct_c]
+
+        return _norm_image
+
+    @staticmethod
+    def image_denormalization(norm_image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+        _, _, _c = norm_image.shape
+        _denorm_image = np_base.get_array_from(norm_image, dtype=np_dtype.np_uint8)
+
+        for _ct_c in range(_c):
+            _denorm_image[:, :, _ct_c] = (_denorm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]
+
+        return np_base.type_converter(_denorm_image, np_dtype.np_uint8)
+
+    @staticmethod
     def distance(delta_x: ndarray, delta_y: ndarray):
         return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
 
@@ -429,28 +449,37 @@ class evaluation():
 
     @staticmethod
     # in later fix it
-    def iou(result, label, class_num):
-        line_label = np.reshape(label, -1)
-        line_result = np.reshape(result, -1)
+    def iou(result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
+        """
 
-        category_array_1d = np_base.bincount(line_label * class_num + line_result, class_num * class_num)
-        category_array_2d = np.reshape(category_array_1d, (class_num, class_num))
+        """
+        # result -> [h, w]
+        # label -> [h, w]
 
-        _inter = np.diag(category_array_2d)
-        _uni = np.zeros(class_num)
+        iou = []
+        _G_interest = np_base.get_array_from(result.shape, True)
+        for _ig_class in ignore_class:
+            _G_interest = np.logical_or(_G_interest, result != _ig_class)
 
-        for _class_ct in range(class_num):
-            _w_range = range(_class_ct * class_num, (_class_ct + 1) * class_num)
-            _h_range = range(_class_ct, class_num * (class_num - 1) + _class_ct + 1, class_num)
-            _uni[_class_ct] = \
-                np.sum(category_array_1d[_w_range]) + np.sum(category_array_1d[_h_range]) - _inter[_class_ct]
+        for _class in range(class_num):
+            _G_result = (result == _class)
+            _G_label = (label == _class)
 
-        return _inter / _uni
+            _intersection = np.logical_and(_G_result, _G_label)
+            _union = np.logical_and(np.logical_or(_G_result, _G_label), _G_interest)
+
+            iou.append(_intersection.sum() / _union.sum() if _union.sum() else 0.00)
+
+        return np_base.get_array_from(iou, dtype=np_dtype.np_float32)
 
     @staticmethod
-    def miou(result, label, class_num):
-        iou = evaluation.iou(result, label, class_num)
-        return np.mean(iou)
+    def miou(result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
+        iou = evaluation.iou(result, label, class_num, ignore_class)
+        _used_class = list(range(class_num))
+        for _ig_class in ignore_class:
+            _used_class.remove(_ig_class)
+
+        return [iou, np.mean(iou[_used_class])]
 
     class baddeley():
         def __init__(self, p: int = 2) -> None:
