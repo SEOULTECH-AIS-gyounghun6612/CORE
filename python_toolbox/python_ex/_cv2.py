@@ -69,7 +69,7 @@ class file():
 
     @classmethod
     def image_read(self, filename: str, color_option: Color_option = Color_option.BGR) -> _numpy.ndarray:
-        if not _base.file._exist_check(filename):
+        if not _base.File._exist_check(filename):
             _error_message.variable_stop(
                 "file.image_read",
                 ["filename", ],
@@ -96,8 +96,8 @@ class file():
 
     @classmethod
     def image_write(self, file_dir: str, image):
-        filename = _base.file._name_from_path(file_dir)
-        if not _base.file._extension_check(filename, self.IMAGE_EXT):
+        filename = _base.File._name_from_path(file_dir)
+        if not _base.File._extension_check(filename, self.IMAGE_EXT):
             if self.DEBUG:
                 _error_message.variable(
                     "file.image_write",
@@ -109,7 +109,7 @@ class file():
     @staticmethod
     def video_capture(location, is_file=False):
         if is_file:
-            if not _base.directory._exist_check(location):
+            if not _base.Directory._exist_check(location):
                 _error_message.variable_stop(
                     "file.image_read",
                     "Have some problem in parameter 'location'. Not exist")
@@ -120,7 +120,7 @@ class file():
     def video_write(self, filename: str, video_size, frame=30):
         video_format = filename.split("/")[-1].split(".")[-1]
 
-        if not _base.file._extension_check(video_format, self.VIDEO_EXT):
+        if not _base.File._extension_check(video_format, self.VIDEO_EXT):
             if self.DEBUG:
                 _error_message.variable(
                     "file.video_write",
@@ -485,11 +485,11 @@ class draw():
                 target (list) : \n
                 obj_num (int, list[int], range) : \n
             """
-            if _base.tool_for._list.is_num_over_range(self.object_list, obj_num):
+            if _base.Tool_For._list.is_num_over_range(self.object_list, obj_num):
                 pass  # error : "obj_num" is over range in self object list
 
             else:
-                _base.tool_for._list.del_obj(self.object_list, obj_num)
+                _base.Tool_For._list.del_obj(self.object_list, obj_num)
 
         def clear_object(self):
             pass
@@ -520,6 +520,13 @@ class augmentation():
         _setted = np_base.type_converter(np_base.type_converter(_setted, np_dtype.np_bool), np_dtype.np_uint8)
         _classfication[:, :, -1] = 1 - _setted
         return _classfication
+
+    @staticmethod
+    def _classification_to_colormap(classfication: _numpy.ndarray, label_info: Dict[int, List], size: List[int]):
+        _h, _w = size
+        _label_ids = sorted(label_info.keys())
+        _color_list = np_base.get_array_from([label_info[_id][0][0] for _id in _label_ids])
+        return _color_list[classfication]
 
     @staticmethod
     def _make_noise():

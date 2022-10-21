@@ -20,9 +20,9 @@ class log():
         self.save_dir = save_dir
         self.file_name = file_name
 
-        _diretory = _base.directory._slash_check(f"{save_dir}{file_name}", True)
+        _diretory = _base.Directory._slash_check(f"{save_dir}{file_name}", True)
 
-        if _base.file._exist_check(_diretory) and is_resotre:
+        if _base.File._exist_check(_diretory) and is_resotre:
             self.load()
         else:
             self.annotation: Dict[str, Union[list, str, int]] = {}
@@ -91,7 +91,7 @@ class log():
         return picked_data
 
     def load(self):
-        save_pakage = _base.file._json(self.save_dir, self.file_name)
+        save_pakage = _base.File._json(self.save_dir, self.file_name)
         self.add(save_pakage["annotation"])
         self.add(save_pakage["data"], self.data)
 
@@ -100,7 +100,7 @@ class log():
             "annotation": self.annotation,
             "data": self.data}
 
-        _base.file._json(self.save_dir, self.file_name, save_pakage, True)
+        _base.File._json(self.save_dir, self.file_name, save_pakage, True)
 
 
 class ploter():

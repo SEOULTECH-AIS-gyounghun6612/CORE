@@ -8,6 +8,7 @@ Requirement
     None
 """
 # Import module
+from dataclasses import dataclass
 import json
 import yaml
 import platform
@@ -15,7 +16,7 @@ import time
 
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 if __package__ == "":
@@ -33,25 +34,25 @@ _error = _e.Custom_error(
     file_name="_base.py")
 
 
-class directory():
-    OS_THIS = platform.system()
-    OS_WINDOW = "Windows"
-    OS_UBUNTU = "Linux"
-    SLASH = "/" if OS_THIS == OS_UBUNTU else "\\"
+class Directory():
+    _OS_THIS = platform.system()
+    _OS_WINDOW = "Windows"
+    _OS_UBUNTU = "Linux"
+    _Divider = "/" if _OS_THIS == _OS_UBUNTU else "\\"
 
     @classmethod  # fix it
     def _slash_check(self, directory: str, is_file: bool = False) -> str:
         # each os's directory divide slash fix
-        if self.SLASH == "\\":
+        if self._Divider == "\\":
             from_dived = "/"
         else:
             from_dived = "\\"
-        directory.replace(from_dived, self.SLASH)
+        directory.replace(from_dived, self._Divider)
 
         if not is_file:
             # if checked path is dir, check last slach exist in end of text
-            return directory if directory[-len(self.SLASH):] == self.SLASH \
-                else directory + self.SLASH
+            return directory if directory[-len(self._Divider):] == self._Divider \
+                else directory + self._Divider
 
         return directory
 
@@ -62,14 +63,14 @@ class directory():
     @classmethod
     def _devide(self, directory: str, point: int = -1) -> List[str]:
         _dir = self._slash_check(directory)
-        _comp = _dir.split(self.SLASH)[:-1]
+        _comp = _dir.split(self._Divider)[:-1]
 
         _front = ""
         _back = ""
         for _data in _comp[:point]:
-            _front += _data + self.SLASH
+            _front += _data + self._Divider
         for _data in _comp[point:]:
-            _back += _data + self.SLASH
+            _back += _data + self._Divider
 
         return _front, _back
 
@@ -92,7 +93,7 @@ class directory():
             _dir = self._relative_root()
 
         # make directory
-        for _part in self._slash_check(obj_dir).split(self.SLASH):
+        for _part in self._slash_check(obj_dir).split(self._Divider):
             _dir = self._slash_check(_dir + _part)
             mkdir(_dir) if not self._exist_check(_dir) else None
 
@@ -109,7 +110,7 @@ class directory():
         if search_option in ["directory", "dir"]:
             search_list = [data for data in search_list if self._exist_check(data)]
         elif search_option in ["file", ]:
-            search_list = [data for data in search_list if file._exist_check(data)]
+            search_list = [data for data in search_list if File._exist_check(data)]
 
         return sorted(search_list)
 
@@ -144,47 +145,47 @@ class directory():
     def _copy():
         _error.not_yet("directory._copy")
 
-    class server():
+    class Server():
         @staticmethod
-        def local_connect(ip_num: str, user_id: str, password: str, root_dir: str, mount_dir: str, is_container: bool = False):
+        def _local_connect(ip_num: str, user_id: str, password: str, root_dir: str, mount_dir: str, is_container: bool = False):
             if is_container:
                 # in later make function for docker container
                 _error.not_yet("not support for container system at function server.local_connect")
                 pass
             else:
-                if directory.OS_THIS == directory.OS_WINDOW:
+                if Directory._OS_THIS == Directory._OS_WINDOW:
                     _command = f"NET USE {mount_dir}: \\\\{ip_num}\\{root_dir} {password} /user:{user_id}"
 
-                elif directory.OS_THIS == directory.OS_UBUNTU:
+                elif Directory._OS_THIS == Directory._OS_UBUNTU:
                     _command = "sudo -S mount -t cifs -o uid=1000,gid=1000,"
                     _command += f"username={user_id},password={password} //{ip_num}/{root_dir} {mount_dir}"
 
                 system(_command)
-                return mount_dir + ":" if directory.OS_THIS == directory.OS_WINDOW else mount_dir
+                return mount_dir + ":" if Directory._OS_THIS == Directory._OS_WINDOW else mount_dir
 
         @staticmethod
         def _unconnect(mounted_dir: str):
-            if directory.OS_THIS == directory.OS_WINDOW:
+            if Directory._OS_THIS == Directory._OS_WINDOW:
                 system("NET USE {}: /DELETE".format(mounted_dir))
-            elif directory.OS_THIS == directory.OS_UBUNTU:
+            elif Directory._OS_THIS == Directory._OS_UBUNTU:
                 system("fuser -ck {}".format(mounted_dir))
                 system("sudo umount {}".format(mounted_dir))
 
 
-class file():
+class File():
     @classmethod
     def _exist_check(self, file_path: str) -> bool:
         return path.isfile(file_path)
 
     @classmethod
     def _name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
-        file_path = directory._slash_check(file_path, is_file=True)
+        file_path = Directory._slash_check(file_path, is_file=True)
         _file_dir, _file_name = path.split(file_path)
         return _file_name if just_file_name else [_file_dir, _file_name]
 
     @staticmethod
     def _extension_check(file_dir, exts: List[str], is_fix: bool = False):
-        file_name = file._name_from_path(file_dir)
+        file_name = File._name_from_path(file_dir)
         is_positive = False
 
         if file_name is None:
@@ -221,15 +222,15 @@ class file():
             return (dict)   :
         """
         # directory check
-        file_dir = directory._slash_check(file_dir)
-        if not directory._exist_check(file_dir):
+        file_dir = Directory._slash_check(file_dir)
+        if not Directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
                 _error.variable(
                     function_name="file.json_file",
                     variable_list=["file_dir", ],
                     AA="Entered directory '{}' not exist. In first make that".format(file_dir))
-                directory._make(file_dir)
+                Directory._make(file_dir)
 
             else:
                 # !!!ERROR!!! load directory not exist
@@ -240,7 +241,7 @@ class file():
                 )
 
         # file_name check
-        _, file_name = file._extension_check(file_name, ["json", ], True)
+        _, file_name = File._extension_check(file_name, ["json", ], True)
 
         # json file process load or save
         if is_save:
@@ -273,15 +274,15 @@ class file():
             return (dict)   :
         """
         # directory check
-        file_dir = directory._slash_check(file_dir)
-        if not directory._exist_check(file_dir):
+        file_dir = Directory._slash_check(file_dir)
+        if not Directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
                 _error.variable(
                     function_name="file.yaml_file",
                     variable_list=["file_dir", ],
                     AA="Entered directory '{}' not exist. In first make that".format(file_dir))
-                directory._make(file_dir)
+                Directory._make(file_dir)
 
             else:
                 # !!!ERROR!!! load directory not exist
@@ -292,7 +293,7 @@ class file():
                 )
 
         # file_name check
-        _, file_name = file._extension_check(file_name, ["yml", 'yaml'], True)
+        _, file_name = File._extension_check(file_name, ["yml", 'yaml'], True)
 
         # yaml file process load or save
         if is_save:
@@ -327,7 +328,18 @@ class file():
         _error.not_yet("file._copy_to")
 
 
-class utils():
+class Utils():
+    @dataclass
+    class Config():
+        def _convert_to_dict(self) -> Dict[str, Any]:  # in later fix it; data dictionary value data type must be can dumped in json file
+            """
+            Returned dictionary value type must be can dumped in json file
+            """
+            ...
+
+        def _restore_from_file(self, data: Dict[str, Any]):  # in later fix it; data dictionary value data type must be can dumped in json file
+            ...
+
     @staticmethod
     def Progress_Bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
         """
@@ -352,11 +364,11 @@ class utils():
             print()
 
     @staticmethod
-    def time_stemp(is_text=False):
+    def Time_stemp(is_text=False):
         return time.strftime("%Y-%m-%d", time.localtime()) if is_text else time.time()
 
 
-class tool_for():
+class Tool_For():
     class _list():
         @staticmethod
         def is_num_over_range(target: list, obj_num: Union[int, list, range]) -> bool:

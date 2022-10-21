@@ -1,64 +1,64 @@
 {
     "seg": [
         {
-            "ID": 0,
-            "Train_ID": 0,
-            "Cateogry_ID": 1,
-            "Ignore_in_eval": 0,
-            "Class_info": [
+            "_Identity_num": 0,
+            "_Train_num": 0,
+            "_Cateogry_num": 1,
+            "_Ignore_in_eval": 0,
+            "_Class_info": [
                 16,
                 16,
                 16
             ],
-            "name": "Static"
+            "_Name": "Static"
         },
         {
-            "ID": 1,
-            "Train_ID": 0,
-            "Cateogry_ID": 0,
-            "Ignore_in_eval": 0,
-            "Class_info": [
+            "_Identity_num": 1,
+            "_Train_num": 0,
+            "_Cateogry_num": 0,
+            "_Ignore_in_eval": 0,
+            "_Class_info": [
                 50,
                 50,
                 50
             ],
-            "name": "Hard shadow"
+            "_Name": "Hard shadow"
         },
         {
-            "ID": 2,
-            "Train_ID": 255,
-            "Cateogry_ID": 0,
-            "Ignore_in_eval": 1,
-            "Class_info": [
+            "_Identity_num": 2,
+            "_Train_num": 255,
+            "_Cateogry_num": 0,
+            "_Ignore_in_eval": 1,
+            "_Class_info": [
                 85,
                 85,
                 85
             ],
-            "name": "Outside region of interest"
+            "_Name": "Outside region of interest"
         },
         {
-            "ID": 3,
-            "Train_ID": 1,
-            "Cateogry_ID": 0,
-            "Ignore_in_eval": 0,
-            "Class_info": [
+            "_Identity_num": 3,
+            "_Train_num": 1,
+            "_Cateogry_num": 0,
+            "_Ignore_in_eval": 0,
+            "_Class_info": [
                 170,
                 170,
                 170
             ],
-            "name": "Unknown motion"
+            "_Name": "Unknown motion"
         },
         {
-            "ID": 4,
-            "Train_ID": 2,
-            "Cateogry_ID": 1,
-            "Ignore_in_eval": 0,
-            "Class_info": [
+            "_Identity_num": 4,
+            "_Train_num": 2,
+            "_Cateogry_num": 1,
+            "_Ignore_in_eval": 0,
+            "_Class_info": [
                 255,
                 255,
                 255
             ],
-            "name": "Motion"
+            "_Name": "Motion"
         }
     ]
 }
