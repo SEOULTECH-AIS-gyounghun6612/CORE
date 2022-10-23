@@ -83,23 +83,25 @@ class Label_Structure():
 
 # -- DEFINE CONFIG -- #
 @dataclass
-class Augmentation(Utils.Config):
+class Augmentation_Config(Utils.Config):
     def _convert_to_dict(self) -> Dict[str, Any]:
         return super()._convert_to_dict()
 
-    def _restore_from_file(self, data: Dict[str, Any]):
-        return super()._restore_from_file(data)
+    def _restore_from_dict(self, data: Dict[str, Any]):
+        return super()._restore_from_dict(data)
 
 
 @dataclass
 class Label_Config(Utils.Config):
+    """
+    """
     _Name: Suported_Label
     _Load_meta_file: str
     _Load_label_style: List[Label_Style]  # Label style list that get from meta data.
 
     _Data_root: str  # Where input and label data exist
     _Data_size: List[int]  # Get data size from source if that can change
-    _Data_augmentation: Augmentation
+    _Data_augmentation: Augmentation_Config
 
     def _convert_to_dict(self):
         return {
@@ -110,13 +112,13 @@ class Label_Config(Utils.Config):
             "_Data_size": self._Data_size,
             "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
 
-    def _restore_from_file(self, data: Dict[str, Any]):
+    def _restore_from_dict(self, data: Dict[str, Any]):
         self._Name = Suported_Label(data["_Name"])
         self._Load_meta_file, = data["_Load_meta_file"]
         self._Load_label_style = [Label_Style(__style_name) for __style_name in data["_Load_label_style"]]
         self._Data_root = data["_Data_root"]
         self._Data_size = data["_Data_size"]
-        self._Data_augmentation = self._Data_augmentation._restore_from_file(data["_Data_size"])
+        self._Data_augmentation = self._Data_augmentation._restore_from_dict(data["_Data_size"])
 
     def _root_directory_check(self) -> bool:
         if Directory._exist_check(self._Data_root):
@@ -144,7 +146,7 @@ class Label_Process():
 
         # Parameter for Label pre-process
         _Data_size: List[int]
-        _Data_augmentation: Augmentation
+        _Data_augmentation: Augmentation_Config
 
         # initialize
         def __init__(self, config: Label_Config):
@@ -330,6 +332,6 @@ class Label_Process():
             pass
 
     @staticmethod
-    def _build(self, config: Label_Config):
+    def _build(config: Label_Config):
         if config._Name == Suported_Label.BDD_100K:
             return Label_Process.BDD_100k(config)

@@ -4,7 +4,8 @@ from setuptools import setup
 requirments_package = [
     'numpy',
     'opencv-python',
-    'pyyaml']
+    'pyyaml',
+    'flake8']
 
 dependency_links = []
 package_opt = {"python_ex": ["data_file/*.json"]}

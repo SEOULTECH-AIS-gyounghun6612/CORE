@@ -337,7 +337,7 @@ class Utils():
             """
             ...
 
-        def _restore_from_file(self, data: Dict[str, Any]):  # in later fix it; data dictionary value data type must be can dumped in json file
+        def _restore_from_dict(self, data: Dict[str, Any]):  # in later fix it; data dictionary value data type must be can dumped in json file
             ...
 
     @staticmethod
