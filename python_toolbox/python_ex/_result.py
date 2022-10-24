@@ -11,12 +11,9 @@ else:
 
 
 # -- DEFINE CONSTNAT -- #
-class Logging_option(Enum):
-    ADD = 0
-    READDING = 1
-    DELETE = 2
 
 
+# -- Mation Function -- #
 class Log():
     _Annotation: Dict[str, Union[list, str, int]] = {}
     _Data: Dict[str, Union[list, dict]] = {}
