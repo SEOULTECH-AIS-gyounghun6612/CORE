@@ -1,236 +1,69 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Dict, List, Tuple, Union
 from math import log10, floor
 
-from torch import Tensor, cuda, tensor, stack, clip, distributions, cat
-from torch.nn import Module
-from torch.optim import Optimizer, Adam
+from torch import Tensor, tensor, stack, clip, distributions, cat
 
+from python_ex._base import Directory, Utils
+from python_ex._label import Learning_Mode
+from python_ex._result import Log
 from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
-from python_ex._result import log, logging_option
-from python_ex._base import directory, utils
-from python_ex._label import Label_process, Label_style, File_style
-
-# from python_ex import _error as _e
-from enum import Enum
 
 
-class Learning_config():
-    ...
+# -- DEFINE CONSTNAT -- #
+class Logging_Factor(Enum):
+    LOSS = 0
+    ACC = 1
+    IoU = 2
+    mIoU = 3
 
 
-class Datalaoder_config():
-    ...
+# -- DEFINE CONFIG -- #
+@dataclass
+class Log_Config(Utils.Config):
+    _Save_root: str = Directory._relative_root()
+    _File: str = "learning_log.json"
+    _Tracking: Dict[Learning_Mode, List[Logging_Factor]] = field(default_factory=dict)     # Dict[Learning_mode: str, Logging_parameter: List[str]]
+    _Debugging: Dict[Learning_Mode, List[Logging_Factor]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
+
+    def _convert_to_dict(self) -> Dict[str, Any]:
+        return super()._convert_to_dict()
+
+    def _restore_from_dict(self, data: Dict[str, Any]):
+        return super()._restore_from_dict(data)
+
+    def _make_data_holder(self):
+        __holder = {}
+        for __Learning_mode in self._Tracking.keys():
+            __holder[__Learning_mode.value] = {}
+            for parameter in self._Tracking[__Learning_mode]:
+                __holder[__Learning_mode.value][parameter.value] = []
+        return __holder
 
 
-class Layout_config():
-    ...
-
-
-class learing_mode(Enum):
-    TRAIN = "train"
-    VALIDATION = "val"
-    TEST = "test"
-
-
-class opt():
-    @dataclass
-    class _dataloader():
-        # dataloader setting
-        Batch_size: int
-        Num_workers: int
-
-        # dataset setting
-        Data_process: Label_process.label_basement
-        Data_label_style: Label_style
-        Data_file_style: File_style
-
-    class _learning():
-        @dataclass
-        class E2E():
-            # Infomation about learning
-            Learing_name: str
-            Learning_date: str
-            Learning_detail: str
-
-            # About Learning type and style
-            Learning_mode: List[learing_mode]
-            Max_epochs: int
-            This_epoch: int
-
-            # Debugging parameter for learning
-            Save_root: str
-
-            # Abour Model
-            Model_structure: Dict[str, Any] = field(default_factory=dict)
-
-            # About Optimizer
-            LR_initail: List[float] = field(default_factory=lambda: [0.005, ])
-            LR_discount: List[float] = field(default_factory=lambda: [0.1, ])
-
-            # About logging
-            Log_file: str = "learning_log.json"
-            Logging_parameters: Dict[learing_mode, List[str]] = field(default_factory=dict)     # Dict[Learning_mode: str, Logging_parameter: List[str]]
-            Display_paramerters: Dict[learing_mode, List[str]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
-
-            # About GPU system
-            Use_cuda: bool = cuda.is_available()
-
-            def make_save_directorty(self):
-                return debug.make_result_directory(self.Learing_name, self.Save_root)
-
-            def opt_to_file_data(self):
-                ...
-
-        @dataclass
-        class reinforcement(E2E):
-            # reinforcement train option
-            Max_step: int = 100
-
-            Q_discount: float = 0.99
-
-            Reward_threshold: List[float] = field(default_factory=list)
-            Reward_value: List[float] = field(default_factory=list)
-            Reward_fail: float = -10
-            # Reward_relation_range: int = 80
-
-            # action option
-            Action_size: List[Union[int, List[int]]] = field(default_factory=list)
-            Action_range: List[List[int]] = field(default_factory=list)  # [[Max, Min]]
-
-            # replay option
-            Memory_size: int = 1000
-            Minimum_memroy_size: int = 100
-            Exploration_threshold: int = 1.0
-            Exploration_discount: float = 0.99
-            Exploration_Minimum: int = 1.0
-
-    class _layer_opt():
-        @dataclass
-        class backbone():
-            type: int
-
-            is_pretrained: bool = True
-            is_trainable: bool = False
-
-            use_flat: bool = False
-            use_avg_pooling: bool = False
-
-        @dataclass
-        class fc():
-            in_features: int
-            out_features: int
-            bias: bool = True
-
-        @dataclass
-        class conv2d():
-            in_channels: int
-            out_channels: int
-            kernel_size: int
-            stride: int = 1
-            padding: int = 0
-            dilation: int = 1
-            groups: int = 1
-            bias: bool = True
-
-        @dataclass
-        class attention():
-            attention_type: str
-            input_dim: int
-            output_dim: int
-            head_count: int
-
-            def __init__(self, attention_type: str, input_dim: int, output_dim: int, num_head: int):
-                self.attention_type = attention_type
-                self.input_dim = input_dim
-                self.head_count = num_head
-                self.output_dim = output_dim + (output_dim % self.head_count) if (output_dim % num_head) else output_dim
-
-            def get_head_dim(self):
-                return self.output_dim // self.head_count
-
-        @dataclass
-        class postion_encoding():
-            encoding_type: str
-            max_len: int
-
-            def __init__(self, attention_type: str, input_dim: int, output_dim: int, num_head: int):
-                ...
-
-        @dataclass
-        class norm2d():
-            norm_type: str
-
-            num_features: int
-            eps: float = 1e-5
-            momentum: float = 0.1
-            affine: bool = True
-            track_running_stats: bool = True
-
-            def to_parameters(self):
-                if self.norm_type == "BatchNorm":
-                    return {"num_features": self.num_features, "eps": self.eps, "momentum": self.momentum, "affine": self.affine, "track_running_stats": self.track_running_stats}
-                else:
-                    return {}
-
-        class active_name(Enum):
-            ReLU = 0
-            LeakyReLU = 1
-            Tanh = 2
-            Sigmoid = 3
-            GELU = 4
-
-        @dataclass
-        class active_function():
-            active_type: str
-
-            # ReLU - basement
-            inplace: bool = True
-
-            # LeakyReLU
-            negative_slope: float = 0.01
-
-            # Tanh, Sigmoid
-            # empty
-
-            def to_parameters(self):
-                if self.active_type == opt._layer_opt.active_name.ReLU:
-                    return {"inplace": self.inplace}
-                elif self.active_type == opt._layer_opt.active_name.LeakyReLU:
-                    return {"inplace": self.inplace, "negative_slope": self.negative_slope}
-                else:  # Tanh, Sigmoid
-                    return {}
-
-    @dataclass
-    class _optim_opt():
-        optimize_type: str
-
-        def make(self, model: Module, Learning_rate: float) -> Optimizer:
-            if self.optimize_type == "Adam":
-                return Adam(model.parameters(), Learning_rate)
-
-
-class torch_utils():
-    class _directory():
+# -- Mation Function -- #
+class Torch_Utils():
+    class Directory():
         @staticmethod
-        def make_result_diretory(root: str = None, object_dir: str = None):
-            _obj_dir = f"result{directory.SLASH}"
-            _obj_dir += f"{utils.time_stemp(is_text=True)}{directory.SLASH}" if object_dir is None else directory._slash_check(object_dir)
+        def _make_result_diretory(root: str = None, object_dir: str = None):
+            _obj_dir = f"result{Directory.SLASH}"
+            _obj_dir += f"{Utils.Time_stemp(is_text=True)}{Directory.SLASH}" if object_dir is None else Directory._slash_check(object_dir)
 
-            return directory._make(_obj_dir, root)
+            return Directory._make(_obj_dir, root)
 
-    class _tensor():
+    class Tensor():
         @staticmethod
-        def holder(sample, is_shape: bool = False, value: int = 0, dtype: type = np_dtype.np_float32):
+        def _holder(sample, is_shape: bool = False, value: int = 0, dtype: type = np_dtype.np_float32):
             _array = np_base.get_array_from(sample, is_shape, value, dtype)
-            return torch_utils._tensor.from_numpy(_array, dtype)
+            return Torch_Utils.Tensor._from_numpy(_array, dtype)
 
         @classmethod
-        def from_numpy(self, np_array: ndarray, dtype: type = np_dtype.np_float32):
-            return tensor(np_base.type_converter(np_array, dtype))
+        def _from_numpy(self, np_array: ndarray, dtype: type = np_dtype.np_float32):
+            return tensor(np_array)
 
         @staticmethod
-        def to_numpy(tensor: Tensor, dtype: type = np_dtype.np_float32) -> ndarray:
+        def _to_numpy(tensor: Tensor, dtype: type = np_dtype.np_float32) -> ndarray:
             try:
                 _array = tensor.numpy()
             except RuntimeError:
@@ -239,9 +72,9 @@ class torch_utils():
             return np_base.type_converter(_array, dtype)
 
         @staticmethod
-        def make_tensor(size, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
-            # in later
-            pass
+        def _make_tensor(size, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
+            _value = np_base.get_random_array(size, value, norm_option, dtype)
+            return Torch_Utils.Tensor._from_numpy(_value)
 
         @staticmethod
         def _range_cut(tensor: Tensor, range_min, rage_max):
@@ -260,13 +93,13 @@ class torch_utils():
             # _t_shpae = tensor.shape
             pass
 
-    class _layer():
+    class Layer():
         @staticmethod
-        def position_encoding():
+        def _position_encoding():
             ...
 
         @staticmethod
-        def get_conv_pad(kernel_size, input_size, interval=1, stride=1):
+        def _get_conv_pad(kernel_size, input_size, interval=1, stride=1):
             if type(kernel_size) != list:
                 kernel_size = [kernel_size, kernel_size]
 
@@ -286,7 +119,7 @@ class torch_utils():
             return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
 
         @staticmethod
-        def concatenate(layers, dim=1):
+        def _concatenate(layers, dim=1):
             tmp_layer = layers[0]
             for _layer in layers[1:]:
                 tmp_layer = cat([tmp_layer, _layer], dim=dim)
@@ -295,86 +128,93 @@ class torch_utils():
 
     class _evaluation():
         @staticmethod
-        def iou(result: Tensor, label: Tensor, class_num: int) -> ndarray:
-            np_result = result.cpu().detach().numpy()
-            np_label = label.cpu().detach().numpy()
+        def iou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> ndarray:
+            _batch_size, _class_num = result.shape[0: 2]
+            np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
 
-            iou = evaluation.iou(np_result, np_label, class_num)
+            iou = np_base.get_array_from([_batch_size, _class_num], True, dtype=np_dtype.np_float32)
+
+            for _b in range(_batch_size):
+                iou[_b] = evaluation.iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
+
             return iou
 
         @staticmethod
-        def miou(result: Tensor, label: Tensor, class_num: int) -> ndarray:
-            iou = torch_utils._evaluation.iou(result, label, class_num)
-            return iou, iou.mean()
+        def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray]:
+            _batch_size, _class_num = result.shape[0: 2]
+            np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+
+            iou = np_base.get_array_from([_batch_size, _class_num], True, dtype=np_dtype.np_float32)
+            miou = np_base.get_array_from([_batch_size, ], True, dtype=np_dtype.np_float32)
+
+            for _b in range(_batch_size):
+                iou[_b], miou[_b] = evaluation.miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
+
+            return iou, miou
 
 
-class debug():
+class Debug():
     @staticmethod
-    def make_result_directory(try_name: str = None, root_dir: str = None):
-        _root = directory._relative_root() if root_dir is None else root_dir
-        _date = utils.time_stemp(True) if try_name is None else try_name
+    def _make_result_directory(project_name: str = None, root_dir: str = None):
+        __root = Directory._relative_root() if root_dir is None else root_dir
+        __project_folder = Utils.Time_stemp(True) if project_name is None else project_name
 
-        return directory._make(f"result/{_date}/", _root)
+        return Directory._make(f"{__project_folder}/", __root)
 
-    class process_log(log):
-        def __init__(self, logging_parameter: Dict[str, List[str]], save_dir: str, file_name: str, is_restore: bool = False):
-            holder = {}
+    class Learning_Log(Log):
+        def __init__(self, config: Log_Config):
+            self._Debugging_factor = config._Debugging
 
-            if not is_restore:
-                for _Learning_mode in logging_parameter.keys():
-                    holder[_Learning_mode] = {}
-                    for parameter in logging_parameter[_Learning_mode]:
-                        holder[_Learning_mode][parameter] = []
+            __file_name = config._File
+            __save_dir = config._Save_root
 
-            super().__init__(data=holder, save_dir=save_dir, file_name=file_name, is_resotre=is_restore)
+            super().__init__(data=config._make_data_holder(), save_dir=__save_dir, file_name=__file_name)
 
-        def set_logging_mode(self, learing_mode: learing_mode):
-            self.active_mode = learing_mode
+        # Freeze function
+        def _set_activate_mode(self, learing_mode: Learning_Mode):
+            self._Active_mode = learing_mode
 
-        def annotation_update(self, name: str, data: Any, is_overwrite: bool = False):
-            _flag = name in self.annotation.keys()
+        def _learning_tracking(self, tracking_data: Dict[Logging_Factor, Union[int, float, List]]):
+            __mode = self._Active_mode.value
+            __tracking = {}
 
-            if is_overwrite and _flag:
-                self.add({name: data}, logging_option.OVERWRITE)
+            for __factor in tracking_data.keys():
+                __tracking[__factor.value] = tracking_data[__factor]
 
-            else:
-                self.add({name: data}, logging_option.ADD)
+            self._insert({__mode: __tracking}, access_point=self._Data, is_overwrite=False)
 
-        def update(self, data: Dict):
-            self.add(data, save_point=self.data[self.active_mode])
+        def _learning_debug(self, batch_size: int, data_count: int):
+            __data_st = data_count // batch_size + int(data_count % batch_size)
+            __debugging_string = ""
 
-        def get_debugging_string(self, epoch: int, data_count: int, max_data_count: int) -> str:
-            _data_st = max_data_count * epoch
-            _data_ed = max_data_count * epoch + data_count
+            for _debugging in self._Data[self._Active_mode.value].keys():
+                if Logging_Factor(_debugging) in self._Debugging:
+                    __value = sum(self._Data[self._Active_mode.value][_debugging][-__data_st:])
+                    __value = __value / data_count
+                    __debugging_string += "{_debugging}: {__value:>7.3f}, "
 
-            _data = self.get_data(self.annotation["Debugging_paramerters"][self.active_mode], self.data[self.active_mode], _data_st, _data_ed)
+            return __debugging_string[:-1]
 
-            _debugging_string = ""
-
-            for _param in self.annotation["Debugging_paramerters"][self.active_mode]:
-                if _param in _data.keys():
-                    _debugging_string += f"{_param} {sum(_data[_param]) / data_count},"
-            return _debugging_string
-
-        def file_data_to_opts(self) -> Dict[str, Any]:
-            for _opt_key in self.annotation.keys():
-                ...
-            ...
-
-        def progress_bar(self, epoch: int, data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
-            def make_count_string(this_count, max_value):  # [3/25] -> [03/25]
+        def _progress_bar(self, epoch_info: List[int], data_info: List[int], decimals: int = 1, length: int = 25, fill: str = '█'):
+            def _make_count_string(this_count, max_value):  # [3/25] -> [03/25]
                 _string_ct = floor(log10(max_value)) + 1
                 _this = f"{this_count}".rjust(_string_ct, " ")
                 _max = f"{max_value}".rjust(_string_ct, " ")
 
                 return f"{_this}/{_max}"
 
-            _max_epoch = self.info["Max_epochs"]
-            _max_in_dataloader = self.info["Dataloader"][f"{self.active_mode}_max_length"]
+            __epoch = epoch_info[0]
+            __max_epoch = epoch_info[1]
 
-            _prefix = f"{self.active_mode:<10} {make_count_string(epoch, _max_epoch)} {make_count_string(data_count, _max_in_dataloader)}"
-            _suffix = self.get_debugging_string(epoch, data_count, _max_in_dataloader)
+            __data_count = data_info[0]
+            __max_data_count = data_info[1]
+            __batch_size = data_info[2]
+
+            _prefix = f"{self._Active_mode.value:>10} {_make_count_string(__epoch, __max_epoch)} {_make_count_string(__data_count, __max_data_count)}"
+            _suffix = self._learning_debug(__batch_size, __data_count)
 
             length = length if len(_prefix) + len(_suffix) + 20 <= length else len(_prefix) + len(_suffix) + 20
 
-            utils.Progress_Bar(data_count, _max_in_dataloader, _prefix, _suffix, decimals, length, fill)
+            Utils.Progress_Bar(__data_count, __max_data_count, _prefix, _suffix, decimals, length, fill)

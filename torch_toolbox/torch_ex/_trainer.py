@@ -1,117 +1,151 @@
 # from random import sample
 # from math import inf
 # from collections import deque, namedtuple
-from typing import Dict, List, Tuple
-from torch import Tensor
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Union
+from torch import cuda, save, load
 
-from python_ex._base import directory, file
+from python_ex._base import Directory, File, Utils
 
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import learing_mode, opt, debug, Optimizer
-    from torch_ex._structure import module  # , _Loss
-    from torch_ex._data_process import dataset, DataLoader, make_dataloader
+    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config
+    from torch_ex._data_process import Dataloder_Config, DataLoader
+    from torch_ex._layer import Custom_Module
+    from torch_ex._optimizer import Optimizer, _LRScheduler, Scheduler_Config
 else:
     # if this file in package folder
-    from ._torch_base import learing_mode, opt, debug, Optimizer
-    from ._structure import module  # , _Loss
-    from ._data_process import dataset, DataLoader, make_dataloader
+    from ._torch_base import Learning_Mode, Debug, Log_Config
+    from ._layer import Custom_Module
+    from ._optimizer import Optimizer, _LRScheduler, Scheduler_Config
 
 
+# -- DEFINE CONFIG -- #
+class Learning_Config():
+    @dataclass
+    class E2E(Utils.Config):
+        # Infomation about learning
+        _Name: str
+        _Date: str
+        _Anotation: str
+
+        # About Learning type and style
+        _Max_epochs: int
+        _Start_epoch: int
+        _Activate_mode: List[Learning_Mode]
+
+        # config; log, dataloader, schedule
+        _Log_config: Log_Config
+        _Dataloader_config: Dataloder_Config
+        _Schedule_config: Scheduler_Config
+
+        # About GPU using
+        _Use_cuda: bool = cuda.is_available()
+
+        def _convert_to_dict(self) -> Dict[str, Any]:
+            return super()._convert_to_dict()
+
+        def _restore_from_dict(self, data: Dict[str, Any]):
+            return super()._restore_from_dict(data)
+
+        @staticmethod
+        def _restore(restore_directory: str, restore_file: str):
+            __Restore_data = File._json(restore_directory, restore_file)
+            return Learning_Config.E2E._restore(__Restore_data)
+
+    # in later fix it
+    @dataclass
+    class reinforcement(E2E):
+        # reinforcement train option
+        Max_step: int = 100
+
+        Q_discount: float = 0.99
+
+        Reward_threshold: List[float] = field(default_factory=list)
+        Reward_value: List[float] = field(default_factory=list)
+        Reward_fail: float = -10
+        # Reward_relation_range: int = 80
+
+        # action option
+        Action_size: List[Union[int, List[int]]] = field(default_factory=list)
+        Action_range: List[List[int]] = field(default_factory=list)  # [[Max, Min]]
+
+        # replay option
+        Memory_size: int = 1000
+        Minimum_memroy_size: int = 100
+        Exploration_threshold: int = 1.0
+        Exploration_discount: float = 0.99
+        Exploration_Minimum: int = 1.0
+
+
+# -- Mation Function -- #
 class Learning_process():
     class End_to_End():
-        def __init__(self, learning_opt: opt._learning.E2E, dataloader_opt: opt._dataloader, restore_file: str = None) -> None:
-            is_restore = file._exist_check(restore_file)
-
-            # set log
-            if is_restore:
-                # restore trainer opts from log
-                self.learning_opt, self.dataloader_opt = self.trainer_restore()
-                self.save_root = self.learning_opt.make_save_directorty()
-
-            else:
-                # set learning base option
-                self.learning_opt = learning_opt
-                self.dataloader_opt = dataloader_opt
-
-                # set base parameter
-                self.save_root = self.learning_opt.make_save_directorty()
-
-                # make new log
-                self.log = debug.process_log(self.learning_opt.Logging_parameters, save_dir=self.save_root, file_name=self.learning_opt.Log_file)
-
-            # set dataloader
-            self.set_data_process()
+        def __init__(self, learning_config: Learning_Config.E2E) -> None:
+            self._Learning_option = learning_config
+            self._set_log()
+            self._set_dataloader()
 
             # model and optim
-            self.model: List[module.custom_module] = []
-            self.optim: List[Optimizer] = []
+            self._Model: Custom_Module
+            self._Optim: Optimizer
+            self._Schedule: _LRScheduler
 
-            # set learning mode -> default: First mode in learning_opt
-            self.set_learning_mode(self.learning_opt.Learning_mode[0])
+        # Freeze function
+        def _set_log(self):
+            self._Log = Debug.Learning_Log(self._Learning_option._Log_config)
+            self._Log._insert(self._Learning_option._convert_to_dict())
 
-        def trainer_restore(self, restore_file) -> Tuple[opt._learning.E2E, opt._dataloader]:
-            _file_dir, _file_name = file._name_from_path(restore_file, False)
+            __Project_name = self._Learning_option._Name
+            __Save_root = self._Learning_option._Log_config._Save_root
 
-            # get log data from log file
-            self.log = debug.process_log({}, save_dir=_file_dir, file_name=_file_name, is_restore=True)
-            return self.log.get_restore_opt()  # make it get_restore_opt
+            self._Save_root = Debug._make_result_directory(__Project_name, __Save_root)
 
-        def set_learning_mode(self, mode: learing_mode):
+        def _set_dataloader(self):
+            self._Dataloader: Dict[Learning_Mode, DataLoader] = {}
+            # dataloader dict
+            for _learning_mode in self._Learning_option._Activate_mode:
+                # set dataloader in each learning mode
+                self._Dataloader[_learning_mode] = self._Learning_option._Dataloader_config._make_dataloader(_learning_mode)
+
+        def _set_learning_model(self, model: Custom_Module):
+            self._Model = model.cuda() if self._Learning_option._Use_cuda else model
+            self._Optim, self._Schedule = self._Learning_option._Schedule_config._make_schedule(self._Model)
+
+        def _set_activate_mode(self, mode: Learning_Mode):
             # set log state
-            self.log.set_logging_mode(mode)
+            self._Log._set_activate_mode(mode)
 
             # set model state
-            if mode == learing_mode.TRAIN:
-                [_model.train() for _model in self.model]
+            if mode == Learning_Mode.TRAIN:
+                self._Model.train()
             else:
-                [_model.eval() for _model in self.model]
+                self._Model.eval()
 
-        def set_data_process(self):
-            # dataloader dict
-            self.dataloaders: Dict[learing_mode, DataLoader] = {}
+        def _make_epoch_dir(self, epoch: int):
+            return Directory._make(f"{epoch}/", self._Save_root)
 
-            for _learning_mode in self.learning_opt.Learning_mode:
-                # set dataloader in each learning mode
-                _dataloader = make_dataloader(self.dataloader_opt, _learning_mode, dataset.basement)
-                self.dataloaders[_learning_mode] = _dataloader
+        def _save_model(self, epoch: int):
+            __save_dir = Directory._make("model/", self._make_epoch_dir(epoch))
+            save(self._Model.state_dict(), f"{__save_dir}model.h5")  # save model state
 
-                # Update log; count of data in each mode
-                self.log.annotation_update("dataloader", {_learning_mode: {"data_count": _dataloader.dataset.__len__(), "batch_size": _dataloader.batch_size}})
+            __optim_and_schedule = {
+                "optimizer": self._Optim.state_dict(),
+                "schedule": self._Schedule.state_dict()}
+            save(__optim_and_schedule, f"{__save_dir}optim.h5")  # save optim and schedule state
 
-        # --- additional editing be optinary, when except make a new learning_trainer --- #
-        def set_learning_model(self, block_list: List[Tuple[module.custom_module, opt._optim_opt]], is_resotre: bool):
-            for _count, [_module, _optim] in enumerate(block_list):
-                self.model.append(_module.cuda() if self.learning_opt.Use_cuda else _module)
+        def _restore(self, epoch: int):
+            __save_dir = Directory._make("model/", self._make_epoch_dir(epoch))
+            self._Model.load_state_dict(load(f"{__save_dir}model.h5"))
 
-                if is_resotre:
-                    ...
+            __optim_and_schedule = load(f"{__save_dir}optim.h5")
+            self._Optim.load_state_dict(__optim_and_schedule["optimizer"])
+            self._Schedule.load_state_dict(__optim_and_schedule["schedule"])
 
-                else:
-                    self.optim.append(_optim.make(self.model[_count], self.learning_opt.LR_initail[_count]), )
-
-        def save_learning_moduel(self, epoch: int):
-            # in later make save folder function in log (epoch (int) -> save folder (str))
-            save_folder = directory._make(f"{epoch}/", self.save_root)
-            for _ct, _model in enumerate(self.model):
-                _model._save_to(save_dir=save_folder, epoch=epoch, optim=self.optim[_ct])
-
-        def save_log(self):
-            self.log.save()
-        # --- -------------------------------------------------------------------------- --- #
-
-        # --- must edit function, when before use it --- #
-        def data_jump_to_gpu(self, data_list: List[Tensor]):
-            # if use gpu dataset move to datas
+        # Un-Freeze function
+        def fit(self, epoch: int = 0, mode: Learning_Mode = Learning_Mode.TRAIN, is_display: bool = True, is_debug_save: bool = True):
             ...
-
-        def fit(self, epoch: int = 0, mode: learing_mode = learing_mode.TRAIN, is_display: bool = True, is_debug_save: bool = True):
-            ...
-
-        def result_save(self, mode: str, epoch: int):
-            ...
-        # --- -------------------------------------- --- #
 
 
 # class Reinforcment():
