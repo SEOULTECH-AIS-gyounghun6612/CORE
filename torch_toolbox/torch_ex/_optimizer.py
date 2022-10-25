@@ -113,4 +113,3 @@ class Custom_Scheduler():
             return Custom_Scheduler.Cosin_Annealing_Schedule(config, optimizer, last_epoch)
         else:
             return None
-

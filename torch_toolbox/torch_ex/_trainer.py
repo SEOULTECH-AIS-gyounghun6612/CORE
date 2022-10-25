@@ -88,7 +88,7 @@ class Learning_process():
             self._set_dataloader()
 
             # model and optim
-            self._Model: Custom_Module
+            self._Model: Custom_Module.Model
             self._Optim: Optimizer
             self._Schedule: _LRScheduler
 
@@ -109,7 +109,7 @@ class Learning_process():
                 # set dataloader in each learning mode
                 self._Dataloader[_learning_mode] = self._Learning_option._Dataloader_config._make_dataloader(_learning_mode)
 
-        def _set_learning_model(self, model: Custom_Module):
+        def _set_learning_model(self, model: Custom_Module.Model):
             self._Model = model.cuda() if self._Learning_option._Use_cuda else model
             self._Optim, self._Schedule = self._Learning_option._Schedule_config._make_schedule(self._Model)
 

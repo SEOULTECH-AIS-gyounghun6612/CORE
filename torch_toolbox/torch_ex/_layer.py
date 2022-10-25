@@ -16,7 +16,7 @@ from einops import rearrange
 
 # modules
 from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d, SyncBatchNorm, LayerNorm
-from torch.nn import Dropout
+from torch.nn import Dropout, Upsample
 import torchvision.models as models  # for backbone
 
 # active
@@ -201,6 +201,7 @@ class Module_Config():
         _Activate_type: Suported_Active = Suported_Active.ReLU
 
         _Scale_factor: int = 2
+        _Scale_mode: str = "bilinear"
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -381,12 +382,14 @@ class Custom_Module():
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 2)
             self._Activate = Layer._make_activate_layer(config._make_active_config())
             self._Back = Conv2d(**__backend_conv._make_parameter())
+            self._Samppling = Upsample(scale_factor=config._Scale_factor, mode=config._Scale_mode)
 
         def forward(self, x: Tensor) -> Tensor:
             __x = self._Front(x)
             __x = self._Norm(__x) if self._Norm is not None else __x
             __x = self._Activate(__x) if self._Activate is not None else __x
             __x = self._Back(__x)
+            __x = self._Samppling(__x)
             return __x
 
     class Position_Encoding():
