@@ -3,7 +3,7 @@
 # from collections import deque, namedtuple
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Union
-from torch import cuda, save, load
+from torch import cuda, save, load, Tensor
 
 from python_ex._base import Directory, File, Utils
 
@@ -143,8 +143,29 @@ class Learning_process():
             self._Optim.load_state_dict(__optim_and_schedule["optimizer"])
             self._Schedule.load_state_dict(__optim_and_schedule["schedule"])
 
+        def fit(self, is_display: List[Learning_Mode] = [Learning_Mode.VALIDATION]):
+            # Do learning process
+            for __epoch in range(self._Learning_option._Start_epoch, self._Learning_option._Max_epochs):
+                __epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
+
+                for _mode in self._Learning_option._Activate_mode:
+                    self._set_activate_mode(_mode)  # log and model state update
+                    self._process(__epoch_dir, _mode in is_display)
+
+                # save log file
+                self._Log._save()
+
+                # save model
+                self._save_model(__epoch)
+
         # Un-Freeze function
-        def fit(self, epoch: int = 0, mode: Learning_Mode = Learning_Mode.TRAIN, is_display: bool = True, is_debug_save: bool = True):
+        def _process(self, mode: Learning_Mode, epoch_dir: str, is_display: bool = True):
+            raise NotImplementedError
+
+        def _get_loss(self, output: Union[Tensor, List[Tensor]], label: Union[Tensor, List[Tensor]]):
+            ...
+
+        def _result_process(self, _save_dir: str):
             ...
 
 
