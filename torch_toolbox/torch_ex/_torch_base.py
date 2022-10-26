@@ -190,7 +190,7 @@ class Debug():
             __debugging_string = ""
 
             for _debugging in self._Data[self._Active_mode.value].keys():
-                if Logging_Factor(_debugging) in self._Debugging:
+                if Logging_Factor(_debugging) in self._Debugging_factor:
                     __value = sum(self._Data[self._Active_mode.value][_debugging][-__data_st:])
                     __value = __value / data_count
                     __debugging_string += "{_debugging}: {__value:>7.3f}, "
