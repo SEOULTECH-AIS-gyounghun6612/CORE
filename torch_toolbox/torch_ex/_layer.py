@@ -489,6 +489,30 @@ class Custom_Module():
 
                 return __x
 
+        # class PerceiverIO(Module):
+        #     def __init__(self):
+        #         super().__init__()
+
+        #         self.latent = torch_utils._tensor.make_tensor()
+
+        #         self.encode = module._Attention._cross_dot()
+        #         self.decode = module._Attention._cross_dot()
+
+        #         _process = []
+        #         for _ct in range():
+        #             _process.append(module._Attention._self_dot())
+
+        #         self.process = module.make_module_list(_process)
+
+        #     def forward(self, input, ouput_query):
+        #         _output = self.encode(Q_source=self.latent, KV_source=input)
+
+        #         for _p in self.process:
+        #             _output = _p(_output)
+
+        #         _output = self.decode(ouput_query, _output)
+        #         return _output
+
     class Backbone():
         class ResNet(Module):
             def __init__(self, config: Module_Config.Backbone):
@@ -498,8 +522,10 @@ class Custom_Module():
                 super(Custom_Module.Backbone.ResNet, self).__init__()
                 if config._Type == 101:
                     self._Model = models.resnet101(pretrained=config._Is_pretrained)
+                    self._Output_channel = [64, 256, 512, 1024, 2048]
                 else:
                     self._Model = models.resnet50(pretrained=config._Is_pretrained)
+                    self._Output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
                 for __parameters in self._Model.parameters():
@@ -525,6 +551,11 @@ class Custom_Module():
 
             def _sumarry(self, input_shape):
                 ModelSummary(self, input_shape)
+
+            def _get_out_shape(self, input_size: List[int]):
+                __h, __w = input_size[:2]
+                return [
+                    [__c, __h / 2 ** (__d + 1), __w / 2 ** (__d + 1)] for [__d, __c] in enumerate(self._Output_channel)]
 
         class VGG(Module):
             def __init__(self, config: Module_Config.Backbone):

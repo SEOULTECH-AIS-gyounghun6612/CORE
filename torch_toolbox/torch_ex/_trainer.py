@@ -25,20 +25,20 @@ else:
 class Learning_Config():
     @dataclass
     class E2E(Utils.Config):
-        # Infomation about learning
-        _Name: str
-        _Date: str
-        _Anotation: str
-
-        # About Learning type and style
-        _Max_epochs: int
-        _Start_epoch: int
-        _Activate_mode: List[Learning_Mode]
-
         # config; log, dataloader, schedule
         _Log_config: Log_Config
         _Dataloader_config: Dataloder_Config
         _Schedule_config: Scheduler_Config
+
+        # Infomation about learning
+        _Project_Name: str = "End_to_End_learning"
+        _Anotation: str = None
+        _Date: str = Utils.Time_stemp(True)
+
+        # About Learning type and style
+        _Max_epochs: int = 100
+        _Start_epoch: int = 0
+        _Activate_mode: List[Learning_Mode] = [Learning_Mode.TRAIN, Learning_Mode.VALIDATION]
 
         # About GPU using
         _Use_cuda: bool = cuda.is_available()
@@ -97,10 +97,10 @@ class Learning_process():
             self._Log = Debug.Learning_Log(self._Learning_option._Log_config)
             self._Log._insert(self._Learning_option._convert_to_dict())
 
-            __Project_name = self._Learning_option._Name
-            __Save_root = self._Learning_option._Log_config._Save_root
+            __project_name = self._Learning_option._Project_Name
+            __save_root = self._Learning_option._Log_config._Save_root
 
-            self._Save_root = Debug._make_result_directory(__Project_name, __Save_root)
+            self._Save_root = Debug._make_result_directory(__project_name, __save_root)
 
         def _set_dataloader(self):
             self._Dataloader: Dict[Learning_Mode, DataLoader] = {}
