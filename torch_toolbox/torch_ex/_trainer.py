@@ -151,43 +151,35 @@ class Learning_process():
             else:
                 self._Model.eval()
 
-        def _make_epoch_dir(self, epoch: int):
-            return Directory._make(f"{epoch}/", self._Save_root)
-
-        def _save_model(self, epoch: int):
-            __save_dir = Directory._make("model/", self._make_epoch_dir(epoch))
-            save(self._Model.state_dict(), f"{__save_dir}model.h5")  # save model state
+        def _save_model(self, save_dir:str):
+            save(self._Model.state_dict(), f"{save_dir}model.h5")  # save model state
 
             __optim_and_schedule = {
                 "optimizer": self._Optim.state_dict(),
-                "schedule": self._Schedule.state_dict()}
-            save(__optim_and_schedule, f"{__save_dir}optim.h5")  # save optim and schedule state
+                "schedule": None if self._Schedule is None else self._Schedule.state_dict()}
+            save(__optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
-        def _restore(self, epoch: int):
-            __save_dir = Directory._make("model/", self._make_epoch_dir(epoch))
-            self._Model.load_state_dict(load(f"{__save_dir}model.h5"))
+        def _restore(self, save_dir:str):
+            self._Model.load_state_dict(load(f"{save_dir}model.h5"))
 
-            __optim_and_schedule = load(f"{__save_dir}optim.h5")
+            __optim_and_schedule = load(f"{save_dir}optim.h5")
             self._Optim.load_state_dict(__optim_and_schedule["optimizer"])
             self._Schedule.load_state_dict(__optim_and_schedule["schedule"])
 
         def fit(self):
             # Do learning process
             for __epoch in range(self._Learning_option._Start_epoch, self._Learning_option._Max_epochs):
-                __epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
-
-                for __mode in self._Learning_option._Activate_mode:
-                    self._set_activate_mode(__mode)  # log and model state update
-                    self._process(__mode, __epoch_dir)
+                _epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
+                self._process(__epoch, _epoch_dir)
 
                 # save log file
                 self._Log._save()
 
                 # save model
-                self._save_model(__epoch)
+                self._save_model(_epoch_dir)
 
         # Un-Freeze function
-        def _process(self, mode: Learning_Mode, epoch_dir: str, is_display: bool = True):
+        def _process(self, mode: Learning_Mode, epoch_dir: str, is_display: bool = True) -> str:
             raise NotImplementedError
 
         def _get_loss(self, output: Union[Tensor, List[Tensor]], label: Union[Tensor, List[Tensor]]):

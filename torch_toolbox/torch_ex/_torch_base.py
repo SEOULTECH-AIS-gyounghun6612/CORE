@@ -250,14 +250,14 @@ class Debug():
                 return f"{_this}/{_max}"
 
             _max_epochs = self._Annotation["_Max_epochs"]
+            _batch_size = self._Annotation["_Dataloader_config"]["_Batch_size"]
 
             _data_ct = data_info[0]
             _max_data_ct = data_info[1]
-            _batch_size = data_info[2]
             _batch_ct = _data_ct // _batch_size + int(_data_ct % _batch_size)
             _max_batch_ct = _max_data_ct // _batch_size + int(_max_data_ct % _batch_size)
 
-            _suf = self._learning_tracking(_batch_size, _data_ct)
+            _suf = self._learning_tracking(_batch_ct, _data_ct)
 
             # time
             _average_time = sum(self._Data[self._Active_mode.value]["process_time"][-_batch_ct:]) / _batch_ct
