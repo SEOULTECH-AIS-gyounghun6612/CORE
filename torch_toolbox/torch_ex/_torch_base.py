@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any, Dict, List, Tuple, Union
 from math import log10, floor
 
@@ -12,10 +11,6 @@ from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
 
 
 # -- DEFINE CONSTNAT -- #
-class Accuracy_Factor(Enum):
-    ACC = "accuracy"
-    IoU = "IoU"
-    mIoU = "mIou"
 
 
 # -- DEFINE CONFIG -- #
@@ -26,12 +21,12 @@ class Log_Config(Utils.Config):
 
     # Logging parameter in each mode;
     _Loss_logging: Dict[Learning_Mode, List[str]] = field(default_factory=dict)  # str -> logging_loss name
-    _Acc_logging: Dict[Learning_Mode, List[Accuracy_Factor]] = field(default_factory=dict)  # Accuracy_Factor -> logging_acc
+    _Acc_logging: Dict[Learning_Mode, List[str]] = field(default_factory=dict)  # str -> logging_acc name
 
     # Tracking parameter in each mode;
     # if None -> all same like logging keys
     _Loss_tracking: Dict[Learning_Mode, List[str]] = None  # str -> logging_loss name
-    _Acc_tracking: Dict[Learning_Mode, List[Accuracy_Factor]] = None  # Accuracy_Factor -> logging_acc
+    _Acc_tracking: Dict[Learning_Mode, List[str]] = None  # str -> logging_acc name
 
     def _convert_to_dict(self) -> Dict[str, Any]:
         return super()._convert_to_dict()
@@ -57,8 +52,8 @@ class Log_Config(Utils.Config):
                 __holder[__mode.value] = {}
 
             __holder[__mode.value]["acc"] = {}
-            for __loss_name in self._Loss_logging[__mode.value]:
-                __holder[__mode.value]["acc"][__loss_name] = []
+            for __acc_name in self._Loss_logging[__mode.value]:
+                __holder[__mode.value]["acc"][__acc_name] = []
 
         # time
         for __mode in __holder.keys():
@@ -202,7 +197,7 @@ class Debug():
         def _set_activate_mode(self, learing_mode: Learning_Mode):
             self._Active_mode = learing_mode
 
-        def _learning_logging(self, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[Accuracy_Factor, Union[int, float, List]] = None, process_time: float = None):
+        def _learning_logging(self, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[str, Union[int, float, List]] = None, process_time: float = None):
             __tracking = {}
 
             if loss is not None:
@@ -213,7 +208,7 @@ class Debug():
             if acc is not None:
                 __tracking["acc"] = {}
                 for __factor in acc.keys():
-                    __tracking["acc"][__factor.value] = acc[__factor]
+                    __tracking["acc"][__factor] = acc[__factor]
 
             if process_time is not None:
                 __tracking["process_time"] = process_time
