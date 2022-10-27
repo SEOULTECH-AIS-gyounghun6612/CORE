@@ -109,7 +109,7 @@ class Label_Config(Utils.Config):
             "_Load_meta_file": self._Load_meta_file,
             "_Load_label_style": [__style.value for __style in self._Load_label_style],
             "_Data_root": self._Data_root,
-            "_Data_size": self._Data_size,}
+            "_Data_size": self._Data_size, }
             # "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
 
     def _restore_from_dict(self, data: Dict[str, Any]):
