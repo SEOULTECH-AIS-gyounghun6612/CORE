@@ -243,7 +243,7 @@ class Module_Config():
         def _get_head_dim(self):
             return self._Output_dim // self._Head_count
 
-        def _get_linear_config(self):
+        def _get_QKVO_config(self):
             __q_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
             __k_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
             __v_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
@@ -264,7 +264,7 @@ class Module_Config():
 
         def _get_linear_config(self):
             __linear_01 = Module_Config.Linear(
-                Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_tpye=Suported_Active.GELU)
+                Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_type=Suported_Active.GELU)
             __linear_02 = Module_Config.Linear(
                 Layer_Config.Linear(self._Output_dim * self._Hidden_rate, self._Output_dim))
 
@@ -418,21 +418,21 @@ class Custom_Module():
                 self._Option = config
                 self._Head_dim = config._get_head_dim()
 
-                __maker_config = config._get_linear_config()
+                __maker_config = config._get_QKVO_config()
 
                 self.q_maker = Custom_Module.Linear(__maker_config[0])
                 init.xavier_uniform_(self.q_maker._Linear.weight)
                 self.q_maker._Linear.bias.data.fill_(0)
 
-                self.k_maker = Custom_Module.Linear(__maker_config[0])
+                self.k_maker = Custom_Module.Linear(__maker_config[1])
                 init.xavier_uniform_(self.k_maker._Linear.weight)
                 self.k_maker._Linear.bias.data.fill_(0)
 
-                self.v_maker = Custom_Module.Linear(__maker_config[0])
+                self.v_maker = Custom_Module.Linear(__maker_config[2])
                 init.xavier_uniform_(self.v_maker._Linear.weight)
                 self.v_maker._Linear.bias.data.fill_(0)
 
-                self.o_maker = Custom_Module.Linear(__maker_config[0])
+                self.o_maker = Custom_Module.Linear(__maker_config[3])
                 init.xavier_uniform_(self.o_maker._Linear.weight)
                 self.o_maker._Linear.bias.data.fill_(0)
 
@@ -485,7 +485,7 @@ class Custom_Module():
                 self.linear_block = Layer._make_sequential(__linear)
 
             def forward(self, x):
-                __x = self._Layer_norm_01(x + self._Attention(x))
+                __x = self._Layer_norm_01(x + self._Attention(x, x, x))
                 __x = self._Layer_norm_02(__x + self.linear_block(__x))
 
                 return __x

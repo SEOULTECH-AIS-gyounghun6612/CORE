@@ -52,11 +52,17 @@ class Dataloder_Config(Utils.Config):
     _Batch_size: int
     _Num_workers: int
 
-    def _convert_to_dict(self):
-        ...
+    def _convert_to_dict(self) -> Dict[str, Any]:
+        _dict = {
+            "_Dataset_opt": self._Dataset_opt._convert_to_dict(),
+            "_Batch_size": self._Batch_size,
+            "_Num_workers": self._Num_workers}
+        return _dict
 
     def _restore_from_dict(self, data: Dict[str, Any]):
-        ...
+        self._Dataset_opt._restore_from_dict(data["_Dataset_opt"])
+        self._Batch_size = data["_Batch_size"]
+        self._Num_workers = data["_Num_workers"]
 
     def _make_dataloader(self, mode: Learning_Mode):
         return DataLoader(

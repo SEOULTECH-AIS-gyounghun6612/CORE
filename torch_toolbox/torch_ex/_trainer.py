@@ -176,9 +176,9 @@ class Learning_process():
             for __epoch in range(self._Learning_option._Start_epoch, self._Learning_option._Max_epochs):
                 __epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
 
-                for _mode in self._Learning_option._Activate_mode:
-                    self._set_activate_mode(_mode)  # log and model state update
-                    self._process(__epoch_dir)
+                for __mode in self._Learning_option._Activate_mode:
+                    self._set_activate_mode(__mode)  # log and model state update
+                    self._process(__mode, __epoch_dir)
 
                 # save log file
                 self._Log._save()
