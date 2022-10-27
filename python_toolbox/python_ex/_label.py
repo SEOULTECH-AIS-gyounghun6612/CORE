@@ -109,8 +109,8 @@ class Label_Config(Utils.Config):
             "_Load_meta_file": self._Load_meta_file,
             "_Load_label_style": [__style.value for __style in self._Load_label_style],
             "_Data_root": self._Data_root,
-            "_Data_size": self._Data_size,
-            "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
+            "_Data_size": self._Data_size,}
+            # "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
 
     def _restore_from_dict(self, data: Dict[str, Any]):
         self._Name = Suported_Label(data["_Name"])
@@ -118,7 +118,7 @@ class Label_Config(Utils.Config):
         self._Load_label_style = [Label_Style(__style_name) for __style_name in data["_Load_label_style"]]
         self._Data_root = data["_Data_root"]
         self._Data_size = data["_Data_size"]
-        self._Data_augmentation = self._Data_augmentation._restore_from_dict(data["_Data_size"])
+        # self._Data_augmentation = self._Data_augmentation._restore_from_dict(data["_Data_size"])
 
     def _root_directory_check(self) -> bool:
         if Directory._exist_check(self._Data_root):
