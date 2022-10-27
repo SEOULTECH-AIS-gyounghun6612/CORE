@@ -228,13 +228,13 @@ class Debug():
             _debugging_string = ""
 
             # loss
-            for _loss_keys in self._Loss_tracking[self._Active_mode.value]:
+            for _loss_keys in self._Loss_tracking[self._Active_mode]:
                 _data_list = self._Data[self._Active_mode.value]["loss"][_loss_keys][-batch_ct:]
                 _data_string = _make_string(_data_list, data_count)
                 _debugging_string += f"{_loss_keys}: {_data_string}"
 
             # acc
-            for _acc_keys in self._Acc_tracking[self._Active_mode.value]:
+            for _acc_keys in self._Acc_tracking[self._Active_mode]:
                 _data_list = self._Data[self._Active_mode.value]["acc"][_acc_keys][-batch_ct:]
                 _data_string = _make_string(_data_list, data_count)
                 _debugging_string += f"{_acc_keys}: {_data_string}"
