@@ -12,11 +12,10 @@ from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
 
 
 # -- DEFINE CONSTNAT -- #
-class Logging_Factor(Enum):
-    LOSS = 0
-    ACC = 1
-    IoU = 2
-    mIoU = 3
+class Accuracy_Factor(Enum):
+    ACC = "accuracy"
+    IoU = "IoU"
+    mIoU = "mIou"
 
 
 # -- DEFINE CONFIG -- #
@@ -24,8 +23,15 @@ class Logging_Factor(Enum):
 class Log_Config(Utils.Config):
     _Save_root: str = Directory._relative_root()
     _File: str = "learning_log.json"
-    _Tracking: Dict[Learning_Mode, List[Logging_Factor]] = field(default_factory=dict)     # Dict[Learning_mode: str, Logging_parameter: List[str]]
-    _Debugging: Dict[Learning_Mode, List[Logging_Factor]] = field(default_factory=dict)  # Dict[Learning_mode: str, Debugging_paramerter: List[str]]
+
+    # Logging parameter in each mode;
+    _Loss_logging: Dict[Learning_Mode, List[str]] = field(default_factory=dict)  # str -> logging_loss name
+    _Acc_logging: Dict[Learning_Mode, List[Accuracy_Factor]] = field(default_factory=dict)  # Accuracy_Factor -> logging_acc
+
+    # Tracking parameter in each mode;
+    # if None -> all same like logging keys
+    _Loss_tracking: Dict[Learning_Mode, List[str]] = None  # str -> logging_loss name
+    _Acc_tracking: Dict[Learning_Mode, List[Accuracy_Factor]] = None  # Accuracy_Factor -> logging_acc
 
     def _convert_to_dict(self) -> Dict[str, Any]:
         return super()._convert_to_dict()
@@ -35,10 +41,29 @@ class Log_Config(Utils.Config):
 
     def _make_data_holder(self):
         __holder = {}
-        for __Learning_mode in self._Tracking.keys():
-            __holder[__Learning_mode.value] = {}
-            for parameter in self._Tracking[__Learning_mode]:
-                __holder[__Learning_mode.value][parameter.value] = []
+
+        # loss
+        for __mode in self._Loss_logging.keys():
+            if __mode.value not in __holder:
+                __holder[__mode.value] = {}
+
+            __holder[__mode.value]["loss"] = {}
+            for __loss_name in self._Loss_logging[__mode.value]:
+                __holder[__mode.value]["loss"][__loss_name] = []
+
+        # acc
+        for __mode in self._Acc_logging.keys():
+            if __mode.value not in __holder:
+                __holder[__mode.value] = {}
+
+            __holder[__mode.value]["acc"] = {}
+            for __loss_name in self._Loss_logging[__mode.value]:
+                __holder[__mode.value]["acc"][__loss_name] = []
+
+        # time
+        for __mode in __holder.keys():
+            __holder[__mode]["process_time"] = []
+
         return __holder
 
 
@@ -48,7 +73,7 @@ class Torch_Utils():
         @staticmethod
         def _make_result_diretory(root: str = None, object_dir: str = None):
             _obj_dir = f"result{Directory.SLASH}"
-            _obj_dir += f"{Utils.Time_stemp(is_text=True)}{Directory.SLASH}" if object_dir is None else Directory._slash_check(object_dir)
+            _obj_dir += f"{Utils._time_stemp(is_text=True)}{Directory.SLASH}" if object_dir is None else Directory._slash_check(object_dir)
 
             return Directory._make(_obj_dir, root)
 
@@ -157,15 +182,16 @@ class Torch_Utils():
 
 class Debug():
     @staticmethod
-    def _make_result_directory(project_name: str = None, root_dir: str = None):
+    def _make_result_directory(project_name: str, root_dir: str = None):
         __root = Directory._relative_root() if root_dir is None else root_dir
-        __project_folder = Utils.Time_stemp(True) if project_name is None else project_name
-
-        return Directory._make(f"{__project_folder}/", __root)
+        return Directory._make(f"{project_name}/", __root)
 
     class Learning_Log(Log):
+        _Data: Dict[str, Dict[str, Dict[str, Union[int, float, List]]]]
+
         def __init__(self, config: Log_Config):
-            self._Debugging_factor = config._Debugging
+            self._Loss_tracking = config._Loss_logging if config._Loss_tracking is None else config._Loss_tracking
+            self._Acc_tracking = config._Acc_logging if config._Acc_tracking is None else config._Acc_tracking
 
             __file_name = config._File
             __save_dir = config._Save_root
@@ -176,26 +202,50 @@ class Debug():
         def _set_activate_mode(self, learing_mode: Learning_Mode):
             self._Active_mode = learing_mode
 
-        def _learning_tracking(self, tracking_data: Dict[Logging_Factor, Union[int, float, List]]):
-            __mode = self._Active_mode.value
+        def _learning_logging(self, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[Accuracy_Factor, Union[int, float, List]] = None, process_time: float = None):
             __tracking = {}
 
-            for __factor in tracking_data.keys():
-                __tracking[__factor.value] = tracking_data[__factor]
+            if loss is not None:
+                __tracking["loss"] = {}
+                for __factor in loss.keys():
+                    __tracking["loss"][__factor] = loss[__factor]
 
-            self._insert({__mode: __tracking}, access_point=self._Data, is_overwrite=False)
+            if acc is not None:
+                __tracking["acc"] = {}
+                for __factor in acc.keys():
+                    __tracking["acc"][__factor.value] = acc[__factor]
 
-        def _learning_debug(self, batch_size: int, data_count: int):
-            __data_st = data_count // batch_size + int(data_count % batch_size)
+            if process_time is not None:
+                __tracking["process_time"] = process_time
+
+            self._insert({self._Active_mode.value: __tracking}, access_point=self._Data, is_overwrite=False)
+
+        def _learning_tracking(self, batch_ct: int, data_count: int):
+            def __make_string(data: Union[int, float, List], count: int):
+                __data_nd: ndarray = np_base.get_array_from(data, dtype=np_dtype.np_float32).sum(0) / count
+                if __data_nd.ndim:
+                    __list_string = "["
+                    for _ct in range(__data_nd.shape[0]):
+                        __list_string += f"{__data_nd[_ct]:>7.3f}, "
+                    return f"{__list_string[:-2]}]"
+                else:
+                    return f"{__data_nd:>7.3f}, "
+
             __debugging_string = ""
 
-            for _debugging in self._Data[self._Active_mode.value].keys():
-                if Logging_Factor(_debugging) in self._Debugging_factor:
-                    __value = sum(self._Data[self._Active_mode.value][_debugging][-__data_st:])
-                    __value = __value / data_count
-                    __debugging_string += "{_debugging}: {__value:>7.3f}, "
+            # loss
+            for __loss_keys in self._Loss_tracking[self._Active_mode.value]:
+                __data_list = self._Data[self._Active_mode.value]["loss"][__loss_keys][-batch_ct:]
+                __data_string = __make_string(__data_list, data_count)
+                __debugging_string += f"{__loss_keys}: {__data_string}"
 
-            return __debugging_string[:-1]
+            # acc
+            for __acc_keys in self._Acc_tracking[self._Active_mode.value]:
+                __data_list = self._Data[self._Active_mode.value]["acc"][__acc_keys][-batch_ct:]
+                __data_string = __make_string(__data_list, data_count)
+                __debugging_string += f"{__acc_keys}: {__data_string}"
+
+            return __debugging_string[:-2]
 
         def _progress_bar(self, epoch_info: List[int], data_info: List[int], decimals: int = 1, length: int = 25, fill: str = '█'):
             def _make_count_string(this_count, max_value):  # [3/25] -> [03/25]
@@ -208,13 +258,23 @@ class Debug():
             __epoch = epoch_info[0]
             __max_epoch = epoch_info[1]
 
-            __data_count = data_info[0]
-            __max_data_count = data_info[1]
+            __data_ct = data_info[0]
+            __max_data_ct = data_info[1]
             __batch_size = data_info[2]
+            __batch_ct = __data_ct // __batch_size + int(__data_ct % __batch_size)
+            __max_batch_ct = __max_data_ct // __batch_size + int(__max_data_ct % __batch_size)
 
-            _prefix = f"{self._Active_mode.value:>10} {_make_count_string(__epoch, __max_epoch)} {_make_count_string(__data_count, __max_data_count)}"
-            _suffix = self._learning_debug(__batch_size, __data_count)
+            __suf = self._learning_tracking(__batch_size, __data_ct)
 
-            length = length if len(_prefix) + len(_suffix) + 20 <= length else len(_prefix) + len(_suffix) + 20
+            # time
+            __average_time = sum(self._Data[self._Active_mode.value]["process_time"][-__batch_ct:]) / __batch_ct
+            __maximun_time = __average_time * __max_batch_ct
 
-            Utils.Progress_Bar(__data_count, __max_data_count, _prefix, _suffix, decimals, length, fill)
+            __pre = f"{self._Active_mode.value:>10} "
+            __pre += f"{_make_count_string(__epoch, __max_epoch)}"
+            __pre += f"{_make_count_string(__data_ct, __max_data_ct)}"
+            __pre += f"{Utils._time_stemp(__average_time, True)} / {Utils._time_stemp(__maximun_time, True)}"
+
+            length = length if len(__pre) + len(__suf) + 20 <= length else len(__pre) + len(__suf) + 20
+
+            Utils._progress_bar(__data_ct, __max_data_ct, __pre, __suf, decimals, length, fill)

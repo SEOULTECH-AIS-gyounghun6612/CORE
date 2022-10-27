@@ -33,7 +33,7 @@ class Learning_Config():
         # Infomation about learning
         _Project_Name: str = "End_to_End_learning"
         _Anotation: str = None
-        _Date: str = Utils.Time_stemp(True)
+        _Date: str = Utils._time_stemp(is_text=True)
 
         # About Learning type and style
         _Max_epochs: int = 100
@@ -97,7 +97,7 @@ class Learning_process():
             self._Log = Debug.Learning_Log(self._Learning_option._Log_config)
             self._Log._insert(self._Learning_option._convert_to_dict())
 
-            __project_name = self._Learning_option._Project_Name
+            __project_name = f"{self._Learning_option._Project_Name}{Directory._Divider}{self._Learning_option._Date}"
             __save_root = self._Learning_option._Log_config._Save_root
 
             self._Save_root = Debug._make_result_directory(__project_name, __save_root)
@@ -143,14 +143,14 @@ class Learning_process():
             self._Optim.load_state_dict(__optim_and_schedule["optimizer"])
             self._Schedule.load_state_dict(__optim_and_schedule["schedule"])
 
-        def fit(self, is_display: List[Learning_Mode] = [Learning_Mode.VALIDATION]):
+        def fit(self):
             # Do learning process
             for __epoch in range(self._Learning_option._Start_epoch, self._Learning_option._Max_epochs):
                 __epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
 
                 for _mode in self._Learning_option._Activate_mode:
                     self._set_activate_mode(_mode)  # log and model state update
-                    self._process(__epoch_dir, _mode in is_display)
+                    self._process(__epoch_dir)
 
                 # save log file
                 self._Log._save()
@@ -165,7 +165,7 @@ class Learning_process():
         def _get_loss(self, output: Union[Tensor, List[Tensor]], label: Union[Tensor, List[Tensor]]):
             ...
 
-        def _result_process(self, _save_dir: str):
+        def _result_process(self, data: Union[Tensor, List[Tensor]], save_dir: str):
             ...
 
 
