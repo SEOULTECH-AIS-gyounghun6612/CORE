@@ -470,6 +470,7 @@ class Custom_Module():
     class Transformer():
         class Base(Module):
             def __init__(self, config: Module_Config.Transformer):
+                super().__init__()
                 self._Layer_norm_01 = LayerNorm(config._Output_dim)
                 self._Attention = Custom_Module.Attention.Dot_Attention(config)
                 self._Layer_norm_02 = LayerNorm(config._Output_dim)

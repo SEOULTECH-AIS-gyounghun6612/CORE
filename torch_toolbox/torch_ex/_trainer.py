@@ -47,19 +47,19 @@ class Learning_Config():
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             _dict = {
-            "_Project_Name": self._Project_Name,
-            "_Anotation": self._Anotation,
-            "_Date": self._Date,
+                "_Project_Name": self._Project_Name,
+                "_Anotation": self._Anotation,
+                "_Date": self._Date,
 
-            "_Log_config": self._Log_config._convert_to_dict(),
-            "_Dataloader_config": self._Dataloader_config._convert_to_dict(),
-            "_Optimizer_config": self._Optimizer_config._convert_to_dict(),
-            "_Schedule_config": self._Schedule_config._convert_to_dict(),
+                "_Log_config": self._Log_config._convert_to_dict(),
+                "_Dataloader_config": self._Dataloader_config._convert_to_dict(),
+                "_Optimizer_config": self._Optimizer_config._convert_to_dict(),
+                "_Schedule_config": self._Schedule_config._convert_to_dict(),
 
-            "_Max_epochs": self._Max_epochs,
-            "_Start_epoch": self._Start_epoch,
-            "_Activate_mode": [__mode.value for __mode in self._Activate_mode],
-            "_Use_cuda": self._Use_cuda}
+                "_Max_epochs": self._Max_epochs,
+                "_Start_epoch": self._Start_epoch,
+                "_Activate_mode": [__mode.value for __mode in self._Activate_mode],
+                "_Use_cuda": self._Use_cuda}
             return _dict
 
         def _restore_from_dict(self, data: Dict[str, Any]):
