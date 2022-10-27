@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Any, Union
 from torch import cuda, save, load, Tensor
 
-from python_ex._base import Directory, File, Utils
+from python_ex._base import Directory, Utils
 
 
 if __package__ == "":
@@ -151,7 +151,7 @@ class Learning_process():
             else:
                 self._Model.eval()
 
-        def _save_model(self, save_dir:str):
+        def _save_model(self, save_dir: str):
             save(self._Model.state_dict(), f"{save_dir}model.h5")  # save model state
 
             __optim_and_schedule = {
@@ -159,7 +159,7 @@ class Learning_process():
                 "schedule": None if self._Schedule is None else self._Schedule.state_dict()}
             save(__optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
-        def _restore(self, save_dir:str):
+        def _restore(self, save_dir: str):
             self._Model.load_state_dict(load(f"{save_dir}model.h5"))
 
             __optim_and_schedule = load(f"{save_dir}optim.h5")

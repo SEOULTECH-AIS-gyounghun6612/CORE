@@ -258,15 +258,15 @@ class Debug():
             _suf = self._learning_tracking(_batch_ct, _data_ct)
 
             # time
-            _average_time = sum(self._Data[self._Active_mode.value]["process_time"][-_batch_ct:]) / _batch_ct
-            _average_time_str = Utils._time_stemp(_average_time, True, "%H:%M:%S")
-            _maximun_time = _average_time * _max_batch_ct
+            _sum_time = sum(self._Data[self._Active_mode.value]["process_time"][-_batch_ct:])
+            _sum_time_str = Utils._time_stemp(_sum_time, True, "%H:%M:%S")
+            _maximun_time = _sum_time / _batch_ct * _max_batch_ct
             _maximun_time_str = Utils._time_stemp(_maximun_time, True, "%H:%M:%S")
 
             _pre = f"{self._Active_mode.value:>10} "
-            _pre += f"{_make_count_string(epoch, _max_epochs)}"
-            _pre += f"{_make_count_string(_data_ct, _max_data_ct)}"
-            _pre += f"{_average_time_str} / {_maximun_time_str}"
+            _pre += f"{_make_count_string(epoch, _max_epochs)} "
+            _pre += f"{_make_count_string(_data_ct, _max_data_ct)} "
+            _pre += f"{_sum_time_str} / {_maximun_time_str}"
 
             length = length if len(_pre) + len(_suf) + 20 <= length else len(_pre) + len(_suf) + 20
 
