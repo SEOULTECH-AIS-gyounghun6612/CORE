@@ -17,6 +17,7 @@ if __package__ == "":
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Debug, Log_Config
+    from ._data_process import Dataloder_Config, DataLoader
     from ._layer import Custom_Module
     from ._optimizer import Optimizer, _LRScheduler, Scheduler_Config
 
