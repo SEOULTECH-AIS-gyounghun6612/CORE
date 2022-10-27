@@ -140,9 +140,9 @@ class Label_Process():
         _Data_directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]]
 
         # Parameter for Label information
-        _Raw_label: Dict[Label_Style, List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]]
-        _Activated_label: Dict[int, List]
-        _Class_category: Dict[Label_Style, List[str]]  # each class's category
+        _Raw_label: Dict[Label_Style, List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]] = {}
+        _Activated_label: Dict[int, List] = {}
+        _Class_category: Dict[Label_Style, List[str]] = {}  # each class's category
 
         # Parameter for Label pre-process
         _Data_size: List[int]
