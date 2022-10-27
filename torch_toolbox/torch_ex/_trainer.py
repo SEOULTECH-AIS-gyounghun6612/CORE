@@ -13,7 +13,7 @@ if __package__ == "":
     from torch_ex._torch_base import Learning_Mode, Debug, Log_Config
     from torch_ex._data_process import Dataloder_Config, DataLoader
     from torch_ex._layer import Custom_Module
-    from torch_ex._optimizer import Optimizer, _LRScheduler, Scheduler_Config
+    from torch_ex._optimizer import Optimizer, _LRScheduler, Scheduler_Config, Custom_Scheduler, Optimizer_Config
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Debug, Log_Config
@@ -28,6 +28,7 @@ class Learning_Config():
         # config; log, dataloader, schedule
         _Log_config: Log_Config
         _Dataloader_config: Dataloder_Config
+        _Optimizer_config: Optimizer_Config
         _Schedule_config: Scheduler_Config
 
         # Infomation about learning
@@ -111,7 +112,8 @@ class Learning_process():
 
         def _set_learning_model(self, model: Custom_Module.Model):
             self._Model = model.cuda() if self._Learning_option._Use_cuda else model
-            self._Optim, self._Schedule = self._Learning_option._Schedule_config._make_schedule(self._Model)
+            self._Optim = self._Learning_option._Optimizer_config._make_optim(self._Model)
+            self._Schedule = Custom_Scheduler._build(self._Learning_option._Schedule_config, self._Optim, (self._Learning_option._Start_epoch - 1))
 
         def _set_activate_mode(self, mode: Learning_Mode):
             # set log state

@@ -16,44 +16,25 @@ else:
 
 # -- DEFINE CONFIG -- #
 @dataclass
-class Augmentation_Config(Utils.Config):
-    def _convert_to_dict(self) -> Dict[str, Any]:
-        return super()._convert_to_dict()
-
-    def _restore_from_dict(self, data: Dict[str, Any]):
-        return super()._restore_from_dict(data)
-
-
-@dataclass
 class Dataset_Config(Utils.Config):
     """
 
     """
-    # Parameter for make Dataset_function
-    _Name: str
-
     # Parameter for make Label_process
     _Label_opt: Label_Config
     _Label_style: Label_Style
     _IO_style: IO_Style
 
-    _Amplitude: int
-    _Augmentation: Augmentation_Config
-
     def _convert_to_dict(self):
         return {
             "_Label_opt": self._Label_opt._convert_to_dict(),
             "_Label_style": self._Label_style.value,
-            "_IO_style": self._IO_style.value,
-            "_Amplitude": self._Amplitude,
-            "_Augmentation": self._Augmentation._convert_to_dict()}
+            "_IO_style": self._IO_style.value}
 
     def _restore_from_dict(self, data: Dict[str, Any]):
         self._Label_opt = self._Label_opt._restore_from_dict(data["_Label_opt"])
         self._Label_style, = Label_Style(data["_Label_style"])
         self._IO_style = IO_Style(data["_IO_style"])
-        self._Amplitude = data["_Amplitude"]
-        self._Augmentation = self._Augmentation._restore_from_dict(data["_Augmentation"])
 
     def _make_label_process(self) -> Label_Process.Basement:
         return Label_Process._build(self._Label_opt)
@@ -86,18 +67,6 @@ class Dataloder_Config(Utils.Config):
 
 
 # -- Mation Function -- #
-class Augmentation():
-    class Resize():
-        ...
-
-    class Rotate():
-        ...
-
-    @staticmethod
-    def build(config: Augmentation_Config):
-        ...
-
-
 class Custom_Dataset(Dataset):
     def __init__(self, config: Dataset_Config, mode: Learning_Mode):
         super().__init__()

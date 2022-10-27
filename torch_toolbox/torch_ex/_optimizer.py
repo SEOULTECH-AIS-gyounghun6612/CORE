@@ -38,7 +38,7 @@ class Optimizer_Config(Utils.Config):
     def _restore_from_dict(self, data: Dict[str, Any]):
         return super()._restore_from_dict(data)
 
-    def _make_optim(self, model: Custom_Module.Model) -> _LRScheduler:
+    def _make_optim(self, model: Custom_Module.Model) -> Optimizer:
         # make optim
         if self._Optim_name == Suported_Optimizer.Adam:
             __optim = Adam(model.parameters(), self._LR_rate)
@@ -108,7 +108,7 @@ class Custom_Scheduler():
                 self._Option._Minimum + (self._Option._Maximum - self._Option._Minimum) * __amp for _ in self.base_lrs]
 
     @staticmethod
-    def build(config: Scheduler_Config, optimizer: Optimizer, last_epoch: int = -1):
+    def _build(config: Scheduler_Config, optimizer: Optimizer, last_epoch: int = -1):
         if config._Schedule_name == Suported_Schedule.Cosin_Annealing:
             return Custom_Scheduler.Cosin_Annealing_Schedule(config, optimizer, last_epoch)
         else:
