@@ -157,7 +157,7 @@ class Torch_Utils():
             for _b in range(_batch_size):
                 iou[_b] = evaluation.iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
-            return iou
+            return iou.sum(0).tolist()
 
         @staticmethod
         def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray]:
@@ -171,7 +171,7 @@ class Torch_Utils():
             for _b in range(_batch_size):
                 iou[_b], miou[_b] = evaluation.miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
-            return iou, miou
+            return iou.sum(0).tolist(), miou.sum(0).tolist()
 
 
 class Debug():
@@ -259,15 +259,13 @@ class Debug():
 
             # time
             _sum_time = sum(self._Data[self._Active_mode.value]["process_time"][-_batch_ct:])
-            _sum_time_str = Utils._time_stemp(_sum_time, True, "%H:%M:%S")
+            _sum_time_str = Utils._time_stemp(_sum_time, False, True, "%H:%M:%S")
             _maximun_time = _sum_time / _batch_ct * _max_batch_ct
-            _maximun_time_str = Utils._time_stemp(_maximun_time, True, "%H:%M:%S")
+            _maximun_time_str = Utils._time_stemp(_maximun_time, False, True, "%H:%M:%S")
 
             _pre = f"{self._Active_mode.value:>10} "
             _pre += f"{_make_count_string(epoch, _max_epochs)} "
             _pre += f"{_make_count_string(_data_ct, _max_data_ct)} "
             _pre += f"{_sum_time_str} / {_maximun_time_str}"
-
-            length = length if len(_pre) + len(_suf) + 20 <= length else len(_pre) + len(_suf) + 20
 
             Utils._progress_bar(_data_ct, _max_data_ct, _pre, _suf, decimals, length, fill)

@@ -35,7 +35,7 @@ class Learning_Config():
         # Infomation about learning
         _Project_Name: str = "End_to_End_learning"
         _Anotation: str = "Empty"
-        _Date: str = Utils._time_stemp(is_text=True)
+        _Date: str = Utils._time_stemp(is_text=True, is_local=True)
 
         # About Learning type and style
         _Max_epochs: int = 100
@@ -171,6 +171,9 @@ class Learning_process():
             for __epoch in range(self._Learning_option._Start_epoch, self._Learning_option._Max_epochs):
                 _epoch_dir = Directory._make(f"{__epoch}/", self._Save_root)
                 self._process(__epoch, _epoch_dir)
+
+                if self._Schedule is not None:
+                    self._Schedule.step()
 
                 # save log file
                 self._Log._save()
