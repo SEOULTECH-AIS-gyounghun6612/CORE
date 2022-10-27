@@ -434,19 +434,6 @@ class image_process():
 
 
 class evaluation():
-    class IoU():
-        def __init__(self, class_num):
-            self.class_num = class_num
-
-        def __call__(self, ouput, label):
-            pass
-
-        def get_iou(self):
-            pass
-
-        def get_miou(self):
-            pass
-
     @staticmethod
     # in later fix it
     def iou(result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
@@ -470,16 +457,17 @@ class evaluation():
 
             iou.append(_intersection.sum() / _union.sum() if _union.sum() else 0.00)
 
-        return np_base.get_array_from(iou, dtype=np_dtype.np_float32)
+        return iou
 
     @staticmethod
     def miou(result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
         iou = evaluation.iou(result, label, class_num, ignore_class)
+        iou_np = np_base.get_array_from(iou, dtype=np_dtype.np_float32)
         _used_class = list(range(class_num))
         for _ig_class in ignore_class:
             _used_class.remove(_ig_class)
 
-        return [iou, np.mean(iou[_used_class])]
+        return [iou, np.mean(iou_np[_used_class])]
 
     class baddeley():
         def __init__(self, p: int = 2) -> None:

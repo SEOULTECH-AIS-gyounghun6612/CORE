@@ -365,7 +365,7 @@ class Utils():
 
     @staticmethod
     def _time_stemp(source: float = None, is_text: bool = False):
-        __data = source if time.time() is None else source
+        __data = time.time() if source is None else source
         return time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime(__data)) if is_text else __data
 
 
