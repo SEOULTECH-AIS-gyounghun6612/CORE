@@ -364,9 +364,10 @@ class Utils():
             print()
 
     @staticmethod
-    def _time_stemp(source: float = None, is_text: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+    def _time_stemp(source: float = None, is_local: bool = True, is_text: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
         __data = time.time() if source is None else source
-        return time.strftime(text_format, time.localtime(__data)) if is_text else __data
+        __data = time.localtime(__data) if is_local else __data
+        return time.strftime(text_format, __data) if is_text else __data
 
 
 class Tool_For():
