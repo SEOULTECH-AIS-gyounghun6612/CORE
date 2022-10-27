@@ -241,7 +241,7 @@ class Debug():
 
             return _debugging_string[:-2]
 
-        def _progress_bar(self, epoch: int, data_info: List[int], decimals: int = 1, length: int = 25, fill: str = '█'):
+        def _progress_bar(self, epoch: int, _data_ct: int, _max_data_ct: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             def _make_count_string(this_count, max_value):  # [3/25] -> [03/25]
                 _string_ct = floor(log10(max_value)) + 1
                 _this = f"{this_count}".rjust(_string_ct, " ")
@@ -252,8 +252,6 @@ class Debug():
             _max_epochs = self._Annotation["_Max_epochs"]
             _batch_size = self._Annotation["_Dataloader_config"]["_Batch_size"]
 
-            _data_ct = data_info[0]
-            _max_data_ct = data_info[1]
             _batch_ct = _data_ct // _batch_size + int(_data_ct % _batch_size)
             _max_batch_ct = _max_data_ct // _batch_size + int(_max_data_ct % _batch_size)
 
