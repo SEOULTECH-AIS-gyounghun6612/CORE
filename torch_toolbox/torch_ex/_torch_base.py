@@ -43,7 +43,7 @@ class Log_Config(Utils.Config):
                 __holder[__mode.value] = {}
 
             __holder[__mode.value]["loss"] = {}
-            for __loss_name in self._Loss_logging[__mode.value]:
+            for __loss_name in self._Loss_logging[__mode]:
                 __holder[__mode.value]["loss"][__loss_name] = []
 
         # acc
@@ -52,13 +52,12 @@ class Log_Config(Utils.Config):
                 __holder[__mode.value] = {}
 
             __holder[__mode.value]["acc"] = {}
-            for __acc_name in self._Loss_logging[__mode.value]:
+            for __acc_name in self._Loss_logging[__mode]:
                 __holder[__mode.value]["acc"][__acc_name] = []
 
         # time
         for __mode in __holder.keys():
             __holder[__mode]["process_time"] = []
-
         return __holder
 
 

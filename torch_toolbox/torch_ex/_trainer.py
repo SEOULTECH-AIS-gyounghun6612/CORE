@@ -34,27 +34,52 @@ class Learning_Config():
 
         # Infomation about learning
         _Project_Name: str = "End_to_End_learning"
-        _Anotation: str = None
+        _Anotation: str = "Empty"
         _Date: str = Utils._time_stemp(is_text=True)
 
         # About Learning type and style
         _Max_epochs: int = 100
         _Start_epoch: int = 0
-        _Activate_mode: List[Learning_Mode] = [Learning_Mode.TRAIN, Learning_Mode.VALIDATION]
+        _Activate_mode: List[Learning_Mode] = field(default_factory=lambda: [Learning_Mode.TRAIN, Learning_Mode.VALIDATION])
 
         # About GPU using
         _Use_cuda: bool = cuda.is_available()
 
         def _convert_to_dict(self) -> Dict[str, Any]:
-            return super()._convert_to_dict()
+            _dict = {
+            "_Project_Name": self._Project_Name,
+            "_Anotation": self._Anotation,
+            "_Date": self._Date,
+
+            "_Log_config": self._Log_config._convert_to_dict(),
+            "_Dataloader_config": self._Dataloader_config._convert_to_dict(),
+            "_Optimizer_config": self._Optimizer_config._convert_to_dict(),
+            "_Schedule_config": self._Schedule_config._convert_to_dict(),
+
+            "_Max_epochs": self._Max_epochs,
+            "_Start_epoch": self._Start_epoch,
+            "_Activate_mode": [__mode.value for __mode in self._Activate_mode],
+            "_Use_cuda": self._Use_cuda}
+            return _dict
 
         def _restore_from_dict(self, data: Dict[str, Any]):
-            return super()._restore_from_dict(data)
+            self._Log_config._restore_from_dict(data["_Log_config"])
+            self._Dataloader_config._restore_from_dict(data["_Dataloader_config"])
+            self._Optimizer_config._restore_from_dict(data["_Optimizer_config"])
+            self._Schedule_config._restore_from_dict(data["_Schedule_config"])
+
+            self._Project_Name = data["_Project_Name"]
+            self._Anotation = data["_Anotation"]
+            self._Date = data["_Date"]
+
+            self._Max_epochs = data["_Max_epochs"]
+            self._Start_epoch = data["_Start_epoch"]
+            self._Activate_mode = data["_Activate_mode"]
+            self._Use_cuda = data["_Use_cuda"]
 
         @staticmethod
         def _restore(restore_directory: str, restore_file: str):
-            __Restore_data = File._json(restore_directory, restore_file)
-            return Learning_Config.E2E._restore(__Restore_data)
+            ...
 
     # in later fix it
     @dataclass
