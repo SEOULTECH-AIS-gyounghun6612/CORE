@@ -13,7 +13,7 @@ if __package__ == "":
 
 else:
     # if this file in package folder
-    from ._base import directory, file, Utils
+    from ._base import Directory, File, Utils
     from . import _cv2
     from ._numpy import np_base, np_dtype
     from . import _error as _e
