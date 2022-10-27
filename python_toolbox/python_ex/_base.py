@@ -341,7 +341,7 @@ class Utils():
             ...
 
     @staticmethod
-    def _progress_Bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
+    def _progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
         """
         Call in a loop to create terminal progress bar
         Args:
