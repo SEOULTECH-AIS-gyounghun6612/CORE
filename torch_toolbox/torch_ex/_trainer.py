@@ -182,7 +182,7 @@ class Learning_process():
                 self._save_model(_epoch_dir)
 
         # Un-Freeze function
-        def _process(self, mode: Learning_Mode, epoch_dir: str, is_display: bool = True) -> str:
+        def _process(self, epoch: int, epoch_dir: str):
             raise NotImplementedError
 
         def _get_loss(self, output: Union[Tensor, List[Tensor]], label: Union[Tensor, List[Tensor]]):
