@@ -15,8 +15,8 @@ else:
 
 # -- Mation Function -- #
 class Log():
-    _Annotation: Dict[str, Union[list, str, int]] = {}
-    _Data: Dict[str, Union[list, dict]] = {}
+    _Annotation: Dict[str, Union[list, str, int, Dict]] = {}
+    _Data: Dict[str, Union[list, Dict]] = {}
 
     def __init__(self, info: Dict = {}, data: Dict = {}, save_dir: str = None, file_name: str = "log.json"):
         self._Save_dir = save_dir

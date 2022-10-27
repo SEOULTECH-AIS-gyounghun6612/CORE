@@ -252,7 +252,7 @@ class cal():
         # get theta
         theta = np.arctan2(delta_y, delta_x)
 
-        if is_half_cut and not(sector % 2):
+        if is_half_cut and not (sector % 2):
             theta = theta + np.pi * (theta < 0)
             sector = int(sector / 2)
 

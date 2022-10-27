@@ -341,7 +341,7 @@ class Utils():
             ...
 
     @staticmethod
-    def Progress_Bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
+    def _progress_Bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
         """
         Call in a loop to create terminal progress bar
         Args:
@@ -364,8 +364,9 @@ class Utils():
             print()
 
     @staticmethod
-    def Time_stemp(is_text=False):
-        return time.strftime("%Y-%m-%d", time.localtime()) if is_text else time.time()
+    def _time_stemp(source: float = None, is_text: bool = False):
+        __data = source if time.time() is None else source
+        return time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime(__data)) if is_text else __data
 
 
 class Tool_For():
