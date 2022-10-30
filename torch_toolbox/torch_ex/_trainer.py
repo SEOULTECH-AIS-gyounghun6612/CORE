@@ -40,7 +40,7 @@ class Dataset_Config(Utils.Config):
         return {
             "label_opt": self._Label_opt,
             "label_style": self._Label_style,
-            "_IO_style": self._IO_style}
+            "file_style": self._IO_style}
 
     def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
