@@ -36,13 +36,19 @@ class Dataset_Config(Utils.Config):
     _Label_style: Label_Style
     _IO_style: IO_Style
 
-    def _convert_to_dict(self):
+    def _get_parameter(self) -> Dict[str, Any]:
+        return {
+            "label_opt": self._Label_opt,
+            "label_style": self._Label_style,
+            "_IO_style": self._IO_style}
+
+    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
             "_Label_opt": self._Label_opt._convert_to_dict(),
             "_Label_style": self._Label_style.value,
             "_IO_style": self._IO_style.value}
 
-    def _restore_from_dict(self, data: Dict[str, Any]):
+    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
         self._Label_opt = self._Label_opt._restore_from_dict(data["_Label_opt"])
         self._Label_style, = Label_Style(data["_Label_style"])
         self._IO_style = IO_Style(data["_IO_style"])
@@ -156,25 +162,23 @@ class Learning_process():
             _project_result_dir += f"{learning_config._Date}{Directory._Divider}"
             self._Save_root = Directory._make(_project_result_dir, learning_config._Save_root)
 
+            # learning option
+            self._Batch_size: int = learning_config._Batch_size
+            self._Num_worker: int = learning_config._Num_workers
+
             # distribute option
             self._This_node_rank = learning_config._This_node_rank
             self._GPU_list = learning_config._GPU_ids
             self._Word_size = learning_config._Num_of_node * len(self._GPU_list)
             self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU) and (self._Word_size >= 2)
 
-            # in later out it
-            self._set_log()
-            self._set_dataloader()
-
-            # model and optim
-
         # Freeze function
         # --- for init function --- #
-        def _set_log(self):
-            self._Log = Debug.Learning_Log(self._Learning_option._Log_config)
+        def _set_log(self, log_opt: Log_Config):
+            self._Log = Debug.Learning_Log(log_opt)
             self._Log._insert(self._Learning_option._convert_to_dict())
 
-        def _set_dataloader(self, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style, batch_size: int, num_workers: int):
+        def _set_dataloader(self, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style):
             class Custom_Dataset(Dataset):
                 def __init__(self, mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style) -> None:
                     self.data_process = label_process
@@ -203,13 +207,15 @@ class Learning_process():
 
                 if self._Use_distribute:
                     self._Sampler[_mode] = DistributedSampler(_dataset, shuffle=(_mode == Learning_Mode.TRAIN))
-                    batch_size = int(batch_size / len(self._GPU_list))
-                    num_workers = int((num_workers + len(self._GPU_list) + 1) / len(self._GPU_list))
+                    _batch_size = int(self._Batch_size / len(self._GPU_list))
+                    _num_workers = int((self._Num_worker + len(self._GPU_list) + 1) / len(self._GPU_list))
                 else:
                     self._Sampler[_mode] = None
+                    _batch_size = self._Batch_size
+                    _num_workers = self._Num_worker
 
                 # set dataloader in each learning mode
-                self._Dataloader[_mode] = DataLoader(dataset=_dataset, batch_size=batch_size, num_workers=num_workers, sampler=self._Sampler[_mode])
+                self._Dataloader[_mode] = DataLoader(dataset=_dataset, batch_size=_batch_size, num_workers=_num_workers, sampler=self._Sampler[_mode])
 
         def _set_model_stemp(self, model_stemp: Custom_Module.Model, model_config: Utils.Config):
             self._Model_stemp = model_stemp
