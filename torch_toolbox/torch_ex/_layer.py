@@ -165,10 +165,13 @@ class Module_Config():
             ...
 
         def _convert_to_dict(self) -> Dict[str, Any]:
-            return super()._convert_to_dict()
+            _dict = {
+                "_Model_name": self._Model_name
+            }
+            return _dict
 
         def _restore_from_dict(self, data: Dict[str, Any]):
-            return super()._restore_from_dict(data)
+            self._Model_name = data["_Model_name"]
 
     @dataclass
     class Linear(Utils.Config):
@@ -345,8 +348,9 @@ class Layer():
 
 class Custom_Module():
     class Model(Module):
-        def __init__(self, config: Utils.Config):
+        def __init__(self, config: Module_Config.Model):
             super(Custom_Module.Model, self).__init__()
+            self.model_name = config._Model_name
 
         # Freeze function
         def _sumarry(self, input_shape):

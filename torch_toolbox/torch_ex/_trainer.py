@@ -21,7 +21,7 @@ if __package__ == "":
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Debug, Log_Config
-    from ._layer import Custom_Module
+    from ._layer import Custom_Module, Module_Config
     from ._optimizer import Optimizer, _LRScheduler, Scheduler_Config, Custom_Scheduler, Optimizer_Config
 
 
@@ -242,26 +242,34 @@ class Learning_process():
             self._Active_mode = mode
             self._Log._set_activate_mode(mode)
 
-        def _save_model(self, save_dir: str):
-            save(self._Model.state_dict(), f"{save_dir}model.h5")  # save model state
+        def _save_model(self, save_dir: str, model: Custom_Module.Model, optim: Optimizer = None, schedule: _LRScheduler = None):
+            save(model.state_dict(), f"{save_dir}model.h5")  # save model state
 
-            _optim_and_schedule = {
-                "optimizer": self._Optim.state_dict(),
-                "schedule": None if self._Schedule is None else self._Schedule.state_dict()}
-            save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
+            if optim is not None:
+                _optim_and_schedule = {
+                    "optimizer": None if optim is None else optim.state_dict(),
+                    "schedule": None if schedule is None else schedule}
+                save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
-        def _load_model(self, save_dir: str):
-            self._Model.load_state_dict(load(f"{save_dir}model.h5"))
+        def _load_model(self, save_dir: str, model: Custom_Module.Model, optim: Optimizer = None, schedule: _LRScheduler = None):
+            _model_file = f"{save_dir}model.h5"
+            if File._exist_check(_model_file):
+                model.load_state_dict(load(_model_file))
 
-            _optim_and_schedule = load(f"{save_dir}optim.h5")
-            self._Optim.load_state_dict(_optim_and_schedule["optimizer"])
-            self._Schedule.load_state_dict(_optim_and_schedule["schedule"])
+            _optim_file = f"{save_dir}optim.h5"
+            if File._exist_check(_model_file) and optim is not None:
+                _optim_and_schedule = load(_optim_file)
+                optim.load_state_dict(_optim_and_schedule["optimizer"])
+                if schedule is not None:
+                    schedule.load_state_dict(_optim_and_schedule["schedule"])
+
+            return model, optim, schedule
 
         def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, max_data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Learning_option._Max_epochs)
             _data_board = Utils._progress_board(data_count, max_data_count)
 
-            _batch_size = self._Learning_option._Dataloader_config._Batch_size
+            _batch_size = self._Learning_option._Batch_size
             _batch_ct = data_count // _batch_size + int(data_count % _batch_size)
             _max_batch_ct = max_data_count // _batch_size + int(max_data_count % _batch_size)
 
@@ -307,7 +315,7 @@ class Learning_process():
                 self._process()
 
         # Un-Freeze function
-        def _learning(self, epoch: int, epoch_dir: str, _model: Custom_Module.Model, _optim: Optimizer):
+        def _learning(self, epoch: int, epoch_dir: str, model: Custom_Module.Model, optim: Optimizer):
             raise NotImplementedError
 
 
