@@ -170,7 +170,7 @@ class Learning_process():
             self._This_node_rank = learning_config._This_node_rank
             self._GPU_list = learning_config._GPU_ids
             self._Word_size = learning_config._Num_of_node * len(self._GPU_list)
-            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU) and (self._Word_size >= 2)
+            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (self._Word_size >= 2)
 
         # Freeze function
         # --- for init function --- #
