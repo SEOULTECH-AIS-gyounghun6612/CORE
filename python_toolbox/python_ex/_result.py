@@ -18,15 +18,14 @@ class Log():
     _Annotation: Dict[str, Union[list, str, int, Dict]] = {}
     _Data: Dict[str, Union[list, Dict]] = {}
 
-    def __init__(self, info: Dict = {}, data: Dict = {}, save_dir: str = None, file_name: str = "log.json"):
-        self._Save_dir = save_dir
-        self._File_name = file_name
+    def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: str = None, file_name: str = "log.json"):
 
-        if _base.File._exist_check(_base.Directory._slash_check(f"{save_dir}{file_name}", True)):
-            self._load()
-        else:
+        if file_dir is None:
             self._insert(info)
             self._insert(data, self._Data)
+
+        else:
+            self._load(file_dir, file_name) if _base.File._exist_check(_base.Directory._slash_check(f"{file_dir}{file_name}", True)) else ...
 
     def _insert(self, data_block: Dict, access_point: Dict = None, is_overwrite: bool = True):
         # check parameter; save point
@@ -78,17 +77,17 @@ class Log():
                     if is_pop:
                         del access_point[__key]
 
-    def _load(self):
-        save_pakage = _base.File._json(self._Save_dir, self._File_name)
+    def _load(self, file_dir, file_name):
+        save_pakage = _base.File._json(file_dir, file_name)
         self._insert(save_pakage["annotation"])
         self._insert(save_pakage["data"], self._Data)
 
-    def _save(self):
+    def _save(self, file_dir, file_name):
         save_pakage = {
             "annotation": self._Annotation,
             "data": self._Data}
 
-        _base.File._json(self._Save_dir, self._File_name, save_pakage, True)
+        _base.File._json(file_dir, file_name, save_pakage, True)
 
 
 class ploter():

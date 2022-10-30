@@ -9,11 +9,13 @@ Requirement
 """
 # Import module
 from dataclasses import dataclass
+from enum import Enum
 import json
 import yaml
 import platform
 import time
 
+from math import log10, floor
 from glob import glob
 from os import path, system, getcwd, mkdir
 from typing import Any, Dict, List, Union
@@ -34,11 +36,19 @@ _error = _e.Custom_error(
     file_name="_base.py")
 
 
+# -- DEFINE CONSTNAT -- #
+class OS_Style(Enum):
+    OS_WINDOW = "Windows"
+    OS_UBUNTU = "Linux"
+
+
+# -- DEFINE CONFIG -- #
+
+
+# -- Mation Function -- #
 class Directory():
     _OS_THIS = platform.system()
-    _OS_WINDOW = "Windows"
-    _OS_UBUNTU = "Linux"
-    _Divider = "/" if _OS_THIS == _OS_UBUNTU else "\\"
+    _Divider = "/" if _OS_THIS == OS_Style.OS_UBUNTU else "\\"
 
     @classmethod  # fix it
     def _slash_check(self, directory: str, is_file: bool = False) -> str:
@@ -153,21 +163,21 @@ class Directory():
                 _error.not_yet("not support for container system at function server.local_connect")
                 pass
             else:
-                if Directory._OS_THIS == Directory._OS_WINDOW:
+                if Directory._OS_THIS == OS_Style.OS_WINDOW:
                     _command = f"NET USE {mount_dir}: \\\\{ip_num}\\{root_dir} {password} /user:{user_id}"
 
-                elif Directory._OS_THIS == Directory._OS_UBUNTU:
+                elif Directory._OS_THIS == OS_Style.OS_UBUNTU:
                     _command = "sudo -S mount -t cifs -o uid=1000,gid=1000,"
                     _command += f"username={user_id},password={password} //{ip_num}/{root_dir} {mount_dir}"
 
                 system(_command)
-                return mount_dir + ":" if Directory._OS_THIS == Directory._OS_WINDOW else mount_dir
+                return mount_dir + ":" if Directory._OS_THIS == OS_Style.OS_WINDOW else mount_dir
 
         @staticmethod
         def _unconnect(mounted_dir: str):
-            if Directory._OS_THIS == Directory._OS_WINDOW:
+            if Directory._OS_THIS == OS_Style.OS_WINDOW:
                 system("NET USE {}: /DELETE".format(mounted_dir))
-            elif Directory._OS_THIS == Directory._OS_UBUNTU:
+            elif Directory._OS_THIS == OS_Style.OS_UBUNTU:
                 system("fuser -ck {}".format(mounted_dir))
                 system("sudo umount {}".format(mounted_dir))
 
@@ -331,14 +341,32 @@ class File():
 class Utils():
     @dataclass
     class Config():
-        def _convert_to_dict(self) -> Dict[str, Any]:  # in later fix it; data dictionary value data type must be can dumped in json file
+        def _get_parameter(self) -> Dict[str, Any]:
+            """
+
+            """
+            raise NotImplementedError
+
+        def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
             """
             Returned dictionary value type must be can dumped in json file
             """
-            ...
 
-        def _restore_from_dict(self, data: Dict[str, Any]):  # in later fix it; data dictionary value data type must be can dumped in json file
-            ...
+            raise NotImplementedError
+
+        def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+            """
+
+            """
+            raise NotImplementedError
+
+    @staticmethod
+    def _progress_board(this_count: int, max_count: int):  # [3/25] -> [03/25]
+        _string_ct = floor(log10(max_count)) + 1
+        _this = f"{this_count}".rjust(_string_ct, " ")
+        _max = f"{max_count}".rjust(_string_ct, " ")
+
+        return f"{_this}/{_max}"
 
     @staticmethod
     def _progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):

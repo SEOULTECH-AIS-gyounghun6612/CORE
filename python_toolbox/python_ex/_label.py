@@ -2,11 +2,13 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum
 from re import U
+from tkinter.tix import AUTO
 from typing import Dict, List, Tuple, Union, Any
 
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
+    from _cv2 import CVT_option
     import _cv2
     from _numpy import np_base, np_dtype
     import _error as _e
@@ -53,7 +55,12 @@ class IO_Style(Enum):
     ZIP_FILE = 2
 
 
-# -- CUSTON DATA TYPE -- #
+class Normalize_Style(Enum):
+    AUTO = 0
+    FIXED = 1
+
+
+# -- CUSTOM DATA TYPE -- #
 @dataclass
 class Data_Profile():
     _Label_style: Label_Style
@@ -84,6 +91,14 @@ class Label_Structure():
 # -- DEFINE CONFIG -- #
 @dataclass
 class Augmentation_Config(Utils.Config):
+    _Resize: Union[List[int], List[float]] = field(default_factory=lambda: [1.0, 1.0])
+    _Flip: int = 0  # horizontal, vertical
+    _Rotate: float = 0.0  # 0 ~ 90 -> 0.0 ~ 1.0
+
+    _Normalize = Normalize_Style.FIXED
+    _Mean: List[int, int, int] = field(default_factory=lambda: [0.485, 0.456, 0.406])
+    _Std: List[int, int, int] = field(default_factory=lambda: [0.229, 0.224, 0.225])
+
     def _convert_to_dict(self) -> Dict[str, Any]:
         return super()._convert_to_dict()
 
@@ -104,13 +119,13 @@ class Label_Config(Utils.Config):
     _Data_augmentation: Augmentation_Config
 
     def _convert_to_dict(self):
+        #  "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
         return {
             "_Name": self._Name.value,
             "_Load_meta_file": self._Load_meta_file,
             "_Load_label_style": [__style.value for __style in self._Load_label_style],
             "_Data_root": self._Data_root,
             "_Data_size": self._Data_size, }
-            # "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
 
     def _restore_from_dict(self, data: Dict[str, Any]):
         self._Name = Suported_Label(data["_Name"])
@@ -289,12 +304,16 @@ class Label_Process():
                 # Data pre-process
                 # In later fix it -> using config augmentation
                 picked_input = _cv2.cv_base.resize(picked_input, self._Data_size)
+                picked_input = _cv2.cv_base.img_cvt(picked_input, CVT_option.BGR2RGB)
                 picked_input = np_base.type_converter(picked_input, np_dtype.np_float32)
 
                 picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self._Activated_label, self._Data_size)
                 picked_label = np_base.type_converter(picked_label, np_dtype.np_float32)
 
                 return {"input": picked_input, "label": picked_label, "info": index}
+
+        def unwork(self, image):
+            ...
 
         def label_data_convert(self, label, from_style, to_style):
             return _cv2.augmentation._classification_to_colormap(label, self._Activated_label, self._Data_size)
@@ -335,3 +354,7 @@ class Label_Process():
     def _build(config: Label_Config):
         if config._Name == Suported_Label.BDD_100K:
             return Label_Process.BDD_100k(config)
+
+
+class Data_Augmentation():
+    ...
