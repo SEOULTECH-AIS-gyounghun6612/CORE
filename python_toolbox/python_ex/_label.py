@@ -96,8 +96,8 @@ class Augmentation_Config(Utils.Config):
     _Rotate: float = 0.0  # 0 ~ 90 -> 0.0 ~ 1.0
 
     _Normalize = Normalize_Style.FIXED
-    _Mean: List[int, int, int] = field(default_factory=lambda: [0.485, 0.456, 0.406])
-    _Std: List[int, int, int] = field(default_factory=lambda: [0.229, 0.224, 0.225])
+    _Mean: List[int] = field(default_factory=lambda: [0.485, 0.456, 0.406])
+    _Std: List[int] = field(default_factory=lambda: [0.229, 0.224, 0.225])
 
     def _convert_to_dict(self) -> Dict[str, Any]:
         return super()._convert_to_dict()
