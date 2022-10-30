@@ -73,14 +73,14 @@ class Learning_Config():
 
         ### About GPU using
         _Num_of_node: int = 1
-        _GPU_ids: List[int] = list(range(cuda.device_count()))
+        _GPU_ids: List[int] = field(default_factory=lambda: list(range(cuda.device_count())))
         _Host_address: str = "TCP://127.0.0.0.1:23456"
         _This_node_rank: int = 0
 
-        def _get_parameter(self):
-            ...
+        def _get_parameter(self) -> Dict[str, Any]:
+            return super()._get_parameter()
 
-        def _convert_to_dict(self) -> Dict[str, Any]:
+        def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
             _dict = {
                 "_Project_Name": self._Project_Name,
                 "_Anotation": self._Anotation,
@@ -96,7 +96,7 @@ class Learning_Config():
                 "_Activate_mode": [_mode.value for _mode in self._Activate_mode]}
             return _dict
 
-        def _restore_from_dict(self, data: Dict[str, Any]):
+        def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
             self._Log_config._restore_from_dict(data["_Log_config"])
             self._Dataset_config._restore_from_dict(data["_Dataloader_config"])
             self._Optimizer_config._restore_from_dict(data["_Optimizer_config"])
@@ -110,7 +110,7 @@ class Learning_Config():
             self._Last_epoch = data["_Start_epoch"]
             self._Activate_mode = data["_Activate_mode"]
 
-        def _load_from_config_file(self, config_directory: str, restore_file: str):
+        def _load_config_from_file(self, config_directory: str, restore_file: str):
             _config_data = File._json(config_directory, restore_file)
             self._restore_from_dict(_config_data)
 
@@ -241,12 +241,6 @@ class Learning_process():
             # set log state
             self._Active_mode = mode
             self._Log._set_activate_mode(mode)
-
-            # set model state
-            if mode == Learning_Mode.TRAIN:
-                self._Model.train()
-            else:
-                self._Model.eval()
 
         def _save_model(self, save_dir: str):
             save(self._Model.state_dict(), f"{save_dir}model.h5")  # save model state
