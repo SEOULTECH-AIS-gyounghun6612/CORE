@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from random import random
 from typing import Dict, List, Any, Tuple, Union
 
 from torch import distributed, cuda, save, load, multiprocessing
@@ -9,6 +10,7 @@ from torch.nn.parallel import DistributedDataParallel
 from python_ex._base import Directory, File, Utils, OS_Style
 from python_ex._label import Label_Config, Label_Style, IO_Style, Label_Process
 
+import torchvision.transforms.functional as TF
 
 if __package__ == "":
     # if this file in local project
@@ -325,14 +327,24 @@ class Custom_Dataset(Dataset):
 
     def __getitem__(self, index):
         _data = self.data_process.work(self.data_profile, index)
-        # _input = image_process.image_normalization(_data["input"])
-        # _input = image_process.conver_to_first_channel(_input)
-        # _input = Torch_Utils.Tensor._from_numpy(_input)
+        _flip_h = 0.5 >= random()
+        _flip_w = 0.5 >= random()
+        _r = int(15 * random())
 
-        # _label = image_process.conver_to_first_channel(_data["label"])
-        # _info = _data["info"]
+        _input = _data["input"]
+        _input = TF.hflip(_input) if _flip_h else _input
+        _input = TF.vflip(_input) if _flip_w else _input
+        _input = TF.rotate(_input, _r)
+        _input = TF.center_crop(_input, self.data_process._Data_size)
 
-        return _data["input"], _data["label"], _data["info"]
+        _label = _data["label"]
+        _label = TF.hflip(_label) if _flip_h else _label
+        _label = TF.vflip(_label) if _flip_w else _label
+        _label = TF.rotate(_label, _r)
+        _label = TF.center_crop(_label, self.data_process._Data_size)
+
+        return _input, _label, _data["info"]
+        # return _data["input"], _data["label"], _data["info"]
 
 # class Reinforcment():
 #     play_memory = namedtuple("play_memory", ["state", "action", "reward", "next_state", "ep_done"])
