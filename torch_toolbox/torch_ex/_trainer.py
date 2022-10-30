@@ -1,6 +1,3 @@
-# from random import sample
-# from math import inf
-# from collections import deque, namedtuple
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Tuple, Union
 
@@ -66,7 +63,7 @@ class Learning_Config():
         ### Infomation about learning
         _Project_Name: str = "End_to_End_learning"
         _Detail: str = "Empty"
-        _Date: str = Utils._time_stemp(is_text=True, is_local=True)
+        _Date: str = Utils._time_stemp(is_text=True, is_local=True, text_format="%Y-%m-%d")
         _Save_root: str = Directory._relative_root()
 
         ### About Learning type and style
@@ -80,7 +77,7 @@ class Learning_Config():
         ### About GPU using
         _Num_of_node: int = 1
         _GPU_ids: List[int] = field(default_factory=lambda: list(range(cuda.device_count())))
-        _Host_address: str = "TCP://127.0.0.0.1:23456"
+        _Host_address: str = "tcp://127.0.0.1:10001"
         _This_node_rank: int = 0
 
         def _get_parameter(self) -> Dict[str, Any]:
@@ -151,9 +148,6 @@ class Learning_process():
         _Model_stemp: Custom_Module.Model = None
         _Model_config: Module_Config.Model = None
 
-        _Dataloader: Dict[Learning_Mode, DataLoader] = {}
-        _Sampler: Dict[Learning_Mode, DistributedSampler] = {}
-
         def __init__(self, learning_config: Learning_Config.E2E) -> None:
             self._Learning_option = learning_config
 
@@ -178,52 +172,12 @@ class Learning_process():
             self._Log = Debug.Learning_Log(log_opt)
             self._Log._insert(self._Learning_option._convert_to_dict())
 
-        def _set_dataloader(self, label_opt: Label_Config, label_style: Label_Style, file_style: IO_Style):
-            class Custom_Dataset(Dataset):
-                def __init__(self, mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style) -> None:
-                    self.data_process = label_process
-                    self.data_process.set_learning_mode(mode.value)
-                    self.data_profile = self.data_process.get_data_profile(label_style, file_style)
-
-                def _len_(self):
-                    return len(self.data_profile._Input)
-
-                def _getitem_(self, index):
-                    _data = self.data_process.work(self.data_profile, index)
-                    # _input = image_process.image_normalization(_data["input"])
-                    # _input = image_process.conver_to_first_channel(_input)
-                    # _input = Torch_Utils.Tensor._from_numpy(_input)
-
-                    # _label = image_process.conver_to_first_channel(_data["label"])
-                    # _info = _data["info"]
-
-                    return _data["input"], _data["label"], _data["info"]
-
-            _label_process = Label_Process._build(label_opt)
-            self._Dataloader: Dict[Learning_Mode, DataLoader] = {}
-
-            #  Use distribute or Not
-            for _mode in self._Learning_option._Activate_mode:
-                _dataset = Custom_Dataset(_mode, _label_process, label_style, file_style)
-
-                if self._Use_distribute:
-                    self._Sampler[_mode] = DistributedSampler(_dataset, shuffle=(_mode == Learning_Mode.TRAIN))
-                    _batch_size = int(self._Batch_size / len(self._GPU_list))
-                    _num_workers = int((self._Num_worker + len(self._GPU_list) + 1) / len(self._GPU_list))
-                else:
-                    self._Sampler[_mode] = None
-                    _batch_size = self._Batch_size
-                    _num_workers = self._Num_worker
-
-                # set dataloader in each learning mode
-                self._Dataloader[_mode] = DataLoader(dataset=_dataset, batch_size=_batch_size, num_workers=_num_workers, sampler=self._Sampler[_mode])
-
-        def _set_model_stemp(self, model_stemp: Custom_Module.Model, model_config: Utils.Config):
+        def _set_model_opt(self, model_stemp: Custom_Module.Model, model_config: Utils.Config):
             self._Model_stemp = model_stemp
             self._Model_config = model_config
 
         # --- for work function --- #
-        def _set_process(self, word_size: int, this_rank: int, method: str = "TCP://127.0.0.0.1:23456"):
+        def _set_process(self, word_size: int, this_rank: int, method: str):
             def _print_lock(is_master: bool):
                 import builtins as __builtin__
                 builtin_print = __builtin__.print
@@ -236,6 +190,29 @@ class Learning_process():
 
             # _print_lock(not this_rank)
             distributed.init_process_group(backend="nccl", init_method=method, world_size=word_size, rank=this_rank)
+
+        def _set_dataloader(self, label_opt: Label_Config, label_style: Label_Style, file_style: IO_Style, this_rank: int = 0):
+            _label_process = Label_Process._build(label_opt)
+            _dataloader: Dict[Learning_Mode, DataLoader] = {}
+            _sampler: Dict[Learning_Mode, DistributedSampler] = {}
+
+            #  Use distribute or Not
+            for _mode in self._Learning_option._Activate_mode:
+                _dataset = Custom_Dataset(_mode, _label_process, label_style, file_style)
+
+                if self._Use_distribute:
+                    _batch_size = int(self._Batch_size / len(self._GPU_list))
+                    _num_workers = int((self._Num_worker + len(self._GPU_list) + 1) / len(self._GPU_list))
+                    _sampler[_mode] = DistributedSampler(_dataset, rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
+                else:
+                    _sampler[_mode] = None
+                    _batch_size = self._Batch_size
+                    _num_workers = self._Num_worker
+
+                # set dataloader in each learning mode
+                _dataloader[_mode] = DataLoader(dataset=_dataset, batch_size=_batch_size, num_workers=_num_workers, sampler=_sampler[_mode])
+
+            return _sampler, _dataloader
 
         def _set_learning_model(self) -> Tuple[Custom_Module.Model, Optimizer, _LRScheduler]:
             _model = self._Model_stemp(self._Model_config)
@@ -289,12 +266,16 @@ class Learning_process():
 
             Utils._progress_bar(data_count, max_data_count, _pre, _suf, decimals, length, fill)
 
-        def _process(self, gpu: int = 0, gpu_per_node: int = 1):
+        def _process(self, gpu: int = 0, gpu_per_node: int = 0):
             _st_epoch = self._Learning_option._Last_epoch + 1
+            _this_rank = self._This_node_rank * gpu_per_node + gpu
+
+            self._set_process(self._Word_size, _this_rank, self._Learning_option._Host_address)
+
+            _sampler, _dataloader = self._set_dataloader(**self._Learning_option._Dataset_config._get_parameter(), this_rank=_this_rank)
             _model, _optim, _schedule = self._set_learning_model()
 
             if self._Use_distribute:
-                self._set_process(self._Word_size, self._This_node_rank * gpu_per_node + gpu)
                 _model = _model.cuda(gpu)
                 _model = _model = DistributedDataParallel(_model, device_ids=[gpu])
             else:
@@ -303,7 +284,7 @@ class Learning_process():
             # Do learning process
             for _epoch in range(_st_epoch, self._Learning_option._Max_epochs):
                 _epoch_dir = Directory._make(f"{_epoch}/", self._Save_root)
-                self._learning(_epoch, _epoch_dir, _model, _optim)
+                self._learning(_epoch, _epoch_dir, _sampler, _dataloader, _model, _optim)
 
                 if _schedule is not None:
                     _schedule.step()
@@ -317,14 +298,41 @@ class Learning_process():
 
         def _work(self):
             if self._Use_distribute:
-                multiprocessing.spawn(self._process, nprocs=len(self._GPU_list))
+                multiprocessing.spawn(self._process, nprocs=len(self._GPU_list), )
             else:
                 self._process()
 
         # Un-Freeze function
-        def _learning(self, epoch: int, epoch_dir: str, model: Custom_Module.Model, optim: Optimizer):
+        def _learning(
+                self,
+                epoch: int,
+                epoch_dir: str,
+                sampler: Dict[Learning_Mode, DistributedSampler],
+                dataloader: Dict[Learning_Mode, DataLoader],
+                model: Custom_Module.Model,
+                optim: Optimizer):
             raise NotImplementedError
 
+
+class Custom_Dataset(Dataset):
+    def __init__(self, mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style) -> None:
+        self.data_process = label_process
+        self.data_process.set_learning_mode(mode.value)
+        self.data_profile = self.data_process.get_data_profile(label_style, file_style)
+
+    def __len__(self):
+        return len(self.data_profile._Input)
+
+    def __getitem__(self, index):
+        _data = self.data_process.work(self.data_profile, index)
+        # _input = image_process.image_normalization(_data["input"])
+        # _input = image_process.conver_to_first_channel(_input)
+        # _input = Torch_Utils.Tensor._from_numpy(_input)
+
+        # _label = image_process.conver_to_first_channel(_data["label"])
+        # _info = _data["info"]
+
+        return _data["input"], _data["label"], _data["info"]
 
 # class Reinforcment():
 #     play_memory = namedtuple("play_memory", ["state", "action", "reward", "next_state", "ep_done"])

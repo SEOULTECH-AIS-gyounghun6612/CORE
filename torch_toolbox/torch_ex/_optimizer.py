@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from math import cos, pi
-from typing import Dict, Any, List, Union
+from typing import Dict, List, Union
 from python_ex._base import Utils
 
 # optimizer
