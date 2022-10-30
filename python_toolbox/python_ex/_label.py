@@ -8,7 +8,6 @@ from typing import Dict, List, Tuple, Union, Any
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
-    from _cv2 import CVT_option
     import _cv2
     from _numpy import np_base, np_dtype
     import _error as _e
@@ -152,11 +151,7 @@ class Label_Config(Utils.Config):
 # -- Mation Function -- #
 class Label_Process():
     class Basement():
-        _Data_directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]]
-
         # Parameter for Label information
-        _Raw_label: Dict[Label_Style, List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]] = {}
-        _Activated_label: Dict[int, List] = {}
         _Class_category: Dict[Label_Style, List[str]] = {}  # each class's category
 
         # Parameter for Label pre-process
@@ -179,6 +174,7 @@ class Label_Process():
             __meta_data: Dict[str, Label_Structure] = File._json(file_dir=__meta_dir, file_name=__meta_file)
 
             # Make raw label data
+            self._Raw_label: Dict[Label_Style, List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]] = {}
             for _style in config._Load_label_style:
                 if _style == Label_Style.CLASSIFICATION:
                     _label_list: List[Label_Structure.Classification_Label] = [Label_Structure.Classification_Label(**data) for data in __meta_data[_style.value]]
@@ -193,6 +189,7 @@ class Label_Process():
 
         # Freeze function
         def make_label_info(self, style: Label_Style):
+            self._Activated_label: Dict[int, List] = {}
             for _label in self._Raw_label[style]:
                 _info = [_label._Class_info, _label._Name]
                 if _label._Train_num in self._Activated_label.keys():
@@ -268,12 +265,16 @@ class Label_Process():
 
     class BDD_100k(Basement):
         _Class_category: Dict[Label_Style, List[str]] = {Label_Style.SEM_SEG: ["void", "flat", "construction", "object", "nature", "sky", "human", "vehicle"]}
+        _Activated_label: Dict[int, List] = {}
 
         _Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
             Label_Style.SEM_SEG: {
                 IO_Style.IMAGE_FILE: "bdd-100k/{}/{}/",
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""}}
+
+        def __init__(self, config: Label_Config):
+            super().__init__(config)
 
         def get_data_profile(self, label_style: Label_Style, io_style: IO_Style) -> Data_Profile:
             data_profile = super().get_data_profile(label_style, io_style)
@@ -304,7 +305,7 @@ class Label_Process():
                 # Data pre-process
                 # In later fix it -> using config augmentation
                 picked_input = _cv2.cv_base.resize(picked_input, self._Data_size)
-                picked_input = _cv2.cv_base.img_cvt(picked_input, CVT_option.BGR2RGB)
+                picked_input = _cv2.cv_base.img_cvt(picked_input, _cv2.CVT_option.BGR2RGB)
                 picked_input = np_base.type_converter(picked_input, np_dtype.np_float32)
 
                 picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self._Activated_label, self._Data_size)
