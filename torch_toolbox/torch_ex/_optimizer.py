@@ -32,11 +32,14 @@ class Optimizer_Config(Utils.Config):
     _Optim_name: Suported_Optimizer
     _LR_rate: float = 0.005
 
-    def _convert_to_dict(self) -> Dict[str, Any]:
-        return super()._convert_to_dict()
+    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        return {
+            "_Schedule_name": self._Optim_name.value,
+            "_LR_rate": self._LR_rate}
 
-    def _restore_from_dict(self, data: Dict[str, Any]):
-        return super()._restore_from_dict(data)
+    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+        self._Optim_name = Suported_Optimizer(data["_Optim_name"])
+        self._LR_rate = data["_LR_rate"]
 
     def _make_optim(self, model: Custom_Module.Model) -> Optimizer:
         # make optim
@@ -57,11 +60,22 @@ class Scheduler_Config(Utils.Config):
     _Term: Union[List[int], int] = 50
     _Term_amp: int = 1
 
-    def _convert_to_dict(self) -> Dict[str, Any]:
-        return super()._convert_to_dict()
+    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        return {
+            "_Schedule_name": self._Schedule_name.value,
+            "_Maximum": self._Maximum,
+            "_Minimum": self._Minimum,
+            "_Decay": self._Decay,
+            "_Term": self._Term,
+            "_Term_amp": self._Term_amp}
 
-    def _restore_from_dict(self, data: Dict[str, Any]):
-        return super()._restore_from_dict(data)
+    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+        self._Schedule_name = Suported_Schedule(data["_Schedule_name"])
+        self._Maximum = data["_Maximum"]
+        self._Minimum = data["_Minimum"]
+        self._Decay = data["_Decay"]
+        self._Term = data["_Term"]
+        self._Term_amp = data["_Term_amp"]
 
     def _get_next_term(self, cycle: int = 0):
         return self._Term[cycle] if isinstance(self._Term, list) else (self._Term * (self._Term_amp ** cycle))
