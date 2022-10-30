@@ -59,7 +59,7 @@ class Learning_Config():
 
         ### Infomation about learning
         _Project_Name: str = "End_to_End_learning"
-        _Anotation: str = "Empty"
+        _Detail: str = "Empty"
         _Date: str = Utils._time_stemp(is_text=True, is_local=True)
         _Save_root: str = Directory._relative_root()
 
@@ -83,7 +83,7 @@ class Learning_Config():
         def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
             _dict = {
                 "_Project_Name": self._Project_Name,
-                "_Anotation": self._Anotation,
+                "_Detail": self._Detail,
                 "_Date": self._Date,
 
                 "_Log_config": self._Log_config._convert_to_dict(),
@@ -103,7 +103,7 @@ class Learning_Config():
             self._Schedule_config._restore_from_dict(data["_Schedule_config"])
 
             self._Project_Name = data["_Project_Name"]
-            self._Anotation = data["_Anotation"]
+            self._Detail = data["_Detail"]
             self._Date = data["_Date"]
 
             self._Max_epochs = data["_Max_epochs"]
