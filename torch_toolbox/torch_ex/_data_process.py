@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Any
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.distributed import DistributedSampler
 
 from python_ex._base import Utils
 from python_ex._label import Label_Config, Label_Style, IO_Style, Label_Process
@@ -74,22 +75,49 @@ class Dataloder_Config(Utils.Config):
 
 # -- Mation Function -- #
 class Custom_Dataset(Dataset):
-    def __init__(self, config: Dataset_Config, mode: Learning_Mode):
+    def __init__(self, mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style):
         super().__init__()
-        self.data_process = config._make_label_process()
+        self.data_process = label_process
         self.data_process.set_learning_mode(mode.value)
-        self.data_profile = self.data_process.get_data_profile(config._Label_style, config._IO_style)
+        self.data_profile = self.data_process.get_data_profile(label_style, file_style)
 
-    def __len__(self):
+    def _len_(self):
         return len(self.data_profile._Input)
 
-    def __getitem__(self, index):
-        __data = self.data_process.work(self.data_profile, index)
-        __input = image_process.image_normalization(__data["input"])
-        __input = image_process.conver_to_first_channel(__input)
-        __input = Torch_Utils.Tensor._from_numpy(__input)
+    def _getitem_(self, index):
+        _data = self.data_process.work(self.data_profile, index)
+        _input = image_process.image_normalization(_data["input"])
+        _input = image_process.conver_to_first_channel(_input)
+        _input = Torch_Utils.Tensor._from_numpy(_input)
 
-        __label = image_process.conver_to_first_channel(__data["label"])
-        __info = __data["info"]
+        _label = image_process.conver_to_first_channel(_data["label"])
+        _info = _data["info"]
 
-        return __input, __label, __info
+        return _input, _label, _info
+
+
+class Custom_Dataloader():
+    def __init__(self) -> None:
+        pass
+
+    def _set_activate_mode(self, mode: Learning_Mode):
+        self._Activate_mode = mode
+    
+    def _set_dataset(self, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style, is_distribute: bool = False):
+        self._Dataset = Custom_Dataset(self._Activate_mode, label_process, label_style, file_style)
+
+        if is_distribute:
+            self._Smapler = DistributedSampler(self._Dataset, )
+
+    def _make(self):
+        ...
+
+def _make_dataloader(mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style, batch_size: int, ):
+    _dataset = Custom_Dataset(mode, label_process, label_style, file_style)
+
+
+    return DataLoader(
+            dataset=Custom_Dataset(self._Dataset_opt, mode),
+            batch_size=self._Batch_size,
+            num_workers=self._Num_workers,
+            shuffle=(mode == Learning_Mode.TRAIN))

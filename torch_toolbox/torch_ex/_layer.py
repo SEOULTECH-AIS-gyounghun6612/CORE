@@ -158,6 +158,19 @@ class Layer_Config():
 
 class Module_Config():
     @dataclass
+    class Model(Utils.Config):
+        _Model_name: str
+
+        def _get_parameter(self):
+            ...
+
+        def _convert_to_dict(self) -> Dict[str, Any]:
+            return super()._convert_to_dict()
+
+        def _restore_from_dict(self, data: Dict[str, Any]):
+            return super()._restore_from_dict(data)
+
+    @dataclass
     class Linear(Utils.Config):
         _Linear_config: Layer_Config.Linear
         _Norm_type: Suported_Norm = None
@@ -210,10 +223,10 @@ class Module_Config():
             return super()._restore_from_dict(data)
 
         def _make_conv_config(self):
-            __front = Layer_Config.Conv2D(self._In_channels, self._In_channels, 1)
-            __backend = Layer_Config.Conv2D(self._In_channels, self._Out_channels, 1)
+            _front = Layer_Config.Conv2D(self._In_channels, self._Out_channels, 1)
+            _backend = Layer_Config.Conv2D(self._Out_channels, self._Out_channels, 1)
 
-            return __front, __backend
+            return _front, _backend
 
         def _make_norm_config(self):
             return Layer_Config.Norm(self._Norm_type, self._In_channels)
@@ -244,12 +257,12 @@ class Module_Config():
             return self._Output_dim // self._Head_count
 
         def _get_QKVO_config(self):
-            __q_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            __k_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            __v_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            __o_config = Module_Config.Linear(Layer_Config.Linear(self._Output_dim, self._Output_dim))
+            _q_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _k_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _v_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _o_config = Module_Config.Linear(Layer_Config.Linear(self._Output_dim, self._Output_dim))
 
-            return __q_config, __k_config, __v_config, __o_config
+            return _q_config, _k_config, _v_config, _o_config
 
     @dataclass
     class Transformer(Attention):
@@ -263,12 +276,12 @@ class Module_Config():
             return super()._restore_from_dict(data)
 
         def _get_linear_config(self):
-            __linear_01 = Module_Config.Linear(
+            _linear_01 = Module_Config.Linear(
                 Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_type=Suported_Active.GELU)
-            __linear_02 = Module_Config.Linear(
+            _linear_02 = Module_Config.Linear(
                 Layer_Config.Linear(self._Output_dim * self._Hidden_rate, self._Output_dim))
 
-            return __linear_01, __linear_02
+            return _linear_01, _linear_02
 
     @dataclass
     class Backbone(Utils.Config):
@@ -332,9 +345,8 @@ class Layer():
 
 class Custom_Module():
     class Model(Module):
-        def __init__(self, model_name: str):
+        def __init__(self, config: Utils.Config):
             super(Custom_Module.Model, self).__init__()
-            self.model_name = model_name
 
         # Freeze function
         def _sumarry(self, input_shape):
@@ -353,10 +365,10 @@ class Custom_Module():
             self._Activate = Layer._make_activate_layer(config._make_active_config())
 
         def forward(self, x: Tensor) -> Tensor:
-            __x = self._Linear(x)
-            __x = self._Norm(__x) if self._Norm is not None else __x
-            __x = self._Activate(__x) if self._Activate is not None else __x
-            return __x
+            _x = self._Linear(x)
+            _x = self._Norm(_x) if self._Norm is not None else _x
+            _x = self._Activate(_x) if self._Activate is not None else _x
+            return _x
 
     class Conv2D(Module):
         def __init__(self, config: Module_Config.Conv2D):
@@ -367,43 +379,43 @@ class Custom_Module():
             self._Activate = Layer._make_activate_layer(config._make_active_config())
 
         def forward(self, x: Tensor) -> Tensor:
-            __x = self._Conv2D(x)
-            __x = self._Norm(__x) if self._Norm is not None else __x
-            __x = self._Activate(__x) if self._Activate is not None else __x
-            return __x
+            _x = self._Conv2D(x)
+            _x = self._Norm(_x) if self._Norm is not None else _x
+            _x = self._Activate(_x) if self._Activate is not None else _x
+            return _x
 
     class PUP(Module):
         def __init__(self, config: Module_Config.PUP):
             super().__init__()
 
-            __front_conv, __backend_conv = config._make_conv_config()
+            _front_conv, _backend_conv = config._make_conv_config()
 
-            self._Front = Conv2d(**__front_conv._make_parameter())
+            self._Front = Conv2d(**_front_conv._make_parameter())
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 2)
             self._Activate = Layer._make_activate_layer(config._make_active_config())
-            self._Back = Conv2d(**__backend_conv._make_parameter())
+            self._Back = Conv2d(**_backend_conv._make_parameter())
             self._Samppling = Upsample(scale_factor=config._Scale_factor, mode=config._Scale_mode)
 
         def forward(self, x: Tensor) -> Tensor:
-            __x = self._Front(x)
-            __x = self._Norm(__x) if self._Norm is not None else __x
-            __x = self._Activate(__x) if self._Activate is not None else __x
-            __x = self._Back(__x)
-            __x = self._Samppling(__x)
-            return __x
+            _x = self._Front(x)
+            _x = self._Norm(_x) if self._Norm is not None else _x
+            _x = self._Activate(_x) if self._Activate is not None else _x
+            _x = self._Back(_x)
+            _x = self._Samppling(_x)
+            return _x
 
     class Position_Encoding():
         class Trigonometric(Module):
             def __init__(self, num_of_data: int, max_token_size: int = 1000):
                 super().__init__()
-                __pe = zeros(max_token_size, num_of_data)
-                __position = arange(0, max_token_size, dtype=float).unsqueeze(1)
-                __div_term = exp(arange(0, num_of_data, 2).float() * (-log(10000.0) / num_of_data))
-                __pe[:, 0::2] = sin(__position * __div_term)
-                __pe[:, 1::2] = cos(__position * __div_term)
-                __pe = __pe.unsqueeze(0)
+                _pe = zeros(max_token_size, num_of_data)
+                _position = arange(0, max_token_size, dtype=float).unsqueeze(1)
+                _div_term = exp(arange(0, num_of_data, 2).float() * (-log(10000.0) / num_of_data))
+                _pe[:, 0::2] = sin(_position * _div_term)
+                _pe[:, 1::2] = cos(_position * _div_term)
+                _pe = _pe.unsqueeze(0)
 
-                self.register_buffer("_Position_value", __pe, persistent=False)
+                self.register_buffer("_Position_value", _pe, persistent=False)
 
             def forward(self, x: Tensor):
                 return x + self._Position_value[:, : x.size(1)]
@@ -418,54 +430,54 @@ class Custom_Module():
                 self._Option = config
                 self._Head_dim = config._get_head_dim()
 
-                __maker_config = config._get_QKVO_config()
+                _maker_config = config._get_QKVO_config()
 
-                self.q_maker = Custom_Module.Linear(__maker_config[0])
+                self.q_maker = Custom_Module.Linear(_maker_config[0])
                 init.xavier_uniform_(self.q_maker._Linear.weight)
                 self.q_maker._Linear.bias.data.fill_(0)
 
-                self.k_maker = Custom_Module.Linear(__maker_config[1])
+                self.k_maker = Custom_Module.Linear(_maker_config[1])
                 init.xavier_uniform_(self.k_maker._Linear.weight)
                 self.k_maker._Linear.bias.data.fill_(0)
 
-                self.v_maker = Custom_Module.Linear(__maker_config[2])
+                self.v_maker = Custom_Module.Linear(_maker_config[2])
                 init.xavier_uniform_(self.v_maker._Linear.weight)
                 self.v_maker._Linear.bias.data.fill_(0)
 
-                self.o_maker = Custom_Module.Linear(__maker_config[3])
+                self.o_maker = Custom_Module.Linear(_maker_config[3])
                 init.xavier_uniform_(self.o_maker._Linear.weight)
                 self.o_maker._Linear.bias.data.fill_(0)
 
             def _dot_product(self, Q, K, V, mask=None):  # dot_product
-                __logits = matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
-                __logits /= sqrt(self._Head_dim)
+                _logits = matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
+                _logits /= sqrt(self._Head_dim)
 
                 if mask is not None:
-                    __logits = __logits.masked_fill(mask == 0, -9e15)
+                    _logits = _logits.masked_fill(mask == 0, -9e15)
 
-                __attention = functional.softmax(__logits, dim=-1)
+                _attention = functional.softmax(_logits, dim=-1)
 
-                return matmul(__attention, V), __attention
+                return matmul(_attention, V), _attention
 
         class Dot_Attention(Base):
             def __init__(self, config: Module_Config.Attention) -> None:
                 super().__init__(config)
 
             def forward(self, Q_source: Tensor, K_source: Tensor, V_source: Tensor, mask: Tensor = None, return_attention_map: bool = False) -> Tensor:
-                __q = self.q_maker(Q_source)
-                __q = rearrange(__q, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
+                _q = self.q_maker(Q_source)
+                _q = rearrange(_q, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
-                __k = self.k_maker(K_source)
-                __k = rearrange(__k, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
+                _k = self.k_maker(K_source)
+                _k = rearrange(_k, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
-                __v = self.v_maker(V_source)
-                __v = rearrange(__v, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
+                _v = self.v_maker(V_source)
+                _v = rearrange(_v, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
-                __value, _attention = self._dot_product(__q, __k, __v, mask)  # value -> batch head_num seq head_dim
+                _value, _attention = self._dot_product(_q, _k, _v, mask)  # value -> batch head_num seq head_dim
 
-                __value = rearrange(__value, 'batch head_num seq head_dim -> batch seq (head_dim head_num)')
-                __outpot = self.o_maker(__value)
-                return (__outpot, _attention) if return_attention_map else __outpot
+                _value = rearrange(_value, 'batch head_num seq head_dim -> batch seq (head_dim head_num)')
+                _outpot = self.o_maker(_value)
+                return (_outpot, _attention) if return_attention_map else _outpot
 
     class Transformer():
         class Base(Module):
@@ -475,20 +487,20 @@ class Custom_Module():
                 self._Attention = Custom_Module.Attention.Dot_Attention(config)
                 self._Layer_norm_02 = LayerNorm(config._Output_dim)
 
-                [__linear_config_01, __linear_config_02] = config._get_linear_config()
+                [_linear_config_01, _linear_config_02] = config._get_linear_config()
 
-                __linear = [
-                    Custom_Module.Linear(__linear_config_01),
+                _linear = [
+                    Custom_Module.Linear(_linear_config_01),
                     Dropout(config._Dropout_rate),
-                    Custom_Module.Linear(__linear_config_02)]
+                    Custom_Module.Linear(_linear_config_02)]
 
-                self.linear_block = Layer._make_sequential(__linear)
+                self.linear_block = Layer._make_sequential(_linear)
 
             def forward(self, x):
-                __x = self._Layer_norm_01(x + self._Attention(x, x, x))
-                __x = self._Layer_norm_02(__x + self.linear_block(__x))
+                _x = self._Layer_norm_01(x + self._Attention(x, x, x))
+                _x = self._Layer_norm_02(_x + self.linear_block(_x))
 
-                return __x
+                return _x
 
         # class PerceiverIO(Module):
         #     def __init__(self):
@@ -529,23 +541,23 @@ class Custom_Module():
                     self._Output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
-                for __parameters in self._Model.parameters():
-                    __parameters.requires_grad = config._Is_trainable
+                for _parameters in self._Model.parameters():
+                    _parameters.requires_grad = config._Is_trainable
 
                 # delete classfication module
                 self._Model.fc = None
 
             def forward(self, x):
-                __x = self._Model.conv1(x)
-                __x = self._Model.bn1(__x)
-                __out_conv1 = self._Model.relu(__x)              # x shape : batch_size, 2048, h/2, w/2
-                __x = self._Model.maxpool(__out_conv1)
-                __out_conv2 = self._Model.layer1(__x)            # x shape : batch_size, 2048, h/4, w/4
-                __out_conv3 = self._Model.layer2(__out_conv2)    # x shape : batch_size, 2048, h/8, w/8
-                __out_conv4 = self._Model.layer3(__out_conv3)    # x shape : batch_size, 2048, h/16, w/16
-                __out_conv5 = self._Model.layer4(__out_conv4)    # x shape : batch_size, 2048, h/32, w/32
+                _x = self._Model.conv1(x)
+                _x = self._Model.bn1(_x)
+                _out_conv1 = self._Model.relu(_x)              # x shape : batch_size, 2048, h/2, w/2
+                _x = self._Model.maxpool(_out_conv1)
+                _out_conv2 = self._Model.layer1(_x)            # x shape : batch_size, 2048, h/4, w/4
+                _out_conv3 = self._Model.layer2(_out_conv2)    # x shape : batch_size, 2048, h/8, w/8
+                _out_conv4 = self._Model.layer3(_out_conv3)    # x shape : batch_size, 2048, h/16, w/16
+                _out_conv5 = self._Model.layer4(_out_conv4)    # x shape : batch_size, 2048, h/32, w/32
 
-                return [__out_conv1, __out_conv2, __out_conv3, __out_conv4, __out_conv5]
+                return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
             def _average_pooling(self, ouput: Tensor):
                 return self._Model.avgpool(ouput)
@@ -554,9 +566,9 @@ class Custom_Module():
                 ModelSummary(self, input_shape)
 
             def _get_out_shape(self, input_size: List[int]):
-                __h, __w = input_size[:2]
+                _h, _w = input_size[:2]
                 return [
-                    [__c, __h / 2 ** (__d + 1), __w / 2 ** (__d + 1)] for [__d, __c] in enumerate(self._Output_channel)]
+                    [_c, _h / 2 ** (_d + 1), _w / 2 ** (_d + 1)] for [_d, _c] in enumerate(self._Output_channel)]
 
         class VGG(Module):
             def __init__(self, config: Module_Config.Backbone):
