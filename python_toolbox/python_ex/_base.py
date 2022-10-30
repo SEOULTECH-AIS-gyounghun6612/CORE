@@ -48,7 +48,7 @@ class OS_Style(Enum):
 # -- Mation Function -- #
 class Directory():
     _OS_THIS = platform.system()
-    _Divider = "/" if _OS_THIS == OS_Style.OS_UBUNTU else "\\"
+    _Divider = "/" if _OS_THIS == OS_Style.OS_UBUNTU.value else "\\"
 
     @classmethod  # fix it
     def _slash_check(self, directory: str, is_file: bool = False) -> str:
