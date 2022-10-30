@@ -166,8 +166,8 @@ class Debug():
             loss_logging = config._Loss_logging
             acc_logging = config._Acc_logging
 
-            self._Loss_tracking = config._Loss_logging if len(config._Loss_tracking.keys()) else config._Loss_tracking
-            self._Acc_tracking = config._Acc_logging if len(config._Acc_tracking.keys()) else config._Acc_tracking
+            self._Loss_tracking = config._Loss_tracking if len(config._Loss_tracking.keys()) else config._Loss_logging
+            self._Acc_tracking = config._Acc_tracking if len(config._Acc_tracking.keys()) else config._Acc_logging
 
             super().__init__(data=self._make_data_holder(loss_logging, acc_logging))
 
