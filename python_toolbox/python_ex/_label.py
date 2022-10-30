@@ -9,14 +9,14 @@ if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
     import _cv2
-    from _numpy import np_base, np_dtype
+    from _numpy import np_base, np_dtype, image_process
     import _error as _e
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
     from . import _cv2
-    from ._numpy import np_base, np_dtype
+    from ._numpy import np_base, np_dtype, image_process
     from . import _error as _e
 
 
@@ -305,8 +305,8 @@ class Label_Process():
                 # Data pre-process
                 # In later fix it -> using config augmentation
                 picked_input = _cv2.cv_base.resize(picked_input, self._Data_size)
-                picked_input = _cv2.cv_base.img_cvt(picked_input, _cv2.CVT_option.BGR2RGB)
-                picked_input = np_base.type_converter(picked_input, np_dtype.np_float32)
+                picked_input = _cv2.cv_base.img_cvt(picked_input, _cv2.CVT_option.BGR2RGB) / 255
+                picked_input = image_process.image_normalization(picked_input)
 
                 picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self._Activated_label, self._Data_size)
                 picked_label = np_base.type_converter(picked_label, np_dtype.np_float32)
