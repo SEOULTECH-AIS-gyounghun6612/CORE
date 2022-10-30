@@ -178,7 +178,7 @@ class Learning_process():
             self._Log = Debug.Learning_Log(log_opt)
             self._Log._insert(self._Learning_option._convert_to_dict())
 
-        def _set_dataloader(self, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style):
+        def _set_dataloader(self, label_opt: Label_Config, label_style: Label_Style, file_style: IO_Style):
             class Custom_Dataset(Dataset):
                 def __init__(self, mode: Learning_Mode, label_process: Label_Process.Basement, label_style: Label_Style, file_style: IO_Style) -> None:
                     self.data_process = label_process
@@ -199,11 +199,12 @@ class Learning_process():
 
                     return _data["input"], _data["label"], _data["info"]
 
+            _label_process = Label_Process._build(label_opt)
             self._Dataloader: Dict[Learning_Mode, DataLoader] = {}
 
             #  Use distribute or Not
             for _mode in self._Learning_option._Activate_mode:
-                _dataset = Custom_Dataset(_mode, label_process, label_style, file_style)
+                _dataset = Custom_Dataset(_mode, _label_process, label_style, file_style)
 
                 if self._Use_distribute:
                     self._Sampler[_mode] = DistributedSampler(_dataset, shuffle=(_mode == Learning_Mode.TRAIN))
