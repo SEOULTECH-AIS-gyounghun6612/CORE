@@ -1,6 +1,7 @@
 from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum
+from random import random
 from re import U
 from tkinter.tix import AUTO
 from typing import Dict, List, Tuple, Union, Any
@@ -8,31 +9,18 @@ from typing import Dict, List, Tuple, Union, Any
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
-    import _cv2
+    from _vision import File_IO, Process_For_Label
     from _numpy import np_base, np_dtype, image_process
-    import _error as _e
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
-    from . import _cv2
+    from ._vision import File_IO, Process_For_Label
     from ._numpy import np_base, np_dtype, image_process
-    from . import _error as _e
-
-
-# Set constant
-DEBUG = False
-_error = _e.Custom_error(
-    module_name="ais_custom_utils_v 2.x",
-    file_name="_label.py")
-
-label = namedtuple(
-    "label",
-    ["id", "train_id", "categoryId", "hasInstances", "ignoreInEval", "color", "name"])
 
 
 # -- DEFINE CONSTNAT -- #
-class Suported_Label(Enum):
+class Support_Label(Enum):
     BDD_100K = "BDD-100k"
 
 
@@ -42,9 +30,14 @@ class Learning_Mode(Enum):
     TEST = "test"
 
 
+class Input_Style(Enum):
+    IMAGE = "classification"
+    NUMPY = "sem_seg"
+
+
 class Label_Style(Enum):
     CLASSIFICATION = "classification"
-    SEM_SEG = "sem_seg"
+    SEMENTIC_SEG = "sem_seg"
     DETECTION = "detection"
 
 
@@ -59,22 +52,24 @@ class Normalize_Style(Enum):
     FIXED = 1
 
 
-# -- CUSTOM DATA TYPE -- #
-@dataclass
-class Data_Profile():
-    _Label_style: Label_Style
-    _IO_style: IO_Style
-    _Input: List = field(default_factory=list)
-    _Label: List = field(default_factory=list)
-
-
 # -- DEFINE STRUCTURE -- #
+@dataclass
+class Work_Profile():
+    _Label_style: Label_Style
+    _Label_IO: IO_Style
+
+    _Input_style: Input_Style = Input_Style.IMAGE
+    _Input_IO: IO_Style = IO_Style.IMAGE_FILE
+
+    _Data_list: List = field(default_factory=list)
+
+
 class Label_Structure():
     @dataclass
-    class Basement():
+    class Basement(Utils.Config):
         _Identity_num: int
         _Train_num: int
-        _Cateogry_num: str
+        _Cateogry: str
         _Ignore_in_eval: bool
         _Name: str
 
@@ -89,126 +84,140 @@ class Label_Structure():
 
 # -- DEFINE CONFIG -- #
 @dataclass
-class Augmentation_Config(Utils.Config):
-    _Resize: Union[List[int], List[float]] = field(default_factory=lambda: [1.0, 1.0])
-    _Flip: int = 0  # horizontal, vertical
-    _Rotate: float = 0.0  # 0 ~ 90 -> 0.0 ~ 1.0
-
-    _Normalize = Normalize_Style.FIXED
-    _Mean: List[int] = field(default_factory=lambda: [0.485, 0.456, 0.406])
-    _Std: List[int] = field(default_factory=lambda: [0.229, 0.224, 0.225])
-
-    def _convert_to_dict(self) -> Dict[str, Any]:
-        return super()._convert_to_dict()
-
-    def _restore_from_dict(self, data: Dict[str, Any]):
-        return super()._restore_from_dict(data)
-
-
-@dataclass
-class Label_Config(Utils.Config):
+class Label_Process_Config(Utils.Config):
     """
     """
-    _Name: Suported_Label
-    _Load_meta_file: str
-    _Load_label_style: List[Label_Style]  # Label style list that get from meta data.
+    _Name: Support_Label = Support_Label.BDD_100K
+    _Meta_file: str = None
+    _Data_root: str = f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}"  # Where input and label data exist
+    _Active_style: List[Label_Style] = field(default_factory=lambda: [Label_Style.SEMENTIC_SEG])  # Label style list that get from meta data.
 
-    _Data_root: str  # Where input and label data exist
-    _Data_size: List[int]  # Get data size from source if that can change
-    _Data_augmentation: Augmentation_Config
+    def _get_parameter(self) -> Dict[str, Any]:
+        return {
+            "name": self._Name,
+            "data_root": self._Data_root,
+            "active_style": [__style for __style in self._Active_style],
+            "meta_file": self._Meta_file}
 
-    def _convert_to_dict(self):
-        #  "_Data_augmentation": self._Data_augmentation._convert_to_dict()}
+    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
             "_Name": self._Name.value,
-            "_Load_meta_file": self._Load_meta_file,
-            "_Load_label_style": [__style.value for __style in self._Load_label_style],
-            "_Data_root": self._Data_root,
-            "_Data_size": self._Data_size, }
+            "_File_root": self._Data_root,
+            "_Active_style": [__style.value for __style in self._Active_style],
+            "_Meta_file": self._Meta_file}
 
-    def _restore_from_dict(self, data: Dict[str, Any]):
-        self._Name = Suported_Label(data["_Name"])
-        self._Load_meta_file, = data["_Load_meta_file"]
-        self._Load_label_style = [Label_Style(__style_name) for __style_name in data["_Load_label_style"]]
-        self._Data_root = data["_Data_root"]
-        self._Data_size = data["_Data_size"]
-        # self._Data_augmentation = self._Data_augmentation._restore_from_dict(data["_Data_size"])
-
-    def _root_directory_check(self) -> bool:
-        if Directory._exist_check(self._Data_root):
-            return True
-        else:
-            __default_root = Directory._relative_root() + f"Data{Directory._Divider}"
-            return Directory._exist_check(__default_root)
-
-    def _meta_file_exist_check(self) -> bool:
-        if File._exist_check(self._Load_meta_file):
-            return File._name_from_path(self._Load_meta_file)
-        else:
-            return None
+    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+        self._Name = Support_Label(data["_Name"])
+        self._Data_root = data["_File_root"]
+        self._Active_style = [Label_Style(__style_name) for __style_name in data["_Active_style"]]
+        self._Meta_file, = data["_Meta_file"]
 
 
 # -- Mation Function -- #
 class Label_Process():
     class Basement():
-        # Parameter for Label information
-        _Class_category: Dict[Label_Style, List[str]] = {}  # each class's category
-
-        # Parameter for Label pre-process
-        _Data_size: List[int]
-        _Data_augmentation: Augmentation_Config
-
         # initialize
-        def __init__(self, config: Label_Config):
-            self._Lable_name = config._Name
-            self._Root_dir = config._Data_root
-            self._Data_size = config._Data_size
+        def __init__(self, name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None):
+            # Parameter for Label information
+            self._Lable_name = name
+
+            # Parameter for Label pre-process
+            self._Root_dir = data_root if Directory._exist_check(data_root) else Directory._relative_root()
+            self._Activate_label: Dict[Label_Style, Dict[int, List[Label_Structure.Basement]]] = {}
 
             # Get label data from meta file
-            __meta = config._meta_file_exist_check()
-            if __meta is not None:
-                [__meta_dir, __meta_file] = __meta
+            if File._exist_check(meta_file):
+                [_meta_dir, _meta_file] = File._file_name_from_path(meta_file, just_file_name=False)
             else:
-                __meta_dir = f"{Directory._devide(__file__)[0]}/data_file/"
-                __meta_file = f"{self._Lable_name.value}.json"
-            __meta_data: Dict[str, Label_Structure] = File._json(file_dir=__meta_dir, file_name=__meta_file)
+                _meta_dir = f"{Directory._devide(__file__)[0]}data_file{Directory._Divider}"
+                _meta_file = f"{self._Lable_name.value}.json"
+            _meta_data: Dict[str, Label_Structure] = File._json(file_dir=_meta_dir, file_name=_meta_file)
 
-            # Make raw label data
-            self._Raw_label: Dict[Label_Style, List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]] = {}
-            for _style in config._Load_label_style:
+            # Make active_label from meta data
+            for _style in active_style:
                 if _style == Label_Style.CLASSIFICATION:
-                    _label_list: List[Label_Structure.Classification_Label] = [Label_Structure.Classification_Label(**data) for data in __meta_data[_style.value]]
+                    _label_list: List[Label_Structure.Classification_Label]\
+                        = [Label_Structure.Classification_Label(**data) for data in _meta_data[_style.value]]
 
-                elif _style == Label_Style.SEM_SEG:
-                    _label_list: List[Label_Structure.Seg_Label] = [Label_Structure.Seg_Label(**data) for data in __meta_data[_style.value]]
+                elif _style == Label_Style.SEMENTIC_SEG:
+                    _label_list: List[Label_Structure.Seg_Label]\
+                        = [Label_Structure.Seg_Label(**data) for data in _meta_data[_style.value]]
 
-                self._Raw_label[_style] = _label_list
-
-            # Conver to Raw to Active
-            self.make_label_info(_style)
+                # Conver to Raw to Active
+                self._make_active_label(_style, _label_list)
 
         # Freeze function
-        def make_label_info(self, style: Label_Style):
-            self._Activated_label: Dict[int, List] = {}
-            for _label in self._Raw_label[style]:
-                _info = [_label._Class_info, _label._Name]
-                if _label._Train_num in self._Activated_label.keys():
-                    self._Activated_label[_label._Train_num].append(_info)
+        def _make_active_label(self, style: Label_Style, raw_label: List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]):
+            self._Activate_label[style] = {}
+            for _label in raw_label:
+                if _label._Train_num in self._Activate_label[style].keys():
+                    self._Activate_label[style][_label._Train_num].append(_label._Class_info)
                 else:
-                    self._Activated_label[_label._Train_num] = [_info, ]
+                    self._Activate_label[style][_label._Train_num] = [_label._Class_info, ]
 
-        def set_learning_mode(self, mode: Learning_Mode):
+        def _set_learning_mode(self, mode: Learning_Mode):
             self._Active_mode = mode
 
         # Un-Freeze function
-        def get_data_profile(self, label_style: Label_Style, io_style: IO_Style) -> Data_Profile:
-            return Data_Profile(_Label_style=label_style, _IO_style=io_style, _Input=[], _Label=[])  # Make data profile holder
+        def _get_work_profile(self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
+            _parameter = {
+                "_Label_style": label_style,
+                "_Label_IO": label_io,
+                "_Input_style": input_style,
+                "_Input_IO": input_io,
 
-        def work(self, data: Data_Profile, index: int):
-            ...
+                "_Data_list": []}
 
-        def label_data_convert(self, label, from_style, to_style):
-            ...
+            return Work_Profile(**_parameter)  # Make data profile holder
+
+        def _work(self, data: Work_Profile, index: int):
+            return NotImplementedError
+
+    class BDD_100k(Basement):
+        _Directory: Dict[Union[Label_Style, Input_Style], Dict[IO_Style, str]] = {
+            Input_Style.IMAGE: {
+                IO_Style.IMAGE_FILE: "bdd-100k/images/{}/{}/",
+                IO_Style.ZIP_FILE: "",
+                IO_Style.ANNOTATION: ""
+            },
+            Label_Style.SEMENTIC_SEG: {
+                IO_Style.IMAGE_FILE: "bdd-100k/labels/sem_seg/colormaps/{}/",
+                IO_Style.ZIP_FILE: "",
+                IO_Style.ANNOTATION: ""}}
+
+        def _get_work_profile(self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
+            _selected_data = super()._get_work_profile(label_style, label_io, input_style, input_io)
+
+            if label_style == Label_Style.SEMENTIC_SEG:
+                if label_io == IO_Style.IMAGE_FILE:
+                    # input
+                    _input_dir = self._Directory[input_style][input_io].format("10k", self._Active_mode.value)
+                    _input_list = sorted(Directory._inside_search(self._Root_dir + _input_dir))
+                    # output
+                    _label_dir = self._Directory[label_style][label_io].format(self._Active_mode.value)
+                    _label_list = sorted(Directory._inside_search(self._Root_dir + _label_dir))
+
+                    _selected_data._Data_list = [{"input": _input_file, "label": _label_file} for _input_file, _label_file in zip(_input_list, _label_list)]
+
+                elif label_io == IO_Style.ANNOTATION:
+                    ...
+
+            return _selected_data
+
+        def _work(self, data: Work_Profile, index: int):
+            _pick_data = data._Data_list[index]
+
+            if data._Label_style == Label_Style.SEMENTIC_SEG:
+                # Get data from each data source
+                if data._Label_IO == IO_Style.IMAGE_FILE:
+                    picked_input = File_IO._image_read(_pick_data["input"])
+                    picked_label = File_IO._image_read(_pick_data["label"])
+                    picked_label = Process_For_Label._color_map_to_classification(picked_label, self._Activate_label[data._Label_style])
+
+                elif data._Label_IO == IO_Style.ANNOTATION:
+                    ...
+
+                return {"input": picked_input, "label": picked_label, "index": index}
 
     class Imagenet_1k(Basement):
         Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
@@ -224,115 +233,23 @@ class Label_Process():
                 IO_Style.ANNOTATION: "{}_map_for_annotation.json"}
         }
 
-        def __init__(self, import_style: List[Label_Style], data_size: List[int], root: str = None) -> None:
-            self._Lable_name = "imagenet_1k"
-            super().__init__(import_style, data_size, root)
-
-        def get_data_profile(self, IO_label_style: Label_Style, IO_file_style: IO_Style) -> Data_Profile:
-            data_profile = super().get_data_profile(IO_label_style, IO_file_style)
-
-            if data_profile._IO_style == IO_Style.IMAGE_FILE:
-                _label_list = self._Raw_label[IO_label_style]
-                _class_info = [[_label.Class_info, _label._Train_num] for _label in _label_list]
-
-                for _name, train_id in _class_info:
-                    _file_list = Directory._inside_search(
-                        self._Root_dir + self.Directory[IO_label_style][IO_file_style].format(self.learning_mode, _name))
-                    data_profile._Input += _file_list
-                    data_profile._Label += [train_id for _ in range(len(_file_list))]
-
-            elif data_profile._IO_style == IO_Style.ANNOTATION:
-                _annotation = File._json(
-                    self._Root_dir + self.Directory[IO_label_style][IO_file_style],
-                    self.Annotation[IO_label_style][IO_file_style].format(self.learning_mode))
-                data_profile._Input += _annotation["input"]
-                data_profile._Label += _annotation["label"]
-
-            return data_profile
-
-        def work(self, data: Data_Profile, index):
-            _label_list = self._Raw_label[data._Label_style]
-
-            if data._IO_style == IO_Style.IMAGE_FILE:
-                picked_image = _cv2.file.image_read(data._Input[index])
-                picked_image = _cv2.cv_base.resize(picked_image, [224, 224])
-                picked_label = np_base.get_array_from(len(_label_list), True, dtype=np_dtype.np_float32)
-
-            return [picked_image, picked_label]
-
     class Imagenet_22k(Basement):
         ...
-
-    class BDD_100k(Basement):
-        _Class_category: Dict[Label_Style, List[str]] = {Label_Style.SEM_SEG: ["void", "flat", "construction", "object", "nature", "sky", "human", "vehicle"]}
-        _Activated_label: Dict[int, List] = {}
-
-        _Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
-            Label_Style.SEM_SEG: {
-                IO_Style.IMAGE_FILE: "bdd-100k/{}/{}/",
-                IO_Style.ZIP_FILE: "",
-                IO_Style.ANNOTATION: ""}}
-
-        def __init__(self, config: Label_Config):
-            super().__init__(config)
-
-        def get_data_profile(self, label_style: Label_Style, io_style: IO_Style) -> Data_Profile:
-            data_profile = super().get_data_profile(label_style, io_style)
-
-            if data_profile._Label_style == Label_Style.SEM_SEG:
-                if data_profile._IO_style == IO_Style.IMAGE_FILE:
-                    __input_dir = self._Directory[label_style][io_style].format("images/10k", self._Active_mode)
-                    data_profile._Input += sorted(Directory._inside_search(self._Root_dir + __input_dir))
-
-                    __label_dir = self._Directory[label_style][io_style].format("labels/sem_seg/colormaps", self._Active_mode)
-                    data_profile._Label += sorted(Directory._inside_search(self._Root_dir + __label_dir))
-
-                elif data_profile._IO_style == IO_Style.ANNOTATION:
-                    ...
-
-            return data_profile
-
-        def work(self, data: Data_Profile, index: int):
-            if data._Label_style == Label_Style.SEM_SEG:
-                # Get data from each data source
-                if data._IO_style == IO_Style.IMAGE_FILE:
-                    picked_input = _cv2.file.image_read(data._Input[index])
-                    picked_label = _cv2.file.image_read(data._Label[index])
-
-                elif data._IO_style == IO_Style.ANNOTATION:
-                    ...
-
-                # Data pre-process
-                # In later fix it -> using config augmentation
-                picked_input = _cv2.cv_base.resize(picked_input, self._Data_size)
-                picked_input = _cv2.cv_base.img_cvt(picked_input, _cv2.CVT_option.BGR2RGB) / 255
-                picked_input = image_process.image_normalization(picked_input)
-
-                picked_label = _cv2.augmentation._colormap_to_classification(picked_label, self._Activated_label, self._Data_size)
-                picked_label = np_base.type_converter(picked_label, np_dtype.np_float32)
-
-                return {"input": picked_input, "label": picked_label, "info": index}
-
-        def unwork(self, image):
-            ...
-
-        def label_data_convert(self, label, from_style, to_style):
-            return _cv2.augmentation._classification_to_colormap(label, self._Activated_label, self._Data_size)
 
     class PASCAL():
         ...
 
     class CDnet():
-        Label_category: Dict[Label_Style, List[str]] = {Label_Style.SEM_SEG: ["void", "flat", "construction", "object", "nature", "sky", "human", "vehicle"]}
+        Label_category: Dict[Label_Style, List[str]] = {Label_Style.SEMENTIC_SEG: ["void", "flat", "construction", "object", "nature", "sky", "human", "vehicle"]}
 
         Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
-            Label_Style.SEM_SEG: {
+            Label_Style.SEMENTIC_SEG: {
                 IO_Style.IMAGE_FILE: "",
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""}
         }
         Annotation: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
-            Label_Style.SEM_SEG: {
+            Label_Style.SEMENTIC_SEG: {
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""}
         }
@@ -341,7 +258,7 @@ class Label_Process():
             self.Lable_name = "CDnet"
             super().__init__(import_style, data_size)
 
-        def get_data_profile(self, holder: Data_Profile) -> Data_Profile:
+        def get_data_profile(self, holder: Work_Profile) -> Work_Profile:
             ...
 
         def work(self, data, index):
@@ -352,9 +269,9 @@ class Label_Process():
             pass
 
     @staticmethod
-    def _build(config: Label_Config):
-        if config._Name == Suported_Label.BDD_100K:
-            return Label_Process.BDD_100k(config)
+    def _build(name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None):
+        if name == Support_Label.BDD_100K:
+            return Label_Process.BDD_100k(name, data_root, active_style, meta_file)
 
 
 class Data_Augmentation():

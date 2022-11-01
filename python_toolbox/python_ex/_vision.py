@@ -19,12 +19,14 @@ from enum import Enum
 
 if __package__ == "":
     import _base
+    from _base import File
     import _numpy
     from _numpy import np_base, np_dtype
     import _error as _e
 
 else:
     from . import _base
+    from ._base import File
     from . import _numpy
     from ._numpy import np_base, np_dtype
     from . import _error as _e
@@ -32,14 +34,21 @@ else:
 _error_message = _e.Custom_error("AIS_utils", "_cv2")
 
 
-class Color_option(Enum):
+# -- DEFINE CONSTNAT -- #
+class Color_Option(Enum):
     BGR = 0
     RGB = 1
     BGRA = 2
     GRAY = 3
 
 
-class C_position(Enum):
+class CVT_option(Enum):
+    GRAY2BGR = 0
+    BGR2GRAY = 1
+    BGR2RGB = 2
+
+
+class Channel_Style(Enum):
     Last = True
     First = False
 
@@ -49,65 +58,60 @@ class R_option(Enum):
     ZtoO = 1  # [0, 1.0]
 
 
-class CVT_option(Enum):
-    GRAY2BGR = 0
-    BGR2GRAY = 1
-    BGR2RGB = 2
-
-
 class Image_direction(Enum):
     Hight = 0
     width = 1
 
 
-class file():
-    # option
-    DEBUG = False
+class Support_Image_Extension(Enum):
+    JPG = "jpg"
+    PNG = "png"
+    BMP = "bmp"
 
-    IMAGE_EXT = ["jpg", "png", "bmp", ".jpg", ".png", ".bmp"]
-    VIDEO_EXT = ["mp4", "avi", ".mp4", ".avi"]
 
-    @classmethod
-    def image_read(self, filename: str, color_option: Color_option = Color_option.BGR) -> _numpy.ndarray:
-        if not _base.File._exist_check(filename):
-            _error_message.variable_stop(
-                "file.image_read",
-                ["filename", ],
-                "Have some problem in parameter 'filename'. Not exist")
-        # data read
-        if color_option == Color_option.BGR:
-            _read_img = cv2.imread(filename, cv2.IMREAD_COLOR)
-        elif color_option == Color_option.GRAY:
-            _read_img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
-        elif color_option == Color_option.RGB:
-            _read_img = cv2.imread(filename, cv2.IMREAD_COLOR)
-            _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
-        elif color_option == Color_option.BGRA:
-            # this code dosen't check it. if you wnat use it. check it output
-            _read_img = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+class Support_Video_Extension(Enum):
+    MP4 = "mp4"
+    AVI = "avi"
 
-        # read debug
-        if self.DEBUG:
-            # if debug option is true, display the image in test window and program will be stop.
-            cv2.imshow("image_read", _read_img)
-            cv2.waitKey(0)
 
-        return _read_img
+class Segmentation_Style(Enum):
+    CLASS_MAP: 0        # (h, w, class count)
+    COLOR_MAP: 1        # (h, w, 3)
+    CLASSIFICATION: 2   # (h, w)
 
-    @classmethod
-    def image_write(self, file_dir: str, image):
-        filename = _base.File._name_from_path(file_dir)
-        if not _base.File._extension_check(filename, self.IMAGE_EXT):
-            if self.DEBUG:
-                _error_message.variable(
-                    "file.image_write",
-                    "Have some problem in parameter 'filename'. use default ext")
-            file_dir += "jpg" if file_dir[-1] == "." else ".jpg"
+# -- DEFINE CONFIG -- #
 
-        cv2.imwrite(file_dir, image)
+
+# -- Mation Function -- #
+class File_IO():
+    @staticmethod
+    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> _numpy.ndarray:
+        _is_road, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+
+        if _is_road:
+            # data read
+            if color_option == Color_Option.BGR:
+                _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
+            elif color_option == Color_Option.GRAY:
+                _read_img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            elif color_option == Color_Option.RGB:
+                _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
+                _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
+            elif color_option == Color_Option.BGRA:
+                # this code dosen't check it. if you wnat use it. check it output
+                _read_img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+
+            return _read_img
+        else:
+            return None
 
     @staticmethod
-    def video_capture(location, is_file=False):
+    def _image_write(file_path: str, image: _numpy.ndarray):
+        _, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+        cv2.imwrite(file_path, image)
+
+    @staticmethod  # in later fix
+    def _video_capture(location, is_file=False):
         if is_file:
             if not _base.Directory._exist_check(location):
                 _error_message.variable_stop(
@@ -117,7 +121,7 @@ class file():
         return cap
 
     @classmethod  # in later fix
-    def video_write(self, filename: str, video_size, frame=30):
+    def _video_write(self, filename: str, video_size, frame=30):
         video_format = filename.split("/")[-1].split(".")[-1]
 
         if not _base.File._extension_check(video_format, self.VIDEO_EXT):
@@ -138,9 +142,9 @@ class file():
         return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
 
 
-class cv_base():
+class Base_Process():
     @staticmethod
-    def image_stack(images, channel_option: C_position):
+    def image_stack(images, channel_option: Channel_Style):
         if channel_option.value:  # stack to last channel
             _axis = -1
         else:               # stack to first channel
@@ -148,7 +152,7 @@ class cv_base():
         return np_base.stack(images, _axis)
 
     @staticmethod
-    def channel_converter(image, channel_option: C_position):
+    def channel_converter(image, channel_option: Channel_Style):
         if channel_option.value:  # [w, h, c]
             return _numpy.image_process.conver_to_last_channel(image)
         else:  # [c, w, h]
@@ -205,7 +209,7 @@ class cv_base():
             # color image
             holder = np_base.get_array_from(image)
             for _ch_ct in range(image.shape[-1]):
-                holder[:, :, _ch_ct] = cv_base.filtering(image[:, :, _ch_ct], array)
+                holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
             return holder
         else:
             return cv2.filter2D(image, cv2.CV_64F, array)
@@ -295,8 +299,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = cv_base.filtering(image, np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
-                dy = cv_base.filtering(image, np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dx = Base_Process.filtering(image, np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
+                dy = Base_Process.filtering(image, np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
                 dxy = _numpy.cal.distance(dx, dy, is_euclid)
                 direction = _numpy.cal.get_direction(dx, dy)
                 return dxy, direction
@@ -341,15 +345,15 @@ class edge():
             return _edge if is_active_map else np_base.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
-    def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=C_position.Last):
+    def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=Channel_Style.Last):
         _high = ths[0]
         _low = ths[1]
 
         canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
         if channel is not None:
-            canny_image = cv_base.image_stack([canny_image, canny_image, canny_image], channel)
+            canny_image = Base_Process.image_stack([canny_image, canny_image, canny_image], channel)
 
-        return cv_base.range_converter(canny_image, R_option.ZtoFF, range)
+        return Base_Process.range_converter(canny_image, R_option.ZtoFF, range)
 
 
 class gui_process():
@@ -398,11 +402,11 @@ class draw():
         _merge_img = image[0]
         if direction == Image_direction.Hight:
             for _img in image[1:]:
-                _merge_img = cv_base.padding(_merge_img, [0, interval, 0, 0], interval_color)
+                _merge_img = Base_Process.padding(_merge_img, [0, interval, 0, 0], interval_color)
                 _merge_img = cv2.vconcat((_merge_img, _img))
         else:  # width
             for _img in image[1:]:
-                _merge_img = cv_base.padding(_merge_img, [0, 0, 0, interval], interval_color)
+                _merge_img = Base_Process.padding(_merge_img, [0, 0, 0, interval], interval_color)
                 _merge_img = cv2.hconcat((_merge_img, _img))
 
         return _merge_img
@@ -430,7 +434,7 @@ class draw():
                     fontFace=cv2.FONT_HERSHEY_DUPLEX,
                     color=0)
 
-        _text_shell = cv_base.resize(_text_shell, [_text_h, _w])
+        _text_shell = Base_Process.resize(_text_shell, [_text_h, _w])
         _tpye_image = np_base.get_array_from(_tpye_image_size, True, 0xFF)
         _tpye_image[:_h, :] = image
         _tpye_image[_h:, :] = _text_shell
@@ -498,66 +502,55 @@ class draw():
             pass
 
 
-class augmentation():
-    def __call__(self, **option):
-        pass
-
+class Process_For_Label():
+    # (h, w, class count) -> (h, w)
     @staticmethod
-    def _colormap_to_classification(color_map: _numpy.ndarray, label_info: Dict[int, List], size: List[int]):
-        _h, _w = size
-        _label_ids = sorted(label_info.keys())
+    def _class_map_to_classification(class_map: _numpy.ndarray):
+        return class_map.argmax()
 
-        _classfication = np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=np_dtype.np_uint8)
+    # (h, w) -> (h, w, 3)
+    @staticmethod
+    def _classification_to_color_map(classification: _numpy.ndarray, activate_label: Dict[int, List]):
+        _label_ids = sorted(activate_label.keys())
+        _color_list = np_base.get_array_from([activate_label[_id][0] for _id in _label_ids], dtype=np_dtype.np_uint8)
+        return _color_list[classification]
+
+    # (h, w, 3) -> (h, w, class count)
+    @staticmethod
+    def _color_map_to_class_map(color_map: _numpy.ndarray, activate_label: Dict[int, List]):
+        _h, _w, _ = color_map.shape
+
+        _label_ids = sorted(activate_label.keys())
+        _class_map = np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=np_dtype.np_uint8)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
-            _color_list = [_info[0] for _info in label_info[_label_id]]
-            _finder = _numpy.image_process.color_finder(color_map, _color_list).astype(np_dtype.np_uint8)
-            _classfication[:, :, _label_id] = cv_base.resize(_finder, size)
+            _color_list = [_label for _label in activate_label[_label_id]]
+            _class_map[:, :, _label_id] = _numpy.image_process.color_finder(color_map, _color_list).astype(np_dtype.np_uint8)
 
         # make ignore
-        _setted = _numpy.np.sum(_classfication, axis=2)
-        _setted = np_base.type_converter(np_base.type_converter(_setted, np_dtype.np_bool), np_dtype.np_uint8)
-        _classfication[:, :, -1] = 1 - _setted
-        return _classfication
+        _setted = _numpy.np.sum(_class_map, axis=2)
+        _class_map[:, :, -1] = np_base.type_converter(1 - np_base.type_converter(_setted, np_dtype.np_bool), np_dtype.np_uint8)
+        return _class_map
 
+    # (h, w, 3) -> (h, w)
     @staticmethod
-    def _classification_to_colormap(classfication: _numpy.ndarray, label_info: Dict[int, List], size: List[int]):
-        _h, _w = size
-        _label_ids = sorted(label_info.keys())
-        _color_list = np_base.get_array_from([label_info[_id][0][0] for _id in _label_ids])
-        return _color_list[classfication]
+    def _color_map_to_classification(color_map: _numpy.ndarray, activate_label: Dict[int, List]):
+        _classification = Process_For_Label._color_map_to_class_map(color_map, activate_label)
+        return Process_For_Label._class_map_to_classification(_classification)
 
+    # (h, w, class count) -> (h, w, 3)
     @staticmethod
-    def _make_noise():
-        pass
+    def _class_map_to_color_map(class_map: _numpy.ndarray, activate_label: Dict[int, List]):
+        _classification = Process_For_Label._class_map_to_classification(class_map)
+        return Process_For_Label._classification_to_color_map(_classification, activate_label)
 
+    # (h, w) -> (h, w, class count)
     @staticmethod
-    def _rotate(img, center_rate, angle, scale):
-        pass
+    def _classification_to_class_map(classification: _numpy.ndarray, num_id: int):
+        _h, _w = classification.shape
+        _class_map = np_base.get_array_from([_h, _w, num_id], True, dtype=np_dtype.np_uint8)
 
-    @staticmethod
-    def _crop(imgs, size, left_top=[None, None], is_last_ch_imgs=True):
-        if is_last_ch_imgs:
-            h, w, _ = imgs[0].shape
-        else:
-            _, h, w = imgs[0].shape
-
-        crop_imgs = []
-
-        LT_h = random.randrange(h - size[0]) if left_top[0] is None else left_top[0]
-        LT_W = random.randrange(w - size[1]) if left_top[1] is None else left_top[1]
-
-        for _img in imgs:
-            crop_imgs.append(
-                _img[LT_h: LT_h + size[0], LT_W: LT_W + size[1]] if is_last_ch_imgs
-                else _img[:, LT_h: LT_h + size[0], LT_W: LT_W + size[1]])
-
-        return crop_imgs
-
-    @staticmethod
-    def _flip():
-        pass
-
-    def image_augmentation():
-        pass
+        for _id in range(num_id):
+            _class_map[:, :, _id] = classification == _id
+        return _class_map

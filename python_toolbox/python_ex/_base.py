@@ -8,7 +8,7 @@ Requirement
     None
 """
 # Import module
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 import json
 import yaml
@@ -68,7 +68,10 @@ class Directory():
 
     @classmethod
     def _exist_check(self, directory: str) -> bool:
-        return path.isdir(directory)
+        if directory is None:
+            return False
+        else:
+            return path.isdir(directory)
 
     @classmethod
     def _devide(self, directory: str, point: int = -1) -> List[str]:
@@ -185,41 +188,28 @@ class Directory():
 class File():
     @classmethod
     def _exist_check(self, file_path: str) -> bool:
-        return path.isfile(file_path)
+        if file_path is None:
+            return False
+        else:
+            return path.isfile(file_path)
 
     @classmethod
-    def _name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
+    def _file_name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
         file_path = Directory._slash_check(file_path, is_file=True)
         _file_dir, _file_name = path.split(file_path)
         return _file_name if just_file_name else [_file_dir, _file_name]
 
     @staticmethod
-    def _extension_check(file_dir, exts: List[str], is_fix: bool = False):
-        file_name = File._name_from_path(file_dir)
-        is_positive = False
+    def _extension_check(file_path: str, exts: List[str], is_fix: bool = False):
+        _file_dir, _file_name = File._file_name_from_path(file_path, False)
 
-        if file_name is None:
-            # !!!WARING!!! file directory not have file name
-            _error.variable(
-                function_name="file._extension_check",
-                variable_list=["file_dir", ],
-                AA="File name not exist in Entered Parameter 'file_dir'"
-            ) if DEBUG else None
-
-            # fix
-            file_name = file_dir + "." + exts[0] if is_fix else None
-
+        if _file_name == "" or _file_name.split(".")[-1] == "":  # "file_path" is dir or extension not exist in that
+            return [True, f"{file_path}.{exts[0]}"] if is_fix else [False, file_path]
+        elif _file_name.split(".")[-1] not in exts:  # path extension not exist in exts
+            _file_name = _file_name.replace(_file_name.split(".")[-1], exts[0])
+            return [True, f"{_file_dir}{Directory._Divider}{_file_name}"] if is_fix else [False, file_path]
         else:
-            file_ext = file_name.split(".")[-1]
-            is_positive = file_ext in exts
-
-            # fix
-            if (not is_positive) and is_fix:
-                _tem_ct = file_name.find(".")
-                replace_file_name = file_name[:_tem_ct] + "." + exts[0]
-                file_name = file_dir.replace(file_name, replace_file_name)
-
-        return [is_positive, file_name] if is_fix else is_positive
+            return [True, file_path]
 
     @classmethod
     def _json(self, file_dir: str, file_name: str, data_dict: Dict = None, is_save: bool = False):
@@ -351,8 +341,7 @@ class Utils():
             """
             Returned dictionary value type must be can dumped in json file
             """
-
-            raise NotImplementedError
+            return asdict(self)
 
         def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
             """
