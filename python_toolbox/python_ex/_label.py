@@ -10,13 +10,11 @@ if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
     from _vision import File_IO, Process_For_Label
-    from _numpy import np_base, np_dtype, image_process
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
     from ._vision import File_IO, Process_For_Label
-    from ._numpy import np_base, np_dtype, image_process
 
 
 # -- DEFINE CONSTNAT -- #
