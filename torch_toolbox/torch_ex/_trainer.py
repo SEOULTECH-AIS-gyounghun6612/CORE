@@ -246,14 +246,14 @@ class Learning_process():
             # Do learning process
             for _epoch in range(self.config._Last_epoch + 1, self.config._Max_epochs):
                 _epoch_dir = Directory._make(f"{_epoch}/", self._Learning_root)
-                self._learning(_epoch, _sampler, _dataloader, _model, _optim)
+                self._learning(_this_gpu_id, _epoch, _sampler, _dataloader, _model, _optim)
 
                 if _schedule is not None:
                     _schedule.step()
 
                 # save log file
                 self._Log._insert({"_Last_epoch": _epoch})
-                self._Log._save(self._Learning_root, "learning_log.json")
+                self._Log._save(self._Learning_root, "trainer_log.json")
 
                 # save model
                 self._save_model(_epoch_dir)
@@ -267,6 +267,7 @@ class Learning_process():
         # Un-Freeze function
         def _learning(
                 self,
+                this_gpu_id: int,
                 epoch: int,
                 sampler: Dict[Learning_Mode, DistributedSampler],
                 dataloader: Dict[Learning_Mode, DataLoader],
