@@ -335,7 +335,7 @@ class Utils():
             """
 
             """
-            raise NotImplementedError
+            raise {}
 
         def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
             """

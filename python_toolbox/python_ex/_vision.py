@@ -506,7 +506,7 @@ class Process_For_Label():
     # (h, w, class count) -> (h, w)
     @staticmethod
     def _class_map_to_classification(class_map: _numpy.ndarray):
-        return class_map.argmax()
+        return class_map.argmax(axis=2)
 
     # (h, w) -> (h, w, 3)
     @staticmethod
@@ -536,8 +536,8 @@ class Process_For_Label():
     # (h, w, 3) -> (h, w)
     @staticmethod
     def _color_map_to_classification(color_map: _numpy.ndarray, activate_label: Dict[int, List]):
-        _classification = Process_For_Label._color_map_to_class_map(color_map, activate_label)
-        return Process_For_Label._class_map_to_classification(_classification)
+        _class_map = Process_For_Label._color_map_to_class_map(color_map, activate_label)
+        return Process_For_Label._class_map_to_classification(_class_map)
 
     # (h, w, class count) -> (h, w, 3)
     @staticmethod

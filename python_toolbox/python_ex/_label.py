@@ -19,7 +19,7 @@ else:
 
 # -- DEFINE CONSTNAT -- #
 class Support_Label(Enum):
-    BDD_100K = "BDD-100k"
+    BDD_100k = "BDD-100k"
 
 
 class Learning_Mode(Enum):
@@ -85,7 +85,7 @@ class Label_Structure():
 class Label_Process_Config(Utils.Config):
     """
     """
-    _Name: Support_Label = Support_Label.BDD_100K
+    _Name: Support_Label = Support_Label.BDD_100k
     _Meta_file: str = None
     _Data_root: str = f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}"  # Where input and label data exist
     _Active_style: List[Label_Style] = field(default_factory=lambda: [Label_Style.SEMENTIC_SEG])  # Label style list that get from meta data.
@@ -208,14 +208,14 @@ class Label_Process():
             if data._Label_style == Label_Style.SEMENTIC_SEG:
                 # Get data from each data source
                 if data._Label_IO == IO_Style.IMAGE_FILE:
-                    picked_input = File_IO._image_read(_pick_data["input"])
-                    picked_label = File_IO._image_read(_pick_data["label"])
-                    picked_label = Process_For_Label._color_map_to_classification(picked_label, self._Activate_label[data._Label_style])
+                    _picked_input = File_IO._image_read(_pick_data["input"])
+                    _picked_label = File_IO._image_read(_pick_data["label"])
+                    _picked_label = Process_For_Label._color_map_to_classification(_picked_label, self._Activate_label[data._Label_style])
 
                 elif data._Label_IO == IO_Style.ANNOTATION:
                     ...
 
-                return {"input": picked_input, "label": picked_label, "index": index}
+                return {"input": _picked_input, "label": _picked_label, "index": index}
 
     class Imagenet_1k(Basement):
         Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
@@ -267,10 +267,5 @@ class Label_Process():
             pass
 
     @staticmethod
-    def _build(name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None):
-        if name == Support_Label.BDD_100K:
-            return Label_Process.BDD_100k(name, data_root, active_style, meta_file)
-
-
-class Data_Augmentation():
-    ...
+    def _build(name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None) -> Basement:
+        return Label_Process.__dict__[name.name](name, data_root, active_style, meta_file)
