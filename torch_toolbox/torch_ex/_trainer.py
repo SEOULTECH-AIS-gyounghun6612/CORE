@@ -134,7 +134,7 @@ class Learning_process():
 
         def _set_dataset(self, dateset_config: Dataset_Config):
             self._Log._insert({"dataloader": dateset_config._convert_to_dict()})
-            self._Dataset = {}
+            self._Dataset: Dict[Learning_Mode, Custom_Dataset] = {}
             for _mode in self.config._Learning_list:
                 self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
 
@@ -186,6 +186,7 @@ class Learning_process():
             # set log state
             self._Log._set_activate_mode(mode)
 
+        # in later move to custom model
         def _save_model(self, save_dir: str, model: Custom_Model, optim: Optimizer = None, schedule: _LRScheduler = None):
             save(model.state_dict(), f"{save_dir}model.h5")  # save model state
 
@@ -195,6 +196,7 @@ class Learning_process():
                     "schedule": None if schedule is None else schedule}
                 save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
+        # in later move to custom model
         def _load_model(self, save_dir: str, model: Custom_Model, optim: Optimizer = None, schedule: _LRScheduler = None):
             _model_file = f"{save_dir}model.h5"
             if File._exist_check(_model_file):
@@ -209,12 +211,14 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, max_data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
+        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self.config._Max_epochs)
-            _data_board = Utils._progress_board(data_count, max_data_count)
+
+            _data_len = self._Dataset[mode].__len__()
+            _data_board = Utils._progress_board(data_count, _data_len)
 
             _batch_size = self.config._Batch_size
-            _max_batch_ct = max_data_count // _batch_size + int(max_data_count % _batch_size)
+            _max_batch_ct = _data_len // _batch_size + int(_data_len % _batch_size)
 
             _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
@@ -223,7 +227,7 @@ class Learning_process():
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._Log._learning_tracking(epoch, data_count)
 
-            Utils._progress_bar(data_count, max_data_count, _pre, _suf, decimals, length, fill)
+            Utils._progress_bar(data_count, _data_len, _pre, _suf, decimals, length, fill)
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
             self._Is_cuda = len(self.config._GPU_list)
