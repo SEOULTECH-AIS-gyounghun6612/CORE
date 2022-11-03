@@ -50,9 +50,9 @@ class Suported_Norm(Enum):
 
 
 class Suported_Backbone(Enum):
-    ResNet = 0
-    VGG = 1
-    FCN = 2
+    ResNet = "ResNet"
+    VGG = "VGG"
+    FCN = "FCN"
 
 
 # -- DEFINE CONFIG -- #
@@ -156,23 +156,24 @@ class Layer_Config():
                 return {}
 
 
-class Module_Config():
-    @dataclass
-    class Model(Utils.Config):
-        _Model_name: str
+@dataclass
+class Custom_Model_Config(Utils.Config):
+    _Model_name: str
 
-        def _get_parameter(self):
-            ...
+    def _get_parameter(self):
+        ...
 
-        def _convert_to_dict(self) -> Dict[str, Any]:
-            _dict = {
-                "_Model_name": self._Model_name
-            }
-            return _dict
+    def _convert_to_dict(self) -> Dict[str, Any]:
+        _dict = {
+            "_Model_name": self._Model_name
+        }
+        return _dict
 
-        def _restore_from_dict(self, data: Dict[str, Any]):
-            self._Model_name = data["_Model_name"]
+    def _restore_from_dict(self, data: Dict[str, Any]):
+        self._Model_name = data["_Model_name"]
 
+
+class Model_Componant_Config():
     @dataclass
     class Linear(Utils.Config):
         _Linear_config: Layer_Config.Linear
@@ -260,10 +261,10 @@ class Module_Config():
             return self._Output_dim // self._Head_count
 
         def _get_QKVO_config(self):
-            _q_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            _k_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            _v_config = Module_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
-            _o_config = Module_Config.Linear(Layer_Config.Linear(self._Output_dim, self._Output_dim))
+            _q_config = Model_Componant_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _k_config = Model_Componant_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _v_config = Model_Componant_Config.Linear(Layer_Config.Linear(self._Input_dim, self._Output_dim))
+            _o_config = Model_Componant_Config.Linear(Layer_Config.Linear(self._Output_dim, self._Output_dim))
 
             return _q_config, _k_config, _v_config, _o_config
 
@@ -279,9 +280,9 @@ class Module_Config():
             return super()._restore_from_dict(data)
 
         def _get_linear_config(self):
-            _linear_01 = Module_Config.Linear(
+            _linear_01 = Model_Componant_Config.Linear(
                 Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_type=Suported_Active.GELU)
-            _linear_02 = Module_Config.Linear(
+            _linear_02 = Model_Componant_Config.Linear(
                 Layer_Config.Linear(self._Output_dim * self._Hidden_rate, self._Output_dim))
 
             return _linear_01, _linear_02
@@ -293,6 +294,15 @@ class Module_Config():
 
         _Is_pretrained: bool = True
         _Is_trainable: bool = False
+
+        def _get_parameter(self) -> Dict[str, Any]:
+            return {
+                "name": self._Name,
+                "type": self._Type,
+
+                "is_pretrained": self._Is_pretrained,
+                "is_trainable": self._Is_trainable
+            }
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -312,7 +322,7 @@ class Layer():
         return Sequential(*list)
 
     @ staticmethod
-    def _make_weight(size, value_range: List[float]):
+    def _make_weight(size, value_range: List[float]) -> Tensor:
         return parameter.Parameter(Torch_Utils.Tensor._make_tensor(size, value=value_range, dtype="float32"))
 
     @staticmethod
@@ -346,23 +356,24 @@ class Layer():
             return GELU(**active_opt._make_parameter())
 
 
-class Custom_Module():
-    class Model(Module):
-        def __init__(self, config: Module_Config.Model):
-            super(Custom_Module.Model, self).__init__()
-            self.model_name = config._Model_name
+class Custom_Model(Module):
+    def __init__(self, config: Custom_Model_Config):
+        super(Custom_Model, self).__init__()
+        self.model_name = config._Model_name
 
-        # Freeze function
-        def _sumarry(self, input_shape):
-            ModelSummary(self, input_shape)
+    # Freeze function
+    def _sumarry(self, input_shape):
+        ModelSummary(self, input_shape)
 
-        # Un-Freeze function
-        def forward(self, x):
-            return x
+    # Un-Freeze function
+    def forward(self, x):
+        return x
 
+
+class Model_Componant():
     class Linear(Module):
-        def __init__(self, config: Module_Config.Linear):
-            super(Custom_Module.Linear, self).__init__()
+        def __init__(self, config: Model_Componant_Config.Linear):
+            super(Model_Componant.Linear, self).__init__()
 
             self._Linear = Linear(**config._Linear_config._make_parameter())
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 1)
@@ -375,8 +386,8 @@ class Custom_Module():
             return _x
 
     class Conv2D(Module):
-        def __init__(self, config: Module_Config.Conv2D):
-            super(Custom_Module.Conv2D, self).__init__()
+        def __init__(self, config: Model_Componant_Config.Conv2D):
+            super(Model_Componant.Conv2D, self).__init__()
 
             self._Conv2D = Conv2d(**config._Conv2D_config._make_parameter())
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 2)
@@ -389,7 +400,7 @@ class Custom_Module():
             return _x
 
     class PUP(Module):
-        def __init__(self, config: Module_Config.PUP):
+        def __init__(self, config: Model_Componant_Config.PUP):
             super().__init__()
 
             _front_conv, _backend_conv = config._make_conv_config()
@@ -429,26 +440,26 @@ class Custom_Module():
 
     class Attention():
         class Base(Module):
-            def __init__(self, config: Module_Config.Attention) -> None:
+            def __init__(self, config: Model_Componant_Config.Attention) -> None:
                 super().__init__()
                 self._Option = config
                 self._Head_dim = config._get_head_dim()
 
                 _maker_config = config._get_QKVO_config()
 
-                self.q_maker = Custom_Module.Linear(_maker_config[0])
+                self.q_maker = Model_Componant.Linear(_maker_config[0])
                 init.xavier_uniform_(self.q_maker._Linear.weight)
                 self.q_maker._Linear.bias.data.fill_(0)
 
-                self.k_maker = Custom_Module.Linear(_maker_config[1])
+                self.k_maker = Model_Componant.Linear(_maker_config[1])
                 init.xavier_uniform_(self.k_maker._Linear.weight)
                 self.k_maker._Linear.bias.data.fill_(0)
 
-                self.v_maker = Custom_Module.Linear(_maker_config[2])
+                self.v_maker = Model_Componant.Linear(_maker_config[2])
                 init.xavier_uniform_(self.v_maker._Linear.weight)
                 self.v_maker._Linear.bias.data.fill_(0)
 
-                self.o_maker = Custom_Module.Linear(_maker_config[3])
+                self.o_maker = Model_Componant.Linear(_maker_config[3])
                 init.xavier_uniform_(self.o_maker._Linear.weight)
                 self.o_maker._Linear.bias.data.fill_(0)
 
@@ -464,7 +475,7 @@ class Custom_Module():
                 return matmul(_attention, V), _attention
 
         class Dot_Attention(Base):
-            def __init__(self, config: Module_Config.Attention) -> None:
+            def __init__(self, config: Model_Componant_Config.Attention) -> None:
                 super().__init__(config)
 
             def forward(self, Q_source: Tensor, K_source: Tensor, V_source: Tensor, mask: Tensor = None, return_attention_map: bool = False) -> Tensor:
@@ -485,18 +496,18 @@ class Custom_Module():
 
     class Transformer():
         class Base(Module):
-            def __init__(self, config: Module_Config.Transformer):
+            def __init__(self, config: Model_Componant_Config.Transformer):
                 super().__init__()
                 self._Layer_norm_01 = LayerNorm(config._Output_dim)
-                self._Attention = Custom_Module.Attention.Dot_Attention(config)
+                self._Attention = Model_Componant.Attention.Dot_Attention(config)
                 self._Layer_norm_02 = LayerNorm(config._Output_dim)
 
                 [_linear_config_01, _linear_config_02] = config._get_linear_config()
 
                 _linear = [
-                    Custom_Module.Linear(_linear_config_01),
+                    Model_Componant.Linear(_linear_config_01),
                     Dropout(config._Dropout_rate),
-                    Custom_Module.Linear(_linear_config_02)]
+                    Model_Componant.Linear(_linear_config_02)]
 
                 self.linear_block = Layer._make_sequential(_linear)
 
@@ -532,21 +543,21 @@ class Custom_Module():
 
     class Backbone():
         class ResNet(Module):
-            def __init__(self, config: Module_Config.Backbone):
+            def __init__(self, type: int, is_pretrained: bool, is_trainable: bool):
                 """
                 args:
                 """
-                super(Custom_Module.Backbone.ResNet, self).__init__()
-                if config._Type == 101:
-                    self._Model = models.resnet101(pretrained=config._Is_pretrained)
+                super(Model_Componant.Backbone.ResNet, self).__init__()
+                if type == 101:
+                    self._Model = models.resnet101(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
                 else:
-                    self._Model = models.resnet50(pretrained=config._Is_pretrained)
+                    self._Model = models.resnet50(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
                 for _parameters in self._Model.parameters():
-                    _parameters.requires_grad = config._Is_trainable
+                    _parameters.requires_grad = is_trainable
 
                 # delete classfication module
                 self._Model.fc = None
@@ -575,8 +586,8 @@ class Custom_Module():
                     [_c, _h / 2 ** (_d + 1), _w / 2 ** (_d + 1)] for [_d, _c] in enumerate(self._Output_channel)]
 
         class VGG(Module):
-            def __init__(self, config: Module_Config.Backbone):
-                super(Custom_Module.Backbone.VGG, self).__init__()
+            def __init__(self, config: Model_Componant_Config.Backbone):
+                super(Model_Componant.Backbone.VGG, self).__init__()
                 if config._Type == 11:
                     _line = models.vgg11(pretrained=config._Is_pretrained)
                 if config._Type == 13:
@@ -602,8 +613,8 @@ class Custom_Module():
                 ModelSummary(self, input_shape)
 
         class FCN(Module):
-            def __init__(self, config: Module_Config.Backbone) -> None:
-                super(Custom_Module.Backbone.FCN, self).__init__()
+            def __init__(self, config: Model_Componant_Config.Backbone) -> None:
+                super(Model_Componant.Backbone.FCN, self).__init__()
                 if config._Type == 101:
                     self._line = models.segmentation.fcn_resnet101(pretrained=config._Is_pretrained)
                 else:
@@ -619,15 +630,8 @@ class Custom_Module():
                 ModelSummary(self, input_shape)
 
         @staticmethod
-        def _build(config: Module_Config.Backbone):
-            if config._Name == Suported_Backbone.ResNet:
-                return Custom_Module.Backbone.ResNet(config)
-            elif config._Name == Suported_Backbone.VGG:
-                return Custom_Module.Backbone.VGG(config)
-            elif config._Name == Suported_Backbone.FCN:
-                return Custom_Module.Backbone.FCN(config)
-            else:
-                return None
+        def _build(name: Suported_Backbone, type: int, is_pretrained: bool, is_trainable: bool):
+            return Model_Componant.Backbone.__dict__[name.value](type, is_pretrained, is_trainable)
 
 
 class Loss_Function():

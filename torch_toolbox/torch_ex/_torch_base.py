@@ -201,25 +201,25 @@ class Debug():
         def _set_activate_mode(self, learing_mode: Learning_Mode):
             self._Active_mode = learing_mode
 
-        def _learning_logging(self, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[str, Union[int, float, List]] = None, process_time: float = None):
+        def _learning_logging(self, epoch: int, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[str, Union[int, float, List]] = None, process_time: float = None):
             _tracking = {}
 
             if loss is not None:
-                _tracking["loss"] = {}
+                _tracking["loss"] = {epoch: {}}
                 for _factor in loss.keys():
-                    _tracking["loss"][_factor] = loss[_factor]
+                    _tracking["loss"][epoch][_factor] = loss[_factor]
 
             if acc is not None:
-                _tracking["acc"] = {}
+                _tracking["acc"] = {epoch: {}}
                 for _factor in acc.keys():
-                    _tracking["acc"][_factor] = acc[_factor]
+                    _tracking["acc"][epoch][_factor] = acc[_factor]
 
             if process_time is not None:
-                _tracking["process_time"] = process_time
+                _tracking["process_time"] = {epoch: process_time}
 
             self._insert({self._Active_mode.value: _tracking}, access_point=self._Data, is_overwrite=False)
 
-        def _learning_tracking(self, batch_ct: int, data_count: int):
+        def _learning_tracking(self, epoch: int, data_count: int):
             def _make_string(data: Union[int, float, List], count: int):
                 _data_nd: ndarray = np_base.get_array_from(data, dtype=np_dtype.np_float32).sum(0) / count
                 if _data_nd.ndim:
@@ -234,23 +234,23 @@ class Debug():
 
             # loss
             for _loss_keys in self._Loss_tracking[self._Active_mode]:
-                _data_list = self._Data[self._Active_mode.value]["loss"][_loss_keys][-batch_ct:]
+                _data_list = self._Data[self._Active_mode.value]["loss"][_loss_keys][epoch]
                 _data_string = _make_string(_data_list, data_count)
                 _debugging_string += f"{_loss_keys}: {_data_string}"
 
             # acc
             for _acc_keys in self._Acc_tracking[self._Active_mode]:
-                _data_list = self._Data[self._Active_mode.value]["acc"][_acc_keys][-batch_ct:]
+                _data_list = self._Data[self._Active_mode.value]["acc"][_acc_keys][epoch]
                 _data_string = _make_string(_data_list, data_count)
                 _debugging_string += f"{_acc_keys}: {_data_string}"
 
             return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
 
-        def _get_using_time(self, batch_count: int):
-            _sum_time = sum(self._Data[self._Active_mode.value]["process_time"][-batch_count:])
-            return _sum_time
+        def _get_using_time(self, epoch: int, is_average: bool = False):
+            _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
+            return sum(_time_list) / len(_time_list) if is_average else sum(_time_list)
 
-        def _get_learning_time(self, batch_count: int, max_batch_count: int):
-            _sum_time = self._get_using_time(batch_count)
-            _maximun_time = _sum_time / batch_count * max_batch_count
+        def _get_learning_time(self, epoch: int, max_batch_count: int):
+            _sum_time = self._get_using_time(epoch)
+            _maximun_time = self._get_using_time(epoch, True) * max_batch_count
             return _sum_time, _maximun_time
