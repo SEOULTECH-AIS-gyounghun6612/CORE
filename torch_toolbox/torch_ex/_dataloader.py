@@ -79,7 +79,7 @@ class Dataset_Config(Utils.Config):
 
     """
     # Parameter for make Label_process
-    _Label_opt: Label_Process_Config
+    _Label_config: Label_Process_Config
 
     _Input_style: Input_Style
     _Input_IO: IO_Style
@@ -90,20 +90,23 @@ class Dataset_Config(Utils.Config):
     _Amplitude: int = 1
     _Augmentaion: Dict[Learning_Mode, Dict[str, List[Utils.Config]]] = field(default_factory=dict)
 
-    def _get_parameter(self) -> Dict[str, Any]:
+    def _get_parameter(self, mode: Learning_Mode) -> Dict[str, Any]:
+        _label_process = Label_Process._build(**self._Label_config._get_parameter())
+        _label_process._set_learning_mode(mode)
+
         return {
-            "label_config": self._Label_opt,
+            "label_process": _label_process,
             "label_style": self._Input_style,
             "label_io": self._Input_IO,
             "input_style": self._Label_style,
             "input_io": self._Label_IO,
 
             "amplification": self._Amplitude,
-            "augmentation": self._Augmentaion}
+            "augmentation": self._Augmentaion[mode]}
 
     def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
-            "_Label_opt": self._Label_opt._convert_to_dict(),
+            "_Label_opt": self._Label_config._convert_to_dict(),
             "_Input_style": self._Input_style.value,
             "_Input_IO": self._Input_IO.value,
             "_Label_style": self._Label_style.value,
@@ -116,7 +119,7 @@ class Dataset_Config(Utils.Config):
                 } for learning_key, data in self._Augmentaion.items()}}
 
     def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        self._Label_opt = self._Label_opt._restore_from_dict(data["_Label_opt"])
+        self._Label_config = self._Label_config._restore_from_dict(data["_Label_opt"])
         self._Label_style, = Label_Style(data["_Label_style"])
         self._IO_style = IO_Style(data["_IO_style"])
 

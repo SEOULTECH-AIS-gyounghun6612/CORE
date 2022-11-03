@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Tuple, Union, Type
+from typing import Dict, List, Tuple, Union, Type
 
 from torch import distributed, cuda, save, load, multiprocessing
 from torch.utils.data import DataLoader
@@ -8,8 +8,6 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import Optimizer
 
 from python_ex._base import Directory, File, Utils, OS_Style
-from python_ex._label import Label_Process_Config, Label_Style, Input_Style, IO_Style, Label_Process
-
 
 if __package__ == "":
     # if this file in local project
@@ -20,6 +18,7 @@ if __package__ == "":
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Debug, Log_Config
+    from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 
@@ -29,11 +28,6 @@ else:
 class Learning_Config():
     @dataclass
     class E2E(Utils.Config):
-        ### config; log, dataloader, schedule
-        _Log_config: Log_Config
-        _Dataset_config: Dataset_Config
-        _Schedule_config: Scheduler_Config
-
         ### Infomation about learning
         _Project_Name: str = "End_to_End_learning"
         _Detail: str = "Empty"
@@ -42,7 +36,7 @@ class Learning_Config():
 
         ### About Learning type and style
         _Batch_size: int = 4
-        _Num_workers: int = 8
+        _Num_workers: int = 2
 
         _Max_epochs: int = 100
         _Last_epoch: int = -1
@@ -50,38 +44,33 @@ class Learning_Config():
 
         ### About GPU using
         _Num_of_node: int = 1
+        _This_node_rank: int = 0
         _GPU_list: List[int] = field(default_factory=lambda: list(range(cuda.device_count())))
         _Host_address: str = "tcp://127.0.0.1:10001"
-        _This_node_rank: int = 0
-
-        def _get_parameter(self) -> Dict[str, Any]:
-            return super()._get_parameter()
 
         def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
-            _dict = {
+            return {
                 "_Project_Name": self._Project_Name,
                 "_Detail": self._Detail,
                 "_Date": self._Date,
+                "_Save_root": self._Save_root,
 
-                "_Log_config": self._Log_config._convert_to_dict(),
-                "_Dataset_config": self._Dataset_config._convert_to_dict(),
-                "_Optimizer_config": self._Optimizer_config._convert_to_dict(),
-                "_Schedule_config": self._Schedule_config._convert_to_dict(),
-
+                "_Batch_size": self._Batch_size,
+                "_Num_workers": self._Num_workers,
                 "_Max_epochs": self._Max_epochs,
-                "_Start_epoch": self._Last_epoch,
-                "_Activate_mode": [_mode.value for _mode in self._Learning_list]}
-            return _dict
+                "_Last_epoch": self._Last_epoch,
+                "_Learning_list": [_mode.value for _mode in self._Learning_list],
+
+                "_Num_of_node": self._Num_of_node,
+                "_GPU_list": self._GPU_list,
+                "_Host_address": self._Host_address,
+                "_This_node_rank": self._This_node_rank}
 
         def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-            self._Log_config._restore_from_dict(data["_Log_config"])
-            self._Dataset_config._restore_from_dict(data["_Dataloader_config"])
-            self._Optimizer_config._restore_from_dict(data["_Optimizer_config"])
-            self._Schedule_config._restore_from_dict(data["_Schedule_config"])
-
             self._Project_Name = data["_Project_Name"]
             self._Detail = data["_Detail"]
             self._Date = data["_Date"]
+            self._Save_root = data["_Save_root"]
 
             self._Max_epochs = data["_Max_epochs"]
             self._Last_epoch = data["_Start_epoch"]
@@ -119,26 +108,19 @@ class Learning_Config():
 # -- Mation Function -- #
 class Learning_process():
     class End_to_End():
-        def __init__(self, learning_config: Learning_Config.E2E, ) -> None:
-            self._Learning_option = learning_config
-
-            self._Learning_list = learning_config._Learning_list
+        def __init__(self, learning_cofig: Learning_Config.E2E) -> None:
+            self.config = learning_cofig
 
             # result save dir
-            _project_result_dir = f"{learning_config._Project_Name}{Directory._Divider}"
-            _project_result_dir += f"{learning_config._Date}{Directory._Divider}"
-            self._Save_root = Directory._make(_project_result_dir, learning_config._Save_root)
+            _project_result_dir = \
+                f"{self.config._Project_Name}{Directory._Divider}{self.config._Detail}{Directory._Divider}{self.config._Date}{Directory._Divider}"
+            self._Learning_root = Directory._make(_project_result_dir, self.config._Save_root)
 
-            # learning option
-            self._Last_epoch = learning_config._Last_epoch
-            self._Batch_size = learning_config._Batch_size
-            self._Num_worker = learning_config._Num_workers
+            self._Is_cuda = len(self.config._GPU_list)
 
             # distribute option
-            self._Word_size = learning_config._Num_of_node * len(learning_config._GPU_list)
-            self._This_node_rank = learning_config._This_node_rank
-            self._GPU_list = learning_config._GPU_list
-            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(learning_config._GPU_list) >= 2)
+            self._Word_size = self.config._Num_of_node * len(self.config._GPU_list)
+            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(self.config._GPU_list) >= 2)
 
             self._Model_stemp: Type[Custom_Model] = None
             self._Model_config: Custom_Model_Config = None
@@ -146,22 +128,18 @@ class Learning_process():
         # Freeze function
         # --- for init function --- #
         def _set_log(self, log_opt: Log_Config):
-            self._Log = Debug.Learning_Log(log_opt)
-            self._Log._insert(self._Learning_option._convert_to_dict())
+            self._Log = Debug.Learning_Log(log_opt._get_parameter())
+            self._Log._insert({"trainer": self.config._convert_to_dict()})
+            self._Log._insert({"log": log_opt._convert_to_dict()})
 
-        def _set_dataset(
-                self, label_config: Label_Process_Config, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style, input_io: IO_Style,
-                amplification: int, augmentation: Dict[Learning_Mode, Dict[str, List[Utils.Config]]]):
-
+        def _set_dataset(self, dateset_config: Dataset_Config):
+            self._Log._insert({"dataloader": dateset_config._convert_to_dict()})
             self._Dataset = {}
-            for _mode in self._Learning_list:
-                _label_process = Label_Process._build(**label_config._get_parameter())
-                _label_process._set_learning_mode(_mode)
-                _augmentation = augmentation[_mode]
-
-                self._Dataset[_mode] = Custom_Dataset(_label_process, label_style, label_io, input_style, input_io, amplification, _augmentation)
+            for _mode in self.config._Learning_list:
+                self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
 
         def _set_model_n_optim_config(self, model_stemp: Type[Custom_Model], model_config: Custom_Model_Config, schedule_config: Scheduler_Config):
+            self._Log._insert({"schedule": schedule_config._convert_to_dict()})
             self._Model_stemp = model_stemp
             self._Model_config = model_config
             self._Schedule_config = schedule_config
@@ -186,14 +164,14 @@ class Learning_process():
             _sampler: Dict[Learning_Mode, DistributedSampler] = {}
 
             #  Use distribute or Not
-            for _mode in self._Learning_option._Learning_list:
+            for _mode in self.config._Learning_list:
                 if self._Use_distribute:
                     _sampler[_mode] = DistributedSampler(self._Dataset[_mode], rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
                 else:
                     _sampler[_mode] = None
 
                 # set dataloader in each learning mode
-                _dataloader[_mode] = DataLoader(dataset=self._Dataset[_mode], batch_size=self._Batch_size, num_workers=self._Num_worker, sampler=_sampler[_mode])
+                _dataloader[_mode] = DataLoader(dataset=self._Dataset[_mode], batch_size=self.config._Batch_size, num_workers=self.config._Num_workers, sampler=_sampler[_mode])
 
             return _sampler, _dataloader
 
@@ -206,7 +184,6 @@ class Learning_process():
 
         def _set_activate_mode(self, mode: Learning_Mode):
             # set log state
-            self._Active_mode = mode
             self._Log._set_activate_mode(mode)
 
         def _save_model(self, save_dir: str, model: Custom_Model, optim: Optimizer = None, schedule: _LRScheduler = None):
@@ -233,39 +210,38 @@ class Learning_process():
             return model, optim, schedule
 
         def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, max_data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
-            _epoch_board = Utils._progress_board(epoch, self._Learning_option._Max_epochs)
+            _epoch_board = Utils._progress_board(epoch, self.config._Max_epochs)
             _data_board = Utils._progress_board(data_count, max_data_count)
 
-            _batch_size = self._Learning_option._Batch_size
-            _batch_ct = data_count // _batch_size + int(data_count % _batch_size)
+            _batch_size = self.config._Batch_size
             _max_batch_ct = max_data_count // _batch_size + int(max_data_count % _batch_size)
 
-            _this_time, _max_time = self._Log._get_learning_time(_batch_ct, _max_batch_ct)
+            _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
             _max_time_str = Utils._time_stemp(_max_time, False, True, "%H:%M:%S")
 
-            _pre = f"{self._Active_mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = self._Log._learning_tracking(_batch_ct, data_count)
+            _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
+            _suf = self._Log._learning_tracking(epoch, data_count)
 
             Utils._progress_bar(data_count, max_data_count, _pre, _suf, decimals, length, fill)
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
-            _is_cuda = len(self._GPU_list)
-            _this_rank = self._This_node_rank * gpu_per_node + gpu
-            _this_gpu_id = self._GPU_list[gpu] if _is_cuda else gpu
+            self._Is_cuda = len(self.config._GPU_list)
+            _this_rank = self.config._This_node_rank * gpu_per_node + gpu
+            _this_gpu_id = self.config._GPU_list[gpu] if self._Is_cuda else gpu
 
             if self._Use_distribute:
-                self._set_process(self._Word_size, _this_rank, self._Learning_option._Host_address)
+                self._set_process(self._Word_size, _this_rank, self.config._Host_address)
 
             _sampler, _dataloader = self._set_dataloader(_this_rank)
-            _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, _is_cuda)
+            _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, self._Is_cuda)
 
             if self._Use_distribute:
                 _model = _model = DistributedDataParallel(_model, device_ids=[_this_gpu_id])
 
             # Do learning process
-            for _epoch in range(self._Last_epoch + 1, self._Learning_option._Max_epochs):
-                _epoch_dir = Directory._make(f"{_epoch}/", self._Save_root)
+            for _epoch in range(self.config._Last_epoch + 1, self.config._Max_epochs):
+                _epoch_dir = Directory._make(f"{_epoch}/", self._Learning_root)
                 self._learning(_epoch, _sampler, _dataloader, _model, _optim)
 
                 if _schedule is not None:
@@ -273,14 +249,14 @@ class Learning_process():
 
                 # save log file
                 self._Log._insert({"_Last_epoch": _epoch})
-                self._Log._save(self._Save_root, "learning_log.json")
+                self._Log._save(self._Learning_root, "learning_log.json")
 
                 # save model
                 self._save_model(_epoch_dir)
 
         def _work(self):
             if self._Use_distribute:
-                multiprocessing.spawn(self._process, nprocs=len(self._GPU_list), )
+                multiprocessing.spawn(self._process, nprocs=len(self.config._GPU_list), )
             else:
                 self._process()
 
