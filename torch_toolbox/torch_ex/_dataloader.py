@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Union
+from enum import Enum
+from math import pi, cos, sin, ceil
 
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, ToTensor, RandomRotation, InterpolationMode, Normalize, Resize
+from torchvision.transforms import Compose, ToTensor, RandomRotation, InterpolationMode, Normalize, Resize, CenterCrop
 import torchvision.transforms.functional as TF
 
 from python_ex._base import Utils
@@ -16,6 +18,12 @@ if __package__ == "":
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode
+
+
+# -- DEFINE CONSTNAT -- #
+class Augmentation_Target(Enum):
+    INPUT = "input"
+    LABEL = "label"
 
 
 # -- DEFINE CONFIG -- #
@@ -68,9 +76,12 @@ class Augmentation_Config():
         _Direction: List[int]
 
     @dataclass
-    class Crop():
-        # _Mode:
-        ...
+    class Center_Crop():
+        _Size: List[int]
+
+        def _get_parameter(self) -> Dict[str, Any]:
+            return {
+                "size": self._Size}
 
 
 @dataclass
@@ -87,13 +98,29 @@ class Dataset_Config(Utils.Config):
     _Label_style: Label_Style
     _Label_IO: IO_Style
 
-    _Amplitude: int = 1
-    _Augmentaion: Dict[Learning_Mode, Dict[str, List[Utils.Config]]] = field(default_factory=dict)
+    _Data_size: List[int]
+    _Amplitude: Dict[Learning_Mode, int] = field(default_factory=dict)
+    _Augmentaion: Dict[Learning_Mode, Dict[Augmentation_Target, List[Utils.Config]]] = field(default_factory=dict)
 
     def _get_parameter(self, mode: Learning_Mode) -> Dict[str, Any]:
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
+        _augmen_block = self._Augmentaion[mode]
+        for _target in _augmen_block.keys():
+            for _augment in _augmen_block[_target]:
+                if isinstance(_augment, Augmentation_Config.Rotate):
+                    _rad = pi * _augment._Degrees / 180
+                    _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
+                    _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
+
+                    if _target == Augmentation_Target.INPUT:
+                        _resize = Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.NEAREST)
+                    else:
+                        _resize = Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.BILINEAR)
+                    _crop = Augmentation_Config.Center_Crop(self._Data_size)
+                    self._Augmentaion[mode][_target] = [_resize, ] + self._Augmentaion[mode][_target] + [_crop, ]
+                    break
         return {
             "label_process": _label_process,
             "label_style": self._Input_style,
@@ -101,7 +128,7 @@ class Dataset_Config(Utils.Config):
             "input_style": self._Label_style,
             "input_io": self._Label_IO,
 
-            "amplification": self._Amplitude,
+            "amplification": self._Amplitude[mode],
             "augmentation": self._Augmentaion[mode]}
 
     def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
@@ -114,8 +141,8 @@ class Dataset_Config(Utils.Config):
             "_Amplitude": self._Amplitude,
             "_Augmentaion": {
                 learning_key.value: {
-                    type_key: {
-                        config.__class__.__name__: config._convert_to_dict() for config in config_list} for type_key, config_list in data.items()
+                    target.value: {
+                        config.__class__.__name__: config._convert_to_dict() for config in config_list} for target, config_list in data.items()
                 } for learning_key, data in self._Augmentaion.items()}}
 
     def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
@@ -147,6 +174,9 @@ class Augmentation():
         ...
 
     class Flip():
+        ...
+
+    class Center_Crop(CenterCrop):
         ...
 
     @staticmethod

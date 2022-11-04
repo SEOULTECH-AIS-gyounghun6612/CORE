@@ -18,19 +18,19 @@ else:
 
 
 # -- DEFINE CONSTNAT -- #
-class Suported_Optimizer(Enum):
+class Suport_Optimizer(Enum):
     Adam = "Adam"
 
 
-class Suported_Schedule(Enum):
+class Suport_Schedule(Enum):
     Cosin_Annealing = "Cosin_Annealing"
 
 
 # -- DEFINE CONFIG -- #
 @dataclass
 class Scheduler_Config(Utils.Config):
-    _Optim_name: Suported_Optimizer
-    _Schedule_name: Suported_Schedule
+    _Optim_name: Suport_Optimizer
+    _Schedule_name: Suport_Schedule
 
     _LR_Maximum: float = 0.005
     _LR_Minimum: float = 0.0001
@@ -60,8 +60,8 @@ class Scheduler_Config(Utils.Config):
             "_Term_amp": self._Term_amp}
 
     def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        self._Optim_name = Suported_Optimizer(data["_Optim_name"])
-        self._Schedule_name = Suported_Schedule(data["_Schedule_name"])
+        self._Optim_name = Suport_Optimizer(data["_Optim_name"])
+        self._Schedule_name = Suport_Schedule(data["_Schedule_name"])
         self._LR_Maximum = data["_LR_Maximum"]
         self._LR_Minimum = data["_LR_Minimum"]
         self._LR_Decay = data["_LR_Decay"]
@@ -131,7 +131,7 @@ class Custom_Scheduler():
 
     @staticmethod
     def _build(
-            optimizer: optim.Optimizer, schedule_name: Suported_Schedule,
+            optimizer: optim.Optimizer, schedule_name: Suport_Schedule,
             term: Union[List[int], int], term_amp: float,
             maximum: float, minimum: float, decay: float,
             last_epoch: int = -1) -> _LRScheduler:
