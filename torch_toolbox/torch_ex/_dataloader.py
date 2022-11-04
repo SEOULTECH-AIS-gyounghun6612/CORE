@@ -128,9 +128,9 @@ class Dataset_Config(Utils.Config):
                 self._Augmentaion[mode][_target] = [_resize, ] + self._Augmentaion[mode][_target]
         return {
             "label_process": _label_process,
-            "label_style": self._Input_style,
+            "label_style": self._Label_style,
             "label_io": self._Input_IO,
-            "input_style": self._Label_style,
+            "input_style": self._Input_style,
             "input_io": self._Label_IO,
 
             "amplification": self._Amplitude[mode],
@@ -198,34 +198,31 @@ class Augmentation():
 class Custom_Dataset(Dataset):
     def __init__(
             self, label_process: Label_Process.Basement, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style, input_io: IO_Style,
-            amplification: int, augmentation: Dict[str, List[Augmentation_Config]]):
+            amplification: int, augmentation: Dict[Augmentation_Target, List[Augmentation_Config]]):
         self._Data_process = label_process
         self._Work_profile = self._Data_process._get_work_profile(label_style, label_io, input_style, input_io)
 
+        self._Activate_label = self._Data_process._Activate_label
         self._Amplification = amplification
         self._Transform = {_process: Augmentation._build(config_list) for _process, config_list in augmentation.items()}
 
     def _input_process(self, input_data: Union[List[Tensor], Tensor]):
         if isinstance(input_data, list):
-            return [self._Transform["input"](data) for data in input_data]
+            return [self._Transform[Augmentation_Target.INPUT](data) for data in input_data]
         else:
-            return self._Transform["input"](input_data)
+            return self._Transform[Augmentation_Target.INPUT](input_data)
 
     def _label_process(self, label_data: Union[List[Tensor], Tensor]):
         if isinstance(label_data, list):
-            return [self._Transform["label"](data) for data in label_data]
+            return [self._Transform[Augmentation_Target.LABEL](data) for data in label_data]
         else:
-            return self._Transform["label"](label_data)
+            return self._Transform[Augmentation_Target.LABEL](label_data)
 
     def __len__(self):
-        return len(self._Work_profile._Data_list * self._Amplification)
+        return len(self._Work_profile._Data_list) * self._Amplification
 
     def __getitem__(self, index):
         _source_index = index // self._Amplification
         _data: Dict = self._Data_process._work(self._Work_profile, _source_index)
 
-        _output = ()
-        _output += tuple(self.__dict__[f"_{key}_process"](_data[key]) for key in self._Transform)
-        _output += (_data["index"], )
-
-        return _output
+        return self._input_process(_data["input"]), self._label_process(_data["label"]), _data["index"]

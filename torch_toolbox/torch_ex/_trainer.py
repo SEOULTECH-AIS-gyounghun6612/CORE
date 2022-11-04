@@ -128,7 +128,7 @@ class Learning_process():
         # Freeze function
         # --- for init function --- #
         def _set_log(self, log_opt: Log_Config):
-            self._Log = Debug.Learning_Log(log_opt._get_parameter())
+            self._Log = Debug.Learning_Log(log_opt)
             self._Log._insert({"trainer": self._Config._convert_to_dict()})
             self._Log._insert({"log": log_opt._convert_to_dict()})
 
@@ -176,7 +176,7 @@ class Learning_process():
             return _sampler, _dataloader
 
         def _set_learning_model(self, this_gpu: int = 0, is_cuda: bool = False) -> Tuple[Custom_Model, Optimizer, _LRScheduler]:
-            _model = self._Model_stemp(**self._Model_config._get_parameter())
+            _model = self._Model_stemp(self._Model_config)
             _model = _model.cuda(this_gpu) if is_cuda else _model
             _optim, _schedule = Custom_Scheduler._build(**self._Schedule_config._get_parameter(_model))
 

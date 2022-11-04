@@ -121,7 +121,7 @@ class Layer_Config():
 
         def _make_parameter(self) -> Module:
             # normalization setting
-            if self._Type == Suport_Norm.BatchNorm:
+            if self._Type in [Suport_Norm.BatchNorm, Suport_Norm.SyncBatchNorm]:
                 return {
                     "num_features": self._Out_features,
                     "eps": self._Eps,
@@ -233,7 +233,7 @@ class Model_Componant_Config():
             return _front, _backend
 
         def _make_norm_config(self):
-            return Layer_Config.Norm(self._Norm_type, self._In_channels)
+            return Layer_Config.Norm(self._Norm_type, self._Out_channels)
 
         def _make_active_config(self):
             return Layer_Config.Activate(self._Activate_type)
