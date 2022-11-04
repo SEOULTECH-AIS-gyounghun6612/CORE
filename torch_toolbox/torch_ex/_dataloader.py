@@ -143,7 +143,7 @@ class Dataset_Config(Utils.Config):
             "_Input_IO": self._Input_IO.value,
             "_Label_style": self._Label_style.value,
             "_Label_IO": self._Label_IO.value,
-            "_Amplitude": self._Amplitude,
+            "_Amplitude": {learning_key.value: data for learning_key, data in self._Amplitude.items()},
             "_Augmentaion": {
                 learning_key.value: {
                     target.value: {

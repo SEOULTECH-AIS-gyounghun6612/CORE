@@ -182,9 +182,10 @@ class Learning_process():
 
             return _model, _optim, _schedule
 
-        def _set_activate_mode(self, mode: Learning_Mode):
+        def _set_activate_mode(self, mode: Learning_Mode, model: Custom_Model):
             # set log state
             self._Log._set_activate_mode(mode)
+            model.train() if mode == Learning_Mode.TRAIN else model.eval()
 
         # in later move to custom model
         def _save_model(self, save_dir: str, model: Custom_Model, optim: Optimizer = None, schedule: _LRScheduler = None):
