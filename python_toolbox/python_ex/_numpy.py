@@ -289,7 +289,7 @@ class image_process():
         _denorm_image = np_base.get_array_from(norm_image, dtype=np_dtype.np_uint8)
 
         for _ct_c in range(_c):
-            _denorm_image[:, :, _ct_c] = (_denorm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]
+            _denorm_image[:, :, _ct_c] = round(((_denorm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]) * 255)
 
         return np_base.type_converter(_denorm_image, np_dtype.np_uint8)
 

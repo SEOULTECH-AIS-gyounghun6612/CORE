@@ -121,7 +121,7 @@ class Label_Process():
 
             # Parameter for Label pre-process
             self._Root_dir = data_root if Directory._exist_check(data_root) else Directory._relative_root()
-            self._Activate_label: Dict[Label_Style, Dict[int, List[Label_Structure.Basement]]] = {}
+            self._Activate_label: Dict[Label_Style, Dict[int, List[Any]]] = {}
 
             # Get label data from meta file
             if File._exist_check(meta_file):
