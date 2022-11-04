@@ -108,19 +108,24 @@ class Dataset_Config(Utils.Config):
 
         _augmen_block = self._Augmentaion[mode]
         for _target in _augmen_block.keys():
+            _use_rotate = False
             for _augment in _augmen_block[_target]:
                 if isinstance(_augment, Augmentation_Config.Rotate):
                     _rad = pi * _augment._Degrees / 180
                     _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
                     _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
-
-                    if _target == Augmentation_Target.INPUT:
-                        _resize = Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.NEAREST)
-                    else:
-                        _resize = Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.BILINEAR)
+                    _resize = Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.NEAREST) if _target == Augmentation_Target.INPUT \
+                        else Augmentation_Config.Resize([_h_dot, _w_dot], InterpolationMode.BILINEAR)
                     _crop = Augmentation_Config.Center_Crop(self._Data_size)
+
                     self._Augmentaion[mode][_target] = [_resize, ] + self._Augmentaion[mode][_target] + [_crop, ]
+                    _use_rotate = True
                     break
+
+            if not _use_rotate:
+                _resize = Augmentation_Config.Resize(self._Data_size, InterpolationMode.NEAREST) if _target == Augmentation_Target.INPUT \
+                    else Augmentation_Config.Resize(self._Data_size, InterpolationMode.BILINEAR)
+                self._Augmentaion[mode][_target] = [_resize, ] + self._Augmentaion[mode][_target]
         return {
             "label_process": _label_process,
             "label_style": self._Input_style,
