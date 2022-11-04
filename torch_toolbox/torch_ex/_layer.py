@@ -612,6 +612,9 @@ class Model_Componant():
             def _sumarry(self, input_shape):
                 ModelSummary(self, input_shape)
 
+            def _get_out_shape(self, input_size: List[int]):
+                return None
+
         class FCN(Module):
             def __init__(self, config: Model_Componant_Config.Backbone) -> None:
                 super(Model_Componant.Backbone.FCN, self).__init__()
@@ -628,6 +631,9 @@ class Model_Componant():
 
             def _sumarry(self, input_shape):
                 ModelSummary(self, input_shape)
+
+            def _get_out_shape(self, input_size: List[int]):
+                return None
 
         @staticmethod
         def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool):

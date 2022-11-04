@@ -109,18 +109,18 @@ class Learning_Config():
 class Learning_process():
     class End_to_End():
         def __init__(self, learning_cofig: Learning_Config.E2E) -> None:
-            self.config = learning_cofig
+            self._Config = learning_cofig
 
             # result save dir
             _project_result_dir = \
-                f"{self.config._Project_Name}{Directory._Divider}{self.config._Detail}{Directory._Divider}{self.config._Date}{Directory._Divider}"
-            self._Learning_root = Directory._make(_project_result_dir, self.config._Save_root)
+                f"{self._Config._Project_Name}{Directory._Divider}{self._Config._Detail}{Directory._Divider}{self._Config._Date}{Directory._Divider}"
+            self._Learning_root = Directory._make(_project_result_dir, self._Config._Save_root)
 
-            self._Is_cuda = len(self.config._GPU_list)
+            self._Is_cuda = len(self._Config._GPU_list)
 
             # distribute option
-            self._Word_size = self.config._Num_of_node * len(self.config._GPU_list)
-            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(self.config._GPU_list) >= 2)
+            self._Word_size = self._Config._Num_of_node * len(self._Config._GPU_list)
+            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(self._Config._GPU_list) >= 2)
 
             self._Model_stemp: Type[Custom_Model] = None
             self._Model_config: Custom_Model_Config = None
@@ -129,13 +129,13 @@ class Learning_process():
         # --- for init function --- #
         def _set_log(self, log_opt: Log_Config):
             self._Log = Debug.Learning_Log(log_opt._get_parameter())
-            self._Log._insert({"trainer": self.config._convert_to_dict()})
+            self._Log._insert({"trainer": self._Config._convert_to_dict()})
             self._Log._insert({"log": log_opt._convert_to_dict()})
 
         def _set_dataset(self, dateset_config: Dataset_Config):
             self._Log._insert({"dataloader": dateset_config._convert_to_dict()})
             self._Dataset: Dict[Learning_Mode, Custom_Dataset] = {}
-            for _mode in self.config._Learning_list:
+            for _mode in self._Config._Learning_list:
                 self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
 
         def _set_model_n_optim_config(self, model_stemp: Type[Custom_Model], model_config: Custom_Model_Config, schedule_config: Scheduler_Config):
@@ -164,14 +164,14 @@ class Learning_process():
             _sampler: Dict[Learning_Mode, DistributedSampler] = {}
 
             #  Use distribute or Not
-            for _mode in self.config._Learning_list:
+            for _mode in self._Config._Learning_list:
                 if self._Use_distribute:
                     _sampler[_mode] = DistributedSampler(self._Dataset[_mode], rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
                 else:
                     _sampler[_mode] = None
 
                 # set dataloader in each learning mode
-                _dataloader[_mode] = DataLoader(dataset=self._Dataset[_mode], batch_size=self.config._Batch_size, num_workers=self.config._Num_workers, sampler=_sampler[_mode])
+                _dataloader[_mode] = DataLoader(dataset=self._Dataset[_mode], batch_size=self._Config._Batch_size, num_workers=self._Config._Num_workers, sampler=_sampler[_mode])
 
             return _sampler, _dataloader
 
@@ -212,12 +212,12 @@ class Learning_process():
             return model, optim, schedule
 
         def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
-            _epoch_board = Utils._progress_board(epoch, self.config._Max_epochs)
+            _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
 
             _data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(data_count, _data_len)
 
-            _batch_size = self.config._Batch_size
+            _batch_size = self._Config._Batch_size
             _max_batch_ct = _data_len // _batch_size + int(_data_len % _batch_size)
 
             _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
@@ -230,12 +230,12 @@ class Learning_process():
             Utils._progress_bar(data_count, _data_len, _pre, _suf, decimals, length, fill)
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
-            self._Is_cuda = len(self.config._GPU_list)
-            _this_rank = self.config._This_node_rank * gpu_per_node + gpu
-            _this_gpu_id = self.config._GPU_list[gpu] if self._Is_cuda else gpu
+            self._Is_cuda = len(self._Config._GPU_list)
+            _this_rank = self._Config._This_node_rank * gpu_per_node + gpu
+            _this_gpu_id = self._Config._GPU_list[gpu] if self._Is_cuda else gpu
 
             if self._Use_distribute:
-                self._set_process(self._Word_size, _this_rank, self.config._Host_address)
+                self._set_process(self._Word_size, _this_rank, self._Config._Host_address)
 
             _sampler, _dataloader = self._set_dataloader(_this_rank)
             _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, self._Is_cuda)
@@ -244,7 +244,7 @@ class Learning_process():
                 _model = _model = DistributedDataParallel(_model, device_ids=[_this_gpu_id])
 
             # Do learning process
-            for _epoch in range(self.config._Last_epoch + 1, self.config._Max_epochs):
+            for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
                 _epoch_dir = Directory._make(f"{_epoch}/", self._Learning_root)
                 self._learning(_this_gpu_id, _epoch, _sampler, _dataloader, _model, _optim)
 
@@ -260,7 +260,7 @@ class Learning_process():
 
         def _work(self):
             if self._Use_distribute:
-                multiprocessing.spawn(self._process, nprocs=len(self.config._GPU_list), )
+                multiprocessing.spawn(self._process, nprocs=len(self._Config._GPU_list), )
             else:
                 self._process()
 
