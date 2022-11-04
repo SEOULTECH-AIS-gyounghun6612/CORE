@@ -121,7 +121,7 @@ class Dataset_Config(Utils.Config):
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
-        if Augmentation_Target.COMMON in self._Augmentation[mode]:
+        if Augmentation_Target.COMMON in list(self._Augmentation[mode].keys()):
             _use_rotate = False
             for _aug in self._Augmentation[mode][Augmentation_Target.COMMON]:
                 if isinstance(_aug, Augmentation_Config.Rotate):
@@ -138,6 +138,11 @@ class Dataset_Config(Utils.Config):
             if not _use_rotate:
                 _resize = Augmentation_Config.Resize(self._Data_size)
                 self._Augmentation[mode][Augmentation_Target.COMMON] = [_resize, ] + self._Augmentation[mode][Augmentation_Target.COMMON]
+
+        else:
+            _resize = Augmentation_Config.Resize(self._Data_size)
+            self._Augmentation[mode][Augmentation_Target.COMMON] = [_resize, ]
+
         return {
             "label_process": _label_process,
             "label_style": self._Label_style,
