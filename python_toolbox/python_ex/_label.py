@@ -215,7 +215,7 @@ class Label_Process():
                 elif data._Label_IO == IO_Style.ANNOTATION:
                     ...
 
-                return {"input": _picked_input, "label": _picked_label, "index": index}
+                return {"input": _picked_input, "label": _picked_label, "info": index}
 
     class Imagenet_1k(Basement):
         Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
