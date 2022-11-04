@@ -202,7 +202,7 @@ class Custom_Dataset(Dataset):
         self._Data_process = label_process
         self._Work_profile = self._Data_process._get_work_profile(label_style, label_io, input_style, input_io)
 
-        self._Activate_label = self._Data_process._Activate_label
+        self._Activate_class_info = self._Data_process._Activate_label[label_style]
         self._Amplification = amplification
         self._Transform = {_process: Augmentation._build(config_list) for _process, config_list in augmentation.items()}
 

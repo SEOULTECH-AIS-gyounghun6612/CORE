@@ -182,7 +182,7 @@ class Debug():
 
                 _holder[_mode.value]["loss"] = {}
                 for _loss_name in loss_logging[_mode]:
-                    _holder[_mode.value]["loss"][_loss_name] = []
+                    _holder[_mode.value]["loss"][_loss_name] = {}
 
             # acc
             for _mode in acc_logging.keys():
@@ -191,11 +191,11 @@ class Debug():
 
                 _holder[_mode.value]["acc"] = {}
                 for _acc_name in acc_logging[_mode]:
-                    _holder[_mode.value]["acc"][_acc_name] = []
+                    _holder[_mode.value]["acc"][_acc_name] = {}
 
             # time
             for _mode in _holder.keys():
-                _holder[_mode]["process_time"] = []
+                _holder[_mode]["process_time"] = {}
             return _holder
 
         def _set_activate_mode(self, learing_mode: Learning_Mode):
@@ -205,14 +205,14 @@ class Debug():
             _tracking = {}
 
             if loss is not None:
-                _tracking["loss"] = {epoch: {}}
+                _tracking["loss"] = {}
                 for _factor in loss.keys():
-                    _tracking["loss"][epoch][_factor] = loss[_factor]
+                    _tracking["loss"][_factor] = {epoch: loss[_factor]}
 
             if acc is not None:
-                _tracking["acc"] = {epoch: {}}
+                _tracking["acc"] = {}
                 for _factor in acc.keys():
-                    _tracking["acc"][epoch][_factor] = acc[_factor]
+                    _tracking["acc"][_factor] = {epoch: acc[_factor]}
 
             if process_time is not None:
                 _tracking["process_time"] = {epoch: process_time}
@@ -248,7 +248,10 @@ class Debug():
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
-            return sum(_time_list) / len(_time_list) if is_average else sum(_time_list)
+            if isinstance(_time_list, list):
+                return sum(_time_list) / len(_time_list) if is_average else sum(_time_list)
+            else:
+                return _time_list
 
         def _get_learning_time(self, epoch: int, max_batch_count: int):
             _sum_time = self._get_using_time(epoch)
