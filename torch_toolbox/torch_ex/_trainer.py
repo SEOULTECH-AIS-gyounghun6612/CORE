@@ -257,7 +257,7 @@ class Learning_process():
                 self._Log._save(self._Learning_root, "trainer_log.json")
 
                 # save model
-                self._save_model(_epoch_dir)
+                self._save_model(_epoch_dir, _model, _optim, _schedule)
 
         def _work(self):
             if self._Use_distribute:
