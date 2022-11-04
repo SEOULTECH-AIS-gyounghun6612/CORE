@@ -35,7 +35,7 @@ else:
 
 
 # -- DEFINE CONSTNAT -- #
-class Suported_Active(Enum):
+class Suport_Active(Enum):
     ReLU = 0
     LeakyReLU = 1
     Tanh = 2
@@ -43,13 +43,13 @@ class Suported_Active(Enum):
     GELU = 4
 
 
-class Suported_Norm(Enum):
+class Suport_Norm(Enum):
     BatchNorm = 0
     SyncBatchNorm = 1
     LayerNorm = 2
 
 
-class Suported_Backbone(Enum):
+class Suport_Backbone(Enum):
     ResNet = "ResNet"
     VGG = "VGG"
     FCN = "FCN"
@@ -105,7 +105,7 @@ class Layer_Config():
 
     @dataclass
     class Norm(Utils.Config):
-        _Type: Suported_Norm
+        _Type: Suport_Norm
         _Out_features: int
 
         _Eps: float = 1e-5
@@ -121,14 +121,14 @@ class Layer_Config():
 
         def _make_parameter(self) -> Module:
             # normalization setting
-            if self._Type == Suported_Norm.BatchNorm:
+            if self._Type == Suport_Norm.BatchNorm:
                 return {
                     "num_features": self._Out_features,
                     "eps": self._Eps,
                     "momentum": self._Momentum,
                     "affine": self._Affine,
                     "track_running_stats": self._Track_running_stats}
-            if self._Type == Suported_Norm.LayerNorm:
+            if self._Type == Suport_Norm.LayerNorm:
                 return {
                     "nomalized_shape": self._Out_features,
                     "eps": self._Eps,
@@ -136,7 +136,7 @@ class Layer_Config():
 
     @dataclass
     class Activate(Utils.Config):
-        _Type: Suported_Active
+        _Type: Suport_Active
         _Inplace: bool = True
         _Negative_slope: float = 0.01
 
@@ -148,9 +148,9 @@ class Layer_Config():
 
         def _make_parameter(self) -> Module:
             # normalization setting
-            if self._Type == Suported_Active.ReLU:
+            if self._Type == Suport_Active.ReLU:
                 return {"inplace": self._Inplace}
-            elif self._Type == Suported_Active.LeakyReLU:
+            elif self._Type == Suport_Active.LeakyReLU:
                 return {"inplace": self._Inplace, "negative_slope": self._Negative_slope}
             else:  # Tanh, Sigmoid, GELU
                 return {}
@@ -177,8 +177,8 @@ class Model_Componant_Config():
     @dataclass
     class Linear(Utils.Config):
         _Linear_config: Layer_Config.Linear
-        _Norm_type: Suported_Norm = None
-        _Activate_type: Suported_Active = None
+        _Norm_type: Suport_Norm = None
+        _Activate_type: Suport_Active = None
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -195,8 +195,8 @@ class Model_Componant_Config():
     @dataclass
     class Conv2D(Utils.Config):
         _Conv2D_config: Layer_Config.Conv2D
-        _Norm_type: Suported_Norm = None
-        _Activate_type: Suported_Active = None
+        _Norm_type: Suport_Norm = None
+        _Activate_type: Suport_Active = None
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -214,8 +214,8 @@ class Model_Componant_Config():
     class PUP(Utils.Config):
         _In_channels: int
         _Out_channels: int
-        _Norm_type: Suported_Norm = Suported_Norm.BatchNorm
-        _Activate_type: Suported_Active = Suported_Active.ReLU
+        _Norm_type: Suport_Norm = Suport_Norm.BatchNorm
+        _Activate_type: Suport_Active = Suport_Active.ReLU
 
         _Scale_factor: int = 2
         _Scale_mode: str = "bilinear"
@@ -281,7 +281,7 @@ class Model_Componant_Config():
 
         def _get_linear_config(self):
             _linear_01 = Model_Componant_Config.Linear(
-                Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_type=Suported_Active.GELU)
+                Layer_Config.Linear(self._Output_dim, self._Output_dim * self._Hidden_rate), _Activate_type=Suport_Active.GELU)
             _linear_02 = Model_Componant_Config.Linear(
                 Layer_Config.Linear(self._Output_dim * self._Hidden_rate, self._Output_dim))
 
@@ -289,7 +289,7 @@ class Model_Componant_Config():
 
     @dataclass
     class Backbone(Utils.Config):
-        _Name: Suported_Backbone
+        _Name: Suport_Backbone
         _Type: int
 
         _Is_pretrained: bool = True
@@ -329,14 +329,14 @@ class Layer():
     def _make_norm_layer(config: Layer_Config.Norm, dimension: int) -> Module:
         if config._Type is None:
             return None
-        elif config._Type == Suported_Norm.BatchNorm:
+        elif config._Type == Suport_Norm.BatchNorm:
             if dimension == 1:
                 return BatchNorm1d(**config._make_parameter())
             elif dimension == 2:
                 return BatchNorm2d(**config._make_parameter())
-        elif config._Type == Suported_Norm.SyncBatchNorm:
+        elif config._Type == Suport_Norm.SyncBatchNorm:
             return SyncBatchNorm(**config._make_parameter())
-        elif config._Type == Suported_Norm.LayerNorm:
+        elif config._Type == Suport_Norm.LayerNorm:
             return LayerNorm(**config._make_parameter())
 
     @staticmethod
@@ -344,15 +344,15 @@ class Layer():
         # activation setting
         if active_opt is None:
             return None
-        elif active_opt._Type == Suported_Active.ReLU:
+        elif active_opt._Type == Suport_Active.ReLU:
             return ReLU(**active_opt._make_parameter())
-        elif active_opt._Type == Suported_Active.LeakyReLU:
+        elif active_opt._Type == Suport_Active.LeakyReLU:
             return LeakyReLU(**active_opt._make_parameter())
-        elif active_opt._Type == Suported_Active.Tanh:
+        elif active_opt._Type == Suport_Active.Tanh:
             return Tanh(**active_opt._make_parameter())
-        elif active_opt._Type == Suported_Active.Sigmoid:
+        elif active_opt._Type == Suport_Active.Sigmoid:
             return Sigmoid(**active_opt._make_parameter())
-        elif active_opt._Type == Suported_Active.GELU:
+        elif active_opt._Type == Suport_Active.GELU:
             return GELU(**active_opt._make_parameter())
 
 
@@ -630,7 +630,7 @@ class Model_Componant():
                 ModelSummary(self, input_shape)
 
         @staticmethod
-        def _build(name: Suported_Backbone, type: int, is_pretrained: bool, is_trainable: bool):
+        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool):
             return Model_Componant.Backbone.__dict__[name.value](type, is_pretrained, is_trainable)
 
 
