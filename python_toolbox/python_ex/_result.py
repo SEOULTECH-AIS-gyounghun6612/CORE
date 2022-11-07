@@ -3,11 +3,9 @@ from typing import Any, List, Dict, Union
 
 
 if __package__ == "":
-    import _base
-    import _error as _e
+    from _base import Directory, File
 else:
-    from . import _error as _e
-    from . import _base
+    from ._base import Directory, File
 
 
 # -- DEFINE CONSTNAT -- #
@@ -25,7 +23,7 @@ class Log():
             self._insert(data, self._Data)
 
         else:
-            self._load(file_dir, file_name) if _base.File._exist_check(_base.Directory._slash_check(f"{file_dir}{file_name}", True)) else ...
+            self._load(file_dir, file_name) if File._exist_check(Directory._divider_check(f"{file_dir}{file_name}", True)) else ...
 
     def _insert(self, data_block: Dict, access_point: Dict = None, is_overwrite: bool = True):
         # check parameter; save point
@@ -78,7 +76,7 @@ class Log():
                         del access_point[__key]
 
     def _load(self, file_dir, file_name):
-        save_pakage = _base.File._json(file_dir, file_name)
+        save_pakage = File._json(file_dir, file_name)
         self._insert(save_pakage["annotation"])
         self._insert(save_pakage["data"], self._Data)
 
@@ -87,7 +85,7 @@ class Log():
             "annotation": self._Annotation,
             "data": self._Data}
 
-        _base.File._json(file_dir, file_name, save_pakage, True)
+        File._json(file_dir, file_name, save_pakage, True)
 
 
 class ploter():

@@ -51,7 +51,7 @@ class Directory():
     _Divider = "/" if _OS_THIS == OS_Style.OS_UBUNTU.value else "\\"
 
     @classmethod  # fix it
-    def _slash_check(self, directory: str, is_file: bool = False) -> str:
+    def _divider_check(self, directory: str, is_file: bool = False) -> str:
         # each os's directory divide slash fix
         if self._Divider == "\\":
             from_dived = "/"
@@ -75,7 +75,7 @@ class Directory():
 
     @classmethod
     def _devide(self, directory: str, point: int = -1) -> List[str]:
-        _dir = self._slash_check(directory)
+        _dir = self._divider_check(directory)
         _comp = _dir.split(self._Divider)[:-1]
 
         _front = ""
@@ -89,14 +89,14 @@ class Directory():
 
     @classmethod
     def _relative_root(self, just_name: bool = False) -> str:
-        return self._devide(getcwd())[-1] if just_name else self._slash_check(getcwd())
+        return self._devide(getcwd())[-1] if just_name else self._divider_check(getcwd())
 
     @classmethod
     def _make(self, obj_dir: str, root_dir: str = None) -> str:
         if root_dir is not None:
             # use root directory
             # root directory check
-            _dir = self._slash_check(root_dir)
+            _dir = self._divider_check(root_dir)
             if not self._exist_check(_dir):
                 # if root directory not exist, make it
                 _front, _back = self._devide(_dir, -1)
@@ -106,8 +106,8 @@ class Directory():
             _dir = self._relative_root()
 
         # make directory
-        for _part in self._slash_check(obj_dir).split(self._Divider):
-            _dir = self._slash_check(_dir + _part)
+        for _part in self._divider_check(obj_dir).split(self._Divider):
+            _dir = self._divider_check(_dir + _part)
             mkdir(_dir) if not self._exist_check(_dir) else None
 
         return _dir
@@ -118,7 +118,7 @@ class Directory():
         _component_name = "*" if serch_all else "*" + name + "*"
         _component_ext = "" if serch_all else (ext if ext[0] == "." else "." + ext)
 
-        search_list = sorted(glob(self._slash_check(searched_dir) + _component_name + _component_ext))
+        search_list = sorted(glob(self._divider_check(searched_dir) + _component_name + _component_ext))
 
         if search_option in ["directory", "dir"]:
             search_list = [data for data in search_list if self._exist_check(data)]
@@ -195,7 +195,7 @@ class File():
 
     @classmethod
     def _file_name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
-        file_path = Directory._slash_check(file_path, is_file=True)
+        file_path = Directory._divider_check(file_path, is_file=True)
         _file_dir, _file_name = path.split(file_path)
         return _file_name if just_file_name else [_file_dir, _file_name]
 
@@ -222,7 +222,7 @@ class File():
             return (dict)   :
         """
         # directory check
-        file_dir = Directory._slash_check(file_dir)
+        file_dir = Directory._divider_check(file_dir)
         if not Directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
@@ -274,7 +274,7 @@ class File():
             return (dict)   :
         """
         # directory check
-        file_dir = Directory._slash_check(file_dir)
+        file_dir = Directory._divider_check(file_dir)
         if not Directory._exist_check(file_dir):
             if is_save:
                 # !!!WARING!!! save directory not exist
