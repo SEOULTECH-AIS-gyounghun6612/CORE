@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union, Type
 
-from torch import distributed, cuda, save, load, multiprocessing
+from torch import distributed, cuda, save, load, multiprocessing, no_grad
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel
@@ -11,13 +11,13 @@ from python_ex._base import Directory, File, Utils, OS_Style
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config
+    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config, Torch_Utils
     from torch_ex._dataloader import Custom_Dataset, Dataset_Config
     from torch_ex._layer import Custom_Model, Custom_Model_Config
     from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Debug, Log_Config
+    from ._torch_base import Learning_Mode, Debug, Log_Config, Torch_Utils
     from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
@@ -114,8 +114,7 @@ class Learning_process():
             # result save dir
             _project_result_dir = \
                 f"{self._Config._Project_Name}{Directory._Divider}{self._Config._Detail}{Directory._Divider}{self._Config._Date}{Directory._Divider}"
-            self._Learning_root = Directory._make(_project_result_dir, self._Config._Save_root)
-
+            self._Learning_root = Torch_Utils.Directory._make_diretory(_project_result_dir, self._Config._Save_root, self._Config._This_node_rank)
             self._Is_cuda = len(self._Config._GPU_list)
 
             # distribute option
@@ -246,8 +245,18 @@ class Learning_process():
 
             # Do learning process
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
-                _epoch_dir = Directory._make(f"{_epoch}/", self._Learning_root)
-                self._learning(_this_gpu_id, _epoch, _sampler, _dataloader, _model, _optim)
+                _epoch_dir = Torch_Utils.Directory._make_diretory(f"{_epoch}/", self._Learning_root, _this_rank)
+                for _mode in self._Config._Learning_list:
+                    self._set_activate_mode(_mode, _model)
+                    _this_dataloader = _dataloader[_mode]
+                    _this_sampler = _sampler[_mode]
+                    _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
+
+                    if _mode == Learning_Mode.TRAIN:
+                        self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir)
+                    else:
+                        with no_grad():
+                            self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir)
 
                 if _schedule is not None:
                     _schedule.step()
@@ -270,10 +279,12 @@ class Learning_process():
                 self,
                 this_gpu_id: int,
                 epoch: int,
-                sampler: Dict[Learning_Mode, DistributedSampler],
-                dataloader: Dict[Learning_Mode, DataLoader],
+                mode: Learning_Mode,
+                sampler: DistributedSampler,
+                dataloader: DataLoader,
                 model: Custom_Model,
-                optim: Optimizer):
+                optim: Optimizer,
+                save_dir: str):
             raise NotImplementedError
 
 # class Reinforcment():

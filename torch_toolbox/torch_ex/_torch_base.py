@@ -46,11 +46,13 @@ class Log_Config(Utils.Config):
 class Torch_Utils():
     class Directory():
         @staticmethod
-        def _make_result_diretory(root: str = None, object_dir: str = None):
-            _obj_dir = f"result{Directory.SLASH}"
-            _obj_dir += f"{Utils._time_stemp(is_text=True)}{Directory.SLASH}" if object_dir is None else Directory._slash_check(object_dir)
-
-            return Directory._make(_obj_dir, root)
+        def _make_diretory(dir: str, root: str = None, this_rank: int = 0):
+            if not this_rank:
+                _maked = f"{root}{Directory._Divider}{dir}"
+                if Directory._exist_check(_maked):
+                    return _maked
+            _maked = Directory._make(dir, root)
+            return _maked
 
     class Tensor():
         @staticmethod
