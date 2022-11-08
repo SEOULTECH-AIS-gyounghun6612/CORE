@@ -21,14 +21,14 @@ if __package__ == "":
     import _base
     from _base import File
     import _numpy
-    from _numpy import np_base, np_dtype
+    from _numpy import Array_Process, Dtype
     import _error as _e
 
 else:
     from . import _base
     from ._base import File
     from . import _numpy
-    from ._numpy import np_base, np_dtype
+    from ._numpy import Array_Process, Dtype
     from . import _error as _e
 
 _error_message = _e.Custom_error("AIS_utils", "_cv2")
@@ -149,14 +149,14 @@ class Base_Process():
             _axis = -1
         else:               # stack to first channel
             _axis = 0
-        return np_base.stack(images, _axis)
+        return Array_Process.stack(images, _axis)
 
     @staticmethod
     def channel_converter(image, channel_option: Channel_Style):
         if channel_option.value:  # [w, h, c]
-            return _numpy.image_process.conver_to_last_channel(image)
+            return _numpy.Image_Process.conver_to_last_channel(image)
         else:  # [c, w, h]
-            return _numpy.image_process.conver_to_first_channel(image)
+            return _numpy.Image_Process.conver_to_first_channel(image)
 
     @staticmethod
     def resize(image: _numpy.ndarray, size: list):
@@ -185,7 +185,7 @@ class Base_Process():
     def range_converter(self, image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
-                return np_base.type_converter(image * 0xff, "uint8")
+                return Array_Process.type_converter(image * 0xff, "uint8")
             else:
                 return image
         elif form_range == R_option.ZtoFF:
@@ -207,7 +207,7 @@ class Base_Process():
     def filtering(image: _numpy.ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = np_base.get_array_from(image)
+            holder = Array_Process._get_array_from(image, dtype=Dtype.NP_UINT8)
             for _ch_ct in range(image.shape[-1]):
                 holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
             return holder
@@ -240,7 +240,7 @@ class Base_Process():
             _h, _w = image.shape
             _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
 
-        _holder = np_base.get_array_from(_holder_shape, True, value)
+        _holder = Array_Process._get_array_from(_holder_shape, is_shape=True, value=value, dtype=Dtype.NP_UINT8)
 
         _t_pad = _t_pad if _t_pad else None
         _b_pad = -_b_pad if _b_pad else None
@@ -290,8 +290,8 @@ class edge():
         def sobel(image: _numpy.ndarray, is_euclid: bool = True):
             if len(image.shape) > 2:
                 # color image
-                delta_holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
-                direction_holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+                delta_holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
+                direction_holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
                 for _ch_ct in range(image.shape[-1]):
                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
                     delta_holder += result[0]
@@ -299,8 +299,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = Base_Process.filtering(image, np_base.get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype="float"))
-                dy = Base_Process.filtering(image, np_base.get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype="float"))
+                dx = Base_Process.filtering(image, Array_Process._get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Dtype.NP_FLOAT32))
+                dy = Base_Process.filtering(image, Array_Process._get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Dtype.NP_FLOAT32))
                 dxy = _numpy.cal.distance(dx, dy, is_euclid)
                 direction = _numpy.cal.get_direction(dx, dy)
                 return dxy, direction
@@ -309,40 +309,40 @@ class edge():
     def gradient_to_edge(gradient: List[_numpy.ndarray], threshold: List[int] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
         # gradient -> [delta, direction]
         _delta = gradient[0]
-        _filterd = np_base.range_cut(np_base.normalization(_delta), [threshold, ], "upper")
+        _filterd = Array_Process.range_cut(Array_Process.normalization(_delta), [threshold, ], "upper")
 
         if is_edge_shrink:
             _direction = gradient[1]
-            _edge = _numpy.image_process.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
+            _edge = _numpy.Image_Process.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
         else:
             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else np_base.type_converter(0xFF * _edge, "uint")
+        return _edge if is_active_map else Array_Process.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
     def sobel(image: _numpy.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
         if len(image.shape) > 2:
             # color image
-            holder = np_base.get_array_from(image.shape[:2], is_shape=True, value=0, dtype="float32")
+            holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
             for _ch_ct in range(image.shape[-1]):
                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
             holder = (holder >= 2)
-            return holder if is_active_map else np_base.type_converter(0xFF * holder, "uint8")
+            return holder if is_active_map else Array_Process.type_converter(0xFF * holder, "uint8")
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
             dxy = _numpy.cal.distance(dx, dy) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = np_base.range_cut(np_base.normalization(dxy), [-threshold, threshold], ouput_type="value")
+            _edge = Array_Process.range_cut(Array_Process.normalization(dxy), [-threshold, threshold], ouput_type="value")
 
             if is_edge_shrink:
                 direction = _numpy.cal.get_direction(dx, dy)
-                _edge = _numpy.image_process.direction_check(_edge, direction, [0, 1, 2, 3])
+                _edge = _numpy.Image_Process.direction_check(_edge, direction, [0, 1, 2, 3])
 
             else:
                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else np_base.type_converter(0xFF * _edge, "uint")
+            return _edge if is_active_map else Array_Process.type_converter(0xFF * _edge, "uint")
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=Channel_Style.Last):
@@ -425,7 +425,7 @@ class draw():
             _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding)]
             _tpye_image_size = [_h + _text_h, _w]
 
-        _text_shell = np_base.get_array_from(_text_shell_size, True, 0xFF)
+        _text_shell = Array_Process._get_array_from(_text_shell_size, True, 0xFF)
         cv2.putText(img=_text_shell,
                     text=text,
                     org=(text_padding, _text_h + text_padding),
@@ -435,7 +435,7 @@ class draw():
                     color=0)
 
         _text_shell = Base_Process.resize(_text_shell, [_text_h, _w])
-        _tpye_image = np_base.get_array_from(_tpye_image_size, True, 0xFF)
+        _tpye_image = Array_Process._get_array_from(_tpye_image_size, True, 0xFF)
         _tpye_image[:_h, :] = image
         _tpye_image[_h:, :] = _text_shell
 
@@ -455,7 +455,7 @@ class draw():
 
     @staticmethod
     def _polygon(image, pts, thick, color, is_close=True):
-        pts = _numpy.image_process.poly_points(pts)
+        pts = _numpy.Image_Process.poly_points(pts)
         if thick == -1:
             return cv2.fillConvexPoly(image, pts, color)
         else:
@@ -477,8 +477,8 @@ class draw():
             self.active_pen.thickness = thickness
 
         def set_canvas(self, size, sample=None, is_color=0):
-            self.background = np_base.get_array_from(size, True, is_color) if sample is not None \
-                else np_base.get_array_from(sample, False, is_color)
+            self.background = Array_Process._get_array_from(size, True, is_color) if sample is not None \
+                else Array_Process._get_array_from(sample, False, is_color)
 
         def set_object(self):
             pass
@@ -512,7 +512,7 @@ class Process_For_Label():
     @staticmethod
     def _classification_to_color_map(classification: _numpy.ndarray, activate_label: Dict[int, List]):
         _label_ids = sorted(activate_label.keys())
-        _color_list = np_base.get_array_from([activate_label[_id][0] for _id in _label_ids], dtype=np_dtype.np_uint8)
+        _color_list = Array_Process._get_array_from([activate_label[_id][0] for _id in _label_ids], dtype=Dtype.NP_UINT8)
         return _color_list[classification]
 
     # (h, w, 3) -> (h, w, class count)
@@ -521,16 +521,16 @@ class Process_For_Label():
         _h, _w, _ = color_map.shape
 
         _label_ids = sorted(activate_label.keys())
-        _class_map = np_base.get_array_from([_h, _w, len(_label_ids)], True, dtype=np_dtype.np_uint8)
+        _class_map = Array_Process._get_array_from([_h, _w, len(_label_ids)], True, dtype=Dtype.NP_UINT8)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
             _color_list = [_label for _label in activate_label[_label_id]]
-            _class_map[:, :, _label_id] = _numpy.image_process.color_finder(color_map, _color_list).astype(np_dtype.np_uint8)
+            _class_map[:, :, _label_id] = _numpy.Image_Process.color_finder(color_map, _color_list).astype(Dtype.NP_UINT8)
 
         # make ignore
         _setted = _numpy.np.sum(_class_map, axis=2)
-        _class_map[:, :, -1] = np_base.type_converter(1 - np_base.type_converter(_setted, np_dtype.np_bool), np_dtype.np_uint8)
+        _class_map[:, :, -1] = Array_Process.type_converter(1 - Array_Process.type_converter(_setted, Dtype.NP_BOOL), Dtype.NP_UINT8)
         return _class_map
 
     # (h, w, 3) -> (h, w)
@@ -549,7 +549,7 @@ class Process_For_Label():
     @staticmethod
     def _classification_to_class_map(classification: _numpy.ndarray, num_id: int):
         _h, _w = classification.shape
-        _class_map = np_base.get_array_from([_h, _w, num_id], True, dtype=np_dtype.np_uint8)
+        _class_map = Array_Process._get_array_from([_h, _w, num_id], True, dtype=Dtype.NP_UINT8)
 
         for _id in range(num_id):
             _class_map[:, :, _id] = classification == _id

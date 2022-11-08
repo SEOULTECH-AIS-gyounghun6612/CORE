@@ -4,8 +4,10 @@ from typing import Any, List, Dict, Union
 
 if __package__ == "":
     from _base import Directory, File
+    from _numpy import Array_Process, Dtype, ndarray
 else:
     from ._base import Directory, File
+    from ._numpy import Array_Process, Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
@@ -66,16 +68,12 @@ class Log():
             elif isinstance(holder[_key], dict):
                 self._get(holder[_key], access_point[_key], is_pop)  # go to deep
 
-            elif isinstance(holder[_key], (tuple, list)):
-                _picked = access_point[_key]
-                _max_slice_ct = len(holder[_key])
-
-                for _slice_ct in range(_max_slice_ct - 1):
-                    _picked = _picked[holder[_key][_slice_ct]]
-
-                holder[_key] = _picked[holder[_key][_slice_ct]]
+            elif isinstance(holder[_key], slice):
+                _last_slicer = holder[_key]
+                holder[_key] = access_point[_key][_last_slicer]
                 if is_pop:
-                    del _picked[holder[_key][_slice_ct]]
+                    del access_point[_key][_last_slicer]
+
             else:
                 holder[_key] = access_point[_key]
                 if is_pop:

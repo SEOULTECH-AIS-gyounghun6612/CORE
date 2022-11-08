@@ -113,9 +113,9 @@ class Numpy_IO():
 
 class Array_Process():
     @staticmethod
-    def _get_array_from(sample, is_shape=False, value=0, dtype: type = Dtype.NP_UINT8):
+    def _get_array_from(sample, is_shape=False, value=0, dtype: type = None) -> ndarray:
         _array = np.ones(sample) * value if is_shape else np.array(sample)
-        return Array_Process.type_converter(_array, dtype)
+        return _array if dtype is None else Array_Process.type_converter(_array, dtype)
 
     @staticmethod
     def get_random_array(shape, range=[0, 1], norm_option=None, dtype="uint8"):
@@ -138,7 +138,7 @@ class Array_Process():
         return (Array_Process.type_converter(array, float) - _m) / _std
 
     @staticmethod
-    def type_converter(data: ndarray, to_type: type):
+    def type_converter(data: ndarray, to_type: type) -> ndarray:
         # fix it
         if to_type in ["bool", bool]:
             _term = max(data) - min(data)
