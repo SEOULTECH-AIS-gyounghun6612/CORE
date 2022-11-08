@@ -31,49 +31,55 @@ class Log():
             access_point = self._Annotation
 
         # pick data in search point
-        for __key in data_block.keys():
-            __key_exist = __key in access_point.keys()
+        for _key in data_block.keys():
+            _key_exist = _key in access_point.keys()
 
-            if isinstance(data_block[__key], dict):
-                if not __key_exist:
-                    access_point[__key] = {}  # Make new key in holder that not be exist key
-                self._insert(data_block[__key], access_point[__key], is_overwrite)  # go to deep
+            if isinstance(data_block[_key], dict):
+                if not _key_exist:
+                    access_point[_key] = {}  # Make new key in holder that not be exist key
+                self._insert(data_block[_key], access_point[_key], is_overwrite)  # go to deep
 
             else:
                 # add
-                if __key_exist and not is_overwrite:
-                    if isinstance(access_point[__key], str):
-                        access_point[__key] = f'{access_point[__key]}\n{data_block[__key]}'
-                    elif isinstance(access_point[__key], list):
-                        access_point[__key].append(data_block[__key])
+                if _key_exist and not is_overwrite:
+                    if not isinstance(access_point[_key], list):
+                        access_point[_key] = [access_point[_key], ]
+
+                    if isinstance(data_block[_key], list):
+                        access_point[_key] += data_block[_key]
                     else:
-                        access_point[__key] = [access_point[__key], ]
-                        access_point[__key].append(data_block[__key])
+                        access_point[_key].append(data_block[_key])
+
                 # (over)write
                 else:
-                    access_point[__key] = data_block[__key]
+                    access_point[_key] = data_block[_key]
 
-    def _get(self, holder: Dict, access_point: Dict = None, is_pop: bool = True):
+    def _get(self, holder: Dict, access_point: Dict = None, is_pop: bool = False):
         # check parameter; save point
         if access_point is None:
             access_point = self._Annotation
 
         # pick data in search point
-        for __key in holder.keys():
-            __key_exist = __key in access_point.keys()
+        for _key in holder.keys():
+            if _key not in access_point.keys():
+                ...
+            elif isinstance(holder[_key], dict):
+                self._get(holder[_key], access_point[_key], is_pop)  # go to deep
 
-            if __key_exist:
-                if isinstance(holder[__key], dict):
-                    self._get(holder[__key], access_point[__key], is_pop)  # go to deep
-                elif isinstance(holder[__key], list):
-                    holder[__key] = access_point[__key][holder[__key][0]: holder[__key][1]]
-                    if is_pop:
-                        del access_point[__key][holder[__key][0]: holder[__key][1]]
-                    ...
-                else:
-                    holder[__key] = access_point[__key]
-                    if is_pop:
-                        del access_point[__key]
+            elif isinstance(holder[_key], (tuple, list)):
+                _picked = access_point[_key]
+                _max_slice_ct = len(holder[_key])
+
+                for _slice_ct in range(_max_slice_ct - 1):
+                    _picked = _picked[holder[_key][_slice_ct]]
+
+                holder[_key] = _picked[holder[_key][_slice_ct]]
+                if is_pop:
+                    del _picked[holder[_key][_slice_ct]]
+            else:
+                holder[_key] = access_point[_key]
+                if is_pop:
+                    del access_point[_key]
 
     def _load(self, file_dir, file_name):
         save_pakage = File._json(file_dir, file_name)
