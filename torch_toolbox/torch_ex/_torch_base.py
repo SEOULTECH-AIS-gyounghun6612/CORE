@@ -222,15 +222,24 @@ class Debug():
             self._insert({self._Active_mode.value: _tracking}, access_point=self._Data, is_overwrite=False)
 
         def _learning_tracking(self, epoch: int, data_count: int):
-            def _make_string(data: Union[int, float, List], count: int):
-                _data_nd: ndarray = np_base.get_array_from(data, dtype=np_dtype.np_float32).sum(0) / count
-                if _data_nd.ndim:
-                    _list_string = "["
-                    for _ct in range(_data_nd.shape[0]):
-                        _list_string += f"{_data_nd[_ct]:>7.3f}, "
-                    return f"{_list_string[:-2]}]"
+            def _make_string(data: Union[int, float, List[Union[List, int, float]]], count: int):
+                if isinstance(data, int):
+                    return f"{data:>4d}, "
+
+                elif isinstance(data, float):
+                    return f"{data:>7.3f}, "
+
+                # data => List[Union[List, int, float]]
+                _data = np_base.get_array_from(data, dtype=np_dtype.np_float32)
+                if isinstance(data[0], (int, float)):
+                    return f"{_data.mean():>7.3f}, "
+
                 else:
-                    return f"{_data_nd:>7.3f}, "
+                    _data: ndarray = _data.mean(0)
+                    _list_string = "["
+                    for _ct in range(_data.shape[0]):
+                        _list_string += f"{_data[_ct]:>7.3f}, "
+                    return f"{_list_string[:-2]}]"
 
             _debugging_string = ""
 
