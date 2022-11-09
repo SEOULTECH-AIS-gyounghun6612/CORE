@@ -80,6 +80,8 @@ class Log():
             else:
                 _pick_data[_key] = access_point[_key]
 
+        return _pick_data
+
     def _load(self, file_dir, file_name):
         save_pakage = File._json(file_dir, file_name)
         self._insert(save_pakage["annotation"])
