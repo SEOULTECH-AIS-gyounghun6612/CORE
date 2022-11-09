@@ -56,28 +56,29 @@ class Log():
                 else:
                     access_point[_key] = data_block[_key]
 
-    def _get(self, holder: Dict, access_point: Dict = None, is_pop: bool = False):
+    def _get(self, place: Dict, access_point: Dict = None, is_pop: bool = False):
         # check parameter; save point
         if access_point is None:
             access_point = self._Annotation
 
+        _pick_data = {}
+
         # pick data in search point
-        for _key in holder.keys():
+        for _key in place.keys():
             if _key not in access_point.keys():
                 ...
-            elif isinstance(holder[_key], dict):
-                self._get(holder[_key], access_point[_key], is_pop)  # go to deep
 
-            elif isinstance(holder[_key], slice):
-                _last_slicer = holder[_key]
-                holder[_key] = access_point[_key][_last_slicer]
-                if is_pop:
-                    del access_point[_key][_last_slicer]
+            # if key in acces point
+            elif isinstance(place[_key], dict):
+                _pick_data[_key] = self._get(place[_key], access_point[_key])  # go to deep
 
+            elif isinstance(place[_key], (list, tuple)):
+                _pick_data[_key] = {}
+                for _sub_key in place[_key]:
+                    if _sub_key in access_point[_key].keys():
+                        _pick_data[_key][_sub_key] = access_point[_key][_sub_key]
             else:
-                holder[_key] = access_point[_key]
-                if is_pop:
-                    del access_point[_key]
+                _pick_data[_key] = access_point[_key]
 
     def _load(self, file_dir, file_name):
         save_pakage = File._json(file_dir, file_name)
