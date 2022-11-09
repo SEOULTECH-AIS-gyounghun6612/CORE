@@ -6,7 +6,7 @@ from torch import Tensor, tensor, stack, clip, distributions, cat
 from python_ex._base import Directory, Utils
 from python_ex._label import Learning_Mode
 from python_ex._result import Log
-from python_ex._numpy import np_base, np_dtype, ndarray, evaluation
+from python_ex._numpy import Array_Process, Dtype, ndarray, Evaluation_Process
 
 
 # -- DEFINE CONSTNAT -- #
@@ -56,26 +56,26 @@ class Torch_Utils():
 
     class Tensor():
         @staticmethod
-        def _holder(sample, is_shape: bool = False, value: int = 0, dtype: type = np_dtype.np_float32):
-            _array = np_base.get_array_from(sample, is_shape, value, dtype)
+        def _holder(sample, is_shape: bool = False, value: int = 0, dtype: type = Dtype.NP_FLOAT32):
+            _array = Array_Process._get_array_from(sample, is_shape, value, dtype)
             return Torch_Utils.Tensor._from_numpy(_array, dtype)
 
         @classmethod
-        def _from_numpy(self, np_array: ndarray, dtype: type = np_dtype.np_float32):
+        def _from_numpy(self, np_array: ndarray, dtype: type = Dtype.NP_FLOAT32):
             return tensor(np_array)
 
         @staticmethod
-        def _to_numpy(tensor: Tensor, dtype: type = np_dtype.np_float32) -> ndarray:
+        def _to_numpy(tensor: Tensor, dtype: type = Dtype.NP_FLOAT32) -> ndarray:
             try:
                 _array = tensor.numpy()
             except RuntimeError:
                 _array = tensor.detach().numpy()
 
-            return np_base.type_converter(_array, dtype)
+            return Array_Process.type_converter(_array, dtype)
 
         @staticmethod
         def _make_tensor(size, shape_sample=None, norm_option=None, dtype="uint8", value=[0, 1]):
-            _value = np_base.get_random_array(size, value, norm_option, dtype)
+            _value = Array_Process.get_random_array(size, value, norm_option, dtype)
             return Torch_Utils.Tensor._from_numpy(_value)
 
         @staticmethod
@@ -135,10 +135,10 @@ class Torch_Utils():
             np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
             np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
 
-            iou = np_base.get_array_from([_batch_size, _class_num], True, dtype=np_dtype.np_float32)
+            iou = Array_Process._get_array_from([_batch_size, _class_num], True, dtype=Dtype.NP_FLOAT32)
 
             for _b in range(_batch_size):
-                iou[_b] = evaluation.iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
+                iou[_b] = Evaluation_Process._iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
             return iou.sum(0).tolist()
 
@@ -148,21 +148,16 @@ class Torch_Utils():
             np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
             np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
 
-            iou = np_base.get_array_from([_batch_size, _class_num], True, dtype=np_dtype.np_float32)
-            miou = np_base.get_array_from([_batch_size, ], True, dtype=np_dtype.np_float32)
+            iou = Array_Process._get_array_from([_batch_size, _class_num], True, dtype=Dtype.NP_FLOAT32)
+            miou = Array_Process._get_array_from([_batch_size, ], True, dtype=Dtype.NP_FLOAT32)
 
             for _b in range(_batch_size):
-                iou[_b], miou[_b] = evaluation.miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
+                iou[_b], miou[_b] = Evaluation_Process._miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
             return iou.sum(0).tolist(), miou.sum(0).tolist()
 
 
 class Debug():
-    @staticmethod
-    def _make_result_directory(project_name: str, root_dir: str = None):
-        _root = Directory._relative_root() if root_dir is None else root_dir
-        return Directory._make(f"{project_name}/", _root)
-
     class Learning_Log(Log):
         def __init__(self, config: Log_Config):
             loss_logging = config._Loss_logging
@@ -221,8 +216,8 @@ class Debug():
 
             self._insert({self._Active_mode.value: _tracking}, access_point=self._Data, is_overwrite=False)
 
-        def _learning_tracking(self, epoch: int, data_count: int):
-            def _make_string(data: Union[int, float, List[Union[List, int, float]]], count: int):
+        def _learning_tracking(self, epoch: int):
+            def _make_string(data: Union[int, float, List[Union[List, int, float]]]):
                 if isinstance(data, int):
                     return f"{data:>4d}, "
 
@@ -230,7 +225,7 @@ class Debug():
                     return f"{data:>7.3f}, "
 
                 # data => List[Union[List, int, float]]
-                _data = np_base.get_array_from(data, dtype=np_dtype.np_float32)
+                _data = Array_Process._get_array_from(data, dtype=Dtype.NP_FLOAT32)
                 if isinstance(data[0], (int, float)):
                     return f"{_data.mean():>7.3f}, "
 
@@ -239,20 +234,29 @@ class Debug():
                     _list_string = "["
                     for _ct in range(_data.shape[0]):
                         _list_string += f"{_data[_ct]:>7.3f}, "
-                    return f"{_list_string[:-2]}]"
+                    return f"{_list_string[:-2]}], "
 
             _debugging_string = ""
 
+            _logging_mode = self._Active_mode
+            _loss_tracking = self._Loss_tracking[_logging_mode]
+            _acc_tracking = self._Acc_tracking[_logging_mode]
+
+            _picked_data = self._get(
+                place={_logging_mode.value: {
+                    "loss": {_data_name: epoch for _data_name in _loss_tracking},
+                    "acc": {_data_name: epoch for _data_name in _acc_tracking}
+                }},
+                access_point=self._Data)
+
             # loss
-            for _loss_keys in self._Loss_tracking[self._Active_mode]:
-                _data_list = self._Data[self._Active_mode.value]["loss"][_loss_keys][epoch]
-                _data_string = _make_string(_data_list, data_count)
+            for _loss_keys in _loss_tracking:
+                _data_string = _make_string(_picked_data[_logging_mode.value]["loss"][_loss_keys])
                 _debugging_string += f"{_loss_keys}: {_data_string}"
 
             # acc
-            for _acc_keys in self._Acc_tracking[self._Active_mode]:
-                _data_list = self._Data[self._Active_mode.value]["acc"][_acc_keys][epoch]
-                _data_string = _make_string(_data_list, data_count)
+            for _acc_keys in _acc_tracking:
+                _data_string = _make_string(_picked_data[_logging_mode.value]["acc"][_acc_keys])
                 _debugging_string += f"{_acc_keys}: {_data_string}"
 
             return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
