@@ -78,7 +78,7 @@ class Log():
                     if _sub_key in access_point[_key].keys():
                         _pick_data[_key][_sub_key] = access_point[_key][_sub_key]
             else:
-                _pick_data[_key] = access_point[_key]
+                _pick_data[_key] = access_point[_key][place[_key]]
 
         return _pick_data
 
