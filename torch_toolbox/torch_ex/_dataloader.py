@@ -3,7 +3,7 @@ from typing import Dict, List, Any, Union
 from enum import Enum
 from math import pi, cos, sin, ceil
 
-from torch import Tensor, empty, float64
+from torch import Tensor, empty
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose, InterpolationMode
 import torchvision.transforms.functional as TF
@@ -314,7 +314,7 @@ class Custom_Dataset(Dataset):
             else:
                 _holder[_target] = self._transform_process(Augmentation_Target(_target), _data)
 
-        return tuple([_data.to(float64) if isinstance(_data, Tensor) else _data for _data in _holder.values()])
+        return tuple([_data.float() if isinstance(_data, Tensor) else _data for _data in _holder.values()])
 
     def _transform_process(self, target: Augmentation_Target, data: Union[Tensor, ndarray, List[Tensor], List[ndarray]]) -> Union[Tensor, List[Tensor]]:
         _data = data

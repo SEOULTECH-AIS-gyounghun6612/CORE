@@ -11,13 +11,13 @@ from python_ex._base import Directory, File, Utils, OS_Style
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config, Torch_Utils
+    from torch_ex._torch_base import Learning_Mode, Debug, Torch_Utils
     from torch_ex._dataloader import Custom_Dataset, Dataset_Config
     from torch_ex._layer import Custom_Model, Custom_Model_Config
     from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Debug, Log_Config, Torch_Utils
+    from ._torch_base import Learning_Mode, Debug, Torch_Utils
     from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
@@ -35,8 +35,8 @@ class Learning_Config():
         _Save_root: str = Directory._relative_root()
 
         ### About Learning type and style
-        _Batch_size: int = 4
-        _Num_workers: int = 2
+        _Batch_size_in_node: int = 4
+        _Max_num_workers: int = 2
 
         _Max_epochs: int = 100
         _Last_epoch: int = -1
@@ -55,8 +55,8 @@ class Learning_Config():
                 "_Date": self._Date,
                 "_Save_root": self._Save_root,
 
-                "_Batch_size": self._Batch_size,
-                "_Num_workers": self._Num_workers,
+                "_Batch_size": self._Batch_size_in_node,
+                "_Num_workers": self._Max_num_workers,
                 "_Max_epochs": self._Max_epochs,
                 "_Last_epoch": self._Last_epoch,
                 "_Learning_list": [_mode.value for _mode in self._Learning_list],
@@ -126,10 +126,9 @@ class Learning_process():
 
         # Freeze function
         # --- for init function --- #
-        def _set_log(self, log_opt: Log_Config):
-            self._Log = Debug.Learning_Log(log_opt)
+        def _set_log(self, log: Debug.Learning_Log):
+            self._Log = log
             self._Log._insert({"trainer": self._Config._convert_to_dict()})
-            self._Log._insert({"log": log_opt._convert_to_dict()})
 
         def _set_dataset(self, dateset_config: Dataset_Config):
             self._Log._insert({"dataloader": dateset_config._convert_to_dict()})
@@ -169,15 +168,15 @@ class Learning_process():
                     _sampler[_mode] = DistributedSampler(self._Dataset[_mode], rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
                     _dataloader[_mode] = DataLoader(
                         dataset=self._Dataset[_mode],
-                        batch_size=int(self._Config._Batch_size / word_size),
-                        num_workers=int(self._Config._Num_workers / word_size),
+                        batch_size=int(self._Config._Batch_size_in_node),
+                        num_workers=int(self._Config._Max_num_workers / word_size),
                         sampler=_sampler[_mode],)
                 else:
                     _sampler[_mode] = None
                     _dataloader[_mode] = DataLoader(
                         dataset=self._Dataset[_mode],
-                        batch_size=int(self._Config._Batch_size),
-                        num_workers=int(self._Config._Num_workers),
+                        batch_size=int(self._Config._Batch_size_in_node),
+                        num_workers=int(self._Config._Max_num_workers),
                         shuffle=_mode == Learning_Mode.TRAIN)
 
             return _sampler, _dataloader
@@ -219,17 +218,20 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, decimals: int = 1, length: int = 25, fill: str = '█'):
+        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, word_size: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
 
             _data_count_param = self._Log._Loss_tracking[mode][0]
             _data_count = self._Log._learning_length(epoch)[mode.value]["loss"][_data_count_param]
 
-            _data_max_len = self._Dataset[mode].__len__()
-            _data_board = Utils._progress_board(_data_count, _data_max_len)
+            _max_data_len = self._Dataset[mode].__len__()
+            _data_board = Utils._progress_board(_data_count, _max_data_len)
 
-            _batch_size = self._Config._Batch_size
-            _max_batch_ct = _data_max_len // _batch_size + int(_data_max_len % _batch_size)
+            _batch_size = self._Config._Batch_size_in_node
+
+            if self._Use_distribute:
+                _max_data_len = round(_max_data_len / word_size)
+            _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
             _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
@@ -238,7 +240,13 @@ class Learning_process():
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._Log._learning_tracking(epoch)
 
-            Utils._progress_bar(_data_count, _data_max_len, _pre, _suf, decimals, length, fill)
+            Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
+
+        def _average_gradients(model: Custom_Model):
+            size = float(distributed.get_world_size())
+            for param in model.parameters():
+                distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
+                param.grad.data /= size
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
             self._Is_cuda = len(self._Config._GPU_list)
@@ -252,7 +260,7 @@ class Learning_process():
             _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, self._Is_cuda)
 
             if self._Use_distribute:
-                _model = _model = DistributedDataParallel(_model, device_ids=[_this_gpu_id])
+                _model = DistributedDataParallel(_model, device_ids=[_this_gpu_id])
 
             # Do learning process
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):

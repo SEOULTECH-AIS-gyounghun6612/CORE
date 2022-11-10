@@ -134,7 +134,7 @@ class Torch_Utils():
         def iou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> ndarray:
             _batch_size, _class_num = result.shape[0: 2]
             np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._get_array_from([_batch_size, _class_num], True, dtype=Dtype.NP_FLOAT32)
 
@@ -147,7 +147,7 @@ class Torch_Utils():
         def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray]:
             _batch_size, _class_num = result.shape[0: 2]
             np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._get_array_from([_batch_size, _class_num], True, dtype=Dtype.NP_FLOAT32)
             miou = Array_Process._get_array_from([_batch_size, ], True, dtype=Dtype.NP_FLOAT32)
