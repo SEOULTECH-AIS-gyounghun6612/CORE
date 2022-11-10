@@ -174,12 +174,12 @@ class Label_Process():
     class BDD_100k(Basement):
         _Directory: Dict[Union[Label_Style, Input_Style], Dict[IO_Style, str]] = {
             Input_Style.IMAGE: {
-                IO_Style.IMAGE_FILE: "bdd-100k/images/{}/{}/",
+                IO_Style.IMAGE_FILE: "bdd100k/images/{}/{}/",
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""
             },
             Label_Style.SEMENTIC_SEG: {
-                IO_Style.IMAGE_FILE: "bdd-100k/labels/sem_seg/colormaps/{}/",
+                IO_Style.IMAGE_FILE: "bdd100k/labels/sem_seg/colormaps/{}/",
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""}}
 
