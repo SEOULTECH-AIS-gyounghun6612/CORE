@@ -3,12 +3,13 @@ from typing import Dict, List, Any, Union
 from enum import Enum
 from math import pi, cos, sin, ceil
 
-from torch import Tensor, empty
+from torch import Tensor, empty, float64
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose, InterpolationMode
 import torchvision.transforms.functional as TF
 
 from python_ex._base import Utils
+from python_ex._numpy import ndarray
 from python_ex._label import Label_Process_Config, Input_Style, Label_Style, IO_Style, Label_Process
 
 
@@ -304,8 +305,8 @@ class Custom_Dataset(Dataset):
         self._Amplification = amplification
         self._Transform = augmentation
 
-    def _transform(self, data_dict: Dict):
-        _holder = {}
+    def _transform(self, data_dict: Dict[str, Union[ndarray, List[ndarray]]]):
+        _holder: Dict[str, Union[Tensor, ndarray, List[Tensor], List[ndarray]]] = {}
         for _target, _data in data_dict.items():
             if _target == "info":
                 _holder[_target] = _data
@@ -313,9 +314,9 @@ class Custom_Dataset(Dataset):
             else:
                 _holder[_target] = self._transform_process(Augmentation_Target(_target), _data)
 
-        return tuple([_data for _data in _holder.values()])
+        return tuple([_data.astype(float64) for _data in _holder.values()])
 
-    def _transform_process(self, target: Augmentation_Target, data: Union[List[Tensor], Tensor]):
+    def _transform_process(self, target: Augmentation_Target, data: Union[Tensor, ndarray, List[Tensor], List[ndarray]]) -> Union[Tensor, List[Tensor]]:
         _data = data
         _process = self._Transform[target]
         _process._set_target(target)
