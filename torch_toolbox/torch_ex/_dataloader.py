@@ -278,7 +278,7 @@ class Augmentation_Module():
         ...
 
     class Transform(Compose):
-        def __call__(self, img, target: Augmentation_Target):
+        def __call__(self, img, target: Augmentation_Target = None):
             for _t in self.transforms:
                 if isinstance(_t, Augmentation_Module.Resize):
                     _t.interpolation = _t.interpolation if _t.interpolation != Interpolation_Mode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
