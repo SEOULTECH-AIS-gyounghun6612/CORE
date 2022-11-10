@@ -171,8 +171,7 @@ class Learning_process():
                         dataset=self._Dataset[_mode],
                         batch_size=int(self._Config._Batch_size / word_size),
                         num_workers=int(self._Config._Num_workers / word_size),
-                        sampler=_sampler[_mode],
-                        shuffle=_mode == Learning_Mode.TRAIN)
+                        sampler=_sampler[_mode],)
                 else:
                     _sampler[_mode] = None
                     _dataloader[_mode] = DataLoader(
