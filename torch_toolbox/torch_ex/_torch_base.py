@@ -51,7 +51,8 @@ class Torch_Utils():
                 _maked = f"{root}{Directory._Divider}{dir}"
                 if Directory._exist_check(_maked):
                     return _maked
-            _maked = Directory._make(dir, root)
+            else:
+                _maked = Directory._make(dir, root)
             return _maked
 
     class Tensor():
