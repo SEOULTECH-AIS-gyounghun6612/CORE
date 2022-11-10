@@ -314,7 +314,7 @@ class Custom_Dataset(Dataset):
             else:
                 _holder[_target] = self._transform_process(Augmentation_Target(_target), _data)
 
-        return tuple([_data.astype(float64) for _data in _holder.values()])
+        return tuple([_data.to(float64) if isinstance(_data, Tensor) else _data for _data in _holder.values()])
 
     def _transform_process(self, target: Augmentation_Target, data: Union[Tensor, ndarray, List[Tensor], List[ndarray]]) -> Union[Tensor, List[Tensor]]:
         _data = data
