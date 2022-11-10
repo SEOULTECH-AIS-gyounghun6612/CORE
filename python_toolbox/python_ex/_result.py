@@ -56,7 +56,7 @@ class Log():
                 else:
                     access_point[_key] = data_block[_key]
 
-    def _get(self, place: Dict, access_point: Dict = None, is_pop: bool = False):
+    def _get_data(self, place: Dict, access_point: Dict = None, is_pop: bool = False):
         # check parameter; save point
         if access_point is None:
             access_point = self._Annotation
@@ -70,7 +70,7 @@ class Log():
 
             # if key in acces point
             elif isinstance(place[_key], dict):
-                _pick_data[_key] = self._get(place[_key], access_point[_key])  # go to deep
+                _pick_data[_key] = self._get_data(place[_key], access_point[_key])  # go to deep
 
             elif isinstance(place[_key], (list, tuple)):
                 _pick_data[_key] = {}
@@ -79,6 +79,32 @@ class Log():
                         _pick_data[_key][_sub_key] = access_point[_key][_sub_key]
             else:
                 _pick_data[_key] = access_point[_key][place[_key]]
+
+        return _pick_data
+
+    def _get_data_length(self, place: Dict, access_point: Dict = None):
+        # check parameter; save point
+        if access_point is None:
+            access_point = self._Annotation
+
+        _pick_data = {}
+
+        # pick data in search point
+        for _key in place.keys():
+            if _key not in access_point.keys():
+                ...
+
+            # if key in acces point
+            elif isinstance(place[_key], dict):
+                _pick_data[_key] = self._get_data_length(place[_key], access_point[_key])  # go to deep
+
+            elif isinstance(place[_key], (list, tuple)):
+                _pick_data[_key] = {}
+                for _sub_key in place[_key]:
+                    if _sub_key in access_point[_key].keys():
+                        _pick_data[_key][_sub_key] = len(access_point[_key][_sub_key])
+            else:
+                _pick_data[_key] = len(access_point[_key][place[_key]])
 
         return _pick_data
 
