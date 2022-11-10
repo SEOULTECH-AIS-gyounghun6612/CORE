@@ -5,7 +5,7 @@ from math import pi, cos, sin, ceil
 
 from torch import Tensor, empty
 from torch.utils.data import Dataset
-from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose
+from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose, InterpolationMode
 import torchvision.transforms.functional as TF
 
 from python_ex._base import Utils
@@ -25,20 +25,6 @@ class Augmentation_Target(Enum):
     INPUT = "input"
     LABEL = "label"
     COMMON = "common"
-
-
-class InterpolationMode(Enum):
-    """Interpolation modes
-    Available interpolation methods are ``nearest``, ``bilinear``, ``bicubic``, ``box``, ``hamming``, and ``lanczos``.
-    """
-    NEAREST = "nearest"
-    BILINEAR = "bilinear"
-    BICUBIC = "bicubic"
-    # For PIL compatibility
-    BOX = "box"
-    HAMMING = "hamming"
-    LANCZOS = "lanczos"
-    DEFUALT = "default"
 
 
 # -- DEFINE CONFIG -- #
@@ -82,7 +68,7 @@ class Augmentation_Module_Config():
     @dataclass
     class Rotate(Utils.Config):
         _Degrees: Union[int, List[int]]  # [-_Degrees, _Degrees] or [min, max]
-        _Interpolation: InterpolationMode = InterpolationMode.DEFUALT
+        _Interpolation: InterpolationMode = InterpolationMode.NEAREST
         _CENTER: bool = None
         _Expand: bool = None
         _FILL: int = 0
@@ -278,13 +264,19 @@ class Augmentation_Module():
         ...
 
     class Transform(Compose):
-        def __call__(self, img, target: Augmentation_Target = None):
+        def _set_target(self, target: Augmentation_Target):
+            self._Target = target
+
+        def __call__(self, img, use_auto: bool = False):
+            _target = self._Target
+
             for _t in self.transforms:
                 if isinstance(_t, Augmentation_Module.Resize):
-                    _t.interpolation = _t.interpolation if _t.interpolation != InterpolationMode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
+                    _t.interpolation = Augmentation_Module._Defualt_interpolation[_target] if use_auto else _t.interpolation
                 elif isinstance(_t, Augmentation_Module.Rotate):
-                    _t.interpolation = _t.interpolation if _t.interpolation != InterpolationMode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
-                    _t._set_angle()
+                    _t.interpolation = Augmentation_Module._Defualt_interpolation[_target] if use_auto else _t.interpolation
+                    if _target == Augmentation_Target.INPUT:
+                        _t._set_angle()
 
                 img = _t(img)
             return img
@@ -311,18 +303,28 @@ class Custom_Dataset(Dataset):
         self._Amplification = amplification
         self._Transform = augmentation
 
-    def _transform(self, input_data: Union[List[Tensor], Tensor], label_data: Union[List[Tensor], Tensor], info: Dict):
-        _input_data = input_data
-        _input_process = self._Transform[Augmentation_Target.INPUT]
-        _input_data = [_input_process(data) for data in _input_data] if isinstance(_input_data, list) else _input_process(_input_data)
+    def _transform(self, data_dict: Dict):
+        _holder = {}
+        for _target, _data in data_dict.items():
+            if _target == "info":
+                _holder[_target] = _data
 
-        _label_data = label_data
-        _label_process = self._Transform[Augmentation_Target.LABEL]
-        _label_data = [_label_process(data) for data in _label_data] if isinstance(_label_data, list) else _label_process(_label_data)
+            else:
+                _holder[_target] = self._transform_process(Augmentation_Target[_target], _data)
+
+        return _holder
+
+    def _transform_process(self, target: Augmentation_Target, data: Union[List[Tensor], Tensor]):
+        _data = data
+        _process = self._Transform[target]
+        _process._set_target(target)
+
+        _data = [_process(_mem) for _mem in _data] if isinstance(_data, list) else _process(_data)
 
         _common_process = self._Transform[Augmentation_Target.COMMON]
+        _common_process._set_target(target)
 
-        return _common_process(_input_data, Augmentation_Target.INPUT), _common_process(_input_data, Augmentation_Target.LABEL), info
+        return [_common_process(_mem) for _mem in _data] if isinstance(_data, list) else _common_process(_data)
 
     def __len__(self):
         return len(self._Work_profile._Data_list) * self._Amplification
