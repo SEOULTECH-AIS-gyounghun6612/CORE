@@ -218,7 +218,7 @@ class Learning_process():
         def _progress_dispaly(self, mode: Learning_Mode, epoch: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
 
-            _data_count = self._Log._get_data_lenth()
+            _data_count = self._Log._get_data_lenth(epoch)
             _data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(_data_count, _data_len)
 
