@@ -175,7 +175,7 @@ class Learning_process():
                     batch_size=int(self._Config._Batch_size / word_size),
                     num_workers=int(self._Config._Num_workers / word_size),
                     sampler=_sampler[_mode],
-                    shuffle=_mode==Learning_Mode.TRAIN)
+                    shuffle=_mode == Learning_Mode.TRAIN)
             return _sampler, _dataloader
 
         def _set_learning_model(self, this_gpu: int = 0, is_cuda: bool = False) -> Tuple[Custom_Model, Optimizer, _LRScheduler]:
