@@ -27,7 +27,7 @@ class Augmentation_Target(Enum):
     COMMON = "common"
 
 
-class Interpolation_Mode(Enum):
+class InterpolationMode(Enum):
     """Interpolation modes
     Available interpolation methods are ``nearest``, ``bilinear``, ``bicubic``, ``box``, ``hamming``, and ``lanczos``.
     """
@@ -62,7 +62,7 @@ class Augmentation_Module_Config():
     @dataclass
     class Resize(Utils.Config):
         _Size: List[int]
-        _Interpolation: Interpolation_Mode = Interpolation_Mode.BILINEAR
+        _Interpolation: InterpolationMode = InterpolationMode.BILINEAR
         _Max_size: int = None
         _Antialias: bool = None
 
@@ -82,7 +82,7 @@ class Augmentation_Module_Config():
     @dataclass
     class Rotate(Utils.Config):
         _Degrees: Union[int, List[int]]  # [-_Degrees, _Degrees] or [min, max]
-        _Interpolation: Interpolation_Mode = Interpolation_Mode.DEFUALT
+        _Interpolation: InterpolationMode = InterpolationMode.DEFUALT
         _CENTER: bool = None
         _Expand: bool = None
         _FILL: int = 0
@@ -222,8 +222,8 @@ class Dataset_Config(Utils.Config):
 # -- Mation Function -- #
 class Augmentation_Module():
     _Defualt_interpolation: Dict = {
-        Augmentation_Target.INPUT: Interpolation_Mode.NEAREST,
-        Augmentation_Target.LABEL: Interpolation_Mode.BILINEAR
+        Augmentation_Target.INPUT: InterpolationMode.NEAREST,
+        Augmentation_Target.LABEL: InterpolationMode.BILINEAR
     }
 
     class Convert_to_Tensor(ToTensor):
@@ -281,9 +281,9 @@ class Augmentation_Module():
         def __call__(self, img, target: Augmentation_Target = None):
             for _t in self.transforms:
                 if isinstance(_t, Augmentation_Module.Resize):
-                    _t.interpolation = _t.interpolation if _t.interpolation != Interpolation_Mode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
+                    _t.interpolation = _t.interpolation if _t.interpolation != InterpolationMode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
                 elif isinstance(_t, Augmentation_Module.Rotate):
-                    _t.interpolation = _t.interpolation if _t.interpolation != Interpolation_Mode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
+                    _t.interpolation = _t.interpolation if _t.interpolation != InterpolationMode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
                     _t._set_angle()
 
                 img = _t(img)
