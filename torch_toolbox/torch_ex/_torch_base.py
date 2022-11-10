@@ -263,15 +263,17 @@ class Debug():
 
         def _learning_length(self, epoch: int):
             _logging_mode = self._Active_mode
-            _standard_name = self._Loss_tracking[_logging_mode][0]
+            _loss_tracking = self._Loss_tracking[_logging_mode]
+            _acc_tracking = self._Acc_tracking[_logging_mode]
 
             _picked_data = self._get_data_length(
                 place={_logging_mode.value: {
-                    "loss": {_standard_name: epoch},
+                    "loss": {_data_name: epoch for _data_name in _loss_tracking},
+                    "acc": {_data_name: epoch for _data_name in _acc_tracking}
                 }},
                 access_point=self._Data)
 
-            return _picked_data[_logging_mode.value]["loss"][_standard_name]
+            return _picked_data
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
