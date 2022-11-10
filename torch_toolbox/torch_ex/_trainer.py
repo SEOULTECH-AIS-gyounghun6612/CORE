@@ -164,18 +164,23 @@ class Learning_process():
 
             #  Use distribute or Not
             for _mode in self._Config._Learning_list:
+                # set dataloader in each learning mode
                 if self._Use_distribute:
                     _sampler[_mode] = DistributedSampler(self._Dataset[_mode], rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
+                    _dataloader[_mode] = DataLoader(
+                        dataset=self._Dataset[_mode],
+                        batch_size=int(self._Config._Batch_size / word_size),
+                        num_workers=int(self._Config._Num_workers / word_size),
+                        sampler=_sampler[_mode],
+                        shuffle=_mode == Learning_Mode.TRAIN)
                 else:
                     _sampler[_mode] = None
+                    _dataloader[_mode] = DataLoader(
+                        dataset=self._Dataset[_mode],
+                        batch_size=int(self._Config._Batch_size),
+                        num_workers=int(self._Config._Num_workers),
+                        shuffle=_mode == Learning_Mode.TRAIN)
 
-                # set dataloader in each learning mode
-                _dataloader[_mode] = DataLoader(
-                    dataset=self._Dataset[_mode],
-                    batch_size=int(self._Config._Batch_size / word_size),
-                    num_workers=int(self._Config._Num_workers / word_size),
-                    sampler=_sampler[_mode],
-                    shuffle=_mode == Learning_Mode.TRAIN)
             return _sampler, _dataloader
 
         def _set_learning_model(self, this_gpu: int = 0, is_cuda: bool = False) -> Tuple[Custom_Model, Optimizer, _LRScheduler]:
