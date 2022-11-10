@@ -215,11 +215,12 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, data_count: int, decimals: int = 1, length: int = 25, fill: str = '█'):
+        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, decimals: int = 1, length: int = 25, fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
 
+            _data_count = self._Log._get_data_lenth()
             _data_len = self._Dataset[mode].__len__()
-            _data_board = Utils._progress_board(data_count, _data_len)
+            _data_board = Utils._progress_board(_data_count, _data_len)
 
             _batch_size = self._Config._Batch_size
             _max_batch_ct = _data_len // _batch_size + int(_data_len % _batch_size)
@@ -231,7 +232,7 @@ class Learning_process():
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._Log._learning_tracking(epoch)
 
-            Utils._progress_bar(data_count, _data_len, _pre, _suf, decimals, length, fill)
+            Utils._progress_bar(_data_count, _data_len, _pre, _suf, decimals, length, fill)
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
             self._Is_cuda = len(self._Config._GPU_list)

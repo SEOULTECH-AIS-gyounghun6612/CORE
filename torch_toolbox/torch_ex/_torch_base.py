@@ -140,7 +140,7 @@ class Torch_Utils():
             for _b in range(_batch_size):
                 iou[_b] = Evaluation_Process._iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
-            return iou.sum(0).tolist()
+            return iou.tolist()
 
         @staticmethod
         def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray]:
@@ -154,7 +154,7 @@ class Torch_Utils():
             for _b in range(_batch_size):
                 iou[_b], miou[_b] = Evaluation_Process._miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
-            return iou.sum(0).tolist(), miou.sum(0).tolist()
+            return iou.tolist(), miou.tolist()
 
 
 class Debug():
@@ -260,6 +260,16 @@ class Debug():
                 _debugging_string += f"{_acc_keys}: {_data_string}"
 
             return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
+
+        def _get_data_lenth(self, epoch: int):
+            _logging_mode = self._Active_mode
+            _picked_data = self._get(
+                place={_logging_mode.value: {
+                    "loss": {self._Loss_tracking[_logging_mode][0]: epoch},
+                }},
+                access_point=self._Data)
+
+            return len(_picked_data)
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
