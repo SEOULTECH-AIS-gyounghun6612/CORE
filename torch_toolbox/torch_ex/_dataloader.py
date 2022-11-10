@@ -159,8 +159,9 @@ class Dataset_Config(Utils.Config):
                     _config.__dict__["_Degrees"] if "_Degrees" in _config.__dict__.keys() else 0 for _config in _aug_config[_target]]
                 _resize_config = Augmentation_Module_Config.Resize(self._get_data_size(sum(_rotate_check))) if sum(_rotate_check) \
                     else Augmentation_Module_Config.Resize(self._Data_size)
-
                 _aug_config[_target] = [_resize_config, ] + _aug_config[_target]
+                if sum(_rotate_check):
+                    _aug_config[_target].append(Augmentation_Module_Config.Center_Crop(self._Data_size))
 
             elif isinstance(_aug_config[_target], list):
                 if not isinstance(_aug_config[_target][0], Augmentation_Module_Config.Convert_to_Tensor):
@@ -310,9 +311,9 @@ class Custom_Dataset(Dataset):
                 _holder[_target] = _data
 
             else:
-                _holder[_target] = self._transform_process(Augmentation_Target[_target], _data)
+                _holder[_target] = self._transform_process(Augmentation_Target(_target), _data)
 
-        return _holder
+        return tuple([_data for _data in _holder.values()])
 
     def _transform_process(self, target: Augmentation_Target, data: Union[List[Tensor], Tensor]):
         _data = data
@@ -324,13 +325,11 @@ class Custom_Dataset(Dataset):
         _common_process = self._Transform[Augmentation_Target.COMMON]
         _common_process._set_target(target)
 
-        return [_common_process(_mem) for _mem in _data] if isinstance(_data, list) else _common_process(_data)
+        return [_common_process(_mem, True) for _mem in _data] if isinstance(_data, list) else _common_process(_data, True)
 
     def __len__(self):
         return len(self._Work_profile._Data_list) * self._Amplification
 
     def __getitem__(self, index):
         _source_index = index // self._Amplification
-        _data: Dict = self._Data_process._work(self._Work_profile, _source_index)
-
-        return self._transform(_data["input"], _data["label"], _data["info"])
+        return self._transform(self._Data_process._work(self._Work_profile, _source_index))

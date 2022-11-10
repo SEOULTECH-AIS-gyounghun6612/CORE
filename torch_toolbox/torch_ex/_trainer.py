@@ -158,7 +158,7 @@ class Learning_process():
             # _print_lock(not this_rank)
             distributed.init_process_group(backend="nccl", init_method=method, world_size=word_size, rank=this_rank)
 
-        def _set_dataloader(self, this_rank: int = 0):
+        def _set_dataloader(self, word_size: int, this_rank: int = 0):
             _dataloader: Dict[Learning_Mode, DataLoader] = {}
             _sampler: Dict[Learning_Mode, DistributedSampler] = {}
 
@@ -170,7 +170,11 @@ class Learning_process():
                     _sampler[_mode] = None
 
                 # set dataloader in each learning mode
-                _dataloader[_mode] = DataLoader(dataset=self._Dataset[_mode], batch_size=self._Config._Batch_size, num_workers=self._Config._Num_workers, sampler=_sampler[_mode])
+                _dataloader[_mode] = DataLoader(
+                    dataset=self._Dataset[_mode],
+                    batch_size=int(self._Config._Batch_size / word_size),
+                    num_workers=int(self._Config._Num_workers / word_size),
+                    sampler=_sampler[_mode])
 
             return _sampler, _dataloader
 
@@ -225,7 +229,7 @@ class Learning_process():
             _max_time_str = Utils._time_stemp(_max_time, False, True, "%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = self._Log._learning_tracking(epoch, data_count)
+            _suf = self._Log._learning_tracking(epoch)
 
             Utils._progress_bar(data_count, _data_len, _pre, _suf, decimals, length, fill)
 
@@ -237,7 +241,7 @@ class Learning_process():
             if self._Use_distribute:
                 self._set_process(self._Word_size, _this_rank, self._Config._Host_address)
 
-            _sampler, _dataloader = self._set_dataloader(_this_rank)
+            _sampler, _dataloader = self._set_dataloader(self._Word_size, _this_rank)
             _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, self._Is_cuda)
 
             if self._Use_distribute:
