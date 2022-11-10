@@ -5,7 +5,7 @@ from math import pi, cos, sin, ceil
 
 from torch import Tensor, empty
 from torch.utils.data import Dataset
-from torchvision.transforms import ToTensor, RandomRotation, InterpolationMode, Normalize, Resize, CenterCrop
+from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose
 import torchvision.transforms.functional as TF
 
 from python_ex._base import Utils
@@ -27,8 +27,22 @@ class Augmentation_Target(Enum):
     COMMON = "common"
 
 
+class Interpolation_Mode(Enum):
+    """Interpolation modes
+    Available interpolation methods are ``nearest``, ``bilinear``, ``bicubic``, ``box``, ``hamming``, and ``lanczos``.
+    """
+    NEAREST = "nearest"
+    BILINEAR = "bilinear"
+    BICUBIC = "bicubic"
+    # For PIL compatibility
+    BOX = "box"
+    HAMMING = "hamming"
+    LANCZOS = "lanczos"
+    DEFUALT = "default"
+
+
 # -- DEFINE CONFIG -- #
-class Augmentation_Config():
+class Augmentation_Module_Config():
     @dataclass
     class Convert_to_Tensor(Utils.Config):
         ...
@@ -48,7 +62,7 @@ class Augmentation_Config():
     @dataclass
     class Resize(Utils.Config):
         _Size: List[int]
-        _Interpolation: InterpolationMode = InterpolationMode.BILINEAR
+        _Interpolation: Interpolation_Mode = Interpolation_Mode.BILINEAR
         _Max_size: int = None
         _Antialias: bool = None
 
@@ -68,7 +82,7 @@ class Augmentation_Config():
     @dataclass
     class Rotate(Utils.Config):
         _Degrees: Union[int, List[int]]  # [-_Degrees, _Degrees] or [min, max]
-        _Interpolation: InterpolationMode = InterpolationMode.NEAREST
+        _Interpolation: Interpolation_Mode = Interpolation_Mode.DEFUALT
         _CENTER: bool = None
         _Expand: bool = None
         _FILL: int = 0
@@ -100,6 +114,31 @@ class Augmentation_Config():
 
 
 @dataclass
+class Augmentation_Config(Utils.Config):
+    _Input_Augmentation: List[Utils.Config] = field(
+        default_factory=lambda: [Augmentation_Module_Config.Convert_to_Tensor(), Augmentation_Module_Config.Normalization()])
+    _Label_Augmentation: List[Utils.Config] = field(
+        default_factory=lambda: [Augmentation_Module_Config.Convert_to_Tensor(), ])
+    _Common_Augmentation: List[Utils.Config] = field(
+        default_factory=lambda: [])
+
+    def _get_parameter(self) -> Dict[Augmentation_Target, List[Utils.Config]]:
+        return {
+            Augmentation_Target.INPUT: self._Input_Augmentation,
+            Augmentation_Target.LABEL: self._Label_Augmentation,
+            Augmentation_Target.COMMON: self._Common_Augmentation}
+
+    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        return {
+            "_Input_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Input_Augmentation},
+            "_Label_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Label_Augmentation},
+            "_Common_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Common_Augmentation}}
+
+    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+        return super()._restore_from_dict(data)
+
+
+@dataclass
 class Dataset_Config(Utils.Config):
     """
 
@@ -115,33 +154,36 @@ class Dataset_Config(Utils.Config):
 
     _Data_size: List[int]
     _Amplitude: Dict[Learning_Mode, int] = field(default_factory=dict)
-    _Augmentation: Dict[Learning_Mode, Dict[Augmentation_Target, List[Utils.Config]]] = field(default_factory=dict)
+    _Augmentation: Dict[Learning_Mode, Augmentation_Config] = field(
+        default_factory=lambda: {
+            Learning_Mode.TRAIN: Augmentation_Config(),
+            Learning_Mode.VALIDATION: Augmentation_Config(),
+            Learning_Mode.TEST: Augmentation_Config(_Label_Augmentation=[])})
 
     def _get_parameter(self, mode: Learning_Mode) -> Dict[str, Any]:
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
-        if Augmentation_Target.COMMON in list(self._Augmentation[mode].keys()):
-            _use_rotate = False
-            for _aug in self._Augmentation[mode][Augmentation_Target.COMMON]:
-                if isinstance(_aug, Augmentation_Config.Rotate):
-                    _use_rotate = True
-                    _rad = pi * _aug._Degrees / 180
-                    _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
-                    _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
-                    _resize = Augmentation_Config.Resize([_h_dot, _w_dot])
-                    _crop = Augmentation_Config.Center_Crop(self._Data_size)
+        _aug_config = self._Augmentation[mode]._get_parameter()
+        _aug = {}
 
-                    self._Augmentation[mode][Augmentation_Target.COMMON] = [_resize, ] + self._Augmentation[mode][Augmentation_Target.COMMON] + [_crop, ]
-                    break
+        for _target in _aug_config.keys():
+            if _target == Augmentation_Target.COMMON:
+                _rotate_check = [
+                    _config.__dict__["_Degrees"] if "_Degrees" in _config.__dict__.keys() else 0 for _config in _aug_config[_target]]
+                _resize_config = Augmentation_Module_Config.Resize(self._get_data_size(sum(_rotate_check))) if sum(_rotate_check) \
+                    else Augmentation_Module_Config.Resize(self._Data_size)
 
-            if not _use_rotate:
-                _resize = Augmentation_Config.Resize(self._Data_size)
-                self._Augmentation[mode][Augmentation_Target.COMMON] = [_resize, ] + self._Augmentation[mode][Augmentation_Target.COMMON]
+                _aug_config[_target] = [_resize_config, ] + _aug_config[_target]
 
-        else:
-            _resize = Augmentation_Config.Resize(self._Data_size)
-            self._Augmentation[mode][Augmentation_Target.COMMON] = [_resize, ]
+            elif isinstance(_aug_config[_target], list):
+                if not isinstance(_aug_config[_target][0], Augmentation_Module_Config.Convert_to_Tensor):
+                    _aug_config[_target] = [Augmentation_Module_Config.Convert_to_Tensor(), ] + _aug_config[_target]
+
+            else:
+                _aug_config[_target] = [Augmentation_Module_Config.Convert_to_Tensor()]
+
+            _aug[_target] = Augmentation_Module._build(_aug_config[_target])
 
         return {
             "label_process": _label_process,
@@ -151,7 +193,7 @@ class Dataset_Config(Utils.Config):
             "input_io": self._Label_IO,
 
             "amplification": self._Amplitude[mode],
-            "augmentation": self._Augmentation[mode]}
+            "augmentation": _aug}
 
     def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
@@ -162,19 +204,28 @@ class Dataset_Config(Utils.Config):
             "_Label_IO": self._Label_IO.value,
             "_Amplitude": {learning_key.value: data for learning_key, data in self._Amplitude.items()},
             "_Augmentation": {
-                learning_key.value: {
-                    target.value: {
-                        config.__class__.__name__: config._convert_to_dict() for config in config_list} for target, config_list in data.items()
-                } for learning_key, data in self._Augmentation.items()}}
+                learning_key.value: aug_config._convert_to_dict() for learning_key, aug_config in self._Augmentation.items()}}
 
     def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
         self._Label_config = self._Label_config._restore_from_dict(data["_Label_opt"])
         self._Label_style, = Label_Style(data["_Label_style"])
         self._IO_style = IO_Style(data["_IO_style"])
 
+    def _get_data_size(self, degrees: float):
+        _rad = pi * degrees / 180
+        _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
+        _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
+
+        return [_h_dot, _w_dot]
+
 
 # -- Mation Function -- #
-class Augmentation():
+class Augmentation_Module():
+    _Defualt_interpolation: Dict = {
+        Augmentation_Target.INPUT: Interpolation_Mode.NEAREST,
+        Augmentation_Target.LABEL: Interpolation_Mode.BILINEAR
+    }
+
     class Convert_to_Tensor(ToTensor):
         ...
 
@@ -196,7 +247,7 @@ class Augmentation():
         ...
 
     class Rotate(RandomRotation):
-        def _set_angle(self) -> float:
+        def _set_angle(self):
             """Get parameters for ``rotate`` for a random rotation.
 
             Returns:
@@ -226,62 +277,52 @@ class Augmentation():
     class Center_Crop(CenterCrop):
         ...
 
+    class Transform(Compose):
+        def __call__(self, img, target: Augmentation_Target):
+            for _t in self.transforms:
+                if isinstance(_t, Augmentation_Module.Resize):
+                    _t.interpolation = _t.interpolation if _t.interpolation != Interpolation_Mode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
+                elif isinstance(_t, Augmentation_Module.Rotate):
+                    _t.interpolation = _t.interpolation if _t.interpolation != Interpolation_Mode.DEFUALT else Augmentation_Module._Defualt_interpolation[target]
+                    _t._set_angle()
+
+                img = _t(img)
+            return img
+
     @staticmethod
-    def _build(Augmentation_list: List[Utils.Config]):
+    def _build(Augmentation_config_list: List[Utils.Config]):
         _componant = []
 
-        for _config in Augmentation_list:
+        for _config in Augmentation_config_list:
             _name = _config.__class__.__name__
-            _componant.append(Augmentation.__dict__[_name](**_config._get_parameter()))
+            _componant.append(Augmentation_Module.__dict__[_name](**_config._get_parameter()))
 
-        return _componant
+        return Augmentation_Module.Transform(_componant)
 
 
 class Custom_Dataset(Dataset):
     def __init__(
             self, label_process: Label_Process.Basement, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style, input_io: IO_Style,
-            amplification: int, augmentation: Dict[Augmentation_Target, List[Augmentation_Config]]):
+            amplification: int, augmentation: Dict[Augmentation_Target, Augmentation_Module.Transform]):
         self._Data_process = label_process
-        self._Work_profile = self._Data_process._get_work_profile(label_style, label_io, input_style, input_io)
+        self._Work_profile = label_process._get_work_profile(label_style, label_io, input_style, input_io)
 
-        self._Activate_class_info = self._Data_process._Activate_label[label_style]
+        self._Activate_class_info = label_process._Activate_label[label_style]
         self._Amplification = amplification
-        self._Transform = {_process: Augmentation._build(config_list) for _process, config_list in augmentation.items()}
+        self._Transform = augmentation
 
     def _transform(self, input_data: Union[List[Tensor], Tensor], label_data: Union[List[Tensor], Tensor], info: Dict):
         _input_data = input_data
+        _input_process = self._Transform[Augmentation_Target.INPUT]
+        _input_data = [_input_process(data) for data in _input_data] if isinstance(_input_data, list) else _input_process(_input_data)
+
         _label_data = label_data
-        for _tr in self._Transform[Augmentation_Target.INPUT]:
-            _input_data = [_tr(data) for data in _input_data] if isinstance(_input_data, list) else _tr(_input_data)
+        _label_process = self._Transform[Augmentation_Target.LABEL]
+        _label_data = [_label_process(data) for data in _label_data] if isinstance(_label_data, list) else _label_process(_label_data)
 
-        for _tr in self._Transform[Augmentation_Target.LABEL]:
-            _label_data = [_tr(data) for data in _label_data] if isinstance(_label_data, list) else _tr(_label_data)
+        _common_process = self._Transform[Augmentation_Target.COMMON]
 
-        for _tr in self._Transform[Augmentation_Target.COMMON]:
-            if isinstance(_tr, (Augmentation.Rotate, Augmentation.Resize)):
-                if isinstance(_tr, Augmentation.Rotate):
-                    _tr._set_angle()
-                _tr.interpolation = InterpolationMode.NEAREST
-                _input_data = [_tr(data) for data in _input_data] if isinstance(_input_data, list) else _tr(_input_data)
-                _tr.interpolation = InterpolationMode.BILINEAR
-                _label_data = [_tr(data) for data in _label_data] if isinstance(_label_data, list) else _tr(_label_data)
-            else:
-                _input_data = [_tr(data) for data in _input_data] if isinstance(_input_data, list) else _tr(_input_data)
-                _label_data = [_tr(data) for data in _label_data] if isinstance(_label_data, list) else _tr(_label_data)
-
-        return _input_data, _label_data, info
-
-    def _input_process(self, input_data: Union[List[Tensor], Tensor]):
-        if isinstance(input_data, list):
-            return [self._Transform[Augmentation_Target.INPUT](data) for data in input_data]
-        else:
-            return self._Transform[Augmentation_Target.INPUT](input_data)
-
-    def _label_process(self, label_data: Union[List[Tensor], Tensor]):
-        if isinstance(label_data, list):
-            return [self._Transform[Augmentation_Target.LABEL](data) for data in label_data]
-        else:
-            return self._Transform[Augmentation_Target.LABEL](label_data)
+        return _common_process(_input_data, Augmentation_Target.INPUT), _common_process(_input_data, Augmentation_Target.LABEL), info
 
     def __len__(self):
         return len(self._Work_profile._Data_list) * self._Amplification
