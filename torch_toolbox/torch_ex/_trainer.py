@@ -196,14 +196,9 @@ class Learning_process():
             return _model, _optim, _schedule
 
         def _set_activate_mode(
-                self,
-                mode: Learning_Mode,
-                learning_log: Debug.Learning_Log,
-                model: Custom_Model,
-                dataloader: Dict[Learning_Mode, DataLoader],
-                sampler: Dict[Learning_Mode, DistributedSampler]):
-            learning_log._set_activate_mode(mode)
+                self, mode: Learning_Mode, model: Custom_Model, dataloader: Dict[Learning_Mode, DataLoader], sampler: Dict[Learning_Mode, DistributedSampler]):
 
+            self._Log._set_activate_mode(mode)
             model.train() if mode == Learning_Mode.TRAIN else model.eval()
             _this_dataloader = dataloader[mode]
             _this_sampler = sampler[mode]
@@ -237,7 +232,6 @@ class Learning_process():
 
         def _progress_dispaly(
                 self,
-                learning_log: Debug.Learning_Log,
                 mode: Learning_Mode,
                 epoch: int,
                 word_size: int = 1,
@@ -245,7 +239,7 @@ class Learning_process():
                 length: int = 25,
                 fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
-            _data_count = learning_log._progress_length(epoch)
+            _data_count = self._Log._progress_length(epoch)
 
             _max_data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(_data_count, _max_data_len)
@@ -256,12 +250,12 @@ class Learning_process():
                 _max_data_len = round(_max_data_len / word_size)
             _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
-            _this_time, _max_time = learning_log._get_learning_time(epoch, _max_batch_ct)
+            _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
             _max_time_str = Utils._time_stemp(_max_time, False, True, "%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = learning_log._learning_tracking(epoch)
+            _suf = self._Log._learning_tracking(epoch)
 
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
@@ -272,7 +266,7 @@ class Learning_process():
                     distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
                     param.grad.data /= size
 
-        def _process(self, gpu: int, gpu_per_node: int, learning_log: Debug.Learning_Log):
+        def _process(self, gpu: int, gpu_per_node: int, _share_block: multiprocessing.Queue = None):
             _this_rank = self._Config._This_node_rank * gpu_per_node + gpu
             _this_gpu_id = self._Config._GPU_list[gpu] if self._Is_cuda else gpu
 
@@ -289,14 +283,14 @@ class Learning_process():
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
                 _epoch_dir = Torch_Utils.Directory._make_diretory(f"{_epoch}/", self._Learning_root, _this_rank)
                 for _mode in self._Config._Learning_list:
-                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, learning_log, _model, _dataloader, _sampler)
+                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
                     _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
 
                     if _mode == Learning_Mode.TRAIN:
-                        self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, learning_log, _mode_dir)
+                        self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)
                     else:
                         with no_grad():
-                            self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, learning_log, _mode_dir)
+                            self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)
 
                 if _schedule is not None:
                     _schedule.step()
@@ -304,23 +298,23 @@ class Learning_process():
                 # save log file
 
                 if _this_rank is MAIN_RANK:
-                    learning_log._insert({"_Last_epoch": _epoch})
-                    learning_log._save(self._Learning_root, "trainer_log.json")
+                    self._Log._insert({"_Last_epoch": _epoch})
+                    self._Log._save(self._Learning_root, "trainer_log.json")
 
                     # save model
                     self._save_model(_epoch_dir, _model, _optim, _schedule)
 
         def _work(self):
-            learning_log = self._Log
-
             if self._Use_distribute:
-                multiprocessing.spawn(self._process, nprocs=len(self._Config._GPU_list), args=(len(self._Config._GPU_list), learning_log))
+                _share_block = multiprocessing.Manager().Queue()
+                multiprocessing.spawn(self._process, nprocs=len(self._Config._GPU_list), args=(len(self._Config._GPU_list), _share_block))
             else:
-                self._process(gpu=self._Config._GPU_list[0], gpu_per_node=0, learning_log=learning_log)
+                self._process(gpu=self._Config._GPU_list[0], gpu_per_node=0)
 
         # Un-Freeze function
         def _learning(
                 self,
+                this_rank: int,
                 this_gpu_id: int,
                 epoch: int,
                 mode: Learning_Mode,
@@ -328,8 +322,8 @@ class Learning_process():
                 dataloader: DataLoader,
                 model: Custom_Model,
                 optim: Optimizer,
-                learning_log: Debug.Learning_Log,
-                save_dir: str):
+                save_dir: str,
+                share_block: multiprocessing.Queue):
             raise NotImplementedError
 
 # class Reinforcment():
@@ -375,7 +369,9 @@ class Learning_process():
 #         def get_reward(self, state, ep_done):
 #             pass
 
-#         def play(self, mode: str, data_num: int, step_ct: int, action: Tensor, state: Tensor, _ep_done: Tensor, is_display: bool, save_root: str) -> Tuple[Tensor, Tensor]:
+#         def play(
+#               self, mode: str, data_num: int, step_ct: int, action: Tensor, state: Tensor, _ep_done: Tensor, is_display: bool, save_root: str)
+#  -> Tuple[Tensor, Tensor]:
 #             pass
 
 #         def dump_to_memory(self, state, action, reward, next_state, ep_done):

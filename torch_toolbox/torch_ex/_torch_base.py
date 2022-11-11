@@ -159,10 +159,7 @@ class Debug():
         def __init__(self, config: Log_Config):
             self._Loss_tracking = config._Loss_tracking if len(config._Loss_tracking.keys()) else config._Loss_logging
             self._Acc_tracking = config._Acc_tracking if len(config._Acc_tracking.keys()) else config._Acc_logging
-
             super().__init__(data=self._make_data_holder(config._Loss_logging, config._Acc_logging))
-
-            self._Progress_param = self._make_progress_holder(config._Loss_tracking)
 
         # Freeze function
         def _make_data_holder(self, loss_logging: Dict[Learning_Mode, List[str]], acc_logging: Dict[Learning_Mode, List[str]]):
@@ -191,17 +188,11 @@ class Debug():
                 _holder[_mode]["process_time"] = {}
             return _holder
 
-        def _make_progress_holder(self, loss_logging: Dict[Learning_Mode, List[str]]):
-            _holder = {}
-            for _mode in loss_logging.keys():
-                _holder[_mode] = self._Data[_mode.value]["loss"][loss_logging[_mode][0]]
-
-            return _holder
-
         def _set_activate_mode(self, learing_mode: Learning_Mode):
             self._Active_mode = learing_mode
 
-        def _learning_logging(self, epoch: int, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[str, Union[int, float, List]] = None, process_time: float = None):
+        def _learning_logging(
+                self, epoch: int, loss: Dict[str, Union[int, float, List]] = None, acc: Dict[str, Union[int, float, List]] = None, process_time: float = None):
             _tracking = {}
 
             if loss is not None:
@@ -266,13 +257,12 @@ class Debug():
 
         def _progress_length(self, epoch: int):
             _logging_mode = self._Active_mode
+            _param = self._Loss_tracking[_logging_mode][0]
 
-            if epoch in self._Progress_param[_logging_mode].keys():
-                _picked = self._Progress_param[_logging_mode][epoch]
-
-                return len(_picked) if isinstance(_picked, list) else 0 if _picked is None else 1
-            else:
-                return 0
+            _data_length = self._get_data_length(
+                place={_logging_mode.value: {"loss": {_param: epoch}}},
+                access_point=self._Data)
+            return _data_length[_logging_mode.value]["loss"][_param]
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
