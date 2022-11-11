@@ -156,14 +156,11 @@ class Torch_Utils():
 
 class Debug():
     class Learning_Log(Log):
-        def __init__(self, config: Log_Config):
-            loss_logging = config._Loss_logging
-            acc_logging = config._Acc_logging
-
+        def _log_init(self, config: Log_Config):
             self._Loss_tracking = config._Loss_tracking if len(config._Loss_tracking.keys()) else config._Loss_logging
             self._Acc_tracking = config._Acc_tracking if len(config._Acc_tracking.keys()) else config._Acc_logging
 
-            super().__init__(data=self._make_data_holder(loss_logging, acc_logging))
+            self._insert(data=self._make_data_holder(config._Loss_logging, config._Acc_logging), access_point=self._Data)
 
         # Freeze function
         def _make_data_holder(self, loss_logging: Dict[Learning_Mode, List[str]], acc_logging: Dict[Learning_Mode, List[str]]):

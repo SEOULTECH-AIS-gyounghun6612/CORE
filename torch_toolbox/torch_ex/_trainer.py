@@ -27,7 +27,7 @@ else:
 
 
 # -- DEFINE VARIABLE -- #
-_Learning_log: Debug.Learning_Log
+_Learning_log = Debug.Learning_Log()
 
 
 # -- DEFINE CONFIG -- #
