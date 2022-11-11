@@ -289,7 +289,7 @@ class Learning_process():
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
                 _epoch_dir = Torch_Utils.Directory._make_diretory(f"{_epoch}/", self._Learning_root, _this_rank)
                 for _mode in self._Config._Learning_list:
-                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
+                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, learning_log, _model, _dataloader, _sampler)
                     _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
 
                     if _mode == Learning_Mode.TRAIN:
