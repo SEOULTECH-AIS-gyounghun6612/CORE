@@ -10,6 +10,7 @@ from python_ex._numpy import Array_Process, Dtype, ndarray, Evaluation_Process
 
 
 # -- DEFINE CONSTNAT -- #
+MAIN_RANK: int = 0
 
 
 # -- DEFINE CONFIG -- #
@@ -46,13 +47,8 @@ class Log_Config(Utils.Config):
 class Torch_Utils():
     class Directory():
         @staticmethod
-        def _make_diretory(dir: str, root: str = None, this_rank: int = 0):
-            if not this_rank:
-                _maked = f"{root}{Directory._Divider}{dir}"
-                if Directory._exist_check(_maked):
-                    return _maked
-            else:
-                _maked = Directory._make(dir, root)
+        def _make_diretory(directory: str, root: str = None, this_rank: int = 0):
+            _maked = Directory._make(directory, root) if this_rank is MAIN_RANK else f"{root}{Directory._Divider}{directory}"
             return _maked
 
     class Tensor():
@@ -262,19 +258,17 @@ class Debug():
 
             return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
 
-        def _learning_length(self, epoch: int):
+        def _progress_length(self, epoch: int):
             _logging_mode = self._Active_mode
             _loss_tracking = self._Loss_tracking[_logging_mode]
-            _acc_tracking = self._Acc_tracking[_logging_mode]
-
             _picked_data = self._get_data_length(
-                place={_logging_mode.value: {
-                    "loss": {_data_name: epoch for _data_name in _loss_tracking},
-                    "acc": {_data_name: epoch for _data_name in _acc_tracking}
-                }},
-                access_point=self._Data)
+                place={
+                    _logging_mode.value: {
+                        "loss": {_loss_tracking[0]: epoch}
+                    }},
+                access_point=self._Data)[_logging_mode.value]["loss"][_loss_tracking[0]]
 
-            return _picked_data
+            return len(_picked_data)
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]

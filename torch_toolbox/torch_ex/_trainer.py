@@ -11,16 +11,23 @@ from python_ex._base import Directory, File, Utils, OS_Style
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Debug, Torch_Utils
+    from torch_ex._torch_base import Learning_Mode, Torch_Utils, Debug, MAIN_RANK
     from torch_ex._dataloader import Custom_Dataset, Dataset_Config
     from torch_ex._layer import Custom_Model, Custom_Model_Config
     from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Debug, Torch_Utils
+    from ._torch_base import Learning_Mode, Torch_Utils, Debug, MAIN_RANK
     from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
+
+
+# -- DEFINE CONSTNAT -- #
+
+
+# -- DEFINE VARIABLE -- #
+_Learning_log: Debug.Learning_Log
 
 
 # -- DEFINE CONFIG -- #
@@ -109,6 +116,8 @@ class Learning_Config():
 class Learning_process():
     class End_to_End():
         def __init__(self, learning_cofig: Learning_Config.E2E) -> None:
+            global _Learning_log
+            _Learning_log._insert({"01_trainer": learning_cofig._convert_to_dict()})
             self._Config = learning_cofig
 
             # result save dir
@@ -126,18 +135,19 @@ class Learning_process():
 
         # Freeze function
         # --- for init function --- #
-        def _set_log(self, log: Debug.Learning_Log):
-            self._Log = log
-            self._Log._insert({"trainer": self._Config._convert_to_dict()})
-
         def _set_dataset(self, dateset_config: Dataset_Config):
-            self._Log._insert({"dataloader": dateset_config._convert_to_dict()})
+            global _Learning_log
+            _Learning_log._insert({"03_dataloader": dateset_config._convert_to_dict()})
+
             self._Dataset: Dict[Learning_Mode, Custom_Dataset] = {}
             for _mode in self._Config._Learning_list:
                 self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
 
         def _set_model_n_optim_config(self, model_stemp: Type[Custom_Model], model_config: Custom_Model_Config, schedule_config: Scheduler_Config):
-            self._Log._insert({"schedule": schedule_config._convert_to_dict()})
+            global _Learning_log
+            _Learning_log._insert({"04_model": model_config._convert_to_dict()})
+            _Learning_log._insert({"05_schedule": schedule_config._convert_to_dict()})
+
             self._Model_stemp = model_stemp
             self._Model_config = model_config
             self._Schedule_config = schedule_config
@@ -188,10 +198,16 @@ class Learning_process():
 
             return _model, _optim, _schedule
 
-        def _set_activate_mode(self, mode: Learning_Mode, model: Custom_Model):
-            # set log state
-            self._Log._set_activate_mode(mode)
+        def _set_activate_mode(
+                self, mode: Learning_Mode, model: Custom_Model, dataloader: Dict[Learning_Mode, DataLoader], sampler: Dict[Learning_Mode, DistributedSampler]):
+            global _Learning_log
+            _Learning_log._set_activate_mode(mode)
+
             model.train() if mode == Learning_Mode.TRAIN else model.eval()
+            _this_dataloader = dataloader[mode]
+            _this_sampler = sampler[mode]
+
+            return _this_dataloader, _this_sampler
 
         # in later move to custom model
         def _save_model(self, save_dir: str, model: Custom_Model, optim: Optimizer = None, schedule: _LRScheduler = None):
@@ -218,11 +234,10 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, word_size: int, decimals: int = 1, length: int = 25, fill: str = '█'):
+        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, word_size: int = 1, decimals: int = 1, length: int = 25, fill: str = '█'):
+            global _Learning_log
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
-
-            _data_count_param = self._Log._Loss_tracking[mode][0]
-            _data_count = self._Log._learning_length(epoch)[mode.value]["loss"][_data_count_param]
+            _data_count = _Learning_log._progress_length(epoch)
 
             _max_data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(_data_count, _max_data_len)
@@ -233,22 +248,24 @@ class Learning_process():
                 _max_data_len = round(_max_data_len / word_size)
             _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
-            _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
+            _this_time, _max_time = _Learning_log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
             _max_time_str = Utils._time_stemp(_max_time, False, True, "%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = self._Log._learning_tracking(epoch)
+            _suf = _Learning_log._learning_tracking(epoch)
 
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
-        def _average_gradients(model: Custom_Model):
+        def _average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
             for param in model.parameters():
-                distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
-                param.grad.data /= size
+                if param.grad is not None:
+                    distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
+                    param.grad.data /= size
 
         def _process(self, gpu: int = 0, gpu_per_node: int = 1):
+            global _Learning_log
             self._Is_cuda = len(self._Config._GPU_list)
             _this_rank = self._Config._This_node_rank * gpu_per_node + gpu
             _this_gpu_id = self._Config._GPU_list[gpu] if self._Is_cuda else gpu
@@ -266,9 +283,7 @@ class Learning_process():
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
                 _epoch_dir = Torch_Utils.Directory._make_diretory(f"{_epoch}/", self._Learning_root, _this_rank)
                 for _mode in self._Config._Learning_list:
-                    self._set_activate_mode(_mode, _model)
-                    _this_dataloader = _dataloader[_mode]
-                    _this_sampler = _sampler[_mode]
+                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
                     _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
 
                     if _mode == Learning_Mode.TRAIN:
@@ -281,11 +296,13 @@ class Learning_process():
                     _schedule.step()
 
                 # save log file
-                self._Log._insert({"_Last_epoch": _epoch})
-                self._Log._save(self._Learning_root, "trainer_log.json")
 
-                # save model
-                self._save_model(_epoch_dir, _model, _optim, _schedule)
+                if _this_rank is MAIN_RANK:
+                    _Learning_log._insert({"_Last_epoch": _epoch})
+                    _Learning_log._save(self._Learning_root, "trainer_log.json")
+
+                    # save model
+                    self._save_model(_epoch_dir, _model, _optim, _schedule)
 
         def _work(self):
             if self._Use_distribute:
