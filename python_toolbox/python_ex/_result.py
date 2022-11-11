@@ -87,7 +87,7 @@ class Log():
         if access_point is None:
             access_point = self._Annotation
 
-        _pick_data = {}
+        _pick_data_length = {}
 
         # pick data in search point
         for _key in place.keys():
@@ -96,17 +96,21 @@ class Log():
 
             # if key in acces point
             elif isinstance(place[_key], dict):
-                _pick_data[_key] = self._get_data_length(place[_key], access_point[_key])  # go to deep
+                _pick_data_length[_key] = self._get_data_length(place[_key], access_point[_key])  # go to deep
 
             elif isinstance(place[_key], (list, tuple)):
-                _pick_data[_key] = {}
+                _pick_data_length[_key] = {}
                 for _sub_key in place[_key]:
                     if _sub_key in access_point[_key].keys():
-                        _pick_data[_key][_sub_key] = len(access_point[_key][_sub_key])
+                        _pick_data = access_point[_key][_sub_key]
+                        _length = len(_pick_data) if isinstance(_pick_data, list) else 0 if _pick_data is None else 1 
+                        _pick_data_length[_key] = _length
             else:
-                _pick_data[_key] = len(access_point[_key][place[_key]])
+                _pick_data = access_point[_key][place[_key]]
+                _length = len(_pick_data) if isinstance(_pick_data, list) else 0 if _pick_data is None else 1 
+                _pick_data_length[_key] = _length
 
-        return _pick_data
+        return _pick_data_length
 
     def _load(self, file_dir, file_name):
         save_pakage = File._json(file_dir, file_name)
