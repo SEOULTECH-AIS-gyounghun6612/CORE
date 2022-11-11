@@ -156,11 +156,13 @@ class Torch_Utils():
 
 class Debug():
     class Learning_Log(Log):
-        def _log_init(self, config: Log_Config):
+        def __init__(self, config: Log_Config):
             self._Loss_tracking = config._Loss_tracking if len(config._Loss_tracking.keys()) else config._Loss_logging
             self._Acc_tracking = config._Acc_tracking if len(config._Acc_tracking.keys()) else config._Acc_logging
 
-            self._insert(data_block=self._make_data_holder(config._Loss_logging, config._Acc_logging), access_point=self._Data)
+            super().__init__(data=self._make_data_holder(config._Loss_logging, config._Acc_logging))
+
+            self._Progress_param = self._make_progress_holder(config._Loss_tracking)
 
         # Freeze function
         def _make_data_holder(self, loss_logging: Dict[Learning_Mode, List[str]], acc_logging: Dict[Learning_Mode, List[str]]):
@@ -187,6 +189,13 @@ class Debug():
             # time
             for _mode in _holder.keys():
                 _holder[_mode]["process_time"] = {}
+            return _holder
+
+        def _make_progress_holder(self, loss_logging: Dict[Learning_Mode, List[str]]):
+            _holder = {}
+            for _mode in loss_logging.keys():
+                _holder[_mode] = self._Data[_mode.value]["loss"][loss_logging[_mode][0]]
+
             return _holder
 
         def _set_activate_mode(self, learing_mode: Learning_Mode):
@@ -257,15 +266,13 @@ class Debug():
 
         def _progress_length(self, epoch: int):
             _logging_mode = self._Active_mode
-            _loss_tracking = self._Loss_tracking[_logging_mode]
-            _picked_data = self._get_data_length(
-                place={
-                    _logging_mode.value: {
-                        "loss": {_loss_tracking[0]: epoch}
-                    }},
-                access_point=self._Data)[_logging_mode.value]["loss"][_loss_tracking[0]]
 
-            return len(_picked_data) if isinstance(_picked_data, list) else 1
+            if epoch in self._Progress_param[_logging_mode].keys():
+                _picked = self._Progress_param[_logging_mode][epoch]
+
+                return len(_picked) if isinstance(_picked, list) else 0 if _picked is None else 1
+            else:
+                return 0
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]

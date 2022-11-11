@@ -11,23 +11,19 @@ from python_ex._base import Directory, File, Utils, OS_Style
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Torch_Utils, Debug, MAIN_RANK
+    from torch_ex._torch_base import Learning_Mode, Torch_Utils, Debug, Log_Config, MAIN_RANK
     from torch_ex._dataloader import Custom_Dataset, Dataset_Config
     from torch_ex._layer import Custom_Model, Custom_Model_Config
     from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Torch_Utils, Debug, MAIN_RANK
+    from ._torch_base import Learning_Mode, Torch_Utils, Debug, Log_Config, MAIN_RANK
     from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 
 
 # -- DEFINE CONSTNAT -- #
-
-
-# -- DEFINE VARIABLE -- #
-_Learning_log = Debug.Learning_Log()
 
 
 # -- DEFINE CONFIG -- #
@@ -116,8 +112,6 @@ class Learning_Config():
 class Learning_process():
     class End_to_End():
         def __init__(self, learning_cofig: Learning_Config.E2E) -> None:
-            global _Learning_log
-            _Learning_log._insert({"01_trainer": learning_cofig._convert_to_dict()})
             self._Config = learning_cofig
 
             # result save dir
@@ -135,18 +129,21 @@ class Learning_process():
 
         # Freeze function
         # --- for init function --- #
+        def _set_log(self, log_config: Log_Config):
+            self._Log = Debug.Learning_Log(log_config)
+            self._Log._insert({"01_learning": self._Config._convert_to_dict()})
+            self._Log._insert({"02_log": log_config._convert_to_dict()})
+
         def _set_dataset(self, dateset_config: Dataset_Config):
-            global _Learning_log
-            _Learning_log._insert({"03_dataloader": dateset_config._convert_to_dict()})
+            self._Log._insert({"03_dataloader": dateset_config._convert_to_dict()})
 
             self._Dataset: Dict[Learning_Mode, Custom_Dataset] = {}
             for _mode in self._Config._Learning_list:
                 self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
 
         def _set_model_n_optim_config(self, model_stemp: Type[Custom_Model], model_config: Custom_Model_Config, schedule_config: Scheduler_Config):
-            global _Learning_log
-            _Learning_log._insert({"04_model": model_config._convert_to_dict()})
-            _Learning_log._insert({"05_schedule": schedule_config._convert_to_dict()})
+            self._Log._insert({"04_model": model_config._convert_to_dict()})
+            self._Log._insert({"05_schedule": schedule_config._convert_to_dict()})
 
             self._Model_stemp = model_stemp
             self._Model_config = model_config
@@ -199,9 +196,13 @@ class Learning_process():
             return _model, _optim, _schedule
 
         def _set_activate_mode(
-                self, mode: Learning_Mode, model: Custom_Model, dataloader: Dict[Learning_Mode, DataLoader], sampler: Dict[Learning_Mode, DistributedSampler]):
-            global _Learning_log
-            _Learning_log._set_activate_mode(mode)
+                self,
+                mode: Learning_Mode,
+                learning_log: Debug.Learning_Log,
+                model: Custom_Model,
+                dataloader: Dict[Learning_Mode, DataLoader],
+                sampler: Dict[Learning_Mode, DistributedSampler]):
+            learning_log._set_activate_mode(mode)
 
             model.train() if mode == Learning_Mode.TRAIN else model.eval()
             _this_dataloader = dataloader[mode]
@@ -234,10 +235,17 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(self, mode: Learning_Mode, epoch: int, word_size: int = 1, decimals: int = 1, length: int = 25, fill: str = '█'):
-            global _Learning_log
+        def _progress_dispaly(
+                self,
+                learning_log: Debug.Learning_Log,
+                mode: Learning_Mode,
+                epoch: int,
+                word_size: int = 1,
+                decimals: int = 1,
+                length: int = 25,
+                fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
-            _data_count = _Learning_log._progress_length(epoch)
+            _data_count = learning_log._progress_length(epoch)
 
             _max_data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(_data_count, _max_data_len)
@@ -248,12 +256,12 @@ class Learning_process():
                 _max_data_len = round(_max_data_len / word_size)
             _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
-            _this_time, _max_time = _Learning_log._get_learning_time(epoch, _max_batch_ct)
+            _this_time, _max_time = learning_log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils._time_stemp(_this_time, False, True, "%H:%M:%S")
             _max_time_str = Utils._time_stemp(_max_time, False, True, "%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = _Learning_log._learning_tracking(epoch)
+            _suf = learning_log._learning_tracking(epoch)
 
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
@@ -264,9 +272,7 @@ class Learning_process():
                     distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
                     param.grad.data /= size
 
-        def _process(self, gpu: int = 0, gpu_per_node: int = 1):
-            global _Learning_log
-            self._Is_cuda = len(self._Config._GPU_list)
+        def _process(self, gpu: int, gpu_per_node: int, learning_log: Debug.Learning_Log):
             _this_rank = self._Config._This_node_rank * gpu_per_node + gpu
             _this_gpu_id = self._Config._GPU_list[gpu] if self._Is_cuda else gpu
 
@@ -298,17 +304,19 @@ class Learning_process():
                 # save log file
 
                 if _this_rank is MAIN_RANK:
-                    _Learning_log._insert({"_Last_epoch": _epoch})
-                    _Learning_log._save(self._Learning_root, "trainer_log.json")
+                    learning_log._insert({"_Last_epoch": _epoch})
+                    learning_log._save(self._Learning_root, "trainer_log.json")
 
                     # save model
                     self._save_model(_epoch_dir, _model, _optim, _schedule)
 
         def _work(self):
+            learning_log = self._Log
+
             if self._Use_distribute:
-                multiprocessing.spawn(self._process, nprocs=len(self._Config._GPU_list), )
+                multiprocessing.spawn(self._process, nprocs=len(self._Config._GPU_list), args=(len(self._Config._GPU_list), learning_log))
             else:
-                self._process()
+                self._process(gpu=self._Config._GPU_list[0], gpu_per_node=0, learning_log=learning_log)
 
         # Un-Freeze function
         def _learning(
