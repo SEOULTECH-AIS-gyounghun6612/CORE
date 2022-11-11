@@ -160,7 +160,7 @@ class Debug():
             self._Loss_tracking = config._Loss_tracking if len(config._Loss_tracking.keys()) else config._Loss_logging
             self._Acc_tracking = config._Acc_tracking if len(config._Acc_tracking.keys()) else config._Acc_logging
 
-            self._insert(data=self._make_data_holder(config._Loss_logging, config._Acc_logging), access_point=self._Data)
+            self._insert(data_block=self._make_data_holder(config._Loss_logging, config._Acc_logging), access_point=self._Data)
 
         # Freeze function
         def _make_data_holder(self, loss_logging: Dict[Learning_Mode, List[str]], acc_logging: Dict[Learning_Mode, List[str]]):
@@ -265,7 +265,7 @@ class Debug():
                     }},
                 access_point=self._Data)[_logging_mode.value]["loss"][_loss_tracking[0]]
 
-            return len(_picked_data)
+            return len(_picked_data) if isinstance(_picked_data, list) else 1
 
         def _get_using_time(self, epoch: int, is_average: bool = False):
             _time_list = self._Data[self._Active_mode.value]["process_time"][epoch]
