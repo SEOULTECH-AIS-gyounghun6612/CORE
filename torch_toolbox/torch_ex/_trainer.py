@@ -293,10 +293,10 @@ class Learning_process():
                     _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
 
                     if _mode == Learning_Mode.TRAIN:
-                        self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir)
+                        self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, learning_log, _mode_dir)
                     else:
                         with no_grad():
-                            self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir)
+                            self._learning(_this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, learning_log, _mode_dir)
 
                 if _schedule is not None:
                     _schedule.step()
@@ -328,6 +328,7 @@ class Learning_process():
                 dataloader: DataLoader,
                 model: Custom_Model,
                 optim: Optimizer,
+                learning_log: Debug.Learning_Log,
                 save_dir: str):
             raise NotImplementedError
 
