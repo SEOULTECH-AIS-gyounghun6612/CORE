@@ -10,25 +10,19 @@ Requirement
 """
 
 # Import module
-from typing import Dict, List, Union
-import cv2
-import random
-from dataclasses import dataclass, field
-
 from enum import Enum
+from typing import Dict, List, Union, Optional, Tuple
+from dataclasses import dataclass, field
+import cv2
 
 if __package__ == "":
-    import _base
-    from _base import File
-    import _numpy
-    from _numpy import Array_Process, Dtype
+    from _base import File, Directory
+    from _numpy import Array_Process, Image_Process, Np_Dtype, ndarray
     import _error as _e
 
 else:
-    from . import _base
-    from ._base import File
-    from . import _numpy
-    from ._numpy import Array_Process, Dtype
+    from ._base import File, Directory
+    from ._numpy import Array_Process, Image_Process, Np_Dtype, ndarray
     from . import _error as _e
 
 _error_message = _e.Custom_error("AIS_utils", "_cv2")
@@ -75,9 +69,9 @@ class Support_Video_Extension(Enum):
 
 
 class Segmentation_Style(Enum):
-    CLASS_MAP: 0        # (h, w, class count)
-    COLOR_MAP: 1        # (h, w, 3)
-    CLASSIFICATION: 2   # (h, w)
+    CLASS_MAP = 0       # (h, w, class count)
+    COLOR_MAP = 1       # (h, w, 3)
+    CLASSIFICATION = 2  # (h, w)
 
 # -- DEFINE CONFIG -- #
 
@@ -85,10 +79,10 @@ class Segmentation_Style(Enum):
 # -- Mation Function -- #
 class File_IO():
     @staticmethod
-    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> _numpy.ndarray:
-        _is_road, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> Optional[ndarray]:
+        _is_exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
 
-        if _is_road:
+        if _is_exist:
             # data read
             if color_option == Color_Option.BGR:
                 _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
@@ -106,40 +100,32 @@ class File_IO():
             return None
 
     @staticmethod
-    def _image_write(file_path: str, image: _numpy.ndarray):
+    def _image_write(file_path: str, image: ndarray):
         _, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
         cv2.imwrite(file_path, image)
 
-    @staticmethod  # in later fix
-    def _video_capture(location, is_file=False):
-        if is_file:
-            if not _base.Directory._exist_check(location):
-                _error_message.variable_stop(
-                    "file.image_read",
-                    "Have some problem in parameter 'location'. Not exist")
-        cap = cv2.VideoCapture(location)
-        return cap
+    # @staticmethod  # in later fix
+    # def _video_capture(location: str, is_file=False):
+    #     _location = Directory._make(location)
+    #     cap = cv2.VideoCapture(_location)
+    #     return cap
 
-    @classmethod  # in later fix
-    def _video_write(self, filename: str, video_size, frame=30):
-        video_format = filename.split("/")[-1].split(".")[-1]
+    # @classmethod  # in later fix
+    # def _video_write(self, filename: str, video_size, frame=30):
+    #     video_format = filename.split("/")[-1].split(".")[-1]
 
-        if not _base.File._extension_check(video_format, self.VIDEO_EXT):
-            if self.DEBUG:
-                _error_message.variable(
-                    "file.video_write",
-                    "Have some problem in parameter 'filename'. use default ext")
-            video_format = "avi"
-            filename += "avi" if filename[-1] == "." else ".avi"
+    #     if not _base.File._extension_check(video_format, self.VIDEO_EXT):
+    #         video_format = "avi"
+    #         filename += "avi" if filename[-1] == "." else ".avi"
 
-        _h, _w = video_size[:2]
+    #     _h, _w = video_size[:2]
 
-        if video_format == "avi":
-            fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-        elif video_format == "mp4":
-            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    #     if video_format == "avi":
+    #         fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+    #     elif video_format == "mp4":
+    #         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
-        return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
+    #     return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
 
 
 class Base_Process():
@@ -154,12 +140,12 @@ class Base_Process():
     @staticmethod
     def channel_converter(image, channel_option: Channel_Style):
         if channel_option.value:  # [w, h, c]
-            return _numpy.Image_Process.conver_to_last_channel(image)
+            return Image_Process._conver_to_last_channel(image)
         else:  # [c, w, h]
-            return _numpy.Image_Process.conver_to_first_channel(image)
+            return Image_Process._conver_to_first_channel(image)
 
     @staticmethod
-    def resize(image: _numpy.ndarray, size: list):
+    def resize(image: ndarray, size: list):
         _h, _w = image.shape[:2]
         _interpolation = cv2.INTER_AREA
 
@@ -167,7 +153,7 @@ class Base_Process():
         if type(size[0]) == float and type(size[1]) == float:
             if size[0] >= 1.0 or size[1] >= 1.0:
                 _interpolation = cv2.INTER_LINEAR
-            return cv2.resize(image, dsize=[0, 0], fx=size[1], fy=size[0], interpolation=_interpolation)
+            return cv2.resize(image, dsize=(0, 0), fx=size[1], fy=size[0], interpolation=_interpolation)
 
         # absolute
         elif type(size[0]) == int and type(size[1]) == int:
@@ -176,16 +162,13 @@ class Base_Process():
             return cv2.resize(image, dsize=(size[1], size[0]), interpolation=_interpolation)
 
         else:
-            _error_message.variable(
-                "base_process.img_resize",
-                "Have some problem in parameter 'size'\n" + "Function return input image")
             return image
 
-    @classmethod
-    def range_converter(self, image, form_range: R_option, to_range: R_option):
+    @staticmethod
+    def range_converter(image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
-                return Array_Process.type_converter(image * 0xff, "uint8")
+                return Array_Process._converter(image * 0xff, dtype=Np_Dtype.UINT)
             else:
                 return image
         elif form_range == R_option.ZtoFF:
@@ -204,10 +187,10 @@ class Base_Process():
             return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     @staticmethod
-    def filtering(image: _numpy.ndarray, array):
+    def filtering(image: ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = Array_Process._get_array_from(image, dtype=Dtype.NP_UINT8)
+            holder = Array_Process._converter(image, dtype=Np_Dtype.UINT)
             for _ch_ct in range(image.shape[-1]):
                 holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
             return holder
@@ -215,7 +198,7 @@ class Base_Process():
             return cv2.filter2D(image, cv2.CV_64F, array)
 
     @staticmethod
-    def padding(image: _numpy.ndarray, padding: Union[int, List[int]], value: int):
+    def padding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]], value: int):
         """
         padding
             int  A              -> [top : A, bottom: A, left : A, right: A]\n
@@ -225,22 +208,19 @@ class Base_Process():
         # make holder -> in later add multi padding option
         if isinstance(padding, int):
             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
-        elif isinstance(padding, list):
+        else:
             if len(padding) == 2:
                 # [hight_pad, width_pad]
                 _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
-            elif len(padding) == 4:
+            else:
                 # [top, bottom, left, right]
                 _t_pad, _b_pad, _l_pad, _r_pad = padding
 
-        if len(image.shape) == 3:
-            _h, _w, _c = image.shape
-            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad), _c]
-        elif len(image.shape) == 2:
-            _h, _w = image.shape
-            _holder_shape = [_h + (_t_pad + _b_pad), _w + (_l_pad + _r_pad)]
+        _holder_shape = [_v for _v in image.shape]
+        _holder_shape[0] += _t_pad + _b_pad  # h padding
+        _holder_shape[1] += _l_pad + _r_pad  # w padding
 
-        _holder = Array_Process._get_array_from(_holder_shape, is_shape=True, value=value, dtype=Dtype.NP_UINT8)
+        _holder = Array_Process._converter(_holder_shape, is_shape=True, value=value, dtype=Np_Dtype.UINT)
 
         _t_pad = _t_pad if _t_pad else None
         _b_pad = -_b_pad if _b_pad else None
@@ -252,15 +232,15 @@ class Base_Process():
         return _holder
 
     @staticmethod
-    def unpadding(image: _numpy.ndarray, padding: Union[int, List[int]]):
+    def unpadding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]]):
         # make holder -> in later add multi padding option
         if isinstance(padding, int):
             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
-        elif isinstance(padding, list):
+        else:  # isinstance(padding, list):
             if len(padding) == 2:
                 # [hight_pad, width_pad]
                 _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
-            elif len(padding) == 4:
+            else:  # len(padding) == 4
                 # [top, bottom, left, right]
                 _t_pad, _b_pad, _l_pad, _r_pad = padding
 
@@ -287,11 +267,11 @@ class Base_Process():
 class edge():
     class gradient():
         @staticmethod
-        def sobel(image: _numpy.ndarray, is_euclid: bool = True):
+        def sobel(image: ndarray, is_euclid: bool = True):
             if len(image.shape) > 2:
                 # color image
-                delta_holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
-                direction_holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
+                delta_holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
+                direction_holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
                 for _ch_ct in range(image.shape[-1]):
                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
                     delta_holder += result[0]
@@ -299,50 +279,55 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = Base_Process.filtering(image, Array_Process._get_array_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Dtype.NP_FLOAT32))
-                dy = Base_Process.filtering(image, Array_Process._get_array_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Dtype.NP_FLOAT32))
-                dxy = _numpy.cal.distance(dx, dy, is_euclid)
-                direction = _numpy.cal.get_direction(dx, dy)
+                dx = Base_Process.filtering(image, Array_Process._converter([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Np_Dtype.FLOAT))
+                dy = Base_Process.filtering(image, Array_Process._converter([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Np_Dtype.FLOAT))
+                dxy = Image_Process._distance(dx, dy, is_euclid)
+                direction = Image_Process._gredient_direction(dx, dy)
                 return dxy, direction
 
     @staticmethod
-    def gradient_to_edge(gradient: List[_numpy.ndarray], threshold: List[int] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
+    def gradient_to_edge(gradient: List[ndarray], threshold: Union[int, Tuple[int, int]] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
         # gradient -> [delta, direction]
         _delta = gradient[0]
-        _filterd = Array_Process.range_cut(Array_Process.normalization(_delta), [threshold, ], "upper")
+        _filterd = Array_Process.range_cut(Array_Process._normalization(_delta), threshold, "upper")
 
         if is_edge_shrink:
             _direction = gradient[1]
-            _edge = _numpy.Image_Process.direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
+            _edge = Image_Process._direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
         else:
             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else Array_Process.type_converter(0xFF * _edge, "uint")
+        return _edge if is_active_map else Array_Process._converter(0xFF * _edge, dtype=Np_Dtype.UINT)
 
     @staticmethod
-    def sobel(image: _numpy.ndarray, threshold: List[int] = 1, is_euclid: bool = True, is_edge_shrink: bool = True, is_active_map: bool = False):
+    def sobel(
+            image: ndarray,
+            threshold: Union[int, Tuple[int, int]] = (-1, 1),
+            is_euclid: bool = True,
+            is_edge_shrink: bool = True,
+            is_active_map: bool = False):
         if len(image.shape) > 2:
             # color image
-            holder = Array_Process._get_array_from(image.shape[:2], is_shape=True, value=0, dtype=Dtype.NP_FLOAT32)
+            holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
             for _ch_ct in range(image.shape[-1]):
                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
             holder = (holder >= 2)
-            return holder if is_active_map else Array_Process.type_converter(0xFF * holder, "uint8")
+            return holder if is_active_map else Array_Process._converter(0xFF * holder, dtype=Np_Dtype.UINT)
         else:
             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
-            dxy = _numpy.cal.distance(dx, dy) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = Array_Process.range_cut(Array_Process.normalization(dxy), [-threshold, threshold], ouput_type="value")
+            dxy = Image_Process._distance(dx, dy, is_euclid) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
+            _edge = Array_Process.range_cut(Array_Process._normalization(dxy), threshold, ouput_type="value")
 
             if is_edge_shrink:
-                direction = _numpy.cal.get_direction(dx, dy)
-                _edge = _numpy.Image_Process.direction_check(_edge, direction, [0, 1, 2, 3])
+                direction = Image_Process._gredient_direction(dx, dy)
+                _edge = Image_Process._direction_check(_edge, direction, [0, 1, 2, 3])
 
             else:
                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else Array_Process.type_converter(0xFF * _edge, "uint")
+            return _edge if is_active_map else Array_Process._converter(0xFF * _edge, dtype=Np_Dtype.UINT)
 
     @staticmethod
     def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=Channel_Style.Last):
@@ -358,12 +343,9 @@ class edge():
 
 class gui_process():
     @staticmethod
-    def display(image: _numpy.ndarray, dispaly_window: str, ms_delay: int = -1):
+    def display(image: ndarray, dispaly_window: str, ms_delay: int = -1):
         cv2.imshow(dispaly_window, image)
         return cv2.waitKeyEx(ms_delay)
-
-    def image_cover():
-        pass
 
     # extention display with control
     class trackbar():
@@ -397,159 +379,163 @@ class draw():
         Normal = 0b01000
         Right = 0b00000
 
-    @staticmethod
-    def merge(image: List[_numpy.ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
-        _merge_img = image[0]
-        if direction == Image_direction.Hight:
-            for _img in image[1:]:
-                _merge_img = Base_Process.padding(_merge_img, [0, interval, 0, 0], interval_color)
-                _merge_img = cv2.vconcat((_merge_img, _img))
-        else:  # width
-            for _img in image[1:]:
-                _merge_img = Base_Process.padding(_merge_img, [0, 0, 0, interval], interval_color)
-                _merge_img = cv2.hconcat((_merge_img, _img))
+    # @staticmethod
+    # def merge(image: List[ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
+    #     _merge_img = image[0]
+    #     if direction == Image_direction.Hight:
+    #         for _img in image[1:]:
+    #             _merge_img = Base_Process.padding(_merge_img, (0, interval, 0, 0), interval_color)
+    #             _merge_img = cv2.vconcat([_merge_img, _img])
+    #     else:  # width
+    #         for _img in image[1:]:
+    #             _merge_img = Base_Process.padding(_merge_img, (0, 0, 0, interval), interval_color)
+    #             _merge_img = cv2.hconcat((_merge_img, _img))
 
-        return _merge_img
+    #     return _merge_img
 
-    @staticmethod
-    def text(image: _numpy.ndarray, text: str):
-        [_text_w, _text_h], _ = cv2.getTextSize(text=text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
-        text_padding = 10
-        if len(image.shape) == 3:
-            _h, _w, _c = image.shape
-            _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding), _c]
-            _tpye_image_size = [_h + _text_h, _w, _c]
+    # @staticmethod
+    # def text(image: ndarray, text: str):
+    #     [_text_w, _text_h], _ = cv2.getTextSize(text=text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
+    #     text_padding = 10
 
-        elif len(image.shape) == 2:
-            _h, _w = image.shape
-            _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding)]
-            _tpye_image_size = [_h + _text_h, _w]
+    #     _holder_shape = [_v for _v in image.shape]
+    #     _holder_shape[0] += _t_pad + _b_pad  # h padding
+    #     _holder_shape[1] += _l_pad + _r_pad  # w padding
 
-        _text_shell = Array_Process._get_array_from(_text_shell_size, True, 0xFF)
-        cv2.putText(img=_text_shell,
-                    text=text,
-                    org=(text_padding, _text_h + text_padding),
-                    fontScale=1,
-                    thickness=2,
-                    fontFace=cv2.FONT_HERSHEY_DUPLEX,
-                    color=0)
+    #     if len(image.shape) == 3:
+    #         _h, _w, _c = image.shape
+    #         _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding), _c]
+    #         _tpye_image_size = [_h + _text_h, _w, _c]
 
-        _text_shell = Base_Process.resize(_text_shell, [_text_h, _w])
-        _tpye_image = Array_Process._get_array_from(_tpye_image_size, True, 0xFF)
-        _tpye_image[:_h, :] = image
-        _tpye_image[_h:, :] = _text_shell
+    #     elif len(image.shape) == 2:
+    #         _h, _w = image.shape
+    #         _text_shell_size = [_text_h + (2 * text_padding), _text_w + (2 * text_padding)]
+    #         _tpye_image_size = [_h + _text_h, _w]
 
-        return _tpye_image
+    #     _text_shell = Array_Process._converter(_text_shell_size, True, 0xFF)
+    #     cv2.putText(img=_text_shell,
+    #                 text=text,
+    #                 org=(text_padding, _text_h + text_padding),
+    #                 fontScale=1,
+    #                 thickness=2,
+    #                 fontFace=cv2.FONT_HERSHEY_DUPLEX,
+    #                 color=0)
 
-    @staticmethod
-    def rectangle():
-        pass
+    #     _text_shell = Base_Process.resize(_text_shell, [_text_h, _w])
+    #     _tpye_image = Array_Process._converter(_tpye_image_size, True, 0xFF)
+    #     _tpye_image[:_h, :] = image
+    #     _tpye_image[_h:, :] = _text_shell
 
-    @staticmethod
-    def circle():
-        pass
+    #     return _tpye_image
 
-    @staticmethod
-    def oval():
-        pass
+    # @staticmethod
+    # def rectangle():
+    #     pass
 
-    @staticmethod
-    def _polygon(image, pts, thick, color, is_close=True):
-        pts = _numpy.Image_Process.poly_points(pts)
-        if thick == -1:
-            return cv2.fillConvexPoly(image, pts, color)
-        else:
-            return cv2.polylines(image, pts, is_close, color, thick)
+    # @staticmethod
+    # def circle():
+    #     pass
 
-    class canvas():
-        background = None
+    # @staticmethod
+    # def oval():
+    #     pass
 
-        object_list = []  # draw object list
-        points = []  # [point, point, point, point...]
+    # @staticmethod
+    # def _polygon(image, pts, thick, color, is_close=True):
+    #     pts = Image_Process.poly_points(pts)
+    #     if thick == -1:
+    #         return cv2.fillConvexPoly(image, pts, color)
+    #     else:
+    #         return cv2.polylines(image, pts, is_close, color, thick)
 
-        def __init__(self, size=None, sample=None) -> None:
-            self.active_pen = draw.pen()
-            if size is not None or sample is not None:
-                self.set_canvas(size, sample, is_color=[0xFF, 0xFF, 0xFF])
+    # class canvas():
+    #     background = None
 
-        def set_pen(self, color, thickness=1):
-            self.active_pen.color = color
-            self.active_pen.thickness = thickness
+    #     object_list = []  # draw object list
+    #     points = []  # [point, point, point, point...]
 
-        def set_canvas(self, size, sample=None, is_color=0):
-            self.background = Array_Process._get_array_from(size, True, is_color) if sample is not None \
-                else Array_Process._get_array_from(sample, False, is_color)
+    #     def __init__(self, size=None, sample=None) -> None:
+    #         self.active_pen = draw.pen()
+    #         if size is not None or sample is not None:
+    #             self.set_canvas(size, sample, is_color=[0xFF, 0xFF, 0xFF])
 
-        def set_object(self):
-            pass
+    #     def set_pen(self, color, thickness=1):
+    #         self.active_pen.color = color
+    #         self.active_pen.thickness = thickness
 
-        def del_object(self, obj_num):
-            """
-            Arg:\n
-                target (list) : \n
-                obj_num (int, list[int], range) : \n
-            """
-            if _base.Tool_For._list.is_num_over_range(self.object_list, obj_num):
-                pass  # error : "obj_num" is over range in self object list
+    #     def set_canvas(self, size, sample=None, is_color=0):
+    #         self.background = Array_Process._converter(size, True, is_color) if sample is not None \
+    #             else Array_Process._converter(sample, False, is_color)
 
-            else:
-                _base.Tool_For._list.del_obj(self.object_list, obj_num)
+    #     def set_object(self):
+    #         pass
 
-        def clear_object(self):
-            pass
+    #     # def del_object(self, obj_num):
+    #     #     """
+    #     #     Arg:\n
+    #     #         target (list) : \n
+    #     #         obj_num (int, list[int], range) : \n
+    #     #     """
+    #     #     if _base.Tool_For._list.is_num_over_range(self.object_list, obj_num):
+    #     #         pass  # error : "obj_num" is over range in self object list
 
-        def draw(self):
-            pass
+    #     #     else:
+    #     #         _base.Tool_For._list.del_obj(self.object_list, obj_num)
+
+    #     def clear_object(self):
+    #         pass
+
+    #     def draw(self):
+    #         pass
 
 
-class Process_For_Label():
+class Label_Img_Process():
     # (h, w, class count) -> (h, w)
     @staticmethod
-    def _class_map_to_classification(class_map: _numpy.ndarray):
+    def _class_map_to_classification(class_map: ndarray):
         return class_map.argmax(axis=2)
 
     # (h, w) -> (h, w, 3)
     @staticmethod
-    def _classification_to_color_map(classification: _numpy.ndarray, activate_label: Dict[int, List]):
+    def _classification_to_color_map(classification: ndarray, activate_label: Dict[int, List]):
         _label_ids = sorted(activate_label.keys())
-        _color_list = Array_Process._get_array_from([activate_label[_id][0] for _id in _label_ids], dtype=Dtype.NP_UINT8)
+        _color_list = Array_Process._converter([activate_label[_id][0] for _id in _label_ids], dtype=Np_Dtype.UINT)
         return _color_list[classification]
 
     # (h, w, 3) -> (h, w, class count)
     @staticmethod
-    def _color_map_to_class_map(color_map: _numpy.ndarray, activate_label: Dict[int, List]):
+    def _color_map_to_class_map(color_map: ndarray, activate_label: Dict[int, List]):
         _h, _w, _ = color_map.shape
 
         _label_ids = sorted(activate_label.keys())
-        _class_map = Array_Process._get_array_from([_h, _w, len(_label_ids)], True, dtype=Dtype.NP_UINT8)
+        _class_map = Array_Process._converter([_h, _w, len(_label_ids)], True, dtype=Np_Dtype.UINT)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
             _color_list = [_label for _label in activate_label[_label_id]]
-            _class_map[:, :, _label_id] = _numpy.Image_Process.color_finder(color_map, _color_list).astype(Dtype.NP_UINT8)
+            _class_map[:, :, _label_id] = Array_Process._converter(Image_Process._color_finder(color_map, _color_list), dtype=Np_Dtype.UINT)
 
         # make ignore
-        _setted = _numpy.np.sum(_class_map, axis=2)
-        _class_map[:, :, -1] = Array_Process.type_converter(1 - Array_Process.type_converter(_setted, Dtype.NP_BOOL), Dtype.NP_UINT8)
+        _class_map[:, :, -1] = Array_Process._converter(1 - Array_Process._converter(_class_map.sum(axis=2), dtype=Np_Dtype.BOOL), dtype=Np_Dtype.UINT)
         return _class_map
 
     # (h, w, 3) -> (h, w)
     @staticmethod
-    def _color_map_to_classification(color_map: _numpy.ndarray, activate_label: Dict[int, List]):
-        _class_map = Process_For_Label._color_map_to_class_map(color_map, activate_label)
-        return Process_For_Label._class_map_to_classification(_class_map)
+    def _color_map_to_classification(color_map: ndarray, activate_label: Dict[int, List]):
+        _class_map = Label_Img_Process._color_map_to_class_map(color_map, activate_label)
+        return Label_Img_Process._class_map_to_classification(_class_map)
 
     # (h, w, class count) -> (h, w, 3)
     @staticmethod
-    def _class_map_to_color_map(class_map: _numpy.ndarray, activate_label: Dict[int, List]):
-        _classification = Process_For_Label._class_map_to_classification(class_map)
-        return Process_For_Label._classification_to_color_map(_classification, activate_label)
+    def _class_map_to_color_map(class_map: ndarray, activate_label: Dict[int, List]):
+        _classification = Label_Img_Process._class_map_to_classification(class_map)
+        return Label_Img_Process._classification_to_color_map(_classification, activate_label)
 
     # (h, w) -> (h, w, class count)
     @staticmethod
-    def _classification_to_class_map(classification: _numpy.ndarray, num_id: int):
+    def _classification_to_class_map(classification: ndarray, num_id: int):
         _h, _w = classification.shape
-        _class_map = Array_Process._get_array_from([_h, _w, num_id], True, dtype=Dtype.NP_UINT8)
+        _class_map = Array_Process._converter([_h, _w, num_id], True, dtype=Np_Dtype.UINT)
 
         for _id in range(num_id):
             _class_map[:, :, _id] = classification == _id

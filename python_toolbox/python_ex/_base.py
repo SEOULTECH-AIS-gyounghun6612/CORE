@@ -18,7 +18,7 @@ import time
 from math import log10, floor
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional, Tuple
 
 
 if __package__ == "":
@@ -51,77 +51,74 @@ class Directory():
     _Divider = "/" if _OS_THIS == OS_Style.OS_UBUNTU.value else "\\"
 
     @classmethod  # fix it
-    def _divider_check(self, directory: str, is_file: bool = False) -> str:
+    def _divider_check(cls, directory: str, is_file: bool = False):
         # each os's directory divide slash fix
-        if self._Divider == "\\":
+        if cls._Divider == "\\":
             from_dived = "/"
         else:
             from_dived = "\\"
-        directory.replace(from_dived, self._Divider)
+        directory.replace(from_dived, cls._Divider)
 
         if not is_file:
             # if checked path is dir, check last slach exist in end of text
-            return directory if directory[-len(self._Divider):] == self._Divider \
-                else directory + self._Divider
+            return directory if directory[-len(cls._Divider):] == cls._Divider \
+                else directory + cls._Divider
 
         return directory
 
-    @classmethod
-    def _exist_check(self, directory: str) -> bool:
-        if directory is None:
-            return False
-        else:
-            return path.isdir(directory)
+    @staticmethod
+    def _exist_check(directory: Optional[str]):
+        return False if directory is None else path.isdir(directory)
 
     @classmethod
-    def _devide(self, directory: str, point: int = -1) -> List[str]:
-        _dir = self._divider_check(directory)
-        _comp = _dir.split(self._Divider)[:-1]
+    def _devide(cls, directory: str, point: int = -1):
+        _dir = cls._divider_check(directory)
+        _comp = _dir.split(cls._Divider)[:-1]
 
         _front = ""
         _back = ""
         for _data in _comp[:point]:
-            _front += _data + self._Divider
+            _front += _data + cls._Divider
         for _data in _comp[point:]:
-            _back += _data + self._Divider
+            _back += _data + cls._Divider
 
         return _front, _back
 
     @classmethod
-    def _relative_root(self, just_name: bool = False) -> str:
-        return self._devide(getcwd())[-1] if just_name else self._divider_check(getcwd())
+    def _relative_root(cls, just_name: bool = False) -> str:
+        return cls._devide(getcwd())[-1] if just_name else cls._divider_check(getcwd())
 
     @classmethod
-    def _make(self, obj_dir: str, root_dir: str = None) -> str:
+    def _make(cls, obj_dir: str, root_dir: Optional[str] = None):
         if root_dir is not None:
             # use root directory
             # root directory check
-            _dir = self._divider_check(root_dir)
-            if not self._exist_check(_dir):
+            _dir = cls._divider_check(root_dir)
+            if not cls._exist_check(_dir):
                 # if root directory not exist, make it
-                _front, _back = self._devide(_dir, -1)
-                self._make(_back, _front)
+                _front, _back = cls._devide(_dir, -1)
+                cls._make(_back, _front)
         else:
             # use relative root directory (= cwd)
-            _dir = self._relative_root()
+            _dir = cls._relative_root()
 
         # make directory
-        for _part in self._divider_check(obj_dir).split(self._Divider):
-            _dir = self._divider_check(_dir + _part)
-            mkdir(_dir) if not self._exist_check(_dir) else None
+        for _part in cls._divider_check(obj_dir).split(cls._Divider):
+            _dir = cls._divider_check(_dir + _part)
+            mkdir(_dir) if not cls._exist_check(_dir) else None
 
         return _dir
 
     @classmethod
-    def _inside_search(self, searched_dir: str, search_option: str = "all", name: str = "*", ext: str = "*"):
+    def _inside_search(cls, searched_dir: str, search_option: str = "all", name: str = "*", ext: str = "*"):
         serch_all = search_option == "all"
         _component_name = "*" if serch_all else "*" + name + "*"
         _component_ext = "" if serch_all else (ext if ext[0] == "." else "." + ext)
 
-        search_list = sorted(glob(self._divider_check(searched_dir) + _component_name + _component_ext))
+        search_list = sorted(glob(cls._divider_check(searched_dir) + _component_name + _component_ext))
 
         if search_option in ["directory", "dir"]:
-            search_list = [data for data in search_list if self._exist_check(data)]
+            search_list = [data for data in search_list if cls._exist_check(data)]
         elif search_option in ["file", ]:
             search_list = [data for data in search_list if File._exist_check(data)]
 
@@ -166,6 +163,7 @@ class Directory():
                 _error.not_yet("not support for container system at function server.local_connect")
                 pass
             else:
+                _command = ""
                 if Directory._OS_THIS == OS_Style.OS_WINDOW:
                     _command = f"NET USE {mount_dir}: \\\\{ip_num}\\{root_dir} {password} /user:{user_id}"
 
@@ -186,33 +184,30 @@ class Directory():
 
 
 class File():
-    @classmethod
-    def _exist_check(self, file_path: str) -> bool:
-        if file_path is None:
-            return False
-        else:
-            return path.isfile(file_path)
+    @staticmethod
+    def _exist_check(file_path: Optional[str]) -> bool:
+        return False if file_path is None else path.isfile(file_path)
 
     @classmethod
-    def _file_name_from_path(self, file_path: str, just_file_name: bool = True) -> str:
+    def _file_name_from_path(cls, file_path: str, just_file_name: bool = True):
         file_path = Directory._divider_check(file_path, is_file=True)
         _file_dir, _file_name = path.split(file_path)
         return _file_name if just_file_name else [_file_dir, _file_name]
 
-    @staticmethod
-    def _extension_check(file_path: str, exts: List[str], is_fix: bool = False):
-        _file_dir, _file_name = File._file_name_from_path(file_path, False)
+    @classmethod
+    def _extension_check(cls, file_path: str, exts: List[str], is_fix: bool = False) -> Tuple[bool, str]:
+        _file_dir, _file_name = cls._file_name_from_path(file_path, False)
 
         if _file_name == "" or _file_name.split(".")[-1] == "":  # "file_path" is dir or extension not exist in that
-            return [True, f"{file_path}.{exts[0]}"] if is_fix else [False, file_path]
+            return (True, f"{file_path}.{exts[0]}") if is_fix else (False, file_path)
         elif _file_name.split(".")[-1] not in exts:  # path extension not exist in exts
             _file_name = _file_name.replace(_file_name.split(".")[-1], exts[0])
-            return [True, f"{_file_dir}{Directory._Divider}{_file_name}"] if is_fix else [False, file_path]
+            return (True, f"{_file_dir}{Directory._Divider}{_file_name}") if is_fix else (False, file_path)
         else:
-            return [True, file_path]
+            return (True, file_path)
 
     @classmethod
-    def _json(self, file_dir: str, file_name: str, data_dict: Dict = None, is_save: bool = False):
+    def _json(cls, file_dir: str, file_name: str, is_save: bool = False, data_dict: Optional[Dict] = None) -> Dict:
         """
         Args:
             save_dir        :
@@ -244,13 +239,14 @@ class File():
         _, file_name = File._extension_check(file_name, ["json", ], True)
 
         # json file process load or save
-        if is_save:
+        if is_save and data_dict is not None:
             # json file save
             _file = open(file_dir + file_name, "w")
             json.dump(data_dict, _file, indent=4)
+            return data_dict
         else:
             # json file load
-            if self._exist_check(file_dir + file_name):
+            if cls._exist_check(file_dir + file_name):
                 # json file exist
                 _file = open(file_dir + file_name, "r")
                 return json.load(_file)
@@ -264,7 +260,7 @@ class File():
                 )
 
     @classmethod
-    def _yaml(self, file_dir: str, file_name: str, data_dict: Dict = None, is_save: bool = False):
+    def _yaml(cls, file_dir: str, file_name: str, is_save: bool = False, data_dict: Optional[Dict] = None):
         """
         Args:
             save_dir        :
@@ -273,47 +269,48 @@ class File():
         Returns:
             return (dict)   :
         """
-        # directory check
-        file_dir = Directory._divider_check(file_dir)
-        if not Directory._exist_check(file_dir):
-            if is_save:
-                # !!!WARING!!! save directory not exist
-                _error.variable(
-                    function_name="file.yaml_file",
-                    variable_list=["file_dir", ],
-                    AA="Entered directory '{}' not exist. In first make that".format(file_dir))
-                Directory._make(file_dir)
+        # # directory check
+        # file_dir = Directory._divider_check(file_dir)
+        # if not Directory._exist_check(file_dir):
+        #     if is_save:
+        #         # !!!WARING!!! save directory not exist
+        #         _error.variable(
+        #             function_name="file.yaml_file",
+        #             variable_list=["file_dir", ],
+        #             AA="Entered directory '{}' not exist. In first make that".format(file_dir))
+        #         Directory._make(file_dir)
 
-            else:
-                # !!!ERROR!!! load directory not exist
-                _error.variable_stop(
-                    function_name="file.yaml_file",
-                    variable_list=["file_dir", ],
-                    AA="Entered directory '{}' not exist".format(file_dir)
-                )
+        #     else:
+        #         # !!!ERROR!!! load directory not exist
+        #         _error.variable_stop(
+        #             function_name="file.yaml_file",
+        #             variable_list=["file_dir", ],
+        #             AA="Entered directory '{}' not exist".format(file_dir)
+        #         )
 
-        # file_name check
-        _, file_name = File._extension_check(file_name, ["yml", 'yaml'], True)
+        # # file_name check
+        # _, file_name = File._extension_check(file_name, ["yml", 'yaml'], True)
 
-        # yaml file process load or save
-        if is_save:
-            # json file save
-            _file = open(file_dir + file_name, "w")
-            yaml.dump(data_dict, _file, indent=4)
-        else:
-            # yaml file load
-            if self._exist_check(file_dir + file_name):
-                # yaml file exist
-                _file = open(file_dir + file_name, "r")
-                return yaml.load(_file)
+        # # yaml file process load or save
+        # if is_save:
+        #     # json file save
+        #     _file = open(file_dir + file_name, "w")
+        #     yaml.dump(data_dict, _file, indent=4)
+        # else:
+        #     # yaml file load
+        #     if cls._exist_check(file_dir + file_name):
+        #         # yaml file exist
+        #         _file = open(file_dir + file_name, "r")
+        #         return yaml.load(_file)
 
-            else:
-                # !!!ERROR!!! load yaml file not exist
-                _error.variable_stop(
-                    function_name="file.yaml_file",
-                    variable_list=["file_dir", "file_name"],
-                    AA="Load file '{}' not exist".format(file_dir + file_name)
-                )
+        #     else:
+        #         # !!!ERROR!!! load yaml file not exist
+        #         _error.variable_stop(
+        #             function_name="file.yaml_file",
+        #             variable_list=["file_dir", "file_name"],
+        #             AA="Load file '{}' not exist".format(file_dir + file_name)
+        #         )
+        raise NotImplementedError
 
     @staticmethod
     def _xml(file_dir, file_name, data_dict=None, is_save=False):
@@ -337,13 +334,13 @@ class Utils():
             """
             return {}
 
-        def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        def _convert_to_dict(self) -> Dict[str, Optional[Union[Dict, str, int, float, bool]]]:
             """
             Returned dictionary value type must be can dumped in json file
             """
             return asdict(self)
 
-        def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
+        def _restore_from_dict(self, data: Dict[str, Optional[Union[Dict, str, int, float, bool]]]):
             """
 
             """
@@ -381,7 +378,7 @@ class Utils():
             print()
 
     @staticmethod
-    def _time_stemp(source: float = None, is_local: bool = False, is_text: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+    def _time_stemp(source: Optional[float] = None, is_local: bool = False, is_text: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
         _time = time.time() if source is None else source
         return time.strftime(text_format, time.localtime(_time) if is_local else time.gmtime(_time)) if is_text else _time
 

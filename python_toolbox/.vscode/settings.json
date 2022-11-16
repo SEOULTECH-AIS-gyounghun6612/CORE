@@ -4,7 +4,7 @@
     "python.linting.enabled": true,
     "python.linting.flake8Args": [
         // "--max-line-length=120", // font size 12, 1920 * 1080
-        "--max-line-length=180", // font size 10, 2560 * 1440
+        "--max-line-length=160", // font size 10, 2560 * 1440
         "--ignore=E402, F401, F811, E221",
     ],
     "python.pythonPath": "/home/ais-choi-01/.conda/envs/test/bin/python",
@@ -17,4 +17,5 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
+    "python.analysis.typeCheckingMode": "basic",
 }

@@ -1,30 +1,37 @@
-from dataclasses import dataclass
-from typing import Any, List, Dict, Union
+from enum import Enum
+from typing import Any, List, Dict, Union, Optional, Tuple, Literal
 import numpy as np
 from numpy import ndarray
 
 if __package__ == "":
-    import _base
+    from _base import File
     import _error as _e
 else:
+    from ._base import File
     from . import _error as _e
-    from . import _base
 
 _error_message = _e.Custom_error("AIS_utils", "_numpy")
 
 
-@dataclass
-class Dtype():
-    NP_INT32: type      = np.int32
-    NP_UINT8: type      = np.uint8
-    NP_BOOL: type       = np.bool8
-    NP_FLOAT32: type    = np.float32
-    NP_STRING: type     = np.string_
+# -- DEFINE CONSTNAT -- #
+class Np_Dtype(Enum):
+    INT = np.int32
+    UINT = np.uint8
+    BOOL = np.bool8
+    FLOAT = np.float32
+    STRING = np.string_
 
 
+# -- DEFINE STRUCTURE -- #
+
+
+# -- DEFINE CONFIG -- #
+
+
+# -- DEFINE FUNCTION -- #
 class Numpy_IO():
     @staticmethod
-    def _save_numpy(save_dir, data):
+    def _save_numpy(save_dir: str, array: ndarray):
         """
         Args:
             save_dir :
@@ -32,18 +39,17 @@ class Numpy_IO():
         Returns:
             Empty
         """
-        _array = np.array(data)
         if save_dir.split("/")[-1].split(".")[-1] == "npz":
-            np.savez_compressed(save_dir, data=_array)
+            np.savez_compressed(save_dir, data=array)
         else:
-            np.savez(save_dir, data=_array)
+            np.savez(save_dir, data=array)
 
     class RLE():
         size_key = "size"
         count_key = "counts"
 
         @classmethod
-        def _from_nparray(self, data, order='F'):
+        def _from_nparray(cls, data, order='F'):
             if data is not None:
                 _size = data.shape
                 _size = (int(_size[0]), int(_size[1]))
@@ -84,16 +90,15 @@ class Numpy_IO():
                     _last_count = int(len(_line) - sum(return_RLE))
                     return_RLE.append(_last_count)
 
-                return {self.size_key: _size, self.count_key: return_RLE}
+                return {cls.size_key: _size, cls.count_key: return_RLE}
 
             else:
-                _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
                 return None
 
         @classmethod
-        def _to_nparray(self, data, order='F'):
+        def _to_nparray(cls, data, order: Literal['A', 'C', 'F'] = "F"):
             if data is not None:
-                rle_data = data[self.count_key]
+                rle_data = data[cls.count_key]
                 array = np.array([], dtype=np.uint8)
                 for _type, _count in enumerate(rle_data):
                     value = _type % 2
@@ -104,60 +109,54 @@ class Numpy_IO():
 
                     array = np.concatenate((array, _tmp), axis=None, dtype=np.uint8)
 
-                array = np.reshape(array, data[self.size_key], order)
+                array = np.reshape(array, data[cls.size_key], order)
                 return array
             else:
-                _error_message.variable("RLE.from_nparray", "None set in parameter 'data'")
                 return None
 
 
 class Array_Process():
     @staticmethod
-    def _get_array_from(sample, is_shape=False, value=0, dtype: type = None) -> ndarray:
-        _array = np.ones(sample) * value if is_shape else np.array(sample)
-        return _array if dtype is None else Array_Process.type_converter(_array, dtype)
-
-    @staticmethod
-    def get_random_array(shape, range=[0, 1], norm_option=None, dtype="uint8"):
-        if norm_option is not None:  # get normal random
-            _array = norm_option[1] * np.random.randn(*shape) + norm_option[0]
+    def _converter(source: Union[float, List, Tuple, ndarray], is_shape: bool = False, value: int = 0, dtype: Optional[Np_Dtype] = None):
+        if isinstance(source, ndarray):
+            _source = source
+        elif is_shape:
+            if isinstance(source, (list, tuple)):
+                _shape = source
+            else:
+                _shape = int(source)
+            _source = value * np.ones(_shape)
         else:
-            _array = np.random.rand(*shape)
-            _term = max(range) - min(range)
-            _min = min(range)
+            _source = np.array(source)
+        return _source if dtype is None else _source.astype(dtype.value)
 
-            _array = (_array * _term) + _min
+    @classmethod
+    def _get_random_array(cls, shape: List, scale: int = 1, minnimum: int = 0, norm_factor: Tuple[float, float] = (1, 0), dtype: Optional[Np_Dtype] = None):
+        _array = cls._converter(
+            source=norm_factor[1] * np.random.randn(*shape) + norm_factor[0] if norm_factor is not None else np.random.rand(*shape), dtype=dtype)
+        return _array * scale + minnimum
 
-        return Array_Process.type_converter(_array, dtype)
-
-    @staticmethod
-    def normalization(array: ndarray):
+    @classmethod
+    def _normalization(cls, array: ndarray):
         _m = np.mean(array)
         _std = np.std(array)
 
-        return (Array_Process.type_converter(array, float) - _m) / _std
+        return (cls._converter(array, dtype=Np_Dtype.FLOAT) - _m) / _std
 
     @staticmethod
-    def type_converter(data: ndarray, to_type: type) -> ndarray:
-        # fix it
-        if to_type in ["bool", bool]:
-            _term = max(data) - min(data)
-            _convert = np.round(data / _term)
-            _convert = _convert.astype(np.bool8)
-        elif to_type is not None:
-            _convert = data.astype(to_type)
-        else:
-            _convert = data
-        return _convert
-
-    @staticmethod
-    def value_cut(array, value_min, value_max):
+    def _clip(array: ndarray, value_min: int, value_max: int):
         return np.clip(array, value_min, value_max)
 
+    # in later fix it
+
     @staticmethod
-    def range_cut(array, cut_range=[-1, 1], direction="outside", ouput_type="active_map"):
-        under_thread = min(cut_range)
-        over_thread = max(cut_range)
+    def _make_mask():
+        ...
+
+    @staticmethod
+    def range_cut(array: ndarray, cut_range: Union[int, Tuple[int, int]] = (-1, 1), direction="outside", ouput_type="active_map"):
+        under_thread = cut_range if isinstance(cut_range, int) else min(cut_range)
+        over_thread = cut_range if isinstance(cut_range, int) else max(cut_range)
 
         if direction == "outside":
             # --here-- under_thread --nope!-- over_thread --here--
@@ -182,10 +181,10 @@ class Array_Process():
 
             output = np.logical_and(under_cuted, over_cuted)
 
-        return output if ouput_type == "active_map" else array * Array_Process.type_converter(output, int)
+        return output if ouput_type == "active_map" else array * Array_Process._converter(output, dtype=Np_Dtype.INT)
 
     @staticmethod
-    def range_converter(array: ndarray, from_range: List[Union[int, float]], to_range: List[Union[int, float]], dtype: Dtype) -> ndarray:
+    def range_converter(array: ndarray, from_range: List[Union[int, float]], to_range: List[Union[int, float]], dtype: Np_Dtype) -> ndarray:
         _from_range_max = from_range[0]
         _from_range_min = from_range[1]
         _from_term = _from_range_max - _from_range_min
@@ -197,10 +196,10 @@ class Array_Process():
         _convert = (array - _from_range_min) / _from_term
         _convert = (_convert * _to_term) + _to_range_min
 
-        if dtype in [Dtype.NP_UINT8, Dtype.NP_INT32]:
+        if dtype in [Np_Dtype.UINT, Np_Dtype.INT]:
             _convert = np.round(_convert)
 
-        return Array_Process.type_converter(_convert, dtype)
+        return Array_Process._converter(_convert, dtype=dtype)
 
     @staticmethod
     def stack(data_list: list, channel=-1):
@@ -224,16 +223,36 @@ class Array_Process():
         return count_list
 
 
-class cal():
+class Image_Process():
     @staticmethod
-    def distance(delta_x: ndarray, delta_y: ndarray, is_euclid: bool):
+    def _image_normalization(image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+        _, _, _c = image.shape
+        _norm_image = Array_Process._converter(image, dtype=Np_Dtype.FLOAT)
+
+        for _ct_c in range(_c):
+            _norm_image[:, :, _ct_c] = ((image[:, :, _ct_c] / 255) - mean[_ct_c]) / std[_ct_c]
+
+        return _norm_image
+
+    @staticmethod
+    def _image_denormalization(norm_image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+        _, _, _c = norm_image.shape
+        _denorm_image = Array_Process._converter(norm_image, dtype=Np_Dtype.UINT)
+
+        for _ct_c in range(_c):
+            _denorm_image[:, :, _ct_c] = ((norm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]) * 255
+
+        return _denorm_image
+
+    @staticmethod
+    def _distance(delta_x: ndarray, delta_y: ndarray, is_euclid: bool):
         if is_euclid:
             return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
         else:
             return np.abs(delta_x, dtype=np.float32) + np.abs(delta_y, dtype=np.float32)
 
     @staticmethod
-    def get_direction(delta_x: ndarray, delta_y: ndarray, sector: int = 8, is_half_cut: bool = True):
+    def _gredient_direction(delta_x: ndarray, delta_y: ndarray, sector: int = 8, is_half_cut: bool = True):
         """
         if sector count is even (2n)
         +0 ~ +pi -> n sector, n block (size pi / n)
@@ -271,34 +290,8 @@ class cal():
 
         return _direction
 
-
-class Image_Process():
     @staticmethod
-    def image_normalization(image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
-        _, _, _c = image.shape
-        _norm_image = Array_Process._get_array_from(image, dtype=Dtype.NP_FLOAT32)
-
-        for _ct_c in range(_c):
-            _norm_image[:, :, _ct_c] = ((image[:, :, _ct_c] / 255) - mean[_ct_c]) / std[_ct_c]
-
-        return _norm_image
-
-    @staticmethod
-    def image_denormalization(norm_image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
-        _, _, _c = norm_image.shape
-        _denorm_image = Array_Process._get_array_from(norm_image, dtype=Dtype.NP_UINT8)
-
-        for _ct_c in range(_c):
-            _denorm_image[:, :, _ct_c] = ((norm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]) * 255
-
-        return _denorm_image
-
-    @staticmethod
-    def distance(delta_x: ndarray, delta_y: ndarray):
-        return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
-
-    @staticmethod
-    def image_shift(image: ndarray, direction: int, step_size: int = 1):
+    def _image_shift(image: ndarray, direction: int, step_size: int = 1):
         holder = np.zeros_like(image)
         if direction == 0:
             holder[:, :-step_size] = image[:, step_size:]  # left
@@ -320,7 +313,7 @@ class Image_Process():
         return holder
 
     @staticmethod
-    def conver_to_last_channel(image: ndarray):
+    def _conver_to_last_channel(image: ndarray):
         img_shape = image.shape
         if len(img_shape) == 2:
             # gray iamge
@@ -331,7 +324,7 @@ class Image_Process():
             return Array_Process.stack(divide_data)
 
     @staticmethod
-    def conver_to_first_channel(image):
+    def _conver_to_first_channel(image: ndarray):
         img_shape = image.shape
         if len(img_shape) == 2:
             # gray iamge
@@ -342,14 +335,14 @@ class Image_Process():
             return Array_Process.stack(divide_data, 0)
 
     @staticmethod
-    def direction_check(object_data: ndarray, direction_array: ndarray, check_list: List[int], is_bidirectional: bool = True):
+    def _direction_check(object_data: ndarray, direction_array: ndarray, check_list: List[int], is_bidirectional: bool = True):
         filtered = np.zeros_like(object_data)
         for _direction in check_list:
             _tmp_direction_check = np.ones_like(object_data)
-            _label = Image_Process.image_shift(object_data, _direction, 1)
+            _label = Image_Process._image_shift(object_data, _direction, 1)
             _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
             if is_bidirectional:
-                _label = Image_Process.image_shift(object_data, _direction + 4, 1)
+                _label = Image_Process._image_shift(object_data, _direction + 4, 1)
                 _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
 
             filtered += _tmp_direction_check
@@ -357,7 +350,7 @@ class Image_Process():
         return filtered
 
     @staticmethod
-    def color_finder(image: ndarray, color_list: Union[int, List[int]]):
+    def _color_finder(image: ndarray, color_list: List[Union[int, Tuple[int, int, int]]]):
         _holder: List[ndarray] = []
         for _color in color_list:
             _finded = np.all((image == _color), 2) if isinstance(_color, list) else (image == _color)
@@ -366,8 +359,8 @@ class Image_Process():
         return _holder[0].astype(int) if len(_holder) == 1 else np.logical_or(*[data for data in _holder])
 
     @staticmethod
-    def classfication_resize(original, size):
-        _new = Array_Process._get_array_from(size + [original.shape[-1], ], True)
+    def _classfication_resize(original: ndarray, size: List[int]):
+        _new = Array_Process._converter(size + [original.shape[-1], ], True)
 
         _pos = np.where(original == 1)
         _new_pos = []
@@ -380,8 +373,8 @@ class Image_Process():
         return _new
 
     @staticmethod
-    def string_to_img(string, h, w, c):
-        return np.fromstring(string, dtype=np.uint8).reshape((h, w, c))
+    def _string_to_img(string: str, shape: Union[Tuple[int, int], Tuple[int, int, int]]):
+        return np.fromstring(string, dtype=np.uint8).reshape(shape)
 
 
 class Evaluation_Process():
@@ -395,13 +388,13 @@ class Evaluation_Process():
         # label -> [h, w]
 
         iou = []
-        _G_interest = Array_Process._get_array_from(result.shape, True)
+        _G_interest = Array_Process._converter(result.shape, True)
         for _ig_class in ignore_class:
             _G_interest = np.logical_or(_G_interest, result != _ig_class)
 
         for _class in range(class_num):
-            _G_result = (result == _class)
-            _G_label = (label == _class)
+            _G_result: ndarray = (result == _class)
+            _G_label: ndarray = (label == _class)
 
             _intersection = np.logical_and(_G_result, _G_label)
             _union = np.logical_and(np.logical_or(_G_result, _G_label), _G_interest)
@@ -410,10 +403,10 @@ class Evaluation_Process():
 
         return iou
 
-    @staticmethod
-    def _miou(result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
-        iou = Evaluation_Process._iou(result, label, class_num, ignore_class)
-        iou_np = Array_Process._get_array_from(iou, dtype=Dtype.NP_FLOAT32)
+    @classmethod
+    def _miou(cls, result: ndarray, label: ndarray, class_num: int, ignore_class: List[int] = []):
+        iou = cls._iou(result, label, class_num, ignore_class)
+        iou_np = Array_Process._converter(iou, dtype=Np_Dtype.FLOAT)
         _used_class = list(range(class_num))
         for _ig_class in ignore_class:
             _used_class.remove(_ig_class)
@@ -460,7 +453,8 @@ class Evaluation_Process():
             return (np.sum(np.power(_edge_compare, self.p)) / N) ** (1.0 / float(self.p))
 
     class Confustion_Matrix():
-        def _Calculate_Confusion_Matrix(array: np.ndarray, target: np.ndarray, interest: np.ndarray = None) -> list:
+        @staticmethod
+        def _Calculate_Confusion_Matrix(array: ndarray, target: ndarray, interest: Optional[ndarray] = None):
             """
             Args:
                 array :
@@ -483,6 +477,7 @@ class Evaluation_Process():
 
             return (_tp * interest, _tn * interest, _fn * interest, _fp * interest)
 
+        @staticmethod
         def _Confusion_Matrix_to_value(TP, TN, FN, FP):
             _pre = TP / (TP + FP) if TP + FP else TP / (TP + FP + 0.00001)
             _re = TP / (TP + FN) if TP + FN else TP / (TP + FN + 0.00001)

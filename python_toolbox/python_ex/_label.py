@@ -1,20 +1,16 @@
-from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum
-from random import random
-from re import U
-from tkinter.tix import AUTO
-from typing import Dict, List, Tuple, Union, Any
+from typing import Dict, List, Tuple, Union, Any, Optional
 
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
-    from _vision import File_IO, Process_For_Label
+    from _vision import File_IO, Label_Img_Process
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
-    from ._vision import File_IO, Process_For_Label
+    from ._vision import File_IO, Label_Img_Process
 
 
 # -- DEFINE CONSTNAT -- #
@@ -70,6 +66,7 @@ class Label_Structure():
         _Cateogry: str
         _Ignore_in_eval: bool
         _Name: str
+        _Class_info: Any
 
     @dataclass
     class Classification_Label(Basement):
@@ -86,36 +83,30 @@ class Label_Process_Config(Utils.Config):
     """
     """
     _Name: Support_Label = Support_Label.BDD_100k
-    _Meta_file: str = None
-    _Data_root: str = f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}"  # Where input and label data exist
+    _Data_root: Optional[str] = None  # Where input and label data exist
+    _Meta_file: Optional[str] = None
     _Active_style: List[Label_Style] = field(default_factory=lambda: [Label_Style.SEMENTIC_SEG])  # Label style list that get from meta data.
 
     def _get_parameter(self) -> Dict[str, Any]:
         return {
             "name": self._Name,
-            "data_root": self._Data_root,
-            "active_style": [__style for __style in self._Active_style],
+            "data_root": self._Data_root if self._Data_root is None else f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}",
+            "active_style": [_style for _style in self._Active_style],
             "meta_file": self._Meta_file}
 
     def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
         return {
             "_Name": self._Name.value,
             "_File_root": self._Data_root,
-            "_Active_style": [__style.value for __style in self._Active_style],
+            "_Active_style": [_style.value for _style in self._Active_style],
             "_Meta_file": self._Meta_file}
-
-    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        self._Name = Support_Label(data["_Name"])
-        self._Data_root = data["_File_root"]
-        self._Active_style = [Label_Style(__style_name) for __style_name in data["_Active_style"]]
-        self._Meta_file, = data["_Meta_file"]
 
 
 # -- Mation Function -- #
 class Label_Process():
     class Basement():
         # initialize
-        def __init__(self, name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None):
+        def __init__(self, name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: Optional[str] = None):
             # Parameter for Label information
             self._Lable_name = name
 
@@ -124,28 +115,26 @@ class Label_Process():
             self._Activate_label: Dict[Label_Style, Dict[int, List[Any]]] = {}
 
             # Get label data from meta file
-            if File._exist_check(meta_file):
+            if meta_file is not None and File._exist_check(meta_file):
                 [_meta_dir, _meta_file] = File._file_name_from_path(meta_file, just_file_name=False)
             else:
                 _meta_dir = f"{Directory._devide(__file__)[0]}data_file{Directory._Divider}"
                 _meta_file = f"{self._Lable_name.value}.json"
-            _meta_data: Dict[str, Label_Structure] = File._json(file_dir=_meta_dir, file_name=_meta_file)
+            _meta_data: Dict[str, List[Dict]] = File._json(file_dir=_meta_dir, file_name=_meta_file)
 
             # Make active_label from meta data
             for _style in active_style:
                 if _style == Label_Style.CLASSIFICATION:
-                    _label_list: List[Label_Structure.Classification_Label]\
-                        = [Label_Structure.Classification_Label(**data) for data in _meta_data[_style.value]]
+                    _label_list = [Label_Structure.Basement(**data) for data in _meta_data[_style.value]]
 
-                elif _style == Label_Style.SEMENTIC_SEG:
-                    _label_list: List[Label_Structure.Seg_Label]\
-                        = [Label_Structure.Seg_Label(**data) for data in _meta_data[_style.value]]
+                else:  # _style == Label_Style.SEMENTIC_SEG:
+                    _label_list = [Label_Structure.Basement(**data) for data in _meta_data[_style.value]]
 
                 # Conver to Raw to Active
                 self._make_active_label(_style, _label_list)
 
         # Freeze function
-        def _make_active_label(self, style: Label_Style, raw_label: List[Union[Label_Structure.Classification_Label, Label_Structure.Seg_Label]]):
+        def _make_active_label(self, style: Label_Style, raw_label: List[Label_Structure.Basement]):
             self._Activate_label[style] = {}
             for _label in raw_label:
                 if _label._Train_num in self._Activate_label[style].keys():
@@ -157,7 +146,8 @@ class Label_Process():
             self._Active_mode = mode
 
         # Un-Freeze function
-        def _get_work_profile(self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
+        def _get_work_profile(
+                self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
             _parameter = {
                 "_Label_style": label_style,
                 "_Label_IO": label_io,
@@ -183,7 +173,8 @@ class Label_Process():
                 IO_Style.ZIP_FILE: "",
                 IO_Style.ANNOTATION: ""}}
 
-        def _get_work_profile(self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
+        def _get_work_profile(
+                self, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style = Input_Style.IMAGE, input_io: IO_Style = IO_Style.IMAGE_FILE):
             _selected_data = super()._get_work_profile(label_style, label_io, input_style, input_io)
 
             if label_style == Label_Style.SEMENTIC_SEG:
@@ -208,23 +199,25 @@ class Label_Process():
             if data._Label_style == Label_Style.SEMENTIC_SEG:
                 # Get data from each data source
                 if data._Label_IO == IO_Style.IMAGE_FILE:
-                    _picked_input = File_IO._image_read(_pick_data["input"])
-                    _picked_label = File_IO._image_read(_pick_data["label"])
-                    _picked_label = Process_For_Label._color_map_to_classification(_picked_label, self._Activate_label[data._Label_style])
+                    _input = File_IO._image_read(_pick_data["input"])
+                    _label = File_IO._image_read(_pick_data["label"])
 
-                elif data._Label_IO == IO_Style.ANNOTATION:
-                    ...
+                else:  # data._Label_IO == IO_Style.ANNOTATION
+                    _input = None
+                    _label = None
 
-                return {"input": _picked_input, "label": _picked_label, "info": index}
+                _label = None if _label is None else Label_Img_Process._color_map_to_classification(_label, self._Activate_label[data._Label_style])
+
+                return {"input": _input, "label": _label, "info": index}
 
     class Imagenet_1k(Basement):
-        Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
+        Directory: Dict[Label_Style, Dict[IO_Style, Optional[Union[List[str], str]]]] = {
             Label_Style.CLASSIFICATION: {
                 IO_Style.IMAGE_FILE: "ILSVRC/2012/{}/{}/",
                 IO_Style.ZIP_FILE: "ILSVRC/2012/",
                 IO_Style.ANNOTATION: "ILSVRC/2012/"}
         }
-        Annotation: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
+        Annotation: Dict[Label_Style, Dict[IO_Style, Optional[Union[List[str], str]]]] = {
             Label_Style.CLASSIFICATION: {
                 IO_Style.IMAGE_FILE: None,
                 IO_Style.ZIP_FILE: "{}_map_for_zip.txt",
@@ -234,12 +227,10 @@ class Label_Process():
     class Imagenet_22k(Basement):
         ...
 
-    class PASCAL():
+    class PASCAL(Basement):
         ...
 
-    class CDnet():
-        Label_category: Dict[Label_Style, List[str]] = {Label_Style.SEMENTIC_SEG: ["void", "flat", "construction", "object", "nature", "sky", "human", "vehicle"]}
-
+    class CDnet(Basement):
         Directory: Dict[Label_Style, Dict[IO_Style, Union[List[str], str]]] = {
             Label_Style.SEMENTIC_SEG: {
                 IO_Style.IMAGE_FILE: "",
@@ -252,20 +243,16 @@ class Label_Process():
                 IO_Style.ANNOTATION: ""}
         }
 
-        def __init__(self, import_style: List[Label_Style], data_size: List[int]) -> None:
-            self.Lable_name = "CDnet"
-            super().__init__(import_style, data_size)
-
         def get_data_profile(self, holder: Work_Profile) -> Work_Profile:
             ...
 
         def work(self, data, index):
             ...
 
-    class COCO():
-        def __init__(self) -> None:
+    class COCO(Basement):
+        def __init__(self):
             pass
 
     @staticmethod
-    def _build(name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: str = None) -> Basement:
+    def _build(name: Support_Label, data_root: str, active_style: List[Label_Style], meta_file: Optional[str] = None) -> Basement:
         return Label_Process.__dict__[name.name](name, data_root, active_style, meta_file)

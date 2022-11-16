@@ -1,128 +1,132 @@
-from enum import Enum
-from typing import Any, List, Dict, Union
+from typing import Any, List, Dict, Union, Optional, MutableMapping
 
 
 if __package__ == "":
     from _base import Directory, File
-    from _numpy import Array_Process, Dtype, ndarray
+    from _numpy import Array_Process, Np_Dtype, ndarray
 else:
     from ._base import Directory, File
-    from ._numpy import Array_Process, Dtype, ndarray
+    from ._numpy import Array_Process, Np_Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
+LOG_SUPORT_TYPE = Union[str, int, float, tuple]
 
 
 # -- Mation Function -- #
 class Log():
-    _Annotation: Dict[str, Union[list, str, int, Dict]] = {}
-    _Data: Dict[str, Union[list, Dict]] = {}
+    _Annotation: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]] = {}
+    _Data: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]] = {}
 
-    def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: str = None, file_name: str = "log.json"):
-
+    def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: Optional[str] = None, file_name: str = "log.json"):
         if file_dir is None:
-            self._insert(info)
+            self._insert(info, self._Annotation)
             self._insert(data, self._Data)
 
         else:
             self._load(file_dir, file_name) if File._exist_check(Directory._divider_check(f"{file_dir}{file_name}", True)) else ...
 
-    def _insert(self, data_block: Dict, access_point: Dict = None, is_overwrite: bool = True):
-        # check parameter; save point
-        if access_point is None:
-            access_point = self._Annotation
+    def _insert(
+            self,
+            data_block: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
+            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
+            is_overwrite: bool = True):
 
         # pick data in search point
-        for _key in data_block.keys():
+        for _key, _data in data_block.items():
             _key_exist = _key in access_point.keys()
+            _slot = access_point[_key] if _key_exist else {}
 
-            if isinstance(data_block[_key], dict):
-                if not _key_exist:
-                    access_point[_key] = {}  # Make new key in holder that not be exist key
-                self._insert(data_block[_key], access_point[_key], is_overwrite)  # go to deep
+            # truth table(row: _slot, col: _data, overwrite is False)
+            #                               LOG_SUPORT_TYPE         list(LOG_SUPORT_TYPE),     dict
+            #    LOG_SUPORT_TYPE      convert to list and append           append               x
+            # list(LOG_SUPORT_TYPE)   convert to list and merge             merge               x
+            #         dict                          x                         x            go to deep
 
-            else:
-                # add
-                if _key_exist and not is_overwrite:
-                    if not isinstance(access_point[_key], list):
-                        access_point[_key] = [access_point[_key], ]
+            # overwrite
+            if is_overwrite or not _key_exist:
+                _slot = _data
+            # go to deep
+            elif isinstance(_data, dict) or isinstance(_slot, dict):
+                self._insert(_data, _slot, is_overwrite) if isinstance(_data, dict) and isinstance(_slot, dict) else ...
+            # add
+            elif not isinstance(_slot, list):
+                _slot = [_slot, ]
 
-                    if isinstance(data_block[_key], list):
-                        access_point[_key] += data_block[_key]
-                    else:
-                        access_point[_key].append(data_block[_key])
-
-                # (over)write
+                if isinstance(_data, list):
+                    _slot += _data
                 else:
-                    access_point[_key] = data_block[_key]
+                    _slot.append(_data)
 
-    def _get_data(self, place: Dict, access_point: Dict = None, is_pop: bool = False):
-        # check parameter; save point
-        if access_point is None:
-            access_point = self._Annotation
+            access_point.update({_key: _slot})
 
-        _pick_data = {}
+    def _get_data(
+            self,
+            data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
+            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
+            is_pop: bool = False) -> Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]]:
 
-        # pick data in search point
-        for _key in place.keys():
-            if _key not in access_point.keys():
-                ...
+        _holder = {}
+        # _access_point_name = access_point.__class__.__name__
 
-            # if key in acces point
-            elif isinstance(place[_key], dict):
-                _pick_data[_key] = self._get_data(place[_key], access_point[_key])  # go to deep
+        for _naem_tag, _tag_info in data_info.items():
+            if _naem_tag not in access_point.keys():
+                continue
+            _selected_data = access_point[_naem_tag]
 
-            elif isinstance(place[_key], (list, tuple)):
-                _pick_data[_key] = {}
-                for _sub_key in place[_key]:
-                    if _sub_key in access_point[_key].keys():
-                        _pick_data[_key][_sub_key] = access_point[_key][_sub_key]
+            # truth table(row: _picked_data, col: _tag_info, overwrite is False)
+            #                 not dict                     dict
+            #   None     pick_selected_data         pick_selected_data
+            #   str              x            pick_data in selected_data[str]
+            # list(str)          x            pick_data in selected_data[str]
+            #   dict             x                       go to deep
+
+            if _tag_info is not None:
+                if not isinstance(_selected_data, dict):
+                    continue
+                elif isinstance(_tag_info, dict):
+                    _holder = dict((
+                        Directory._Divider.join([_naem_tag, _getting_key]),
+                        _getting_value) for _getting_key, _getting_value in self._get_data(_tag_info, _selected_data, is_pop).items())
+
+                else:
+                    if isinstance(_tag_info, str):
+                        _holder.update(
+                            {Directory._Divider.join([_naem_tag, _tag_info]): _selected_data.pop(_tag_info) if is_pop else _selected_data[_tag_info]})
+                    elif isinstance(_tag_info, list):
+                        _holder.update(dict((
+                            Directory._Divider.join([_naem_tag, _call_key]),
+                            _selected_data.pop(_call_key) if is_pop else _selected_data[_call_key]) for _call_key in _tag_info))
             else:
-                _pick_data[_key] = access_point[_key][place[_key]]
+                _holder.update({_naem_tag: _selected_data})
 
-        return _pick_data
+                if is_pop:
+                    del access_point[_naem_tag]
 
-    def _get_data_length(self, place: Dict, access_point: Dict = None):
-        # check parameter; save point
-        if access_point is None:
-            access_point = self._Annotation
+        return _holder
 
-        _pick_data_length = {}
+    def _get_length(
+            self,
+            data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
+            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],):
 
-        # pick data in search point
-        for _key in place.keys():
-            if _key not in access_point.keys():
-                ...
+        _data = self._get_data(data_info, access_point)
 
-            # if key in acces point
-            elif isinstance(place[_key], dict):
-                _pick_data_length[_key] = self._get_data_length(place[_key], access_point[_key])  # go to deep
+        return dict((_key, len(value) if isinstance(value, (list, tuple, dict)) else 1) for _key, value in _data.items())
 
-            elif isinstance(place[_key], (list, tuple)):
-                _pick_data_length[_key] = {}
-                for _sub_key in place[_key]:
-                    if _sub_key in access_point[_key].keys():
-                        _pick_data = access_point[_key][_sub_key]
-                        _length = len(_pick_data) if isinstance(_pick_data, list) else 0 if _pick_data is None else 1 
-                        _pick_data_length[_key] = _length
-            else:
-                _pick_data = access_point[_key][place[_key]]
-                _length = len(_pick_data) if isinstance(_pick_data, list) else 0 if _pick_data is None else 1 
-                _pick_data_length[_key] = _length
+    def _load(self, file_dir: str, file_name: str):
+        _save_pakage = File._json(file_dir, file_name)
 
-        return _pick_data_length
+        if _save_pakage is not None:
+            self._insert(_save_pakage["annotation"], self._Annotation)
+            self._insert(_save_pakage["data"], self._Data)
 
-    def _load(self, file_dir, file_name):
-        save_pakage = File._json(file_dir, file_name)
-        self._insert(save_pakage["annotation"])
-        self._insert(save_pakage["data"], self._Data)
-
-    def _save(self, file_dir, file_name):
-        save_pakage = {
+    def _save(self, file_dir: str, file_name: str):
+        _save_pakage = {
             "annotation": self._Annotation,
             "data": self._Data}
 
-        File._json(file_dir, file_name, save_pakage, True)
+        File._json(file_dir, file_name, is_save=True, data_dict=_save_pakage)
 
 
 class ploter():
