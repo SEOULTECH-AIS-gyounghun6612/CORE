@@ -85,16 +85,16 @@ class Log():
                     continue
                 elif isinstance(_tag_info, dict):
                     _holder = dict((
-                        Directory._Divider.join([_naem_tag, _getting_key]),
+                        "_".join([_naem_tag, _getting_key]),
                         _getting_value) for _getting_key, _getting_value in self._get_data(_tag_info, _selected_data, is_pop).items())
 
                 else:
                     if isinstance(_tag_info, str):
                         _holder.update(
-                            {Directory._Divider.join([_naem_tag, _tag_info]): _selected_data.pop(_tag_info) if is_pop else _selected_data[_tag_info]})
+                            {"_".join([_naem_tag, _tag_info]): _selected_data.pop(_tag_info) if is_pop else _selected_data[_tag_info]})
                     elif isinstance(_tag_info, list):
                         _holder.update(dict((
-                            Directory._Divider.join([_naem_tag, _call_key]),
+                            "_".join([_naem_tag, _call_key]),
                             _selected_data.pop(_call_key) if is_pop else _selected_data[_call_key]) for _call_key in _tag_info))
             else:
                 _holder.update({_naem_tag: _selected_data})
