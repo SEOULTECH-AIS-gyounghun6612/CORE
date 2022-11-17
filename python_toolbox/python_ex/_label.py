@@ -5,12 +5,14 @@ from typing import Dict, List, Tuple, Union, Any, Optional
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
-    from _vision import File_IO, Label_Img_Process, ndarray
+    from _vision import File_IO, Label_Img_Process
+    from _numpy import Array_Process, Np_Dtype, ndarray
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
-    from ._vision import File_IO, Label_Img_Process, ndarray
+    from ._vision import File_IO, Label_Img_Process
+    from _numpy import Array_Process, Np_Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
@@ -158,7 +160,7 @@ class Label_Process():
 
             return Work_Profile(**_parameter)  # Make data profile holder
 
-        def _work(self, data: Work_Profile, index: int) -> Dict[str, Any]:
+        def _work(self, data: Work_Profile, index: int) -> Dict[str, ndarray]:
             raise NotImplementedError
 
     class BDD_100k(Basement):
@@ -193,8 +195,9 @@ class Label_Process():
 
             return _selected_data
 
-        def _work(self, data: Work_Profile, index: int):
+        def _work(self, data: Work_Profile, index: int) -> Dict[str, ndarray]:
             _pick_data = data._Data_list[index]
+            _holder = {"info": Array_Process._converter(index, dtype=Np_Dtype.INT)}
 
             if data._Label_style == Label_Style.SEMENTIC_SEG:
                 # Get data from each data source
@@ -207,8 +210,10 @@ class Label_Process():
                     _label = None
 
                 _label = None if _label is None else Label_Img_Process._color_map_to_classification(_label, self._Activate_label[data._Label_style])
+                _holder.update({"input": _input}) if _input is not None else ...
+                _holder.update({"label": _label}) if _label is not None else ...
 
-                return {"input": _input, "label": _label, "info": index}
+            return _holder
 
     class Imagenet_1k(Basement):
         Directory: Dict[Label_Style, Dict[IO_Style, Optional[Union[List[str], str]]]] = {
