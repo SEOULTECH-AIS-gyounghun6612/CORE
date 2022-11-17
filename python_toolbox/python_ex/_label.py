@@ -158,7 +158,7 @@ class Label_Process():
 
             return Work_Profile(**_parameter)  # Make data profile holder
 
-        def _work(self, data: Work_Profile, index: int) -> Dict:
+        def _work(self, data: Work_Profile, index: int) -> Dict[str, Any]:
             raise NotImplementedError
 
     class BDD_100k(Basement):
