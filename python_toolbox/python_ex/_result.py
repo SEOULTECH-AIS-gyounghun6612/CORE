@@ -66,7 +66,6 @@ class Log():
             is_pop: bool = False) -> Dict[str, JSON_WRITEABLE]:
 
         _holder = {}
-        # _access_point_name = access_point.__class__.__name__
 
         for _naem_tag, _tag_info in data_info.items():
             if _naem_tag not in access_point.keys():
@@ -103,6 +102,7 @@ class Log():
                     del access_point[_naem_tag]
 
         return _holder
+        # in later change this function => return dict or list
 
     def _get_length(
             self,

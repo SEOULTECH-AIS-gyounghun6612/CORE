@@ -5,12 +5,12 @@ from typing import Dict, List, Tuple, Union, Any, Optional
 if __package__ == "":
     # if this file in local project
     from _base import Directory, File, Utils
-    from _vision import File_IO, Label_Img_Process
+    from _vision import File_IO, Label_Img_Process, ndarray
 
 else:
     # if this file in package folder
     from ._base import Directory, File, Utils
-    from ._vision import File_IO, Label_Img_Process
+    from ._vision import File_IO, Label_Img_Process, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
@@ -87,7 +87,7 @@ class Label_Process_Config(Utils.Config):
     _Meta_file: Optional[str] = None
     _Active_style: List[Label_Style] = field(default_factory=lambda: [Label_Style.SEMENTIC_SEG])  # Label style list that get from meta data.
 
-    def _get_parameter(self) -> Dict[str, Any]:
+    def _get_parameter(self):
         return {
             "name": self._Name,
             "data_root": self._Data_root if self._Data_root is None else f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}",
@@ -158,8 +158,8 @@ class Label_Process():
 
             return Work_Profile(**_parameter)  # Make data profile holder
 
-        def _work(self, data: Work_Profile, index: int):
-            return NotImplementedError
+        def _work(self, data: Work_Profile, index: int) -> Dict:
+            raise NotImplementedError
 
     class BDD_100k(Basement):
         _Directory: Dict[Union[Label_Style, Input_Style], Dict[IO_Style, str]] = {

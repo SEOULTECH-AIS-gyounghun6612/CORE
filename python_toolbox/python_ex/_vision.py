@@ -492,19 +492,19 @@ class draw():
 class Label_Img_Process():
     # (h, w, class count) -> (h, w)
     @staticmethod
-    def _class_map_to_classification(class_map: ndarray):
+    def _class_map_to_classification(class_map: ndarray) -> ndarray:
         return class_map.argmax(axis=2)
 
     # (h, w) -> (h, w, 3)
     @staticmethod
-    def _classification_to_color_map(classification: ndarray, activate_label: Dict[int, List]):
+    def _classification_to_color_map(classification: ndarray, activate_label: Dict[int, List]) -> ndarray:
         _label_ids = sorted(activate_label.keys())
         _color_list = Array_Process._converter([activate_label[_id][0] for _id in _label_ids], dtype=Np_Dtype.UINT)
         return _color_list[classification]
 
     # (h, w, 3) -> (h, w, class count)
     @staticmethod
-    def _color_map_to_class_map(color_map: ndarray, activate_label: Dict[int, List]):
+    def _color_map_to_class_map(color_map: ndarray, activate_label: Dict[int, List]) -> ndarray:
         _h, _w, _ = color_map.shape
 
         _label_ids = sorted(activate_label.keys())
@@ -521,19 +521,19 @@ class Label_Img_Process():
 
     # (h, w, 3) -> (h, w)
     @staticmethod
-    def _color_map_to_classification(color_map: ndarray, activate_label: Dict[int, List]):
+    def _color_map_to_classification(color_map: ndarray, activate_label: Dict[int, List]) -> ndarray:
         _class_map = Label_Img_Process._color_map_to_class_map(color_map, activate_label)
         return Label_Img_Process._class_map_to_classification(_class_map)
 
     # (h, w, class count) -> (h, w, 3)
     @staticmethod
-    def _class_map_to_color_map(class_map: ndarray, activate_label: Dict[int, List]):
+    def _class_map_to_color_map(class_map: ndarray, activate_label: Dict[int, List]) -> ndarray:
         _classification = Label_Img_Process._class_map_to_classification(class_map)
         return Label_Img_Process._classification_to_color_map(_classification, activate_label)
 
     # (h, w) -> (h, w, class count)
     @staticmethod
-    def _classification_to_class_map(classification: ndarray, num_id: int):
+    def _classification_to_class_map(classification: ndarray, num_id: int) -> ndarray:
         _h, _w = classification.shape
         _class_map = Array_Process._converter([_h, _w, num_id], True, dtype=Np_Dtype.UINT)
 
