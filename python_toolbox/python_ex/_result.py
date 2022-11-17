@@ -1,4 +1,4 @@
-from typing import Any, List, Dict, Union, Optional, MutableMapping
+from typing import List, Dict, Union, Optional
 
 
 if __package__ == "":
@@ -14,8 +14,8 @@ else:
 
 # -- Mation Function -- #
 class Log():
-    _Annotation: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]] = {}
-    _Data: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]] = {}
+    _Annotation: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]] = {}
+    _Data: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]] = {}
 
     def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: Optional[str] = None, file_name: str = "log.json"):
         if file_dir is None:
@@ -27,8 +27,8 @@ class Log():
 
     def _insert(
             self,
-            data_block: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
-            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
+            data_block: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]],
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]],
             is_overwrite: bool = True):
 
         # pick data in search point
@@ -62,8 +62,8 @@ class Log():
     def _get_data(
             self,
             data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
-            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
-            is_pop: bool = False) -> Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]]:
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]],
+            is_pop: bool = False) -> Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]]:
 
         _holder = {}
         # _access_point_name = access_point.__class__.__name__
@@ -107,7 +107,7 @@ class Log():
     def _get_length(
             self,
             data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
-            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],):
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE]]],):
 
         _data = self._get_data(data_info, access_point)
 
