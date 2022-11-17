@@ -37,6 +37,9 @@ _error = _e.Custom_error(
 
 
 # -- DEFINE CONSTNAT -- #
+JSON_WRITEABLE = Optional[Union[str, int, float, bool, Tuple, List, Dict]]
+
+
 class OS_Style(Enum):
     OS_WINDOW = "Windows"
     OS_UBUNTU = "Linux"
@@ -377,10 +380,14 @@ class Utils():
         if iteration == total:
             print()
 
-    @staticmethod
-    def _time_stemp(source: Optional[float] = None, is_local: bool = False, is_text: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
-        _time = time.time() if source is None else source
-        return time.strftime(text_format, time.localtime(_time) if is_local else time.gmtime(_time)) if is_text else _time
+    class Time():
+        @staticmethod
+        def _stemp(source: Optional[float] = None):
+            return time.time() if source is None else source
+
+        @staticmethod
+        def _apply_text_form(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+            return time.strftime(text_format, time.localtime(source) if is_local else time.gmtime(source))
 
 
 class Tool_For():

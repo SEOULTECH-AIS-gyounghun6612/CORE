@@ -2,21 +2,20 @@ from typing import Any, List, Dict, Union, Optional, MutableMapping
 
 
 if __package__ == "":
-    from _base import Directory, File
+    from _base import Directory, File, JSON_WRITEABLE
     from _numpy import Array_Process, Np_Dtype, ndarray
 else:
-    from ._base import Directory, File
+    from ._base import Directory, File, JSON_WRITEABLE
     from ._numpy import Array_Process, Np_Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
-LOG_SUPORT_TYPE = Union[str, int, float, tuple]
 
 
 # -- Mation Function -- #
 class Log():
-    _Annotation: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]] = {}
-    _Data: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]] = {}
+    _Annotation: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]] = {}
+    _Data: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]] = {}
 
     def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: Optional[str] = None, file_name: str = "log.json"):
         if file_dir is None:
@@ -28,8 +27,8 @@ class Log():
 
     def _insert(
             self,
-            data_block: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
-            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
+            data_block: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
             is_overwrite: bool = True):
 
         # pick data in search point
@@ -63,8 +62,8 @@ class Log():
     def _get_data(
             self,
             data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
-            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],
-            is_pop: bool = False) -> Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]]:
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],
+            is_pop: bool = False) -> Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]]:
 
         _holder = {}
         # _access_point_name = access_point.__class__.__name__
@@ -108,7 +107,7 @@ class Log():
     def _get_length(
             self,
             data_info: Dict[str, Optional[Union[str, List[str], Dict]]],
-            access_point: Dict[str, Union[LOG_SUPORT_TYPE, List[LOG_SUPORT_TYPE], Dict]],):
+            access_point: Dict[str, Union[JSON_WRITEABLE, List[JSON_WRITEABLE], Dict]],):
 
         _data = self._get_data(data_info, access_point)
 
