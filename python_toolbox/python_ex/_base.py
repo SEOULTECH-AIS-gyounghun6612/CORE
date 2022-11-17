@@ -37,7 +37,7 @@ _error = _e.Custom_error(
 
 
 # -- DEFINE CONSTNAT -- #
-JSON_WRITEABLE = Optional[Union[str, int, float, bool, Tuple, List, Dict]]
+JSON_WRITEABLE = Union[str, int, float, bool, Tuple, List, Dict]
 
 
 class OS_Style(Enum):
