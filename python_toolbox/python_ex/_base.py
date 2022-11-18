@@ -37,7 +37,7 @@ _error = _e.Custom_error(
 
 
 # -- DEFINE CONSTNAT -- #
-JSON_WRITEABLE = Union[str, int, float, bool, Tuple, List, Dict]
+JSON_WRITEABLE = Optional[Union[str, int, float, bool, Tuple, List, Dict]]
 
 
 class OS_Style(Enum):
@@ -337,16 +337,13 @@ class Utils():
             """
             return {}
 
-        def _convert_to_dict(self) -> Dict[str, Optional[Union[Dict, str, int, float, bool]]]:
+        def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
             """
             Returned dictionary value type must be can dumped in json file
             """
             return asdict(self)
 
-        def _restore_from_dict(self, data: Dict[str, Optional[Union[Dict, str, int, float, bool]]]):
-            """
-
-            """
+        def _restore_from_dict(self, data: Dict[str, JSON_WRITEABLE]):
             raise NotImplementedError
 
     @staticmethod
