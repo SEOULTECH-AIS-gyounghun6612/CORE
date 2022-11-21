@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Optional, Tuple
 from enum import Enum
 from math import pi, cos, sin, ceil
 
@@ -15,27 +15,47 @@ from python_ex._label import Label_Process_Config, Input_Style, Label_Style, IO_
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode
+    from torch_ex._torch_base import Learning_Mode, JSON_WRITEABLE
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode
+    from ._torch_base import Learning_Mode, JSON_WRITEABLE
 
 
 # -- DEFINE CONSTNAT -- #
-class Augmentation_Target(Enum):
+DATA_TYPING = Optional[Union[Tensor, List[Tensor]]]
+INFO_TYPING = Optional[Union[ndarray, List[ndarray]]]
+
+
+DEFUALT_INTERPOLATION: Dict[str, InterpolationMode] = {
+    "input": InterpolationMode.NEAREST,
+    "label": InterpolationMode.BILINEAR,
+}
+
+
+class Augment_Mode(Enum):
     INPUT = "input"
     LABEL = "label"
-    COMMON = "common"
+
+
+class Flip_Direction(Enum):
+    NO_FLIP = 0
+    HORIZENTAL = 1
+    VIRTICAL = 2
 
 
 # -- DEFINE CONFIG -- #
-class Augmentation_Module_Config():
+class Augment_Module_Config():
     @dataclass
-    class Convert_to_Tensor(Utils.Config):
+    class Base(Utils.Config):
+        def _name_check(self, name: str):
+            return self.__class__.__name__ == name
+
+    @dataclass
+    class Convert_to_Tensor(Base):
         ...
 
     @dataclass
-    class Normalization(Utils.Config):
+    class Normalization(Base):
         _Mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.40])
         _Std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
         _Inplace: bool = False
@@ -47,11 +67,11 @@ class Augmentation_Module_Config():
                 "inplace": self._Inplace}
 
     @dataclass
-    class Resize(Utils.Config):
+    class Resize(Base):
         _Size: List[int]
         _Interpolation: InterpolationMode = InterpolationMode.BILINEAR
-        _Max_size: int = None
-        _Antialias: bool = None
+        _Max_size: Optional[int] = None
+        _Antialias: Optional[bool] = None
 
         def _get_parameter(self) -> Dict[str, Any]:
             return {
@@ -61,17 +81,17 @@ class Augmentation_Module_Config():
                 "antialias": self._Antialias
             }
 
-        def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
             _dict = super()._convert_to_dict()
             _dict["_Interpolation"] = self._Interpolation.value
             return _dict
 
     @dataclass
-    class Rotate(Utils.Config):
+    class Image_Rotate(Base):
         _Degrees: Union[int, List[int]]  # [-_Degrees, _Degrees] or [min, max]
         _Interpolation: InterpolationMode = InterpolationMode.NEAREST
-        _CENTER: bool = None
-        _Expand: bool = None
+        _CENTER: Optional[bool] = None
+        _Expand: Optional[bool] = None
         _FILL: int = 0
 
         def _get_parameter(self) -> Dict[str, Any]:
@@ -82,17 +102,17 @@ class Augmentation_Module_Config():
                 "center": self._CENTER,
                 "fill": self._FILL}
 
-        def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+        def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
             _dict = super()._convert_to_dict()
             _dict["_Interpolation"] = self._Interpolation.value
             return _dict
 
     @dataclass
-    class Flip(Utils.Config):
+    class Flip(Base):
         _Direction: List[int]
 
     @dataclass
-    class Center_Crop():
+    class Center_Crop(Base):
         _Size: List[int]
 
         def _get_parameter(self) -> Dict[str, Any]:
@@ -101,28 +121,51 @@ class Augmentation_Module_Config():
 
 
 @dataclass
-class Augmentation_Config(Utils.Config):
-    _Input_Augmentation: List[Utils.Config] = field(
-        default_factory=lambda: [Augmentation_Module_Config.Convert_to_Tensor(), Augmentation_Module_Config.Normalization()])
-    _Label_Augmentation: List[Utils.Config] = field(
-        default_factory=lambda: [Augmentation_Module_Config.Convert_to_Tensor(), ])
-    _Common_Augmentation: List[Utils.Config] = field(
-        default_factory=lambda: [])
+class Augment_Config(Utils.Config):
+    _Input_style: Input_Style
+    _Label_style: Label_Style
 
-    def _get_parameter(self) -> Dict[Augmentation_Target, List[Utils.Config]]:
-        return {
-            Augmentation_Target.INPUT: self._Input_Augmentation,
-            Augmentation_Target.LABEL: self._Label_Augmentation,
-            Augmentation_Target.COMMON: self._Common_Augmentation}
+    _Data_size: Tuple[int, int]
+    _Normalization: Optional[Tuple[List[float], List[float]]] = None
+    _Rotate_angle: Optional[Union[int, List[int]]] = None  # [-_Degrees, _Degrees] or [min, max]
+    _Flip_direction: Optional[Flip_Direction] = None
+    _Interpolation: Optional[InterpolationMode] = None
 
-    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
-        return {
-            "_Input_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Input_Augmentation},
-            "_Label_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Label_Augmentation},
-            "_Common_Augmentation": {config.__class__.__name__: config._convert_to_dict() for config in self._Common_Augmentation}}
+    def _get_parameter(self):
+        _image_size = self._Data_size if self._Rotate_angle is None else self._get_data_size(self._Rotate_angle)
+        _sq_dict: Dict[Augment_Mode, List[Augment_Module_Config.Base]] = {Augment_Mode.INPUT: [], Augment_Mode.LABEL: []}
+        _inter_mode = self._Interpolation
 
-    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        return super()._restore_from_dict(data)
+        # if self._Input_style == Input_Style.IMAGE:
+
+        for _mode, _sq_list in _sq_dict.items():
+            _this_interpolation = DEFUALT_INTERPOLATION[_mode.value] if _inter_mode is None else _inter_mode
+            _sq_list.append(Augment_Module_Config.Convert_to_Tensor())
+            _sq_list.append(Augment_Module_Config.Resize(list(_image_size), _this_interpolation))
+            if self._Normalization is not None and _mode is Augment_Mode.INPUT:
+                _sq_list.append(Augment_Module_Config.Normalization(self._Normalization[0], self._Normalization[1]))
+            if self._Rotate_angle is not None:
+                _sq_list.append(Augment_Module_Config.Image_Rotate(self._Rotate_angle, _this_interpolation))
+                _sq_list.append(Augment_Module_Config.Convert_to_Tensor())
+
+        return _sq_dict
+
+    def _get_data_size(self, angle: Union[int, List[int]]):
+        _degree = angle if isinstance(angle, int) else max(angle)
+        _rad = pi * _degree / 180
+        _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
+        _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
+
+        return _h_dot, _w_dot
+
+    def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
+        _dict = super()._convert_to_dict()
+
+        _dict.update({
+            "_Interpolation": self._Interpolation if self._Interpolation is None else self._Interpolation.value,
+            "_Flip_direction": self._Flip_direction if self._Flip_direction is None else self._Flip_direction.value})
+
+        return _dict
 
 
 @dataclass
@@ -140,38 +183,21 @@ class Dataset_Config(Utils.Config):
     _Label_IO: IO_Style
 
     _Data_size: List[int]
-    _Amplitude: Dict[Learning_Mode, int] = field(default_factory=dict)
-    _Augmentation: Dict[Learning_Mode, Augmentation_Config] = field(
-        default_factory=lambda: {
-            Learning_Mode.TRAIN: Augmentation_Config(),
-            Learning_Mode.VALIDATION: Augmentation_Config(),
-            Learning_Mode.TEST: Augmentation_Config(_Label_Augmentation=[])})
+    _Augmentation: Dict[Learning_Mode, Augment_Config]
+    _Amplitude: Dict[Learning_Mode, int]
 
     def _get_parameter(self, mode: Learning_Mode) -> Dict[str, Any]:
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
-        _aug_config = self._Augmentation[mode]._get_parameter()
-        _aug = {}
-
-        for _target in _aug_config.keys():
-            if _target == Augmentation_Target.COMMON:
-                _rotate_check = [
-                    _config.__dict__["_Degrees"] if "_Degrees" in _config.__dict__.keys() else 0 for _config in _aug_config[_target]]
-                _resize_config = Augmentation_Module_Config.Resize(self._get_data_size(sum(_rotate_check))) if sum(_rotate_check) \
-                    else Augmentation_Module_Config.Resize(self._Data_size)
-                _aug_config[_target] = [_resize_config, ] + _aug_config[_target]
-                if sum(_rotate_check):
-                    _aug_config[_target].append(Augmentation_Module_Config.Center_Crop(self._Data_size))
-
-            elif isinstance(_aug_config[_target], list):
-                if not isinstance(_aug_config[_target][0], Augmentation_Module_Config.Convert_to_Tensor):
-                    _aug_config[_target] = [Augmentation_Module_Config.Convert_to_Tensor(), ] + _aug_config[_target]
-
-            else:
-                _aug_config[_target] = [Augmentation_Module_Config.Convert_to_Tensor()]
-
-            _aug[_target] = Augmentation_Module._build(_aug_config[_target])
+        _aug_config_dict = self._Augmentation[mode]._get_parameter()
+        _for_rotate = {"angle_holder": [0.0, ]}
+        _augment_module = dict((
+            _mode,
+            Augment_Module.Transform([
+                Augment_Module._build(_config, _for_rotate) if _config._name_check("Image_Rotate") else Augment_Module._build(_config) for _config in _configs]
+            )
+        ) for _mode, _configs in _aug_config_dict.items())
 
         return {
             "label_process": _label_process,
@@ -181,9 +207,9 @@ class Dataset_Config(Utils.Config):
             "input_io": self._Label_IO,
 
             "amplification": self._Amplitude[mode],
-            "augmentation": _aug}
+            "augmentation": _augment_module}
 
-    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
+    def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
         return {
             "_Label_opt": self._Label_config._convert_to_dict(),
             "_Input_style": self._Input_style.value,
@@ -194,26 +220,9 @@ class Dataset_Config(Utils.Config):
             "_Augmentation": {
                 learning_key.value: aug_config._convert_to_dict() for learning_key, aug_config in self._Augmentation.items()}}
 
-    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        self._Label_config = self._Label_config._restore_from_dict(data["_Label_opt"])
-        self._Label_style, = Label_Style(data["_Label_style"])
-        self._IO_style = IO_Style(data["_IO_style"])
-
-    def _get_data_size(self, degrees: float):
-        _rad = pi * degrees / 180
-        _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
-        _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
-
-        return [_h_dot, _w_dot]
-
 
 # -- Mation Function -- #
-class Augmentation_Module():
-    _Defualt_interpolation: Dict = {
-        Augmentation_Target.INPUT: InterpolationMode.NEAREST,
-        Augmentation_Target.LABEL: InterpolationMode.BILINEAR
-    }
-
+class Augment_Module():
     class Convert_to_Tensor(ToTensor):
         ...
 
@@ -226,7 +235,7 @@ class Augmentation_Module():
                 _mean = tensor.mean(dim=list(range(1, len(tensor.shape))))
                 _std = tensor.std(dim=list(range(1, len(tensor.shape))))
 
-                return TF.normalize(tensor, _mean, _std, self.inplace)
+                return TF.normalize(tensor, _mean.tolist(), _std.tolist(), self.inplace)
             else:
                 return super().forward(tensor)
         ...
@@ -234,14 +243,19 @@ class Augmentation_Module():
     class Resize(Resize):
         ...
 
-    class Rotate(RandomRotation):
+    class Image_Rotate(RandomRotation):
+        def __init__(self, angle_holder: List[float], degrees, interpolation=InterpolationMode.NEAREST, expand=False, center=None, fill=0, resample=None):
+            super().__init__(degrees, interpolation, expand, center, fill, resample)
+
+            self._Angle: List[float] = angle_holder
+
         def _set_angle(self):
             """Get parameters for ``rotate`` for a random rotation.
 
             Returns:
                 float: angle parameter to be passed to ``rotate`` for random rotation.
             """
-            self.angle = float(empty(1).uniform_(float(self.degrees[0]), float(self.degrees[1])).item())
+            self._Angle[0] = float(empty(1).uniform_(float(self.degrees[0]), float(self.degrees[1])).item())
 
         def forward(self, img):
             """
@@ -256,8 +270,8 @@ class Augmentation_Module():
                 if isinstance(fill, (int, float)):
                     fill = [float(fill)] * TF.get_image_num_channels(img)
                 else:
-                    fill = [float(f) for f in fill]
-            return TF.rotate(img, self.angle, self.resample, self.expand, self.center, fill)
+                    fill = [float(f) for f in fill]   # type: ignore
+            return TF.rotate(img, self._Angle[0], self.resample, self.expand, self.center, fill)   # type: ignore
 
     class Flip():
         ...
@@ -266,38 +280,32 @@ class Augmentation_Module():
         ...
 
     class Transform(Compose):
-        def _set_target(self, target: Augmentation_Target):
+        def _set_target(self, target: Augment_Mode):
             self._Target = target
 
-        def __call__(self, img, use_auto: bool = False):
+        def __call__(self, data: ndarray) -> Tensor:
             _target = self._Target
+            _data = data
 
             for _t in self.transforms:
-                if isinstance(_t, Augmentation_Module.Resize):
-                    _t.interpolation = Augmentation_Module._Defualt_interpolation[_target] if use_auto else _t.interpolation
-                elif isinstance(_t, Augmentation_Module.Rotate):
-                    _t.interpolation = Augmentation_Module._Defualt_interpolation[_target] if use_auto else _t.interpolation
-                    if _target == Augmentation_Target.INPUT:
-                        _t._set_angle()
-
-                img = _t(img)
-            return img
+                if isinstance(_t, Augment_Module.Image_Rotate) and _target == Augment_Mode.INPUT:
+                    _t._set_angle()
+                _data = _t(_data)
+            return _data  # type: ignore
 
     @staticmethod
-    def _build(Augmentation_config_list: List[Utils.Config]):
-        _componant = []
-
-        for _config in Augmentation_config_list:
-            _name = _config.__class__.__name__
-            _componant.append(Augmentation_Module.__dict__[_name](**_config._get_parameter()))
-
-        return Augmentation_Module.Transform(_componant)
+    def _build(augment_config: Utils.Config, extra_parameter: Optional[Dict[str, Any]] = None):
+        _name = augment_config.__class__.__name__
+        if extra_parameter is None:
+            return Augment_Module.__dict__[_name](**augment_config._get_parameter())
+        else:
+            return Augment_Module.__dict__[_name](**augment_config._get_parameter(), **extra_parameter)
 
 
 class Custom_Dataset(Dataset):
     def __init__(
             self, label_process: Label_Process.Basement, label_style: Label_Style, label_io: IO_Style, input_style: Input_Style, input_io: IO_Style,
-            amplification: int, augmentation: Dict[Augmentation_Target, Augmentation_Module.Transform]):
+            amplification: int, augmentation: Dict[Augment_Mode, Augment_Module.Transform]):
         self._Data_process = label_process
         self._Work_profile = label_process._get_work_profile(label_style, label_io, input_style, input_io)
 
@@ -305,32 +313,25 @@ class Custom_Dataset(Dataset):
         self._Amplification = amplification
         self._Transform = augmentation
 
-    def _transform(self, data_dict: Dict[str, Union[ndarray, List[ndarray]]]):
-        _holder: Dict[str, Union[Tensor, ndarray, List[Tensor], List[ndarray]]] = {}
-        for _target, _data in data_dict.items():
-            if _target == "info":
-                _holder[_target] = _data
+    def _data_transform(self, data_dict: Dict[str, Union[ndarray, List[ndarray]]]) -> Tuple[DATA_TYPING, DATA_TYPING, INFO_TYPING]:
+        _info = data_dict["info"]
 
-            else:
-                _holder[_target] = self._transform_process(Augmentation_Target(_target), _data)
+        _input = self._transform(Augment_Mode.INPUT, data_dict["input"], _info)
+        _label = self._transform(Augment_Mode.LABEL, data_dict["label"], _info)
 
-        return tuple([_data.float() if isinstance(_data, Tensor) else _data for _data in _holder.values()])
+        return _input, _label, _info
 
-    def _transform_process(self, target: Augmentation_Target, data: Union[Tensor, ndarray, List[Tensor], List[ndarray]]) -> Union[Tensor, List[Tensor]]:
-        _data = data
-        _process = self._Transform[target]
-        _process._set_target(target)
+    def _transform(self, target: Augment_Mode, data: Union[ndarray, List[ndarray]], info: Union[ndarray, List[ndarray]]):
+        if isinstance(data, list):
+            _transform_data = [self._Transform[target](_data) for _data in data]
+        else:
+            _transform_data = self._Transform[target](data)
 
-        _data = [_process(_mem) for _mem in _data] if isinstance(_data, list) else _process(_data)
-
-        _common_process = self._Transform[Augmentation_Target.COMMON]
-        _common_process._set_target(target)
-
-        return [_common_process(_mem, True) for _mem in _data] if isinstance(_data, list) else _common_process(_data, True)
+        return _transform_data
 
     def __len__(self):
         return len(self._Work_profile._Data_list) * self._Amplification
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> Tuple[DATA_TYPING, DATA_TYPING, INFO_TYPING]:
         _source_index = index // self._Amplification
-        return self._transform(self._Data_process._work(self._Work_profile, _source_index))
+        return self._data_transform(self._Data_process._work(self._Work_profile, _source_index))

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from math import cos, pi
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Union, Any, Optional, Tuple
 from python_ex._base import Utils
 
 # optimizer
@@ -59,15 +59,6 @@ class Scheduler_Config(Utils.Config):
             "_Term": self._Term,
             "_Term_amp": self._Term_amp}
 
-    def _restore_from_dict(self, data: Dict[str, Union[Dict, str, int, float, bool, None]]):
-        self._Optim_name = Suport_Optimizer(data["_Optim_name"])
-        self._Schedule_name = Suport_Schedule(data["_Schedule_name"])
-        self._LR_Maximum = data["_LR_Maximum"]
-        self._LR_Minimum = data["_LR_Minimum"]
-        self._LR_Decay = data["_LR_Decay"]
-        self._Term = data["_Term"]
-        self._Term_amp = data["_Term_amp"]
-
 
 # -- Mation Function -- #
 class Custom_Scheduler():
@@ -78,6 +69,7 @@ class Custom_Scheduler():
                 maximum: float, minimum: float, decay: float,
                 last_epoch: int = -1) -> None:
 
+            super().__init__(optimizer, last_epoch)
             self._Cycle: int = 0
             self._Term = term
             self._Term_amp = term_amp
@@ -89,8 +81,6 @@ class Custom_Scheduler():
             self._This_count: int = last_epoch
             self._This_term: int = self._get_next_term()
 
-            super().__init__(optimizer, last_epoch)
-
         # Freeze function
         def _get_next_term(self):
             if isinstance(self._Term, list):
@@ -98,7 +88,7 @@ class Custom_Scheduler():
             else:
                 return round(self._Term * (self._Term_amp ** self._Cycle))
 
-        def step(self, epoch: int = None):
+        def step(self, epoch: Optional[int] = None):
             if epoch is None:  # go to next epoch
                 self.last_epoch = self.last_epoch + 1
                 self._This_count = self._This_count + 1
@@ -116,24 +106,24 @@ class Custom_Scheduler():
 
                 self._This_count = epoch
 
-            for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
+            for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):  # type: ignore
                 param_group['lr'] = lr
 
         # Un-Freeze function
         def get_lr(self):
-            return [self._Maximum for _ in self.base_lrs]
+            return [self._Maximum for _ in self.base_lrs]  # type: ignore
 
     class Cosin_Annealing(Base):
         def get_lr(self):
             _amp = (1 + cos(pi * (self._This_count) / (self._This_term))) / 2
             _value = self._Minimum + (self._Maximum - self._Minimum) * _amp
-            return [_value for _ in self.base_lrs]
+            return [_value for _ in self.base_lrs]  # type: ignore
 
     @staticmethod
     def _build(
             optimizer: optim.Optimizer, schedule_name: Suport_Schedule,
             term: Union[List[int], int], term_amp: float,
             maximum: float, minimum: float, decay: float,
-            last_epoch: int = -1) -> _LRScheduler:
+            last_epoch: int = -1) -> Tuple[optim.Optimizer, _LRScheduler]:
 
         return optimizer, Custom_Scheduler.__dict__[schedule_name.value](optimizer, term, term_amp, maximum, minimum, decay, last_epoch)

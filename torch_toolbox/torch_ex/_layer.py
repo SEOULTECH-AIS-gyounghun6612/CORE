@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional, Tuple
 from math import sqrt, log
 
 from python_ex._base import Utils
 
 # from torch.nn import ReLU, Softmax, parameter, ModuleList
-from torch import Tensor
-from torch import zeros, mean, matmul, sin, cos, exp, arange
+import torch
 
 # layer utils
 from torch.nn import Module, init, functional, ModuleList, Sequential, parameter
@@ -27,11 +26,11 @@ from torch.nn import MSELoss, CrossEntropyLoss
 
 if __package__ == "":
     # if this file in local project
-    from _torch_base import Torch_Utils
+    from _torch_base import Torch_Utils, Np_Dtype
 
 else:
     # if this file in package folder
-    from ._torch_base import Torch_Utils
+    from ._torch_base import Torch_Utils, Np_Dtype
 
 
 # -- DEFINE CONSTNAT -- #
@@ -119,7 +118,7 @@ class Layer_Config():
         def _restore_from_dict(self, data: Dict[str, Any]):
             return super()._restore_from_dict(data)
 
-        def _make_parameter(self) -> Module:
+        def _make_parameter(self):
             # normalization setting
             if self._Type in [Suport_Norm.BatchNorm, Suport_Norm.SyncBatchNorm]:
                 return {
@@ -128,7 +127,7 @@ class Layer_Config():
                     "momentum": self._Momentum,
                     "affine": self._Affine,
                     "track_running_stats": self._Track_running_stats}
-            if self._Type == Suport_Norm.LayerNorm:
+            else:  # self._Type == Suport_Norm.LayerNorm
                 return {
                     "nomalized_shape": self._Out_features,
                     "eps": self._Eps,
@@ -146,7 +145,7 @@ class Layer_Config():
         def _restore_from_dict(self, data: Dict[str, Any]):
             return super()._restore_from_dict(data)
 
-        def _make_parameter(self) -> Module:
+        def _make_parameter(self):
             # normalization setting
             if self._Type == Suport_Active.ReLU:
                 return {"inplace": self._Inplace}
@@ -177,8 +176,8 @@ class Model_Componant_Config():
     @dataclass
     class Linear(Utils.Config):
         _Linear_config: Layer_Config.Linear
-        _Norm_type: Suport_Norm = None
-        _Activate_type: Suport_Active = None
+        _Norm_type: Optional[Suport_Norm] = None
+        _Activate_type: Optional[Suport_Active] = None
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -187,16 +186,16 @@ class Model_Componant_Config():
             return super()._restore_from_dict(data)
 
         def _make_norm_config(self):
-            return Layer_Config.Norm(self._Norm_type, self._Linear_config._Out_features)
+            return None if self._Norm_type is None else Layer_Config.Norm(self._Norm_type, self._Linear_config._Out_features)
 
         def _make_active_config(self):
-            return Layer_Config.Activate(self._Activate_type)
+            return None if self._Activate_type is None else Layer_Config.Activate(self._Activate_type)
 
     @dataclass
     class Conv2D(Utils.Config):
         _Conv2D_config: Layer_Config.Conv2D
-        _Norm_type: Suport_Norm = None
-        _Activate_type: Suport_Active = None
+        _Norm_type: Optional[Suport_Norm] = None
+        _Activate_type: Optional[Suport_Active] = None
 
         def _convert_to_dict(self) -> Dict[str, Any]:
             return super()._convert_to_dict()
@@ -205,10 +204,10 @@ class Model_Componant_Config():
             return super()._restore_from_dict(data)
 
         def _make_norm_config(self):
-            return Layer_Config.Norm(self._Norm_type, self._Conv2D_config._Out_channels)
+            return None if self._Norm_type is None else Layer_Config.Norm(self._Norm_type, self._Conv2D_config._Out_channels)
 
         def _make_active_config(self):
-            return Layer_Config.Activate(self._Activate_type)
+            return None if self._Activate_type is None else Layer_Config.Activate(self._Activate_type)
 
     @dataclass
     class PUP(Utils.Config):
@@ -322,12 +321,12 @@ class Layer():
         return Sequential(*list)
 
     @ staticmethod
-    def _make_weight(size, value_range: List[float]) -> Tensor:
-        return parameter.Parameter(Torch_Utils.Tensor._make_tensor(size, value=value_range, dtype="float32"))
+    def _make_weight(size, value_range: List[float]) -> torch.Tensor:
+        return parameter.Parameter(Torch_Utils.Tensor._make_tensor(size, value=value_range, dtype=Np_Dtype.FLOAT))
 
     @staticmethod
-    def _make_norm_layer(config: Layer_Config.Norm, dimension: int) -> Module:
-        if config._Type is None:
+    def _make_norm_layer(config: Optional[Layer_Config.Norm], dimension: int):
+        if config is None:
             return None
         elif config._Type == Suport_Norm.BatchNorm:
             if dimension == 1:
@@ -340,7 +339,7 @@ class Layer():
             return LayerNorm(**config._make_parameter())
 
     @staticmethod
-    def _make_activate_layer(active_opt: Layer_Config.Activate) -> Module:
+    def _make_activate_layer(active_opt: Optional[Layer_Config.Activate]):
         # activation setting
         if active_opt is None:
             return None
@@ -379,7 +378,7 @@ class Model_Componant():
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 1)
             self._Activate = Layer._make_activate_layer(config._make_active_config())
 
-        def forward(self, x: Tensor) -> Tensor:
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
             _x = self._Linear(x)
             _x = self._Norm(_x) if self._Norm is not None else _x
             _x = self._Activate(_x) if self._Activate is not None else _x
@@ -393,7 +392,7 @@ class Model_Componant():
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 2)
             self._Activate = Layer._make_activate_layer(config._make_active_config())
 
-        def forward(self, x: Tensor) -> Tensor:
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
             _x = self._Conv2D(x)
             _x = self._Norm(_x) if self._Norm is not None else _x
             _x = self._Activate(_x) if self._Activate is not None else _x
@@ -411,7 +410,7 @@ class Model_Componant():
             self._Back = Conv2d(**_backend_conv._make_parameter())
             self._Samppling = Upsample(scale_factor=config._Scale_factor, mode=config._Scale_mode)
 
-        def forward(self, x: Tensor) -> Tensor:
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
             _x = self._Front(x)
             _x = self._Norm(_x) if self._Norm is not None else _x
             _x = self._Activate(_x) if self._Activate is not None else _x
@@ -423,17 +422,20 @@ class Model_Componant():
         class Trigonometric(Module):
             def __init__(self, num_of_data: int, max_token_size: int = 1000):
                 super().__init__()
-                _pe = zeros(max_token_size, num_of_data)
-                _position = arange(0, max_token_size, dtype=float).unsqueeze(1)
-                _div_term = exp(arange(0, num_of_data, 2).float() * (-log(10000.0) / num_of_data))
-                _pe[:, 0::2] = sin(_position * _div_term)
-                _pe[:, 1::2] = cos(_position * _div_term)
+                _pe = torch.zeros(max_token_size, num_of_data)
+                _position = torch.arange(0, max_token_size, dtype=torch.float).unsqueeze(1)
+                _div_term = torch.exp(torch.arange(0, num_of_data, 2).float() * (-log(10000.0) / num_of_data))
+                _pe[:, 0::2] = torch.sin(_position * _div_term)
+                _pe[:, 1::2] = torch.cos(_position * _div_term)
                 _pe = _pe.unsqueeze(0)
 
                 self.register_buffer("_Position_value", _pe, persistent=False)
 
-            def forward(self, x: Tensor):
-                return x + self._Position_value[:, : x.size(1)]
+            def forward(self, x: torch.Tensor):
+                if isinstance(self._Position_value, torch.Tensor):
+                    return x + self._Position_value[:, : x.size(1)]
+                else:
+                    raise TypeError(f"Parameter '_Position_value' in {self.__class__.__name__} type incorrect")
 
         class Gaussian(Module):
             ...
@@ -464,7 +466,7 @@ class Model_Componant():
                 self.o_maker._Linear.bias.data.fill_(0)
 
             def _dot_product(self, Q, K, V, mask=None):  # dot_product
-                _logits = matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
+                _logits = torch.matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
                 _logits /= sqrt(self._Head_dim)
 
                 if mask is not None:
@@ -472,27 +474,29 @@ class Model_Componant():
 
                 _attention = functional.softmax(_logits, dim=-1)
 
-                return matmul(_attention, V), _attention
+                return torch.matmul(_attention, V), _attention
 
         class Dot_Attention(Base):
             def __init__(self, config: Model_Componant_Config.Attention) -> None:
                 super().__init__(config)
 
-            def forward(self, Q_source: Tensor, K_source: Tensor, V_source: Tensor, mask: Tensor = None, return_attention_map: bool = False) -> Tensor:
-                _q = self.q_maker(Q_source)
+            def forward(self, source: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], mask: Optional[torch.Tensor] = None, get_attention_map: bool = False)\
+                    -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+                _Q_source, _K_source, _V_source = source
+                _q = self.q_maker(_Q_source)
                 _q = rearrange(_q, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
-                _k = self.k_maker(K_source)
+                _k = self.k_maker(_K_source)
                 _k = rearrange(_k, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
-                _v = self.v_maker(V_source)
+                _v = self.v_maker(_V_source)
                 _v = rearrange(_v, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._Head_dim, head_num=self._Option._Head_count)
 
                 _value, _attention = self._dot_product(_q, _k, _v, mask)  # value -> batch head_num seq head_dim
 
                 _value = rearrange(_value, 'batch head_num seq head_dim -> batch seq (head_dim head_num)')
                 _outpot = self.o_maker(_value)
-                return (_outpot, _attention) if return_attention_map else _outpot
+                return (_outpot, _attention) if get_attention_map else _outpot
 
     class Transformer():
         class Base(Module):
@@ -511,7 +515,7 @@ class Model_Componant():
 
                 self.linear_block = Layer._make_sequential(_linear)
 
-            def forward(self, x):
+            def forward(self, x) -> torch.Tensor:
                 _x = self._Layer_norm_01(x + self._Attention(x, x, x))
                 _x = self._Layer_norm_02(_x + self.linear_block(_x))
 
@@ -549,33 +553,40 @@ class Model_Componant():
                 """
                 super(Model_Componant.Backbone.ResNet, self).__init__()
                 if type == 101:
-                    self._Model = models.resnet101(pretrained=is_pretrained)
+                    _model = models.resnet101(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
                 else:
-                    self._Model = models.resnet50(pretrained=is_pretrained)
+                    _model = models.resnet50(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
-                for _parameters in self._Model.parameters():
+                for _parameters in _model.parameters():
                     _parameters.requires_grad = is_trainable
 
-                # delete classfication module
-                self._Model.fc = None
+                self.conv1 = _model.conv1
+                self.bn1 = _model.bn1
+                self.relu = _model.relu
+                self.maxpool = _model.maxpool
+                self.layer1 = _model.layer1
+                self.layer2 = _model.layer2
+                self.layer3 = _model.layer3
+                self.layer4 = _model.layer4
+                self.avgpool = _model.avgpool
 
             def forward(self, x):
-                _x = self._Model.conv1(x)
-                _x = self._Model.bn1(_x)
-                _out_conv1 = self._Model.relu(_x)              # x shape : batch_size, 2048, h/2, w/2
-                _x = self._Model.maxpool(_out_conv1)
-                _out_conv2 = self._Model.layer1(_x)            # x shape : batch_size, 2048, h/4, w/4
-                _out_conv3 = self._Model.layer2(_out_conv2)    # x shape : batch_size, 2048, h/8, w/8
-                _out_conv4 = self._Model.layer3(_out_conv3)    # x shape : batch_size, 2048, h/16, w/16
-                _out_conv5 = self._Model.layer4(_out_conv4)    # x shape : batch_size, 2048, h/32, w/32
+                _x = self.conv1(x)
+                _x = self.bn1(_x)
+                _out_conv1 = self.relu(_x)              # x shape : batch_size, 2048, h/2, w/2
+                _x = self.maxpool(_out_conv1)
+                _out_conv2 = self.layer1(_x)            # x shape : batch_size, 2048, h/4, w/4
+                _out_conv3 = self.layer2(_out_conv2)    # x shape : batch_size, 2048, h/8, w/8
+                _out_conv4 = self.layer3(_out_conv3)    # x shape : batch_size, 2048, h/16, w/16
+                _out_conv5 = self.layer4(_out_conv4)    # x shape : batch_size, 2048, h/32, w/32
 
                 return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
-            def _average_pooling(self, ouput: Tensor):
-                return self._Model.avgpool(ouput)
+            def _average_pooling(self, ouput: torch.Tensor):
+                return self.avgpool(ouput)
 
             def _sumarry(self, input_shape):
                 ModelSummary(self, input_shape)
@@ -603,10 +614,10 @@ class Model_Componant():
                 for _parameter in self._conv.parameters():
                     _parameter.requires_grad = config._Is_trainable
 
-            def forward(self, x: Tensor):
+            def forward(self, x: torch.Tensor):
                 return self._conv(x)  # x shape : batch_size, 512, 7, 7
 
-            def _average_pooling(self, ouput: Tensor):
+            def _average_pooling(self, ouput: torch.Tensor):
                 return self._avgpool(ouput)
 
             def _sumarry(self, input_shape):
@@ -616,7 +627,7 @@ class Model_Componant():
                 return None
 
         class FCN(Module):
-            def __init__(self, config: Model_Componant_Config.Backbone) -> None:
+            def __init__(self, config: Model_Componant_Config.Backbone):
                 super(Model_Componant.Backbone.FCN, self).__init__()
                 if config._Type == 101:
                     self._line = models.segmentation.fcn_resnet101(pretrained=config._Is_pretrained)
@@ -642,7 +653,7 @@ class Model_Componant():
 
 class Loss_Function():
     @staticmethod
-    def _mse_loss(output, target) -> Tensor:
+    def _mse_loss(output, target) -> torch.Tensor:
         """
         Args:
             output: [batch, c, h, w]
@@ -653,7 +664,7 @@ class Loss_Function():
         return MSELoss()(output, target)
 
     @staticmethod
-    def _cross_entropy_loss(output, target, ignore_index=-100) -> Tensor:
+    def _cross_entropy_loss(output, target, ignore_index=-100) -> torch.Tensor:
         """
         Args:
             output: [batch, class_num, h, w]
@@ -664,5 +675,5 @@ class Loss_Function():
         return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
 
     @staticmethod
-    def _mean_loss(output, target) -> Tensor:
-        return mean(output * target)
+    def _mean_loss(output, target) -> torch.Tensor:
+        return torch.mean(output * target)
