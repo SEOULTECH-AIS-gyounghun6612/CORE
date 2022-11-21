@@ -182,7 +182,6 @@ class Dataset_Config(Utils.Config):
     _Label_style: Label_Style
     _Label_IO: IO_Style
 
-    _Data_size: List[int]
     _Augmentation: Dict[Learning_Mode, Augment_Config]
     _Amplitude: Dict[Learning_Mode, int]
 
