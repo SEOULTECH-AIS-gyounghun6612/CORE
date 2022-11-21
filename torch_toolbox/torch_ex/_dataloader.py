@@ -122,16 +122,13 @@ class Augment_Module_Config():
 
 @dataclass
 class Augment_Config(Utils.Config):
-    _Input_style: Input_Style
-    _Label_style: Label_Style
-
     _Data_size: Tuple[int, int]
     _Normalization: Optional[Tuple[List[float], List[float]]] = None
     _Rotate_angle: Optional[Union[int, List[int]]] = None  # [-_Degrees, _Degrees] or [min, max]
     _Flip_direction: Optional[Flip_Direction] = None
     _Interpolation: Optional[InterpolationMode] = None
 
-    def _get_parameter(self):
+    def _get_parameter(self, input_style: Input_Style, label_style: Label_Style):
         _image_size = self._Data_size if self._Rotate_angle is None else self._get_data_size(self._Rotate_angle)
         _sq_dict: Dict[Augment_Mode, List[Augment_Module_Config.Base]] = {Augment_Mode.INPUT: [], Augment_Mode.LABEL: []}
         _inter_mode = self._Interpolation
@@ -189,7 +186,7 @@ class Dataset_Config(Utils.Config):
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
-        _aug_config_dict = self._Augmentation[mode]._get_parameter()
+        _aug_config_dict = self._Augmentation[mode]._get_parameter(self._Input_style, self._Label_style)
         _for_rotate = {"angle_holder": [0.0, ]}
         _augment_module = dict((
             _mode,
