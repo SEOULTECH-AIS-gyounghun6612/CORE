@@ -25,9 +25,6 @@ class Log_Config(Utils.Config):
     # Logging parameter in each mode;
     _Logging: Dict[Learning_Mode, Dict[Log_Category, List[str]]]  # str -> logging_loss name
 
-    # Standard parameter for dicide best model;
-    _Best_standard: Dict[Learning_Mode, Dict[Log_Category, List[str]]]
-
     # Tracking parameter in each mode;
     # if None -> all same like logging keys
     _Tracking: Dict[Learning_Mode, Dict[Log_Category, List[str]]] = field(default_factory=dict)  # str -> logging_loss name
@@ -35,8 +32,7 @@ class Log_Config(Utils.Config):
     def _convert_to_dict(self) -> Dict[str, Any]:
         _dict = {
             "_Logging": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Logging.items()),
-            "_Tracking": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Tracking.items()),
-            "_Best_standard": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Best_standard.items())}
+            "_Tracking": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Tracking.items())}
         return _dict
 
 
@@ -162,8 +158,6 @@ class Debug():
                     _target_key, config._Tracking[_learning_key][_target_key] if _target_key in config._Tracking[_learning_key].keys() else _name_info
                 ) for _target_key, _name_info in _target_info.items()) if _learning_key in config._Tracking.keys() else _target_info
             ) for _learning_key, _target_info in config._Logging.items())
-
-            self._Best_standard = config._Best_standard
 
             super().__init__(data=self._make_data_holder(config._Logging))
 
