@@ -12,7 +12,7 @@ else:
     # if this file in package folder
     from ._base import Directory, File, Utils
     from ._vision import File_IO, Label_Img_Process
-    from _numpy import Array_Process, Np_Dtype, ndarray
+    from ._numpy import Array_Process, Np_Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
