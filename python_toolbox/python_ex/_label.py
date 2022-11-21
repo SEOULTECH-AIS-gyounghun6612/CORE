@@ -27,8 +27,7 @@ class Learning_Mode(Enum):
 
 
 class Input_Style(Enum):
-    IMAGE = "classification"
-    NUMPY = "sem_seg"
+    IMAGE = "image"
 
 
 class Label_Style(Enum):
