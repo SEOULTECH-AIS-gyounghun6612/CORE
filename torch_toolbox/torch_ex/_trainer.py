@@ -168,7 +168,7 @@ class Learning_process():
                         dataset=self._Dataset[_mode],
                         batch_size=int(self._Config._Batch_size_in_node),
                         num_workers=int(self._Config._Max_num_workers / word_size),
-                        sampler=_sampler[_mode],)
+                        sampler=_sampler[_mode])
                 else:
                     _sampler[_mode] = None
                     _dataloader[_mode] = DataLoader(

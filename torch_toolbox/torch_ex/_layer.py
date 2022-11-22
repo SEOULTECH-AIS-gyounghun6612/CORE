@@ -553,12 +553,21 @@ class Module_Componant():
         #         return _output
 
     class Backbone():
-        class ResNet(Module):
+        class Base(Module):
+            def __init__(self, is_trainable: bool):
+                self._Output_channel: List[int] = []
+
+            def _sumarry(self, input_shape: List[int]):
+                ModelSummary(self, input_shape)
+
+            def _get_out_shape(self, input_size: List[int]):
+                _h, _w = input_size[:2]
+                return [
+                    [_c, _h / 2 ** (_d + 1), _w / 2 ** (_d + 1)] for [_d, _c] in enumerate(self._Output_channel)]
+
+        class ResNet(Base):
             def __init__(self, type: int, is_pretrained: bool, is_trainable: bool):
-                """
-                args:
-                """
-                super(Module_Componant.Backbone.ResNet, self).__init__()
+                super(Module_Componant.Backbone.ResNet, self).__init__(is_trainable)
                 if type == 101:
                     _model = models.resnet101(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
@@ -580,7 +589,7 @@ class Module_Componant():
                 self.layer4 = _model.layer4
                 self.avgpool = _model.avgpool
 
-            def forward(self, x):
+            def forward(self, x: torch.Tensor):
                 _x = self.conv1(x)
                 _x = self.bn1(_x)
                 _out_conv1 = self.relu(_x)              # x shape : batch_size, 2048, h/2, w/2
@@ -594,14 +603,6 @@ class Module_Componant():
 
             def _average_pooling(self, ouput: torch.Tensor):
                 return self.avgpool(ouput)
-
-            def _sumarry(self, input_shape):
-                ModelSummary(self, input_shape)
-
-            def _get_out_shape(self, input_size: List[int]):
-                _h, _w = input_size[:2]
-                return [
-                    [_c, _h / 2 ** (_d + 1), _w / 2 ** (_d + 1)] for [_d, _c] in enumerate(self._Output_channel)]
 
         class VGG(Module):
             def __init__(self, config: Module_Componant_Config.Backbone):
@@ -627,12 +628,6 @@ class Module_Componant():
             def _average_pooling(self, ouput: torch.Tensor):
                 return self._avgpool(ouput)
 
-            def _sumarry(self, input_shape):
-                ModelSummary(self, input_shape)
-
-            def _get_out_shape(self, input_size: List[int]):
-                return None
-
         class FCN(Module):
             def __init__(self, config: Module_Componant_Config.Backbone):
                 super(Module_Componant.Backbone.FCN, self).__init__()
@@ -647,14 +642,8 @@ class Module_Componant():
             def forward(self, x):
                 return self._line(x)
 
-            def _sumarry(self, input_shape):
-                ModelSummary(self, input_shape)
-
-            def _get_out_shape(self, input_size: List[int]):
-                return None
-
         @staticmethod
-        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool) -> Module:
+        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool) -> Base:
             return Module_Componant.Backbone.__dict__[name.value](type, is_pretrained, is_trainable)
 
 
