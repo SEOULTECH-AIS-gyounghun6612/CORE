@@ -118,7 +118,6 @@ class Augment_Module_Config():
 
 @dataclass
 class Augment_Config(Utils.Config):
-    _Data_size: Tuple[int, int]
     _Normalization: Optional[Tuple[List[float], List[float]]] = None
     _Rotate_angle: Optional[Union[int, List[int]]] = None  # [-_Degrees, _Degrees] or [min, max]
     _Flip_direction: Optional[Flip_Direction] = None

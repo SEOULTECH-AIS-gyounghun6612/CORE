@@ -320,11 +320,11 @@ class Module_Componant_Config():
 # -- Mation Function -- #
 class Layer():
     @ staticmethod
-    def _make_module_list(list: List[Module]) -> ModuleList:
+    def _make_module_list(list: List) -> ModuleList:
         return ModuleList(list)
 
     @ staticmethod
-    def _make_sequential(list: List[Module]) -> Sequential:
+    def _make_sequential(list: List) -> Sequential:
         return Sequential(*list)
 
     @ staticmethod
