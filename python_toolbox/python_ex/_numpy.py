@@ -125,7 +125,7 @@ class Array_Process():
                 _shape = source
             else:
                 _shape = int(source)
-            _source = value * np.ones(_shape)
+            _source = np.array(value * np.ones(_shape))
         else:
             _source = np.array(source)
         return _source if dtype is None else _source.astype(dtype.value)
