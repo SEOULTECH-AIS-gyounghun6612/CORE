@@ -4,7 +4,7 @@ from enum import Enum
 
 from torch import Tensor, tensor, stack, clip, distributions, cat
 
-from python_ex._base import Directory, Utils, JSON_WRITEABLE
+from python_ex._base import Utils, JSON_WRITEABLE
 from python_ex._label import Learning_Mode
 from python_ex._result import Log
 from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process
@@ -37,94 +37,50 @@ class Log_Config(Utils.Config):
 
 
 # -- Mation Function -- #
-class Torch_Utils():
-    class Directory():
-        @staticmethod
-        def _make_diretory(directory: str, root: Optional[str] = None, this_rank: int = 0):
-            _maked = Directory._make(directory, root) if this_rank is MAIN_RANK else f"{root}{Directory._Divider}{directory}"
-            return _maked
+class Tensor_Process():
+    @staticmethod
+    def _holder(sample, is_shape: bool = False, value: int = 0, dtype: Np_Dtype = Np_Dtype.FLOAT):
+        _array = Array_Process._converter(sample, is_shape, value, dtype)
+        return tensor(_array)
 
-    class Tensor():
-        @staticmethod
-        def _holder(sample, is_shape: bool = False, value: int = 0, dtype: Np_Dtype = Np_Dtype.FLOAT):
-            _array = Array_Process._converter(sample, is_shape, value, dtype)
-            return Torch_Utils.Tensor._from_numpy(_array, dtype)
+    @staticmethod
+    def _to_numpy(tensor: Tensor, dtype: Np_Dtype = Np_Dtype.FLOAT) -> ndarray:
+        try:
+            _array = tensor.numpy()
+        except RuntimeError:
+            _array = tensor.detach().numpy()
 
-        @staticmethod
-        def _from_numpy(np_array: ndarray, dtype: Np_Dtype = Np_Dtype.FLOAT):
-            return tensor(np_array)
+        return Array_Process._converter(_array, dtype=dtype)
 
-        @staticmethod
-        def _to_numpy(tensor: Tensor, dtype: Np_Dtype = Np_Dtype.FLOAT) -> ndarray:
-            try:
-                _array = tensor.numpy()
-            except RuntimeError:
-                _array = tensor.detach().numpy()
+    # In later fix it
+    @staticmethod
+    def _make_tensor(size: List[int], shape_sample=None, norm_option=None, dtype: Np_Dtype = Np_Dtype.UINT, value=[0, 1]):
+        _value = Array_Process._get_random_array(size, dtype=dtype)
+        return tensor(_value)
 
-            return Array_Process._converter(_array, dtype=dtype)
+    @staticmethod
+    def _range_cut(tensor: Tensor, range_min, rage_max):
+        return clip(tensor, range_min, rage_max)
 
-        # In later fix it
-        @staticmethod
-        def _make_tensor(size: List[int], shape_sample=None, norm_option=None, dtype: Np_Dtype = Np_Dtype.UINT, value=[0, 1]):
-            _value = Array_Process._get_random_array(size, dtype=dtype)
-            return Torch_Utils.Tensor._from_numpy(_value)
+    @staticmethod
+    def _norm(mu, std):
+        return distributions.Normal(mu, std)
 
-        @staticmethod
-        def _range_cut(tensor: Tensor, range_min, rage_max):
-            return clip(tensor, range_min, rage_max)
+    @staticmethod
+    def _stack(tensor_list: Tuple[Tensor], dim: int):
+        return stack(tensor_list, dim=dim)
 
-        @staticmethod
-        def _norm(mu, std):
-            return distributions.Normal(mu, std)
+    @staticmethod
+    def make_partition(tensor: Tensor, shape: List[int]):
+        # _t_shpae = tensor.shape
+        pass
 
-        @staticmethod
-        def _stack(tensor_list: Tuple[Tensor], dim: int):
-            return stack(tensor_list, dim=dim)
-
-        @staticmethod
-        def make_partition(tensor: Tensor, shape: List[int]):
-            # _t_shpae = tensor.shape
-            pass
-
-    class Layer():
-        @staticmethod
-        def _position_encoding():
-            ...
-
-        @staticmethod
-        def _get_conv_pad(kernel_size, input_size, interval=1, stride=1):
-            if type(kernel_size) != list:
-                kernel_size = [kernel_size, kernel_size]
-
-            if stride != 1:
-                size_h = input_size[0]
-                size_w = input_size[1]
-
-                pad_hs = (stride - 1) * (size_h - 1) + interval * (kernel_size[0] - 1)
-                pad_ws = (stride - 1) * (size_w - 1) + interval * (kernel_size[1] - 1)
-            else:
-                pad_hs = interval * (kernel_size[0] - 1)
-                pad_ws = interval * (kernel_size[1] - 1)
-
-            pad_l = pad_hs // 2
-            pad_t = pad_ws // 2
-
-            return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
-
-        @staticmethod
-        def _concatenate(layers, dim=1):
-            tmp_layer = layers[0]
-            for _layer in layers[1:]:
-                tmp_layer = cat([tmp_layer, _layer], dim=dim)
-
-            return tmp_layer
-
-    class _evaluation():
+    class Evaluation():
         @staticmethod
         def iou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> ndarray:
             _batch_size, _class_num = result.shape[0: 2]
-            np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach())  # [batch_size, h, w]
+            np_result = Tensor_Process._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Tensor_Process._to_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
 
@@ -136,8 +92,8 @@ class Torch_Utils():
         @staticmethod
         def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray, ndarray]:
             _batch_size, _class_num = result.shape[0: 2]
-            np_result = Torch_Utils.Tensor._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Torch_Utils.Tensor._to_numpy(label.cpu().detach())  # [batch_size, h, w]
+            np_result = Tensor_Process._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Tensor_Process._to_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
             miou = Array_Process._converter([_batch_size, ], True, dtype=Np_Dtype.FLOAT)
@@ -146,6 +102,40 @@ class Torch_Utils():
                 iou[_b], miou[_b] = Evaluation_Process._miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
 
             return iou.tolist(), miou.tolist()
+
+
+class Layer_Process():
+    @staticmethod
+    def _position_encoding():
+        ...
+
+    @staticmethod
+    def _get_conv_pad(kernel_size, input_size, interval=1, stride=1):
+        if type(kernel_size) != list:
+            kernel_size = [kernel_size, kernel_size]
+
+        if stride != 1:
+            size_h = input_size[0]
+            size_w = input_size[1]
+
+            pad_hs = (stride - 1) * (size_h - 1) + interval * (kernel_size[0] - 1)
+            pad_ws = (stride - 1) * (size_w - 1) + interval * (kernel_size[1] - 1)
+        else:
+            pad_hs = interval * (kernel_size[0] - 1)
+            pad_ws = interval * (kernel_size[1] - 1)
+
+        pad_l = pad_hs // 2
+        pad_t = pad_ws // 2
+
+        return [pad_t, pad_ws - pad_t, pad_l, pad_hs - pad_l]
+
+    @staticmethod
+    def _concatenate(layers, dim=1):
+        tmp_layer = layers[0]
+        for _layer in layers[1:]:
+            tmp_layer = cat([tmp_layer, _layer], dim=dim)
+
+        return tmp_layer
 
 
 class Debug():

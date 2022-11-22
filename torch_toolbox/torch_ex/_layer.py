@@ -26,11 +26,11 @@ from torch.nn import MSELoss, CrossEntropyLoss
 
 if __package__ == "":
     # if this file in local project
-    from _torch_base import Torch_Utils, Np_Dtype
+    from _torch_base import Tensor_Process, Np_Dtype
 
 else:
     # if this file in package folder
-    from ._torch_base import Torch_Utils, Np_Dtype
+    from ._torch_base import Tensor_Process, Np_Dtype
 
 
 # -- DEFINE CONSTNAT -- #
@@ -329,7 +329,7 @@ class Layer():
 
     @ staticmethod
     def _make_weight(size, value_range: List[float]) -> torch.Tensor:
-        return parameter.Parameter(Torch_Utils.Tensor._make_tensor(size, value=value_range, dtype=Np_Dtype.FLOAT))
+        return parameter.Parameter(Tensor_Process._make_tensor(size, value=value_range, dtype=Np_Dtype.FLOAT))
 
     @staticmethod
     def _make_norm_layer(config: Optional[Layer_Config.Norm], dimension: int):
@@ -654,7 +654,7 @@ class Module_Componant():
                 return None
 
         @staticmethod
-        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool):
+        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool) -> Module:
             return Module_Componant.Backbone.__dict__[name.value](type, is_pretrained, is_trainable)
 
 

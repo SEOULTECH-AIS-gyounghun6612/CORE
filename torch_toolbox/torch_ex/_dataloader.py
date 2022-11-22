@@ -3,7 +3,7 @@ from typing import Dict, List, Any, Union, Optional, Tuple
 from enum import Enum
 from math import pi, cos, sin, ceil
 
-from torch import Tensor, empty
+from torch import Tensor, empty, tensor
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor, RandomRotation, Normalize, Resize, CenterCrop, Compose, InterpolationMode
 import torchvision.transforms.functional as TF
@@ -22,10 +22,6 @@ else:
 
 
 # -- DEFINE CONSTNAT -- #
-DATA_TYPING = Optional[Union[Tensor, List[Tensor]]]
-INFO_TYPING = Optional[Union[ndarray, List[ndarray]]]
-
-
 DEFUALT_INTERPOLATION: Dict[str, InterpolationMode] = {
     "input": InterpolationMode.NEAREST,
     "label": InterpolationMode.BILINEAR,
@@ -309,25 +305,27 @@ class Custom_Dataset(Dataset):
         self._Amplification = amplification
         self._Transform = augmentation
 
-    def _data_transform(self, data_dict: Dict[str, Union[ndarray, List[ndarray]]]) -> Tuple[DATA_TYPING, DATA_TYPING, INFO_TYPING]:
-        _info = data_dict["info"]
+    def _data_transform(self, data_dict: Dict[str, List[ndarray]], info_dict: Dict[str, ndarray]) -> Tuple[List[Tensor], Dict[str, Tensor]]:
+        _info = {"index": tensor(info_dict["index"])}
+        _datas = []
+        if "input" in data_dict.keys():
+            _datas += self._transform(Augment_Mode.INPUT, data_dict["input"], _info)
 
-        _input = self._transform(Augment_Mode.INPUT, data_dict["input"], _info)
-        _label = self._transform(Augment_Mode.LABEL, data_dict["label"], _info)
+        if "label" in data_dict.keys():
+            _datas += self._transform(Augment_Mode.LABEL, data_dict["label"], _info)
 
-        return _input, _label, _info
+        return _datas, _info
 
-    def _transform(self, target: Augment_Mode, data: Union[ndarray, List[ndarray]], info: Union[ndarray, List[ndarray]]):
-        if isinstance(data, list):
-            _transform_data = [self._Transform[target](_data) for _data in data]
-        else:
-            _transform_data = self._Transform[target](data)
-
+    def _transform(self, target: Augment_Mode, data: List[ndarray], info: Dict[str, Tensor]):
+        _transform_data = [self._Transform[target](_data) for _data in data]
         return _transform_data
 
     def __len__(self):
         return len(self._Work_profile._Data_list) * self._Amplification
 
-    def __getitem__(self, index) -> Tuple[DATA_TYPING, DATA_TYPING, INFO_TYPING]:
+    def __getitem__(self, index) -> Tuple[List[Tensor], Dict[str, Tensor]]:
         _source_index = index // self._Amplification
-        return self._data_transform(self._Data_process._work(self._Work_profile, _source_index))
+
+        _data_dict, _info_dict = self._Data_process._work(self._Work_profile, _source_index)
+
+        return self._data_transform(_data_dict, _info_dict)

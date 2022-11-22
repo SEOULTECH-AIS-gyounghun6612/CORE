@@ -13,13 +13,13 @@ from python_ex._base import Directory, File, Utils, OS_Style, JSON_WRITEABLE
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Torch_Utils, Debug, Log_Config, MAIN_RANK
+    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config, MAIN_RANK
     from torch_ex._dataloader import Custom_Dataset, Dataset_Config
     from torch_ex._layer import Custom_Model, Custom_Model_Config
     from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Torch_Utils, Debug, Log_Config, MAIN_RANK
+    from ._torch_base import Learning_Mode, Debug, Log_Config, MAIN_RANK
     from ._dataloader import Custom_Dataset, Dataset_Config
     from ._layer import Custom_Model, Custom_Model_Config
     from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
@@ -104,18 +104,19 @@ class Learning_Config():
 # -- Mation Function -- #
 class Learning_process():
     class End_to_End():
-        def __init__(self, learning_cofig: Learning_Config.E2E) -> None:
-            self._Config = learning_cofig
+        def __init__(self, config: Learning_Config.E2E) -> None:
+            self._Config = config
 
             # result save dir
-            _project_result_dir = \
-                f"{self._Config._Project_Name}{Directory._Divider}{self._Config._Detail}{Directory._Divider}{self._Config._Date}{Directory._Divider}"
-            self._Learning_root = Torch_Utils.Directory._make_diretory(_project_result_dir, self._Config._Save_root, self._Config._This_node_rank)
-            self._Is_cuda = bool(len(self._Config._GPU_list))
+            _save_dir = \
+                f"{config._Project_Name}{Directory._Divider}{config._Detail}{Directory._Divider}{config._Date}{Directory._Divider}"
+            self._Save_root = \
+                Directory._make(_save_dir, config._Save_root) if config._This_node_rank is MAIN_RANK else f"{config._Save_root}{Directory._Divider}{_save_dir}"
+            self._Is_cuda = bool(len(config._GPU_list))
 
             # distribute option
-            self._Word_size = self._Config._Num_of_node * len(self._Config._GPU_list)
-            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(self._Config._GPU_list) >= 2)
+            self._Word_size = config._Num_of_node * len(config._GPU_list)
+            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(config._GPU_list) >= 2)
 
         # Freeze function
         # --- for init function --- #
@@ -273,10 +274,13 @@ class Learning_process():
 
             # Do learning process
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
-                _epoch_dir = Torch_Utils.Directory._make_diretory(f"{_epoch}/", self._Learning_root, _this_rank)
+                _epoch_dir = \
+                    Directory._make(f"{_epoch}", self._Save_root) if _this_rank is MAIN_RANK else f"{self._Save_root}{Directory._Divider}{_epoch}"
+
                 for _mode in self._Config._Learning_list:
                     _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
-                    _mode_dir = Torch_Utils.Directory._make_diretory(f"{_mode.value}/", _epoch_dir, _this_rank)
+                    _mode_dir = \
+                        Directory._make(f"{_mode.value}", _epoch_dir) if _this_rank is MAIN_RANK else f"{_epoch_dir}{Directory._Divider}{_mode.value}"
 
                     if _mode == Learning_Mode.TRAIN:
                         self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)
@@ -291,7 +295,7 @@ class Learning_process():
 
                 if _this_rank is MAIN_RANK:
                     self._Log._insert({"_Last_epoch": _epoch}, self._Log._Annotation)
-                    self._Log._save(self._Learning_root, "trainer_log.json")
+                    self._Log._save(self._Save_root, "trainer_log.json")
 
                     # save model
                     self._save_model(_epoch_dir, _model, _optim, _schedule)
