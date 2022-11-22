@@ -124,8 +124,8 @@ class Augment_Config(Utils.Config):
     _Flip_direction: Optional[Flip_Direction] = None
     _Interpolation: Optional[InterpolationMode] = None
 
-    def _get_parameter(self, input_style: Input_Style, label_style: Label_Style):
-        _image_size = self._Data_size if self._Rotate_angle is None else self._get_data_size(self._Rotate_angle)
+    def _get_parameter(self, data_size: Tuple[int, int], input_style: Input_Style, label_style: Label_Style):
+        _image_size = data_size if self._Rotate_angle is None else self._get_data_size(data_size, self._Rotate_angle)
         _sq_dict: Dict[Augment_Mode, List[Augment_Module_Config.Base]] = {Augment_Mode.INPUT: [], Augment_Mode.LABEL: []}
         _inter_mode = self._Interpolation
 
@@ -143,11 +143,11 @@ class Augment_Config(Utils.Config):
 
         return _sq_dict
 
-    def _get_data_size(self, angle: Union[int, List[int]]):
+    def _get_data_size(self, data_size: Tuple[int, int], angle: Union[int, List[int]]):
         _degree = angle if isinstance(angle, int) else max(angle)
         _rad = pi * _degree / 180
-        _h_dot = ceil(self._Data_size[1] * sin(_rad) + self._Data_size[0] * cos(_rad))
-        _w_dot = ceil(self._Data_size[0] * sin(_rad) + self._Data_size[1] * cos(_rad))
+        _h_dot = ceil(data_size[1] * sin(_rad) + data_size[0] * cos(_rad))
+        _w_dot = ceil(data_size[0] * sin(_rad) + data_size[1] * cos(_rad))
 
         return _h_dot, _w_dot
 
@@ -175,6 +175,7 @@ class Dataset_Config(Utils.Config):
     _Label_style: Label_Style
     _Label_IO: IO_Style
 
+    _Data_size: Tuple[int, int]
     _Augmentation: Dict[Learning_Mode, Augment_Config]
     _Amplitude: Dict[Learning_Mode, int]
 
@@ -182,7 +183,7 @@ class Dataset_Config(Utils.Config):
         _label_process = Label_Process._build(**self._Label_config._get_parameter())
         _label_process._set_learning_mode(mode)
 
-        _aug_config_dict = self._Augmentation[mode]._get_parameter(self._Input_style, self._Label_style)
+        _aug_config_dict = self._Augmentation[mode]._get_parameter(self._Data_size, self._Input_style, self._Label_style)
         _for_rotate = {"angle_holder": [0.0, ]}
         _augment_module = dict((
             _mode,
