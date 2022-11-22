@@ -320,12 +320,12 @@ class Module_Componant_Config():
 # -- Mation Function -- #
 class Layer():
     @ staticmethod
-    def _make_module_list(list: List) -> ModuleList:
-        return ModuleList(list)
+    def _make_module_list(module_list: List) -> ModuleList:
+        return ModuleList(module_list)
 
     @ staticmethod
-    def _make_sequential(list: List) -> Sequential:
-        return Sequential(*list)
+    def _make_sequential(module_list: List) -> Sequential:
+        return Sequential(*module_list)
 
     @ staticmethod
     def _make_weight(size, value_range: List[float]) -> torch.Tensor:
