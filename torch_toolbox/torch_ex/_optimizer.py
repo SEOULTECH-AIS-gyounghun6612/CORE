@@ -68,8 +68,6 @@ class Custom_Scheduler():
                 term: Union[List[int], int], term_amp: float,
                 maximum: float, minimum: float, decay: float,
                 last_epoch: int = -1) -> None:
-
-            super().__init__(optimizer, last_epoch)
             self._Cycle: int = 0
             self._Term = term
             self._Term_amp = term_amp
@@ -80,6 +78,8 @@ class Custom_Scheduler():
 
             self._This_count: int = last_epoch
             self._This_term: int = self._get_next_term()
+
+            super().__init__(optimizer, last_epoch)
 
         # Freeze function
         def _get_next_term(self):

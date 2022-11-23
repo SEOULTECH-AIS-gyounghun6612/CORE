@@ -554,7 +554,8 @@ class Module_Componant():
 
     class Backbone():
         class Base(Module):
-            def __init__(self, is_trainable: bool):
+            def __init__(self):
+                super(Module_Componant.Backbone.Base, self).__init__()
                 self._Output_channel: List[int] = []
 
             def _sumarry(self, input_shape: List[int]):
@@ -567,7 +568,7 @@ class Module_Componant():
 
         class ResNet(Base):
             def __init__(self, type: int, is_pretrained: bool, is_trainable: bool):
-                super(Module_Componant.Backbone.ResNet, self).__init__(is_trainable)
+                super(Module_Componant.Backbone.ResNet, self).__init__()
                 if type == 101:
                     _model = models.resnet101(pretrained=is_pretrained)
                     self._Output_channel = [64, 256, 512, 1024, 2048]
@@ -606,7 +607,7 @@ class Module_Componant():
 
         class VGG(Module):
             def __init__(self, config: Module_Componant_Config.Backbone):
-                super(Module_Componant.Backbone.VGG, self).__init__()
+                super().__init__()
                 if config._Type == 11:
                     _line = models.vgg11(pretrained=config._Is_pretrained)
                 if config._Type == 13:

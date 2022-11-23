@@ -123,7 +123,7 @@ class Augment_Config(Utils.Config):
     _Flip_direction: Optional[Flip_Direction] = None
     _Interpolation: Optional[InterpolationMode] = None
 
-    def _get_parameter(self, data_size: Tuple[int, int], input_style: Input_Style, label_style: Label_Style):
+    def _get_parameter(self, data_size: List[int], input_style: Input_Style, label_style: Label_Style):
         _image_size = data_size if self._Rotate_angle is None else self._get_data_size(data_size, self._Rotate_angle)
         _sq_dict: Dict[Augment_Mode, List[Augment_Module_Config.Base]] = {Augment_Mode.INPUT: [], Augment_Mode.LABEL: []}
         _inter_mode = self._Interpolation
@@ -138,11 +138,11 @@ class Augment_Config(Utils.Config):
                 _sq_list.append(Augment_Module_Config.Normalization(self._Normalization[0], self._Normalization[1]))
             if self._Rotate_angle is not None:
                 _sq_list.append(Augment_Module_Config.Image_Rotate(self._Rotate_angle, _this_interpolation))
-                _sq_list.append(Augment_Module_Config.Convert_to_Tensor())
+                _sq_list.append(Augment_Module_Config.Center_Crop(data_size))
 
         return _sq_dict
 
-    def _get_data_size(self, data_size: Tuple[int, int], angle: Union[int, List[int]]):
+    def _get_data_size(self, data_size: List[int], angle: Union[int, List[int]]):
         _degree = angle if isinstance(angle, int) else max(angle)
         _rad = pi * _degree / 180
         _h_dot = ceil(data_size[1] * sin(_rad) + data_size[0] * cos(_rad))
@@ -174,7 +174,7 @@ class Dataset_Config(Utils.Config):
     _Label_style: Label_Style
     _Label_IO: IO_Style
 
-    _Data_size: Tuple[int, int]
+    _Data_size: List[int]
     _Augmentation: Dict[Learning_Mode, Augment_Config]
     _Amplitude: Dict[Learning_Mode, int]
 
@@ -186,8 +186,9 @@ class Dataset_Config(Utils.Config):
         _for_rotate = {"angle_holder": [0.0, ]}
         _augment_module = dict((
             _mode,
-            Augment_Module.Transform([
-                Augment_Module._build(_config, _for_rotate) if _config._name_check("Image_Rotate") else Augment_Module._build(_config) for _config in _configs]
+            Augment_Module.Transform(
+                _mode,
+                [Augment_Module._build(_config, _for_rotate) if _config._name_check("Image_Rotate") else Augment_Module._build(_config) for _config in _configs]
             )
         ) for _mode, _configs in _aug_config_dict.items())
 
@@ -272,7 +273,8 @@ class Augment_Module():
         ...
 
     class Transform(Compose):
-        def _set_target(self, target: Augment_Mode):
+        def __init__(self, target, transforms):
+            super().__init__(transforms)
             self._Target = target
 
         def __call__(self, data: ndarray) -> Tensor:
