@@ -146,14 +146,14 @@ class Debug():
     class Learning_Log(Log):
         _Data: Dict[str, Dict[str, JSON_WRITEABLE]]  # {Learning_mode:  {Logging_mode: {Logging_Parameter: {Epoch: []}}
 
-        def __init__(self, logging_param: Dict[str, Dict[str, Dict[str, None]]], observing_param: Dict[str, Dict[str, Dict[str, None]]]):
+        def __init__(self, _Logging: Dict[str, Dict[str, Dict[str, None]]], _Observing: Dict[str, Dict[str, Dict[str, None]]]):
             self._Observing = dict((
                 _learning_key, dict((
-                    _target_key, observing_param[_learning_key][_target_key] if _target_key in observing_param[_learning_key].keys() else _name_info
-                ) for _target_key, _name_info in _target_info.items()) if _learning_key in observing_param.keys() else _target_info
-            ) for _learning_key, _target_info in logging_param.items())
+                    _target_key, _Observing[_learning_key][_target_key] if _target_key in _Observing[_learning_key].keys() else _name_info
+                ) for _target_key, _name_info in _target_info.items()) if _learning_key in _Observing.keys() else _target_info
+            ) for _learning_key, _target_info in _Logging.items())
 
-            super().__init__(data=self._make_data_holder(logging_param))
+            super().__init__(data=self._make_data_holder(_Logging))
 
         # Freeze function
         def _make_data_holder(self, logging: Dict[str, Dict[str, Dict[str, None]]]):
