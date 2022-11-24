@@ -233,20 +233,11 @@ class Debug():
 
             return _debugging_string
 
-        def _get_progress_time(self, epoch: int, is_average: bool = False):
+        def _get_progress_time(self, epoch: int):
             _learning_mode = self._Active_mode
-            _time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])
-            # in later fix it
-            _time_list = _time_list[f"process_time"]
-            if isinstance(_time_list, (float, list)):
-                return _time_list if isinstance(_time_list, float) else sum(_time_list) / len(_time_list) if is_average else sum(_time_list)
-            else:
-                return False
+            _time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])["process_time"]
 
-        def _get_learning_time(self, epoch: int, max_batch_count: int):
-            _sum_time = self._get_progress_time(epoch)
-            if _sum_time:
-                _maximun_time = _sum_time * max_batch_count
-                return _sum_time, _maximun_time
+            if isinstance(_time_list, (float, list)):
+                return _time_list if isinstance(_time_list, list) else [_time_list, ]
             else:
-                return 0.0, 0.0
+                return [0.0, ]

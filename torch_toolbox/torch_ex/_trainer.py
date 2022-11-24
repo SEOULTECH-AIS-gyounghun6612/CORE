@@ -243,9 +243,9 @@ class Learning_process():
                 _max_data_len = round(_max_data_len / word_size)
             _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
-            _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
-            _this_time_str = Utils.Time._apply_text_form(_this_time, text_format="%H:%M:%S")
-            _max_time_str = Utils.Time._apply_text_form(_max_time, text_format="%H:%M:%S")
+            _this_time = self._Log._get_progress_time(epoch)
+            _this_time_str = Utils.Time._apply_text_form(sum(_this_time), text_format="%H:%M:%S")
+            _max_time_str = Utils.Time._apply_text_form(_max_batch_ct * sum(_this_time) / len(_this_time), text_format="%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._Log._learning_observing(epoch)
