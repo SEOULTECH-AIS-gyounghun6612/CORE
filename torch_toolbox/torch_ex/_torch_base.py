@@ -25,19 +25,23 @@ class Log_Config(Utils.Config):
     # Logging parameter in each mode;
     _Logging: Dict[Learning_Mode, Dict[Log_Category, List[str]]]  # str -> logging_loss name
 
-    # Tracking parameter in each mode;
+    # Observe parameter in each mode;
     # if None -> all same like logging keys
     _Observing: Dict[Learning_Mode, Dict[Log_Category, List[str]]] = field(default_factory=dict)  # str -> logging_loss name
 
-    # Observe
-    _Tracking: Dict[Learning_Mode, Dict[Log_Category, List[str]]] = field(default_factory=dict)  # str -> logging_loss name
+    def _get_parameter(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        return {
+            "_Logging": dict(
+                (_l_key.value, dict((_t_key.value, dict((_p, None) for _p in _l)) for _t_key, _l in _i.items())) for _l_key, _i in self._Logging.items()),
+            "_Observing": dict(
+                (_l_key.value, dict((_t_key.value, dict((_p, None) for _p in _l)) for _t_key, _l in _i.items())) for _l_key, _i in self._Observing.items())}
 
     def _convert_to_dict(self) -> Dict[str, Any]:
-        _dict = {
-            "_Logging": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Logging.items()),
-            "_Observing": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Observing.items()),
-            "_Tracking": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Tracking.items())}
-        return _dict
+        return {
+            "_Logging": dict(
+                (_l_key.value, dict((_t_key.value, dict((_p, None) for _p in _l)) for _t_key, _l in _i.items())) for _l_key, _i in self._Logging.items()),
+            "_Observing": dict(
+                (_l_key.value, dict((_t_key.value, dict((_p, None) for _p in _l)) for _t_key, _l in _i.items())) for _l_key, _i in self._Observing.items())}
 
 
 # -- Mation Function -- #
@@ -140,22 +144,22 @@ class Layer_Process():
 
 class Debug():
     class Learning_Log(Log):
-        _Data: Dict[str, Dict[str, JSON_WRITEABLE]]
+        _Data: Dict[str, Dict[str, JSON_WRITEABLE]]  # {Learning_mode:  {Logging_mode: {Logging_Parameter: {Epoch: []}}
 
-        def __init__(self, config: Log_Config):
+        def __init__(self, logging_param: Dict[str, Dict[str, Dict[str, None]]], observing_param: Dict[str, Dict[str, Dict[str, None]]]):
             self._Observing = dict((
                 _learning_key, dict((
-                    _target_key, config._Observing[_learning_key][_target_key] if _target_key in config._Observing[_learning_key].keys() else _name_info
-                ) for _target_key, _name_info in _target_info.items()) if _learning_key in config._Observing.keys() else _target_info
-            ) for _learning_key, _target_info in config._Logging.items())
+                    _target_key, observing_param[_learning_key][_target_key] if _target_key in observing_param[_learning_key].keys() else _name_info
+                ) for _target_key, _name_info in _target_info.items()) if _learning_key in observing_param.keys() else _target_info
+            ) for _learning_key, _target_info in logging_param.items())
 
-            super().__init__(data=self._make_data_holder(config._Logging))
+            super().__init__(data=self._make_data_holder(logging_param))
 
         # Freeze function
-        def _make_data_holder(self, logging: Dict[Learning_Mode, Dict[Log_Category, List[str]]]):
+        def _make_data_holder(self, logging: Dict[str, Dict[str, Dict[str, None]]]):
             _holder = dict((
-                _learning_key.value, dict((
-                    _target_key.value, dict((
+                _learning_key, dict((
+                    _target_key, dict((
                         _name, {}) for _name in _name_info)
                 ) for _target_key, _name_info in _target_info.items())
             ) for _learning_key, _target_info in logging.items())
@@ -211,29 +215,21 @@ class Debug():
 
                 else:
                     return "Dict data"
-            _learning_mode = self._Active_mode
+
+            _learning_mode = self._Active_mode.value
             _tracking = self._Observing[_learning_mode]
 
-            _picked_data = self._get_data(
-                data_info=dict((_target_key.value, dict((_name, f"{epoch}") for _name in _name_list)) for _target_key, _name_list in _tracking.items()),
-                access_point=self._Data[_learning_mode.value])
-
             _debugging_string = ""
-            # loss
-            _debugging_string.join([f"{_name}: {_make_string(_data)}" for _name, _data in _picked_data.items()])
-            return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
 
-        def _progress_length(self, epoch: int):
-            _learning_mode = self._Active_mode
-            _tracking_info = self._Observing[_learning_mode]
-            _target = Log_Category.ACC if Log_Category.ACC in _tracking_info.keys() else Log_Category.LOSS
-            _scope = _tracking_info[_target][0]
+            for _target_key, _data in self._Data[_learning_mode].items():
+                if isinstance(_data, dict):
+                    _picked_data = self._get_data(
+                        data_info=dict((_log_param, f"{epoch}") for _log_param in _tracking[_target_key].keys()),
+                        access_point=_data)
 
-            _picked_data = self._get_length(
-                data_info={_target.value: {_scope: f"{epoch}"}},
-                access_point=self._Data[_learning_mode.value])
+                    _debugging_string += " ".join([f"{_key}: {_make_string(_value)}" for _key, _value in _picked_data.items()])
 
-            return _picked_data[f"{_target.value}_{_scope}_{epoch}"]
+            return _debugging_string
 
         def _get_progress_time(self, epoch: int, is_average: bool = False):
             _learning_mode = self._Active_mode
