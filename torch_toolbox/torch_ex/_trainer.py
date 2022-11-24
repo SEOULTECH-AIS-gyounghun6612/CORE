@@ -121,7 +121,7 @@ class Learning_process():
         # Freeze function
         # --- for init function --- #
         def _set_log(self, log_config: Log_Config):
-            self._Log = Debug.Learning_Log(log_config)
+            self._Log = Debug.Learning_Log(**log_config._get_parameter())
             self._Log._insert({"01_learning": self._Config._convert_to_dict()}, access_point=self._Log._Annotation)
             self._Log._insert({"02_log": log_config._convert_to_dict()}, access_point=self._Log._Annotation)
 
@@ -227,15 +227,15 @@ class Learning_process():
                 self,
                 mode: Learning_Mode,
                 epoch: int,
+                data_count: int,
                 word_size: int = 1,
                 decimals: int = 1,
                 length: int = 25,
                 fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
-            _data_count = self._Log._progress_length(epoch)
 
             _max_data_len = self._Dataset[mode].__len__()
-            _data_board = Utils._progress_board(_data_count, _max_data_len)
+            _data_board = Utils._progress_board(data_count, _max_data_len)
 
             _batch_size = self._Config._Batch_size_in_node
 
@@ -250,7 +250,7 @@ class Learning_process():
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._Log._learning_observing(epoch)
 
-            Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
+            Utils._progress_bar(data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
         def _average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
