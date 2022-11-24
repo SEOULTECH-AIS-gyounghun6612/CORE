@@ -221,11 +221,13 @@ class Debug():
 
             _debugging_string = ""
 
-            for _target_key, _data in self._Data[_learning_mode].items():
-                if isinstance(_data, dict):
+            for _target_key in _tracking.keys():
+                _access_point = self._Data[_learning_mode][_target_key]
+
+                if isinstance(_access_point, dict):
                     _picked_data = self._get_data(
                         data_info=dict((_log_param, f"{epoch}") for _log_param in _tracking[_target_key].keys()),
-                        access_point=_data)
+                        access_point=_access_point)
 
                     _debugging_string += " ".join([f"{_key}: {_make_string(_value)}" for _key, _value in _picked_data.items()])
 
@@ -235,7 +237,7 @@ class Debug():
             _learning_mode = self._Active_mode
             _time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])
             # in later fix it
-            _time_list = _time_list[f"process_time_{epoch}"]
+            _time_list = _time_list[f"process_time"]
             if isinstance(_time_list, (float, list)):
                 return _time_list if isinstance(_time_list, float) else sum(_time_list) / len(_time_list) if is_average else sum(_time_list)
             else:
