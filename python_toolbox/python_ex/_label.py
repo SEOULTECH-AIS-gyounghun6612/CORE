@@ -91,7 +91,7 @@ class Label_Process_Config(Utils.Config):
     def _get_parameter(self):
         return {
             "name": self._Name,
-            "data_root": self._Data_root if self._Data_root is None else f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}",
+            "data_root": f"{Directory._relative_root()}{Directory._Divider}data{Directory._Divider}" if self._Data_root is None else self._Data_root,
             "active_style": [_style for _style in self._Active_style],
             "meta_file": self._Meta_file}
 
@@ -210,7 +210,7 @@ class Label_Process():
                     _label = None
 
                 _label = None if _label is None else Label_Img_Process._color_map_to_classification(_label, self._Activate_label[data._Label_style])
-                _data_holder.update({"input": [_input, ]}) if _input is not None else ...
+                _data_holder.update({"input": [Array_Process._converter(_input, dtype=Np_Dtype.FLOAT) / 255, ]}) if _input is not None else ...
                 _data_holder.update({"label": [_label, ]}) if _label is not None else ...
 
             return _data_holder, _info_holder

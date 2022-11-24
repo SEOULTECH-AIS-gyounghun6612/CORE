@@ -34,7 +34,8 @@ class Log():
         # pick data in search point
         for _key, _data in data_block.items():
             _key_exist = _key in access_point.keys()
-            _slot = access_point[_key] if _key_exist else {}
+            access_point.update({_key: {}}) if not _key_exist else ...
+            _slot = access_point[_key]
 
             # truth table(row: _slot, col: _data, overwrite is False)
             #                               LOG_SUPORT_TYPE         list(LOG_SUPORT_TYPE),     dict
@@ -44,20 +45,23 @@ class Log():
 
             # overwrite
             if is_overwrite or not _key_exist:
-                _slot = _data
+                access_point[_key] = _data
+                continue
             # go to deep
             elif isinstance(_data, dict) or isinstance(_slot, dict):
                 self._insert(_data, _slot, is_overwrite) if isinstance(_data, dict) and isinstance(_slot, dict) else ...
+                continue
             # add
             elif not isinstance(_slot, list):
-                _slot = [_slot, ]
-
+                if isinstance(_data, list):
+                    access_point[_key] = [_slot, ] + _data
+                else:
+                    access_point[_key] = [_slot, ] + [_data, ]
+            else:
                 if isinstance(_data, list):
                     _slot += _data
                 else:
                     _slot.append(_data)
-
-            access_point.update({_key: _slot})
 
     def _get_data(
             self,
