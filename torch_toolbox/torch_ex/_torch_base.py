@@ -27,11 +27,15 @@ class Log_Config(Utils.Config):
 
     # Tracking parameter in each mode;
     # if None -> all same like logging keys
+    _Observing: Dict[Learning_Mode, Dict[Log_Category, List[str]]] = field(default_factory=dict)  # str -> logging_loss name
+
+    # Observe
     _Tracking: Dict[Learning_Mode, Dict[Log_Category, List[str]]] = field(default_factory=dict)  # str -> logging_loss name
 
     def _convert_to_dict(self) -> Dict[str, Any]:
         _dict = {
             "_Logging": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Logging.items()),
+            "_Observing": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Observing.items()),
             "_Tracking": dict((_l_key.value, dict((_t_key.value, _list) for _t_key, _list in _i.items())) for _l_key, _i in self._Tracking.items())}
         return _dict
 
@@ -106,10 +110,6 @@ class Tensor_Process():
 
 class Layer_Process():
     @staticmethod
-    def _position_encoding():
-        ...
-
-    @staticmethod
     def _get_conv_pad(kernel_size, input_size, interval=1, stride=1):
         if type(kernel_size) != list:
             kernel_size = [kernel_size, kernel_size]
@@ -143,10 +143,10 @@ class Debug():
         _Data: Dict[str, Dict[str, JSON_WRITEABLE]]
 
         def __init__(self, config: Log_Config):
-            self._Tracking = dict((
+            self._Observing = dict((
                 _learning_key, dict((
-                    _target_key, config._Tracking[_learning_key][_target_key] if _target_key in config._Tracking[_learning_key].keys() else _name_info
-                ) for _target_key, _name_info in _target_info.items()) if _learning_key in config._Tracking.keys() else _target_info
+                    _target_key, config._Observing[_learning_key][_target_key] if _target_key in config._Observing[_learning_key].keys() else _name_info
+                ) for _target_key, _name_info in _target_info.items()) if _learning_key in config._Observing.keys() else _target_info
             ) for _learning_key, _target_info in config._Logging.items())
 
             super().__init__(data=self._make_data_holder(config._Logging))
@@ -170,24 +170,28 @@ class Debug():
 
         def _learning_logging(
                 self,
-                epoch: str,
+                epoch: int,
                 loss: Optional[Dict[str, JSON_WRITEABLE]] = None,
                 acc: Optional[Dict[str, JSON_WRITEABLE]] = None,
                 process_time: Optional[float] = None):
-            _holder = {}
+            _holder = {
+                "loss": {},
+                "acc": {},
+                "process_time": {},
+            }
 
             if loss is not None:
-                _holder.update(dict((_name_key, {epoch: value}) for _name_key, value in loss.items()))
+                _holder["loss"].update(dict((_name_key, {f"{epoch}": value}) for _name_key, value in loss.items()))
 
             if acc is not None:
-                _holder.update(dict((_name_key, {epoch: value}) for _name_key, value in acc.items()))
+                _holder["acc"].update(dict((_name_key, {f"{epoch}": value}) for _name_key, value in acc.items()))
 
             if process_time is not None:
-                _holder["process_time"] = {epoch: process_time}
+                _holder["process_time"] = {f"{epoch}": process_time}
 
             self._insert(_holder, access_point=self._Data[self._Active_mode.value], is_overwrite=False)
 
-        def _learning_tracking(self, epoch: str):
+        def _learning_observing(self, epoch: int):
             def _make_string(data: JSON_WRITEABLE):
                 if isinstance(data, int):
                     return f"{data:>4d}, "
@@ -208,10 +212,10 @@ class Debug():
                 else:
                     return "Dict data"
             _learning_mode = self._Active_mode
-            _tracking = self._Tracking[_learning_mode]
+            _tracking = self._Observing[_learning_mode]
 
             _picked_data = self._get_data(
-                data_info=dict((_target_key.value, dict((_name, epoch) for _name in _name_list)) for _target_key, _name_list in _tracking.items()),
+                data_info=dict((_target_key.value, dict((_name, f"{epoch}") for _name in _name_list)) for _target_key, _name_list in _tracking.items()),
                 access_point=self._Data[_learning_mode.value])
 
             _debugging_string = ""
@@ -219,21 +223,21 @@ class Debug():
             _debugging_string.join([f"{_name}: {_make_string(_data)}" for _name, _data in _picked_data.items()])
             return _debugging_string[:-2] if len(_debugging_string) else _debugging_string
 
-        def _progress_length(self, epoch: str):
+        def _progress_length(self, epoch: int):
             _learning_mode = self._Active_mode
-            _tracking_info = self._Tracking[_learning_mode]
+            _tracking_info = self._Observing[_learning_mode]
             _target = Log_Category.ACC if Log_Category.ACC in _tracking_info.keys() else Log_Category.LOSS
             _scope = _tracking_info[_target][0]
 
             _picked_data = self._get_length(
-                data_info={_target.value: {_scope: epoch}},
+                data_info={_target.value: {_scope: f"{epoch}"}},
                 access_point=self._Data[_learning_mode.value])
 
-            return _picked_data["_".join([_target.value, _scope])]
+            return _picked_data[f"{_target.value}_{_scope}_{epoch}"]
 
-        def _get_progress_time(self, epoch: str, is_average: bool = False):
+        def _get_progress_time(self, epoch: int, is_average: bool = False):
             _learning_mode = self._Active_mode
-            _time_list = self._get_data(data_info={"process_time": epoch}, access_point=self._Data[_learning_mode.value])
+            _time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])
             # in later fix it
             _time_list = _time_list[f"process_time_{epoch}"]
             if isinstance(_time_list, (float, list)):
@@ -241,7 +245,7 @@ class Debug():
             else:
                 return False
 
-        def _get_learning_time(self, epoch: str, max_batch_count: int):
+        def _get_learning_time(self, epoch: int, max_batch_count: int):
             _sum_time = self._get_progress_time(epoch)
             if _sum_time:
                 _maximun_time = _sum_time * max_batch_count

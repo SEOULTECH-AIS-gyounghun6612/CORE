@@ -232,7 +232,7 @@ class Learning_process():
                 length: int = 25,
                 fill: str = '█'):
             _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
-            _data_count = self._Log._progress_length(str(epoch))
+            _data_count = self._Log._progress_length(epoch)
 
             _max_data_len = self._Dataset[mode].__len__()
             _data_board = Utils._progress_board(_data_count, _max_data_len)
@@ -243,12 +243,12 @@ class Learning_process():
                 _max_data_len = round(_max_data_len / word_size)
             _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
 
-            _this_time, _max_time = self._Log._get_learning_time(str(epoch), _max_batch_ct)
+            _this_time, _max_time = self._Log._get_learning_time(epoch, _max_batch_ct)
             _this_time_str = Utils.Time._apply_text_form(_this_time, text_format="%H:%M:%S")
             _max_time_str = Utils.Time._apply_text_form(_max_time, text_format="%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = self._Log._learning_tracking(str(epoch))
+            _suf = self._Log._learning_observing(epoch)
 
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 

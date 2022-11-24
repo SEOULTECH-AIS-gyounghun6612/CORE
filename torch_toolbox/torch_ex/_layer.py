@@ -523,7 +523,7 @@ class Module_Componant():
                 self.linear_block = Layer._make_sequential(_linear)
 
             def forward(self, x) -> torch.Tensor:
-                _x = self._Layer_norm_01(x + self._Attention(x, x, x))
+                _x = self._Layer_norm_01(x + self._Attention((x, x, x)))
                 _x = self._Layer_norm_02(_x + self.linear_block(_x))
 
                 return _x
