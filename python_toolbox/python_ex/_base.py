@@ -244,8 +244,8 @@ class File():
         # json file process load or save
         if is_save and data_dict is not None:
             # json file save
-            _file = open(file_dir + file_name, "w")
-            json.dump(data_dict, _file, indent=4)
+            with open(file_dir + file_name, "w") as _file:
+                json.dump(data_dict, _file, indent="\t")
             return data_dict
         else:
             # json file load
