@@ -241,3 +241,20 @@ class Debug():
                 return _time_list if isinstance(_time_list, list) else [_time_list, ]
             else:
                 return [0.0, ]
+
+        def _get_observing_length(self, epoch: int):
+            _learning_mode = self._Active_mode.value
+
+            _tracking = self._Observing[_learning_mode]
+            _target_key = Log_Category.ACC.value if Log_Category.ACC.value in _tracking.keys() else Log_Category.LOSS.value
+            _access_point = self._Data[_learning_mode][_target_key]
+
+            if isinstance(_access_point, dict):
+                _access_key = list(_tracking[_target_key].keys())[0]
+                _picked_data = self._get_data(
+                    data_info={_access_key: f"{epoch}"},
+                    access_point=_access_point)[_access_key]
+
+                return len(_picked_data) if isinstance(_picked_data, (list, tuple)) else 1
+            else:
+                return 0
