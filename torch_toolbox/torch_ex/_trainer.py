@@ -275,12 +275,12 @@ class Learning_process():
             # Do learning process
             for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
                 _epoch_dir = \
-                    Directory._make(f"{_epoch}", self._Save_root) if _this_rank is MAIN_RANK else f"{self._Save_root}{Directory._Divider}{_epoch}"
+                    Directory._make(f"{_epoch}", self._Save_root) if _this_rank is MAIN_RANK else f"{self._Save_root}{_epoch}{Directory._Divider}"
 
                 for _mode in self._Config._Learning_list:
                     _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
                     _mode_dir = \
-                        Directory._make(f"{_mode.value}", _epoch_dir) if _this_rank is MAIN_RANK else f"{_epoch_dir}{Directory._Divider}{_mode.value}"
+                        Directory._make(f"{_mode.value}", _epoch_dir) if _this_rank is MAIN_RANK else f"{_epoch_dir}{_mode.value}{Directory._Divider}"
 
                     if _mode == Learning_Mode.TRAIN:
                         self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)

@@ -230,10 +230,8 @@ class Module_Componant_Config():
             return super()._restore_from_dict(data)
 
         def _make_conv_config(self):
-            _front = Layer_Config.Conv2D(self._In_channels, self._Out_channels, 1)
-            _backend = Layer_Config.Conv2D(self._Out_channels, self._Out_channels, 1)
-
-            return _front, _backend
+            _front = Layer_Config.Conv2D(self._In_channels, self._Out_channels, 3, 1, 1)
+            return _front
 
         def _make_norm_config(self):
             return Layer_Config.Norm(self._Norm_type, self._Out_channels)
@@ -409,19 +407,17 @@ class Module_Componant():
         def __init__(self, config: Module_Componant_Config.PUP):
             super().__init__()
 
-            _front_conv, _backend_conv = config._make_conv_config()
+            _front_conv = config._make_conv_config()
 
             self._Front = Conv2d(**_front_conv._make_parameter())
             self._Norm = Layer._make_norm_layer(config._make_norm_config(), 2)
             self._Activate = Layer._make_activate_layer(config._make_active_config())
-            self._Back = Conv2d(**_backend_conv._make_parameter())
             self._Samppling = Upsample(scale_factor=config._Scale_factor, mode=config._Scale_mode)
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             _x = self._Front(x)
             _x = self._Norm(_x) if self._Norm is not None else _x
             _x = self._Activate(_x) if self._Activate is not None else _x
-            _x = self._Back(_x)
             _x = self._Samppling(_x)
             return _x
 
