@@ -30,3 +30,4 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 ## Install
 1. 설치 명령어
    - pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/python_ex_module.git
+   - pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha
