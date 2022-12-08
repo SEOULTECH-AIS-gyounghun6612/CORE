@@ -24,7 +24,7 @@ else:
 # -- DEFINE CONSTNAT -- #
 DEFUALT_INTERPOLATION: Dict[str, InterpolationMode] = {
     "input": InterpolationMode.NEAREST,
-    "label": InterpolationMode.BILINEAR,
+    "label": InterpolationMode.NEAREST,
 }
 
 
