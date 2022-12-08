@@ -4,7 +4,8 @@ from setuptools import setup
 requirments_package = [
     'python_ex',
     'torch',
-    'einops']
+    'einops',
+    'torchsummary']
 
 dependency_links = [
     "git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha"
