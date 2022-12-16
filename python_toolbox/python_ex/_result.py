@@ -3,17 +3,15 @@ from typing import List, Dict, Union, Optional
 
 if __package__ == "":
     from _base import Directory, File, JSON_WRITEABLE
-    from _numpy import Array_Process, Np_Dtype, ndarray
 else:
     from ._base import Directory, File, JSON_WRITEABLE
-    from ._numpy import Array_Process, Np_Dtype, ndarray
 
 
 # -- DEFINE CONSTNAT -- #
 
 
 # -- Mation Function -- #
-class Tracking():
+class Tracker():
     _Annotation: Dict[str, JSON_WRITEABLE] = {}
     _Data: Dict[str, JSON_WRITEABLE] = {}
 
