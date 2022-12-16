@@ -13,7 +13,7 @@ else:
 
 
 # -- Mation Function -- #
-class Log():
+class Tracking():
     _Annotation: Dict[str, JSON_WRITEABLE] = {}
     _Data: Dict[str, JSON_WRITEABLE] = {}
 
