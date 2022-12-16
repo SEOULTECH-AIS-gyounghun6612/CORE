@@ -18,7 +18,7 @@ setup(
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=["python_ex"],
-    python_requires=">= 3.7.0",
+    python_requires=">= 3.10.0",
     dependency_links=dependency_links,
     install_requires=requirments_package,
     package_data=package_opt,
