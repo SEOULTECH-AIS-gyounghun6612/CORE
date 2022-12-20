@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Optional
+from typing import Dict, Union, Optional
 
 
 if __package__ == "":
@@ -118,7 +118,3 @@ class Tracker():
             "data": self._Data}
 
         File._json(file_dir, file_name, is_save=True, data_dict=_save_pakage)
-
-
-class ploter():
-    ...

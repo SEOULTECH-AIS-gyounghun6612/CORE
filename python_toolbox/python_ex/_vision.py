@@ -16,12 +16,12 @@ from dataclasses import dataclass, field
 import cv2
 
 if __package__ == "":
-    from _base import File, Directory
+    from _base import File
     from _numpy import Array_Process, Image_Process, Np_Dtype, ndarray
     import _error as _e
 
 else:
-    from ._base import File, Directory
+    from ._base import File
     from ._numpy import Array_Process, Image_Process, Np_Dtype, ndarray
     from . import _error as _e
 
