@@ -1,496 +1,496 @@
 {
     "sem_seg": [
         {
-            "_Identity_num": 0,
-            "_Train_num": 255,
-            "_Cateogry": "void",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 0,
+            "train_num": 255,
+            "cateogry": "void",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 0,
                 0
             ],
-            "_Name": "unlabeled"
+            "name": "unlabeled"
         },
         {
-            "_Identity_num": 1,
-            "_Train_num": 255,
-            "_Cateogry": "void",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 1,
+            "train_num": 255,
+            "cateogry": "void",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 74,
                 111
             ],
-            "_Name": "dynamic"
+            "name": "dynamic"
         },
         {
-            "_Identity_num": 2,
-            "_Train_num": 255,
-            "_Cateogry": "void",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 2,
+            "train_num": 255,
+            "cateogry": "void",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 0,
                 0
             ],
-            "_Name": "ego vehicle"
+            "name": "ego vehicle"
         },
         {
-            "_Identity_num": 3,
-            "_Train_num": 255,
-            "_Cateogry": "void",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 3,
+            "train_num": 255,
+            "cateogry": "void",
+            "ignore_in_eval": 1,
+            "class_info": [
                 81,
                 0,
                 81
             ],
-            "_Name": "ground"
+            "name": "ground"
         },
         {
-            "_Identity_num": 4,
-            "_Train_num": 255,
-            "_Cateogry": "void",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 4,
+            "train_num": 255,
+            "cateogry": "void",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 0,
                 0
             ],
-            "_Name": "static"
+            "name": "static"
         },
         {
-            "_Identity_num": 5,
-            "_Train_num": 255,
-            "_Cateogry": "flat",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 5,
+            "train_num": 255,
+            "cateogry": "flat",
+            "ignore_in_eval": 1,
+            "class_info": [
                 160,
                 170,
                 250
             ],
-            "_Name": "parking"
+            "name": "parking"
         },
         {
-            "_Identity_num": 6,
-            "_Train_num": 255,
-            "_Cateogry": "flat",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 6,
+            "train_num": 255,
+            "cateogry": "flat",
+            "ignore_in_eval": 1,
+            "class_info": [
                 140,
                 150,
                 230
             ],
-            "_Name": "rail track"
+            "name": "rail track"
         },
         {
-            "_Identity_num": 7,
-            "_Train_num": 0,
-            "_Cateogry": "flat",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 7,
+            "train_num": 0,
+            "cateogry": "flat",
+            "ignore_in_eval": 0,
+            "class_info": [
                 128,
                 64,
                 128
             ],
-            "_Name": "road"
+            "name": "road"
         },
         {
-            "_Identity_num": 8,
-            "_Train_num": 1,
-            "_Cateogry": "flat",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 8,
+            "train_num": 1,
+            "cateogry": "flat",
+            "ignore_in_eval": 0,
+            "class_info": [
                 232,
                 35,
                 244
             ],
-            "_Name": "sidewalk"
+            "name": "sidewalk"
         },
         {
-            "_Identity_num": 9,
-            "_Train_num": 255,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 9,
+            "train_num": 255,
+            "cateogry": "construction",
+            "ignore_in_eval": 1,
+            "class_info": [
                 100,
                 100,
                 150
             ],
-            "_Name": "bridge"
+            "name": "bridge"
         },
         {
-            "_Identity_num": 10,
-            "_Train_num": 2,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 10,
+            "train_num": 2,
+            "cateogry": "construction",
+            "ignore_in_eval": 0,
+            "class_info": [
                 70,
                 70,
                 70
             ],
-            "_Name": "building"
+            "name": "building"
         },
         {
-            "_Identity_num": 11,
-            "_Train_num": 4,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 11,
+            "train_num": 4,
+            "cateogry": "construction",
+            "ignore_in_eval": 0,
+            "class_info": [
                 153,
                 153,
                 190
             ],
-            "_Name": "fence"
+            "name": "fence"
         },
         {
-            "_Identity_num": 12,
-            "_Train_num": 255,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 12,
+            "train_num": 255,
+            "cateogry": "construction",
+            "ignore_in_eval": 1,
+            "class_info": [
                 180,
                 100,
                 180
             ],
-            "_Name": "garage"
+            "name": "garage"
         },
         {
-            "_Identity_num": 13,
-            "_Train_num": 255,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 13,
+            "train_num": 255,
+            "cateogry": "construction",
+            "ignore_in_eval": 1,
+            "class_info": [
                 180,
                 165,
                 180
             ],
-            "_Name": "guard rail"
+            "name": "guard rail"
         },
         {
-            "_Identity_num": 14,
-            "_Train_num": 255,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 14,
+            "train_num": 255,
+            "cateogry": "construction",
+            "ignore_in_eval": 1,
+            "class_info": [
                 90,
                 120,
                 150
             ],
-            "_Name": "tunnel"
+            "name": "tunnel"
         },
         {
-            "_Identity_num": 15,
-            "_Train_num": 3,
-            "_Cateogry": "construction",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 15,
+            "train_num": 3,
+            "cateogry": "construction",
+            "ignore_in_eval": 0,
+            "class_info": [
                 156,
                 102,
                 102
             ],
-            "_Name": "wall"
+            "name": "wall"
         },
         {
-            "_Identity_num": 16,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 16,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 100,
                 170,
                 250
             ],
-            "_Name": "banner"
+            "name": "banner"
         },
         {
-            "_Identity_num": 17,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 17,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 250,
                 220,
                 220
             ],
-            "_Name": "billboard"
+            "name": "billboard"
         },
         {
-            "_Identity_num": 18,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 18,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 165,
                 255
             ],
-            "_Name": "lane divider"
+            "name": "lane divider"
         },
         {
-            "_Identity_num": 19,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 19,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 0,
+            "class_info": [
                 60,
                 20,
                 220
             ],
-            "_Name": "parking sign"
+            "name": "parking sign"
         },
         {
-            "_Identity_num": 20,
-            "_Train_num": 5,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 20,
+            "train_num": 5,
+            "cateogry": "object",
+            "ignore_in_eval": 0,
+            "class_info": [
                 153,
                 153,
                 153
             ],
-            "_Name": "pole"
+            "name": "pole"
         },
         {
-            "_Identity_num": 21,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 21,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 153,
                 153,
                 153
             ],
-            "_Name": "polegroup"
+            "name": "polegroup"
         },
         {
-            "_Identity_num": 22,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 22,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 100,
                 220,
                 220
             ],
-            "_Name": "street light"
+            "name": "street light"
         },
         {
-            "_Identity_num": 23,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 23,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 0,
                 70,
                 255
             ],
-            "_Name": "traffic cone"
+            "name": "traffic cone"
         },
         {
-            "_Identity_num": 24,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 24,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 220,
                 220,
                 220
             ],
-            "_Name": "traffic device"
+            "name": "traffic device"
         },
         {
-            "_Identity_num": 25,
-            "_Train_num": 6,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 25,
+            "train_num": 6,
+            "cateogry": "object",
+            "ignore_in_eval": 0,
+            "class_info": [
                 30,
                 170,
                 250
             ],
-            "_Name": "traffic light"
+            "name": "traffic light"
         },
         {
-            "_Identity_num": 26,
-            "_Train_num": 7,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 26,
+            "train_num": 7,
+            "cateogry": "object",
+            "ignore_in_eval": 0,
+            "class_info": [
                 0,
                 220,
                 220
             ],
-            "_Name": "traffic sign"
+            "name": "traffic sign"
         },
         {
-            "_Identity_num": 27,
-            "_Train_num": 255,
-            "_Cateogry": "object",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 27,
+            "train_num": 255,
+            "cateogry": "object",
+            "ignore_in_eval": 1,
+            "class_info": [
                 250,
                 170,
                 250
             ],
-            "_Name": "traffic sign frame"
+            "name": "traffic sign frame"
         },
         {
-            "_Identity_num": 28,
-            "_Train_num": 9,
-            "_Cateogry": "nature",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 28,
+            "train_num": 9,
+            "cateogry": "nature",
+            "ignore_in_eval": 0,
+            "class_info": [
                 152,
                 251,
                 152
             ],
-            "_Name": "terrain"
+            "name": "terrain"
         },
         {
-            "_Identity_num": 29,
-            "_Train_num": 8,
-            "_Cateogry": "nature",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 29,
+            "train_num": 8,
+            "cateogry": "nature",
+            "ignore_in_eval": 0,
+            "class_info": [
                 35,
                 142,
                 107
             ],
-            "_Name": "vegetation"
+            "name": "vegetation"
         },
         {
-            "_Identity_num": 30,
-            "_Train_num": 10,
-            "_Cateogry": "sky",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 30,
+            "train_num": 10,
+            "cateogry": "sky",
+            "ignore_in_eval": 0,
+            "class_info": [
                 180,
                 130,
                 70
             ],
-            "_Name": "sky"
+            "name": "sky"
         },
         {
-            "_Identity_num": 31,
-            "_Train_num": 11,
-            "_Cateogry": "human",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 31,
+            "train_num": 11,
+            "cateogry": "human",
+            "ignore_in_eval": 0,
+            "class_info": [
                 60,
                 20,
                 220
             ],
-            "_Name": "person"
+            "name": "person"
         },
         {
-            "_Identity_num": 32,
-            "_Train_num": 12,
-            "_Cateogry": "human",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 32,
+            "train_num": 12,
+            "cateogry": "human",
+            "ignore_in_eval": 0,
+            "class_info": [
                 0,
                 0,
                 255
             ],
-            "_Name": "rider"
+            "name": "rider"
         },
         {
-            "_Identity_num": 33,
-            "_Train_num": 18,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 33,
+            "train_num": 18,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 32,
                 11,
                 119
             ],
-            "_Name": "bicycle"
+            "name": "bicycle"
         },
         {
-            "_Identity_num": 34,
-            "_Train_num": 15,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 34,
+            "train_num": 15,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 100,
                 60,
                 0
             ],
-            "_Name": "bus"
+            "name": "bus"
         },
         {
-            "_Identity_num": 35,
-            "_Train_num": 13,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 35,
+            "train_num": 13,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 142,
                 0,
                 0
             ],
-            "_Name": "car"
+            "name": "car"
         },
         {
-            "_Identity_num": 36,
-            "_Train_num": 255,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 36,
+            "train_num": 255,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 1,
+            "class_info": [
                 90,
                 0,
                 0
             ],
-            "_Name": "caravan"
+            "name": "caravan"
         },
         {
-            "_Identity_num": 37,
-            "_Train_num": 17,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 37,
+            "train_num": 17,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 230,
                 0,
                 0
             ],
-            "_Name": "motorcycle"
+            "name": "motorcycle"
         },
         {
-            "_Identity_num": 38,
-            "_Train_num": 255,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 1,
-            "_Class_info": [
+            "identity_num": 38,
+            "train_num": 255,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 1,
+            "class_info": [
                 110,
                 0,
                 0
             ],
-            "_Name": "trailer"
+            "name": "trailer"
         },
         {
-            "_Identity_num": 39,
-            "_Train_num": 16,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 39,
+            "train_num": 16,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 100,
                 80,
                 0
             ],
-            "_Name": "train"
+            "name": "train"
         },
         {
-            "_Identity_num": 40,
-            "_Train_num": 14,
-            "_Cateogry": "vehicle",
-            "_Ignore_in_eval": 0,
-            "_Class_info": [
+            "identity_num": 40,
+            "train_num": 14,
+            "cateogry": "vehicle",
+            "ignore_in_eval": 0,
+            "class_info": [
                 70,
                 0,
                 0
             ],
-            "_Name": "truck"
+            "name": "truck"
         }
     ]
 }
