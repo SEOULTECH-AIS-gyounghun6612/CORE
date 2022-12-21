@@ -11,7 +11,7 @@ Requirement
 
 # Import module
 from enum import Enum
-from typing import Dict, List, Union, Optional, Tuple
+from typing import Dict, List, Union, Tuple
 from dataclasses import dataclass, field
 import cv2
 
@@ -79,7 +79,7 @@ class Segmentation_Style(Enum):
 # -- Mation Function -- #
 class File_IO():
     @staticmethod
-    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> Optional[ndarray]:
+    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
         _is_exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
 
         if _is_exist:
@@ -97,7 +97,7 @@ class File_IO():
 
             return _read_img
         else:
-            return None
+            raise ValueError(f"image file {file_path} not exist")
 
     @staticmethod
     def _image_write(file_path: str, image: ndarray):
