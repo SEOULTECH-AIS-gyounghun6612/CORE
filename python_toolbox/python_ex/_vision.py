@@ -80,24 +80,24 @@ class Segmentation_Style(Enum):
 class File_IO():
     @staticmethod
     def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
-        _is_exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+        _exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
 
-        if _is_exist:
-            # data read
-            if color_option == Color_Option.BGR:
-                _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
-            elif color_option == Color_Option.GRAY:
-                _read_img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-            elif color_option == Color_Option.RGB:
-                _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
-                _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
-            elif color_option == Color_Option.BGRA:
-                # this code dosen't check it. if you wnat use it. check it output
-                _read_img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
-
-            return _read_img
-        else:
+        if not _exist:
             raise ValueError(f"image file {file_path} not exist")
+
+        # data read
+        if color_option == Color_Option.BGR:
+            _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
+        elif color_option == Color_Option.GRAY:
+            _read_img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+        elif color_option == Color_Option.RGB:
+            _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
+            _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
+        elif color_option == Color_Option.BGRA:
+            # this code dosen't check it. if you wnat use it. check it output
+            _read_img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+
+        return _read_img
 
     @staticmethod
     def _image_write(file_path: str, image: ndarray):
