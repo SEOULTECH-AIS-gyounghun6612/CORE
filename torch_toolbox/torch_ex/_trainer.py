@@ -49,7 +49,7 @@ class Learning_Process():
             num_worker: int,
             last_epoch: int = -1,
             save_root: str = "./",
-            gpu_list: List[int] = list(range(cuda.device_count())),
+            gpu_list: int = 0,
             project_name: Optional[str] = None,
             description: Optional[str] = None
         ):
@@ -64,6 +64,7 @@ class Learning_Process():
             # - base
             self._world_size = 1
             self._this_rank = 0
+            self._multi_method = Multi_Method.NONE
             self._max_epoch = max_epoch
             self._last_epoch = last_epoch
             self._learning_mode = learning_mode
@@ -73,8 +74,7 @@ class Learning_Process():
             self._num_worker = num_worker
 
             # - gpu
-            self._multi_method = Multi_Method.NONE
-            self._gpu_list = gpu_list
+            self._gpu_list: List[int] = [gpu_list, ]
 
         # Freeze function
         # --- for init function --- #
@@ -111,7 +111,8 @@ class Learning_Process():
             batch_size_per_node: int,
             num_worker_per_node: int,
             multi_method: Multi_Method = Multi_Method.DDP,
-            multi_protocal: Optional[str] = "tcp://127.0.0.1:10001"
+            multi_protocal: Optional[str] = "tcp://127.0.0.1:10001",
+            gpu_list: List[int] = list(range(cuda.device_count()))
         ) -> None:
             # setting about multi-process
             # - process init
@@ -123,6 +124,9 @@ class Learning_Process():
             # - dataloader
             self._batch_size = batch_size_per_node
             self._num_worker = num_worker_per_node
+
+            # - gpu
+            self._gpu_list = gpu_list
 
         def _Set_tracker(
             self,
