@@ -3,7 +3,7 @@ from setuptools import setup
 
 requirments_package = [
     'python_ex',
-    'pytorch>=1.10',
+    'pytorch',
     'einops',
     'albumentations',
     'torchsummary']
