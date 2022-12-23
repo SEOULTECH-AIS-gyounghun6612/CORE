@@ -6,7 +6,7 @@ requirments_package = [
     'pytorch>=1.10',
     'einops',
     'albumentations',
-    'torch-summary']
+    'torchsummary']
 
 dependency_links = [
     "git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha"
