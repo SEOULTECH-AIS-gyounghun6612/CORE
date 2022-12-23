@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union, Type, Optional
+from enum import Enum
 
 from torch import distributed, cuda, save, load, multiprocessing
 from torch.multiprocessing.spawn import spawn
@@ -9,198 +9,154 @@ from torch.autograd.grad_mode import no_grad
 from torch.nn.parallel import DistributedDataParallel
 from torch.optim import Optimizer
 
-from python_ex._base import Directory, File, Utils, OS_Style, JSON_WRITEABLE
+from python_ex._base import Directory, File, Utils
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Debug, Log_Config, MAIN_RANK
-    from torch_ex._dataloader import Custom_Dataset, Dataset_Config
-    from torch_ex._layer import Custom_Model, Custom_Model_Config
-    from torch_ex._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
+    from torch_ex._torch_base import Learning_Mode, Tracking, Process_Type
+    from torch_ex._label import Label
+    from torch_ex._dataset import Custom_Dataset, Augment
+    from torch_ex._layer import Custom_Model
+    from torch_ex._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Debug, Log_Config, MAIN_RANK
-    from ._dataloader import Custom_Dataset, Dataset_Config
-    from ._layer import Custom_Model, Custom_Model_Config
-    from ._optimizer import _LRScheduler, Scheduler_Config, Custom_Scheduler
+    from ._torch_base import Learning_Mode, Tracking, Process_Type
+    from ._label import Label
+    from ._dataset import Custom_Dataset, Augment
+    from ._layer import Custom_Model
+    from ._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
 
 
 # -- DEFINE CONSTNAT -- #
-MODEL_TYPING = Union[Custom_Model, DistributedDataParallel]
+MODEL = Union[Custom_Model, DistributedDataParallel]
+MAIN_RANK: int = 0
 
 
-# -- DEFINE CONFIG -- #
-@dataclass
-class Learning_Config():
-    @dataclass
-    class E2E(Utils.Config):
-        ### Infomation about learning
-        _Project_Name: str = "End_to_End_learning"
-        _Detail: str = "Empty"
-        _Date: str = Utils.Time._apply_text_form(Utils.Time._stemp(), True, "%Y-%m-%d")
-        _Save_root: str = Directory._relative_root()
-
-        ### About Learning type and style
-        _Batch_size_in_node: int = 4
-        _Max_num_workers: int = 2
-
-        _Max_epochs: int = 100
-        _Last_epoch: int = -1
-        _Learning_list: List[Learning_Mode] = field(default_factory=lambda: [Learning_Mode.TRAIN, Learning_Mode.VALIDATION])
-
-        ### About GPU using
-        _Num_of_node: int = 1
-        _This_node_rank: int = 0
-        _GPU_list: List[int] = field(default_factory=lambda: list(range(cuda.device_count())))
-        _Host_address: str = "tcp://127.0.0.1:10001"
-
-        def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
-            return {
-                "_Project_Name": self._Project_Name,
-                "_Detail": self._Detail,
-                "_Date": self._Date,
-                "_Save_root": self._Save_root,
-
-                "_Batch_size": self._Batch_size_in_node,
-                "_Num_workers": self._Max_num_workers,
-                "_Max_epochs": self._Max_epochs,
-                "_Last_epoch": self._Last_epoch,
-                "_Learning_list": [_mode.value for _mode in self._Learning_list],
-
-                "_Num_of_node": self._Num_of_node,
-                "_GPU_list": self._GPU_list,
-                "_Host_address": self._Host_address,
-                "_This_node_rank": self._This_node_rank}
-
-        def _load_config_from_file(self, config_directory: str, restore_file: str):
-            _config_data = File._json(config_directory, restore_file)
-            self._restore_from_dict(_config_data)
-
-    # in later fix it
-    @dataclass
-    class Reinforcement(E2E):
-        # reinforcement train option
-        Max_step: int = 100
-
-        Q_discount: float = 0.99
-
-        Reward_threshold: List[float] = field(default_factory=list)
-        Reward_value: List[float] = field(default_factory=list)
-        Reward_fail: float = -10
-        # Reward_relation_range: int = 80
-
-        # action option
-        Action_size: List[Union[int, List[int]]] = field(default_factory=list)
-        Action_range: List[List[int]] = field(default_factory=list)  # [[Max, Min]]
-
-        # replay option
-        Memory_size: int = 1000
-        Minimum_memroy_size: int = 100
-        Exploration_threshold: float = 1.0
-        Exploration_discount: float = 0.99
-        Exploration_Minimum: float = 1.0
+class Multi_Method(Enum):
+    NONE = None
+    DP = "DataParallel"
+    DDP = "DistributedDataParallel"
 
 
 # -- Mation Function -- #
-class Learning_process():
+class Learning_Process():
     class End_to_End():
-        def __init__(self, config: Learning_Config.E2E) -> None:
-            self._Config = config
+        def __init__(
+            self,
+            max_epoch: int,
+            learning_mode: List[Learning_Mode],
+            batch_size: int,
+            num_worker: int,
+            last_epoch: int = -1,
+            save_root: str = "./",
+            gpu_list: List[int] = list(range(cuda.device_count())),
+            project_name: Optional[str] = None,
+            description: Optional[str] = None
+        ):
+            # information about this learning
+            self._project_name = project_name
+            self._description = description
 
-            # result save dir
-            _save_dir = \
-                f"{config._Project_Name}{Directory._Divider}{config._Detail}{Directory._Divider}{config._Date}{Directory._Divider}"
-            self._Save_root = \
-                Directory._make(_save_dir, config._Save_root) if config._This_node_rank is MAIN_RANK else f"{config._Save_root}{Directory._Divider}{_save_dir}"
-            self._Is_cuda = bool(len(config._GPU_list))
+            # setting about file I/O
+            self._save_root = save_root
 
-            # distribute option
-            self._Word_size = config._Num_of_node * len(config._GPU_list)
-            self._Use_distribute = (Directory._OS_THIS == OS_Style.OS_UBUNTU.value) and (len(config._GPU_list) >= 2)
+            # setting about learning
+            # - base
+            self._world_size = 1
+            self._this_rank = 0
+            self._max_epoch = max_epoch
+            self._last_epoch = last_epoch
+            self._learning_mode = learning_mode
+
+            # - dataloader
+            self._batch_size = batch_size
+            self._num_worker = num_worker
+
+            # - gpu
+            self._multi_method = Multi_Method.NONE
+            self._gpu_list = gpu_list
 
         # Freeze function
         # --- for init function --- #
-        def _set_log(self, log_config: Log_Config):
-            self._Log = Debug.Learning_Log(**log_config._get_parameter())
-            self._Log._insert({"01_learning": self._Config._convert_to_dict()}, access_point=self._Log._Annotation)
-            self._Log._insert({"02_log": log_config._convert_to_dict()}, access_point=self._Log._Annotation)
+        def _Set_dataset(
+            self,
+            label_process: Label.Process.Basement,
+            label_io: Label.File_IO.Basement,
+            amplification: Dict[Learning_Mode, int],
+            augmentation: Dict[Learning_Mode, Augment.Basement]
+        ):
+            # self._Log._insert({"03_dataloader": dateset_config._convert_to_dict()}, access_point=self._Log._Annotation)
 
-        def _set_dataset(self, dateset_config: Dataset_Config):
-            self._Log._insert({"03_dataloader": dateset_config._convert_to_dict()}, access_point=self._Log._Annotation)
+            self._dataset: Dict[Learning_Mode, Custom_Dataset] = {}
+            for _mode in self._learning_mode:
+                label_io._Set_learning_mode(_mode)
+                _file_profiles = label_io._Get_file_profiles()
+                self._dataset[_mode] = Custom_Dataset(label_process, _file_profiles, amplification[_mode], augmentation[_mode])
 
-            self._Dataset: Dict[Learning_Mode, Custom_Dataset] = {}
-            for _mode in self._Config._Learning_list:
-                self._Dataset[_mode] = Custom_Dataset(**dateset_config._get_parameter(_mode))
+        def _Set_model_parameter(self, model_template: Type[Custom_Model], **model_parameter):
+            self._model_template = model_template
+            self._model_parameters = model_parameter
 
-        def _set_model_n_optim_config(self, model_stemp: Type[Custom_Model], model_config: Custom_Model_Config, schedule_config: Scheduler_Config):
-            self._Log._insert({"04_model": model_config._convert_to_dict()}, access_point=self._Log._Annotation)
-            self._Log._insert({"05_schedule": schedule_config._convert_to_dict()}, access_point=self._Log._Annotation)
+        def _Set_optim_schedule_prameter(self, optim_name: Suport_Optimizer, initial_lr: float, schedule_name: Suport_Schedule, **schedule_parmeter):
+            self._optim_name = optim_name
+            self._initial_lr = initial_lr
 
-            self._Model_stemp = model_stemp
-            self._Model_config = model_config
-            self._Schedule_config = schedule_config
+            self._schedule_name = schedule_name
+            self._schedule_option = schedule_parmeter
+
+        def _Set_multi_process(
+            self,
+            world_size: int,
+            this_rank: int,
+            batch_size_per_node: int,
+            num_worker_per_node: int,
+            multi_method: Multi_Method = Multi_Method.DDP,
+            multi_protocal: Optional[str] = "tcp://127.0.0.1:10001"
+        ) -> None:
+            # setting about multi-process
+            # - process init
+            self._world_size = world_size
+            self._this_rank = this_rank
+            self._multi_method = multi_method
+            self._multi_protocal = multi_protocal
+
+            # - dataloader
+            self._batch_size = batch_size_per_node
+            self._num_worker = num_worker_per_node
+
+        def _Set_tracker(
+            self,
+            tracking_param: Dict[Learning_Mode, Dict[Process_Type, List[str]]],
+            observing_param: Dict[Learning_Mode, Dict[Process_Type, Optional[List[str]]]]
+        ):
+            self._tracker = Tracking.To_Process(tracking_param, observing_param)
+            # insert learning info
+            # self._tracker._insert()
 
         # --- for work function --- #
-        def _set_process(self, word_size: int, this_rank: int, method: str):
-            def _print_lock(is_master: bool):
-                import builtins as __builtin__
-                builtin_print = __builtin__.print
+        def _Set_learning_model(self, gpu_id: int) -> Tuple[MODEL, Optimizer, Optional[_LRScheduler]]:
+            _model = self._model_template(**self._model_parameters)
+            _model = _model.cuda(gpu_id) if gpu_id != -1 else _model
+            _optim, _scheduler = _Optimizer_build(self._optim_name, _model, self._initial_lr, self._schedule_name, last_epoch=self._last_epoch, **self._schedule_option)
 
-                def print(*args, **kwargs):
-                    force = kwargs.pop('force', False)
-                    if is_master or force:
-                        builtin_print(*args, **kwargs)
-                __builtin__.print = print
+            return _model, _optim, _scheduler
 
-            # _print_lock(not this_rank)
-            distributed.init_process_group(backend="nccl", init_method=method, world_size=word_size, rank=this_rank)
-
-        def _set_dataloader(self, word_size: int, this_rank: int = 0):
-            _dataloader: Dict[Learning_Mode, DataLoader] = {}
-            _sampler: Dict[Learning_Mode, Optional[DistributedSampler]] = {}
-
-            #  Use distribute or Not
-            for _mode in self._Config._Learning_list:
-                # set dataloader in each learning mode
-                if self._Use_distribute:
-                    _sampler[_mode] = DistributedSampler(self._Dataset[_mode], rank=this_rank, shuffle=(_mode == Learning_Mode.TRAIN))
-                    _dataloader[_mode] = DataLoader(
-                        dataset=self._Dataset[_mode],
-                        batch_size=int(self._Config._Batch_size_in_node),
-                        num_workers=int(self._Config._Max_num_workers / word_size),
-                        sampler=_sampler[_mode])
-                else:
-                    _sampler[_mode] = None
-                    _dataloader[_mode] = DataLoader(
-                        dataset=self._Dataset[_mode],
-                        batch_size=int(self._Config._Batch_size_in_node),
-                        num_workers=int(self._Config._Max_num_workers),
-                        shuffle=_mode == Learning_Mode.TRAIN)
-
-            return _sampler, _dataloader
-
-        def _set_learning_model(self, this_gpu: int = 0, is_cuda: bool = False) -> Tuple[Custom_Model, Optimizer, _LRScheduler]:
-            _model = self._Model_stemp(self._Model_config)
-            _model = _model.cuda(this_gpu) if is_cuda else _model
-            _optim, _schedule = Custom_Scheduler._build(**self._Schedule_config._get_parameter(_model))
-
-            return _model, _optim, _schedule
-
-        def _set_activate_mode(
+        def _Set_activate_mode(
                 self,
                 mode: Learning_Mode,
-                model: MODEL_TYPING,
+                model: MODEL,
                 dataloader: Dict[Learning_Mode, DataLoader],
                 sampler: Dict[Learning_Mode, Optional[DistributedSampler]]):
 
-            self._Log._set_activate_mode(mode)
+            self._tracker._Set_activate_mode(mode)
             model.train() if mode == Learning_Mode.TRAIN else model.eval()
             _this_dataloader = dataloader[mode]
             _this_sampler = sampler[mode]
 
             return _this_dataloader, _this_sampler
 
-        def _save_model(self, save_dir: str, model: MODEL_TYPING, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
+        # in later this function remove
+        def _Save_model(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
             save(model.state_dict(), f"{save_dir}model.h5")  # save model state
 
             if optim is not None:
@@ -209,7 +165,8 @@ class Learning_process():
                     "schedule": None if schedule is None else schedule}
                 save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
-        def _load_model(self, save_dir: str, model: MODEL_TYPING, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
+        # in later this function remove
+        def _Load_model(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
             _model_file = f"{save_dir}model.h5"
             if File._exist_check(_model_file):
                 model.load_state_dict(load(_model_file))
@@ -223,100 +180,117 @@ class Learning_process():
 
             return model, optim, schedule
 
-        def _progress_dispaly(
+        def _Progress_dispaly(
                 self,
                 mode: Learning_Mode,
                 epoch: int,
-                word_size: int = 1,
                 decimals: int = 1,
                 length: int = 25,
                 fill: str = '█'):
-            _epoch_board = Utils._progress_board(epoch, self._Config._Max_epochs)
+            _epoch_board = Utils._progress_board(epoch, self._max_epoch)
 
-            _max_data_len = self._Dataset[mode].__len__()
-            _data_count = self._Log._get_observing_length(epoch)
+            _max_data_len = self._dataset[mode].__len__()
+            _data_count = self._tracker._Get_observing_length(epoch)
             _data_board = Utils._progress_board(_data_count, _max_data_len)
 
-            _batch_size = self._Config._Batch_size_in_node
+            _batch_size = self._batch_size
 
-            if self._Use_distribute:
-                _max_data_len = round(_max_data_len / word_size)
-            _max_batch_ct = _max_data_len // _batch_size + int((_max_data_len % _batch_size) > 0)
+            _allocated_len = round(_max_data_len / self._world_size)
+            _max_batch_ct = _allocated_len // _batch_size + int((_allocated_len % _batch_size) > 0)
 
-            _this_time = self._Log._get_progress_time(epoch)
+            _this_time = self._tracker._Get_progress_time(epoch)
             _this_time_str = Utils.Time._apply_text_form(sum(_this_time), text_format="%H:%M:%S")
             _max_time_str = Utils.Time._apply_text_form(_max_batch_ct * sum(_this_time) / len(_this_time), text_format="%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
-            _suf = self._Log._learning_observing(epoch)
+            _suf = self._tracker._Learning_observing(epoch)
 
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
-        def _average_gradients(self, model: Custom_Model):
+        def _Process(self, processer_num: int, share_block: Optional[multiprocessing.Queue] = None):
+            _num_of_this_node = self._this_rank + processer_num
+            _this_gpu_id = self._gpu_list[processer_num] if len(self._gpu_list) else -1
+
+            _dataloader: Dict[Learning_Mode, DataLoader] = {}
+            _sampler: Dict[Learning_Mode, Optional[DistributedSampler]] = {}
+
+            # set process init
+            if self._multi_method == Multi_Method.DDP:
+                # Initialize distributed
+                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=_num_of_this_node)
+                # Set dataloader and sampler
+                for _mode in self._learning_mode:
+                    _sampler[_mode] = DistributedSampler(self._dataset[_mode], rank=_num_of_this_node, shuffle=(_mode == Learning_Mode.TRAIN))
+                    _dataloader[_mode] = DataLoader(
+                        dataset=self._dataset[_mode],
+                        batch_size=self._batch_size,
+                        num_workers=self._num_worker,
+                        sampler=_sampler[_mode])
+                # Set model optim and scheduler
+                _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
+                _model = DistributedDataParallel(_model, device_ids=[_num_of_this_node if _this_gpu_id == -1 else _this_gpu_id])
+
+            else:  # not use multi-process
+                # Set dataloader and sampler
+                for _mode in self._learning_mode:
+                    _sampler[_mode] = None
+                    _dataloader[_mode] = DataLoader(
+                        dataset=self._dataset[_mode],
+                        batch_size=self._batch_size,
+                        num_workers=self._num_worker,
+                        shuffle=_mode == Learning_Mode.TRAIN)
+                # Set model optim and scheduler
+                _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
+
+            # Do learning process
+            for _epoch in range(self._last_epoch + 1, self._max_epoch):
+                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _num_of_this_node is MAIN_RANK else f"{self._save_root}{_epoch}{Directory._Divider}"
+
+                for _mode in self._learning_mode:
+                    _this_dataloader, _this_sampler = self._Set_activate_mode(_mode, _model, _dataloader, _sampler)
+                    _this_sampler.set_epoch(_epoch) if _this_sampler is not None else ...
+
+                    _mode_dir = Directory._make(f"{_mode.value}", _epoch_dir) if _num_of_this_node is MAIN_RANK else f"{_epoch_dir}{_mode.value}{Directory._Divider}"
+
+                    if _mode == Learning_Mode.TRAIN:
+                        self._Learning(_num_of_this_node, _epoch, _mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+                    else:
+                        with no_grad():
+                            self._Learning(_num_of_this_node, _epoch, _mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+
+                if _scheduler is not None:
+                    _scheduler.step()
+
+                # save log file
+                if _num_of_this_node is MAIN_RANK:
+                    self._tracker._insert({"_Last_epoch": _epoch}, self._tracker._Annotation)
+                    self._tracker._save(self._save_root, "trainer_log.json")
+
+                    # save model
+                    self._Save_model(_epoch_dir, _model, _optim, _scheduler)
+
+        def _Average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
             for param in model.parameters():
                 if param.grad is not None:
                     distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
                     param.grad.data /= size
 
-        def _process(self, gpu: int, gpu_per_node: int, _share_block: Optional[multiprocessing.Queue] = None):
-            _this_rank = self._Config._This_node_rank * gpu_per_node + gpu
-            _this_gpu_id = self._Config._GPU_list[gpu] if self._Is_cuda else gpu
-
-            if self._Use_distribute:
-                self._set_process(self._Word_size, _this_rank, self._Config._Host_address)
-
-            _sampler, _dataloader = self._set_dataloader(self._Word_size, _this_rank)
-            _model, _optim, _schedule = self._set_learning_model(_this_gpu_id, self._Is_cuda)
-
-            if self._Use_distribute:
-                _model = DistributedDataParallel(_model, device_ids=[_this_gpu_id])
-
-            # Do learning process
-            for _epoch in range(self._Config._Last_epoch + 1, self._Config._Max_epochs):
-                _epoch_dir = \
-                    Directory._make(f"{_epoch}", self._Save_root) if _this_rank is MAIN_RANK else f"{self._Save_root}{_epoch}{Directory._Divider}"
-
-                for _mode in self._Config._Learning_list:
-                    _this_dataloader, _this_sampler = self._set_activate_mode(_mode, _model, _dataloader, _sampler)
-                    _mode_dir = \
-                        Directory._make(f"{_mode.value}", _epoch_dir) if _this_rank is MAIN_RANK else f"{_epoch_dir}{_mode.value}{Directory._Divider}"
-
-                    if _mode == Learning_Mode.TRAIN:
-                        self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)
-                    else:
-                        with no_grad():
-                            self._learning(_this_rank, _this_gpu_id, _epoch, _mode, _this_sampler, _this_dataloader, _model, _optim, _mode_dir, _share_block)
-
-                if _schedule is not None:
-                    _schedule.step()
-
-                # save log file
-
-                if _this_rank is MAIN_RANK:
-                    self._Log._insert({"_Last_epoch": _epoch}, self._Log._Annotation)
-                    self._Log._save(self._Save_root, "trainer_log.json")
-
-                    # save model
-                    self._save_model(_epoch_dir, _model, _optim, _schedule)
-
-        def _work(self):
-            if self._Use_distribute:
+        def _Work(self, num_of_processer: int = 0):
+            if self._multi_method == Multi_Method.DDP:
                 _share_block = multiprocessing.Manager().Queue()
-                spawn(self._process, nprocs=len(self._Config._GPU_list), args=(len(self._Config._GPU_list), _share_block))
+                spawn(self._Process, nprocs=num_of_processer, args=(_share_block))
             else:
-                self._process(gpu=self._Config._GPU_list[0], gpu_per_node=0)
+                self._Process(processer_num=num_of_processer)
 
         # Un-Freeze function
-        def _learning(
+        def _Learning(
                 self,
                 this_rank: int,
-                this_gpu_id: int,
                 epoch: int,
                 mode: Learning_Mode,
-                sampler: Optional[DistributedSampler],
                 dataloader: DataLoader,
-                model: MODEL_TYPING,
+                model: MODEL,
                 optim: Optimizer,
                 save_dir: str,
                 share_block: Optional[multiprocessing.Queue]):

@@ -1,20 +1,18 @@
-from dataclasses import dataclass
 from enum import Enum
 from math import cos, pi
-from typing import Dict, List, Union, Any, Optional, Tuple
-from python_ex._base import Utils
+from typing import List, Union, Optional, Tuple
 
 # optimizer
 from torch import optim
 from torch.optim.lr_scheduler import _LRScheduler
-
+from torch.nn import Module
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._layer import Custom_Model
+    ...
 else:
     # if this file in package folder
-    from ._layer import Custom_Model
+    ...
 
 
 # -- DEFINE CONSTNAT -- #
@@ -26,50 +24,20 @@ class Suport_Schedule(Enum):
     Cosin_Annealing = "Cosin_Annealing"
 
 
-# -- DEFINE CONFIG -- #
-@dataclass
-class Scheduler_Config(Utils.Config):
-    _Optim_name: Suport_Optimizer
-    _Schedule_name: Suport_Schedule
-
-    _LR_Maximum: float = 0.005
-    _LR_Minimum: float = 0.0001
-    _LR_Decay: float = 1.0
-
-    _Term: Union[List[int], int] = 50
-    _Term_amp: float = 1.0
-
-    def _get_parameter(self, model: Custom_Model) -> Dict[str, Any]:
-        return {
-            "optimizer": optim.__dict__[self._Optim_name.value](model.parameters(), self._LR_Maximum),
-            "schedule_name": self._Schedule_name,
-            "term": self._Term,
-            "term_amp": self._Term_amp,
-            "maximum": self._LR_Maximum,
-            "minimum": self._LR_Minimum,
-            "decay": self._LR_Decay}
-
-    def _convert_to_dict(self) -> Dict[str, Union[Dict, str, int, float, bool, None]]:
-        return {
-            "_Optim_name": self._Optim_name.value,
-            "_Schedule_name": self._Schedule_name.value,
-            "_LR_Maximum": self._LR_Maximum,
-            "_LR_Minimum": self._LR_Minimum,
-            "_LR_Decay": self._LR_Decay,
-            "_Term": self._Term,
-            "_Term_amp": self._Term_amp}
-
-
 # -- Mation Function -- #
-class Custom_Scheduler():
-    class Base(_LRScheduler):
+class Scheduler():
+    class Basement(_LRScheduler):
         def __init__(
-                self, optimizer: optim.Optimizer,
-                term: Union[List[int], int], term_amp: float,
-                maximum: float, minimum: float, decay: float,
+                self,
+                optimizer: optim.Optimizer,
+                term: Union[List[int], int],
+                term_amp: float,
+                maximum: float,
+                minimum: float,
+                decay: float,
                 last_epoch: int = -1) -> None:
             self._Cycle: int = 0
-            self._Term = term
+            self._Term = term  # int -> fixed term list[int] -> milestone
             self._Term_amp = term_amp
 
             self._Maximum = maximum
@@ -113,17 +81,22 @@ class Custom_Scheduler():
         def get_lr(self):
             return [self._Maximum for _ in self.base_lrs]  # type: ignore
 
-    class Cosin_Annealing(Base):
+    class Cosin_Annealing(Basement):
         def get_lr(self):
             _amp = (1 + cos(pi * (self._This_count) / (self._This_term))) / 2
             _value = self._Minimum + (self._Maximum - self._Minimum) * _amp
             return [_value for _ in self.base_lrs]  # type: ignore
 
-    @staticmethod
-    def _build(
-            optimizer: optim.Optimizer, schedule_name: Suport_Schedule,
-            term: Union[List[int], int], term_amp: float,
-            maximum: float, minimum: float, decay: float,
-            last_epoch: int = -1) -> Tuple[optim.Optimizer, _LRScheduler]:
 
-        return optimizer, Custom_Scheduler.__dict__[schedule_name.value](optimizer, term, term_amp, maximum, minimum, decay, last_epoch)
+def _Optimizer_build(
+        optim_name: Suport_Optimizer,
+        model: Module,
+        initial_lr: float,
+        schedule_name: Optional[Suport_Schedule],
+        last_epoch: int = -1,
+        **additional_parameter) -> Tuple[optim.Optimizer, Optional[_LRScheduler]]:
+
+    _optim = optim.__dict__[optim_name.value](model.parameters(), initial_lr)
+    _scheduler = Scheduler.__dict__[schedule_name.value](_optim, last_epoch, additional_parameter) if schedule_name is not None else None
+
+    return _optim, _scheduler

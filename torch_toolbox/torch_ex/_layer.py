@@ -548,6 +548,48 @@ class Module_Componant():
         #         _output = self.decode(ouput_query, _output)
         #         return _output
 
+        class GatedFusion(Module):
+            def __init__(self, feature_channel: int, fusion_target_num: int) -> None:
+                super().__init__()
+                self.fusion_target_num = fusion_target_num
+
+                layer_list = []
+                for _ in range(fusion_target_num):
+                    layer_list.append(Linear(feature_channel, fusion_target_num))
+                self.fusion_weight_layer = ModuleList(layer_list)
+
+            def forward(self, x):
+                reshape_tensor = False
+                if x[0].dim() == 4:
+                    reshape_tensor = True
+                    B, C, H, W = x[0].shape
+                    x_copy = []
+                    for x_ele in x:
+                        x_copy.append(rearrange(x_ele, 'b c h w -> b (h w) c'))
+                else:
+                    x_copy = x.copy()
+
+                weight_tensor = 0
+                for i, fusion_layer in enumerate(self.fusion_weight_layer):
+                    weight_tensor += fusion_layer(x_copy[i])
+                softmax_weight = functional.softmax(weight_tensor, dim=-1)
+                split_weight = softmax_weight.chunk(self.fusion_target_num, dim=-1)
+                y = 0
+                for i, x_ele in enumerate(x_copy):
+                    y += (x_ele * split_weight[i])
+
+                if reshape_tensor:
+                    y = rearrange(y, 'b (h w) c -> b c h w', h=H, w=W)
+                return y
+
+            # x1 = torch.rand((3, 64, 480, 640))
+            # x2 = torch.rand((3, 64, 480, 640))
+            # x3 = torch.rand((3, 64, 480, 640))
+
+            # fusion_layer = GatedFusion(64, 3)
+            # y = fusion_layer([x1, x2, x3])
+            # print(y)
+
     class Backbone():
         class Base(Module):
             def __init__(self):
