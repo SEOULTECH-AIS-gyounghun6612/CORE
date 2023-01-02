@@ -11,8 +11,7 @@ requirments_package = [
 dependency_links = [
     "git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha"
 ]
-package_opt = {}
-
+package_opt = {"python_ex": ["data_file/*.json"]}
 
 setup(
     name="torch_ex",
@@ -22,7 +21,8 @@ setup(
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=["torch_ex"],
-    python_requires=">=3.9.0",
+    package_data=package_opt,
+    python_requires=">=3.10.0",
     dependency_links=dependency_links,
     install_requires=requirments_package,
     zip_safe=False,
