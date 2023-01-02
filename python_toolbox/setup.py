@@ -8,7 +8,7 @@ requirments_package = [
     'flake8']
 
 dependency_links = []
-package_opt = {"python_ex": ["data_file/*.json"]}
+package_opt = {}
 
 setup(
     name="python_ex",
@@ -21,6 +21,5 @@ setup(
     python_requires=">= 3.10.0",
     dependency_links=dependency_links,
     install_requires=requirments_package,
-    package_data=package_opt,
     zip_safe=False
 )
