@@ -50,7 +50,7 @@ class Learning_Process():
             num_worker: int,
             last_epoch: int = -1,
             save_root: str = "./",
-            gpu_list: int = 0,
+            gpu_id: Optional[int] = None,
             project_name: Optional[str] = None,
             description: Optional[str] = None
         ):
@@ -75,7 +75,7 @@ class Learning_Process():
             self._num_worker = num_worker
 
             # - gpu
-            self._gpu_list: List[int] = [gpu_list, ]
+            self._gpu_list: List[int] = [] if gpu_id is None else [gpu_id, ]
 
         # Freeze function
         # --- for init function --- #

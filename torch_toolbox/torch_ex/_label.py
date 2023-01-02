@@ -28,7 +28,7 @@ class Data_Style(Enum):
     BBOX = "bboxes"
 
 
-class Data_File(Enum):
+class File_Style(Enum):
     IMAGE_FILE = 0
     ANNOTATION = 1
     ZIP_FILE = 2
@@ -57,7 +57,7 @@ class Label_Structure():
 @dataclass
 class File_Profile():
     _data_style: Data_Style
-    _data_file: Data_File
+    _data_file: File_Style
     _file_directory: Optional[str] = None
 
     _file_list: list = field(default_factory=list)
@@ -69,7 +69,7 @@ class Label():
         class Basement():
             _directory: Dict
 
-            def __init__(self, root: str, file_info: Dict[Learning_Mode, List[Tuple[Data_Style, Data_File, Optional[str]]]]) -> None:
+            def __init__(self, root: str, file_info: Dict[Learning_Mode, List[Tuple[Data_Style, File_Style, Optional[str]]]]) -> None:
                 self._root_dir = root if Directory._exist_check(root) else Directory._relative_root()
                 self._file_info = file_info
 
@@ -87,12 +87,12 @@ class Label():
                 return file_profiles
 
         class BDD_100k(Basement):
-            _directory: Dict[Data_Style, Dict[Data_File, str]] = {
+            _directory: Dict[Data_Style, Dict[File_Style, str]] = {
                 Data_Style.IMAGE: {
-                    Data_File.IMAGE_FILE: Directory._divider_check("bdd100k/images/{}/{}/"),
+                    File_Style.IMAGE_FILE: Directory._divider_check("bdd100k/images/{}/{}/"),
                 },
                 Data_Style.SEMENTIC_SEG: {
-                    Data_File.IMAGE_FILE: Directory._divider_check("bdd100k/labels/sem_seg/colormaps/{}/")
+                    File_Style.IMAGE_FILE: Directory._divider_check("bdd100k/labels/sem_seg/colormaps/{}/")
                 }
             }
 
@@ -101,12 +101,12 @@ class Label():
                 _mode = self._learning_mode.value
 
                 for _profile in _file_profiles:
-                    if _profile._data_file == Data_File.IMAGE_FILE:
+                    if _profile._data_file == File_Style.IMAGE_FILE:
                         _dir = f"{self._root_dir}{self._directory[_profile._data_style][_profile._data_file]}"
                         _dir = _dir.format(_profile._file_directory, _mode) if _profile._data_style == Data_Style.IMAGE else _dir.format(_mode)
                         _profile._file_list = sorted(Directory._inside_search(_dir))
 
-                    elif _profile._data_file == Data_File.ANNOTATION:
+                    elif _profile._data_file == File_Style.ANNOTATION:
                         ...
 
                 return _file_profiles
@@ -168,7 +168,7 @@ class Label():
                     _pick_file = profile._file_list[index]
                     _data_style = profile._data_style.value
 
-                    if profile._data_file == Data_File.IMAGE_FILE:
+                    if profile._data_file == File_Style.IMAGE_FILE:
                         _data = File_IO._image_read(_pick_file)
 
                         if profile._data_style == Data_Style.IMAGE:
