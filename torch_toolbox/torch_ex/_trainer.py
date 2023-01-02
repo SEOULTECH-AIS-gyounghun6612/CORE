@@ -10,6 +10,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import Optimizer
 
 from python_ex._base import Directory, File, Utils
+from python_ex._vision import cv2
 
 if __package__ == "":
     # if this file in local project
@@ -93,8 +94,8 @@ class Learning_Process():
                 _file_profiles = label_io._Get_file_profiles()
                 self._dataset[_mode] = Custom_Dataset(label_process, _file_profiles, amplification[_mode], augmentation[_mode])
 
-        def _Set_model_parameter(self, model_template: Type[Custom_Model], **model_parameter):
-            self._model_template = model_template
+        def _Set_model_parameter(self, model_structure: Type[Custom_Model], **model_parameter):
+            self._model_structure = model_structure
             self._model_parameters = model_parameter
 
         def _Set_optim_schedule_prameter(self, optim_name: Suport_Optimizer, initial_lr: float, schedule_name: Suport_Schedule, **schedule_parmeter):
@@ -128,6 +129,10 @@ class Learning_Process():
             # - gpu
             self._gpu_list = gpu_list
 
+            if len(self._gpu_list) > 1:
+                cv2.setNumThreads(0)
+                cv2.ocl.setUseOpenCL(False)
+
         def _Set_tracker(
             self,
             tracking_param: Dict[Learning_Mode, Dict[Process_Type, List[str]]],
@@ -139,13 +144,13 @@ class Learning_Process():
 
         # --- for work function --- #
         def _Set_learning_model(self, gpu_id: int) -> Tuple[MODEL, Optimizer, Optional[_LRScheduler]]:
-            _model = self._model_template(**self._model_parameters)
+            _model = self._model_structure(**self._model_parameters)
             _model = _model.cuda(gpu_id) if gpu_id != -1 else _model
             _optim, _scheduler = _Optimizer_build(self._optim_name, _model, self._initial_lr, self._schedule_name, last_epoch=self._last_epoch, **self._schedule_option)
 
             return _model, _optim, _scheduler
 
-        def _Set_activate_mode(
+        def _Active_mode_change_to(
                 self,
                 mode: Learning_Mode,
                 model: MODEL,
@@ -223,26 +228,26 @@ class Learning_Process():
                 # Initialize distributed
                 distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=_num_of_this_node)
                 # Set dataloader and sampler
-                for _mode in self._learning_mode:
-                    _sampler[_mode] = DistributedSampler(self._dataset[_mode], rank=_num_of_this_node, shuffle=(_mode == Learning_Mode.TRAIN))
-                    _dataloader[_mode] = DataLoader(
-                        dataset=self._dataset[_mode],
+                for _this_mode in self._learning_mode:
+                    _sampler[_this_mode] = DistributedSampler(self._dataset[_this_mode], rank=_num_of_this_node, shuffle=(_this_mode == Learning_Mode.TRAIN))
+                    _dataloader[_this_mode] = DataLoader(
+                        dataset=self._dataset[_this_mode],
                         batch_size=self._batch_size,
                         num_workers=self._num_worker,
-                        sampler=_sampler[_mode])
+                        sampler=_sampler[_this_mode])
                 # Set model optim and scheduler
                 _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
                 _model = DistributedDataParallel(_model, device_ids=[_num_of_this_node if _this_gpu_id == -1 else _this_gpu_id])
 
             else:  # not use multi-process
                 # Set dataloader and sampler
-                for _mode in self._learning_mode:
-                    _sampler[_mode] = None
-                    _dataloader[_mode] = DataLoader(
-                        dataset=self._dataset[_mode],
+                for _this_mode in self._learning_mode:
+                    _sampler[_this_mode] = None
+                    _dataloader[_this_mode] = DataLoader(
+                        dataset=self._dataset[_this_mode],
                         batch_size=self._batch_size,
                         num_workers=self._num_worker,
-                        shuffle=_mode == Learning_Mode.TRAIN)
+                        shuffle=_this_mode == Learning_Mode.TRAIN)
                 # Set model optim and scheduler
                 _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
 
@@ -250,17 +255,17 @@ class Learning_Process():
             for _epoch in range(self._last_epoch + 1, self._max_epoch):
                 _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _num_of_this_node is MAIN_RANK else f"{self._save_root}{_epoch}{Directory._Divider}"
 
-                for _mode in self._learning_mode:
-                    _this_dataloader, _this_sampler = self._Set_activate_mode(_mode, _model, _dataloader, _sampler)
+                for _this_mode in self._learning_mode:
+                    _this_dataloader, _this_sampler = self._Active_mode_change_to(_this_mode, _model, _dataloader, _sampler)
                     _this_sampler.set_epoch(_epoch) if _this_sampler is not None else ...
 
-                    _mode_dir = Directory._make(f"{_mode.value}", _epoch_dir) if _num_of_this_node is MAIN_RANK else f"{_epoch_dir}{_mode.value}{Directory._Divider}"
+                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _num_of_this_node is MAIN_RANK else f"{_epoch_dir}{_this_mode.value}{Directory._Divider}"
 
-                    if _mode == Learning_Mode.TRAIN:
-                        self._Learning(_num_of_this_node, _epoch, _mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+                    if _this_mode == Learning_Mode.TRAIN:
+                        self._Learning(_num_of_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
                     else:
                         with no_grad():
-                            self._Learning(_num_of_this_node, _epoch, _mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+                            self._Learning(_num_of_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
 
                 if _scheduler is not None:
                     _scheduler.step()
