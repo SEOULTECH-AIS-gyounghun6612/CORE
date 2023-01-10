@@ -15,14 +15,14 @@ from python_ex._vision import cv2
 if __package__ == "":
     # if this file in local project
     from torch_ex._torch_base import Learning_Mode, Tracking, Parameter_Type
-    from torch_ex._label import Label, File_Profile
+    from torch_ex._label import Label
     from torch_ex._dataset import Custom_Dataset, Augment
     from torch_ex._layer import Custom_Model
     from torch_ex._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Tracking, Parameter_Type
-    from ._label import Label, File_Profile
+    from ._label import Label
     from ._dataset import Custom_Dataset, Augment
     from ._layer import Custom_Model
     from ._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
@@ -63,7 +63,7 @@ class Learning_Process():
             self._description = description
 
             # Setting about file I/O
-            self._save_root = save_root
+            self._save_root = Directory._make(Directory._divider_check(f"{project_name}/{description}/"), save_root)
 
             # Setting about learning
             # - base
@@ -103,6 +103,9 @@ class Learning_Process():
                 self._dataset.update({
                     _mode: dataset_class(label_process, file_profiles._Get_file_profiles(_mode), _amp, augmentation[_mode])
                 })
+
+            # in later make the code, that data info update to tracker's annotation
+            self._save_root = Directory._make(Directory._divider_check(f"{label_process._lable_name.value}/"), self._save_root)
 
         def _Set_model_parameter(self, model_structure: Type[Custom_Model], **model_parameter):
             self._model_structure = model_structure
@@ -254,7 +257,7 @@ class Learning_Process():
 
                 # save log file
                 if _this_node is MAIN_RANK:
-                    self._tracker._insert({"_Last_epoch": _epoch}, self._tracker._Annotation)
+                    self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
                     self._tracker._save(self._save_root, "trainer_log.json")
 
                     # save model
@@ -268,6 +271,10 @@ class Learning_Process():
                     param.grad.data /= size
 
         def _Work(self, num_of_processer: int = 0):
+            _this_date = Utils.Time._apply_text_form(Utils.Time._stemp(), is_local=True, text_format="%Y-%m-%d")
+            self._tracker._insert({"Date": _this_date}, self._tracker._Annotation)
+            self._save_root = Directory._make(Directory._divider_check(f"{_this_date}/"), self._save_root)
+
             if self._multi_method == Multi_Method.DDP:
                 _share_block = multiprocessing.Manager().Queue()
                 spawn(self._Process, nprocs=num_of_processer, args=(_share_block))
