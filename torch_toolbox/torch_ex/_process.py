@@ -83,9 +83,14 @@ class Learning_Process():
                 cv2.ocl.setUseOpenCL(False)
 
             # - multiprocess (default -> Not use)
-            self._world_size = world_size
-            self._this_rank = this_rank
             self._multi_method = multi_method
+
+            if self._multi_method is Multi_Method.NONE:
+                self._world_size = 1
+            else:
+                self._world_size = world_size if len(self._gpu_list) else world_size * len(self._gpu_list)
+
+            self._this_rank = this_rank
             self._multi_protocal = multi_protocal
 
         # Freeze function
