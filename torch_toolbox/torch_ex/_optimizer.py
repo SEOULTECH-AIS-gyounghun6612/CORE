@@ -97,6 +97,6 @@ def _Optimizer_build(
         **additional_parameter) -> Tuple[optim.Optimizer, Optional[_LRScheduler]]:
 
     _optim = optim.__dict__[optim_name.value](model.parameters(), initial_lr)
-    _scheduler = Scheduler.__dict__[schedule_name.value](_optim, last_epoch, additional_parameter) if schedule_name is not None else None
+    _scheduler = Scheduler.__dict__[schedule_name.value](_optim, last_epoch, **additional_parameter) if schedule_name is not None else None
 
     return _optim, _scheduler

@@ -66,12 +66,6 @@ class Layer_Config():
         _Out_features: int
         _Bias: bool = True
 
-        def _convert_to_dict(self) -> Dict[str, Any]:
-            return super()._convert_to_dict()
-
-        def _restore_from_dict(self, data: Dict[str, Any]):
-            return super()._restore_from_dict(data)
-
         def _make_parameter(self):
             return {
                 "in_features": self._In_features,
@@ -316,6 +310,20 @@ class Module_Componant_Config():
 
 
 # -- Mation Function -- #
+class Custom_Model(Module):
+    def __init__(self, config: Custom_Model_Config):
+        super(Custom_Model, self).__init__()
+        self.model_name = config._Model_name
+
+    # Freeze function
+    def _sumarry(self, input_shape):
+        ModelSummary(self, input_shape)
+
+    # Un-Freeze function
+    def forward(self, x):
+        return x
+
+
 class Layer():
     @ staticmethod
     def _make_module_list(module_list: List) -> ModuleList:
@@ -358,20 +366,6 @@ class Layer():
             return Sigmoid(**active_opt._make_parameter())
         elif active_opt._Type == Suport_Active.GELU:
             return GELU(**active_opt._make_parameter())
-
-
-class Custom_Model(Module):
-    def __init__(self, config: Custom_Model_Config):
-        super(Custom_Model, self).__init__()
-        self.model_name = config._Model_name
-
-    # Freeze function
-    def _sumarry(self, input_shape):
-        ModelSummary(self, input_shape)
-
-    # Un-Freeze function
-    def forward(self, x):
-        return x
 
 
 class Module_Componant():

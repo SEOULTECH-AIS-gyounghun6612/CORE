@@ -94,14 +94,14 @@ class Learning_Process():
                 self,
                 dataset_class: Type[Custom_Dataset],
                 label_process: Label.Process.Basement,
-                file_profiles: Dict[Learning_Mode, List[File_Profile]],
+                file_profiles: Label.File_IO.Basement,
                 amplification: Dict[Learning_Mode, int],
                 augmentation: Dict[Learning_Mode, Augment.Basement]
         ):
             self._dataset: Dict[Learning_Mode, Custom_Dataset] = {}
-            for _mode, file_info in file_profiles.items():
+            for _mode, _amp in amplification.items():
                 self._dataset.update({
-                    _mode: dataset_class(label_process, file_info, amplification[_mode], augmentation[_mode])
+                    _mode: dataset_class(label_process, file_profiles._Get_file_profiles(_mode), _amp, augmentation[_mode])
                 })
 
         def _Set_model_parameter(self, model_structure: Type[Custom_Model], **model_parameter):

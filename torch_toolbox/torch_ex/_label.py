@@ -23,7 +23,7 @@ class Support_Label(Enum):
 class Label_Style(Enum):
     IMAGE = "image"
     CLASSIFICATION = "classification"
-    SEMENTIC_SEG = "sem_seg"
+    SEMENTIC_SEG = "mask"
     BBOX = "bboxes"
 
 
@@ -98,7 +98,7 @@ class Label():
                 for _profile in _file_profiles:
                     if _profile._data_file == File_Style.IMAGE_FILE:
                         _dir = f"{self._root_dir}{self._directory[_profile._data_style][_profile._data_file]}"
-                        _dir = _dir.format(_profile._optional_info, mode) if _profile._data_style == Label_Style.IMAGE else _dir.format(mode)
+                        _dir = _dir.format(_profile._optional_info, mode.value) if _profile._data_style == Label_Style.IMAGE else _dir.format(mode.value)
                         _profile._file_list = sorted(Directory._inside_search(_dir))
 
                     elif _profile._data_file == File_Style.ANNOTATION:
@@ -155,9 +155,7 @@ class Label():
             def _work(self, file_profiles: List[File_Profile], index: int) -> Dict[str, ndarray]:
                 _holder = {"index": Array_Process._converter(index, dtype=Np_Dtype.INT)}
 
-                _image_count = 0
-                _mask_count = 0
-                # _bbox_count = 0
+                _count: Dict[str, int] = dict((_style.value, 0) for _style in Label_Style)
 
                 for profile in file_profiles:
                     _pick_file = profile._file_list[index]
@@ -166,21 +164,15 @@ class Label():
                     if profile._data_file == File_Style.IMAGE_FILE:
                         _data = File_IO._image_read(_pick_file)
 
-                        if profile._data_style == Label_Style.IMAGE:
-                            if _data_style in _holder.keys():
-                                _holder.update({f"{_data_style}{_image_count}": _data})
-                                _image_count += 1
-                            else:
-                                _holder.update({_data_style: _data})
-
-                        elif profile._data_style == Label_Style.SEMENTIC_SEG:
+                        if _data_style == Label_Style.SEMENTIC_SEG.value:
                             _data = Label_Img_Process._color_map_to_classification(_data, self._activate_label[profile._data_style])
 
-                            if _data_style in _holder.keys():
-                                _holder.update({f"{_data_style}{_image_count}": _data})
-                                _mask_count += 1
-                            else:
-                                _holder.update({_data_style: _data})
+                        if _data_style in _holder.keys():
+                            _holder.update({f"{_data_style}{_count[_data_style]}": _data})
+                            _count[_data_style] += 1
+
+                        else:
+                            _holder.update({_data_style: _data})
 
                 return _holder
 

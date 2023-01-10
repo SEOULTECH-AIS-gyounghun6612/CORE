@@ -113,13 +113,13 @@ class Dataset_Config(Utils.Config):
                 Support_Label(self.label_name),
                 [Label_Style(_style_name) for _style_name in self.label_style],
                 self.meta_file),
-            "file_profiles": dict((
-                Learning_Mode(_mode_name),
-                [Label.File_IO.__dict__[self.label_name](
-                    (Label_Style(_label_style), File_Style(_file_style), _optional),
-                    self.data_root
-                ) for _label_style, _file_style, _optional in _data_list]
-            ) for _mode_name, _data_list in self.file_info.items()),
+            "file_profiles": Label.File_IO.__dict__[self.label_name](
+                dict((
+                    Learning_Mode(_mode_name),
+                    [(Label_Style(_label_style), File_Style(_file_style), _optional) for _label_style, _file_style, _optional in _data_list]
+                ) for _mode_name, _data_list in self.file_info.items()),
+                self.data_root
+            ),
             "amplification": dict((
                 Learning_Mode(_mode_name),
                 _value
