@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Type
 from dataclasses import dataclass, field
 
 from torch import cuda
@@ -215,6 +215,13 @@ class Config():
             "parameter": model_config._convert_to_dict()
         }})
 
-    # Un-Freeze function
-    def _Get_model_structure_config(self):
-        raise NotImplementedError
+    def _Get_model_structure_config(self, model_config: Type[Utils.Config]):
+        _model_type = self._config["model_config"]["type"]
+
+        if model_config.__name__ == _model_type:
+            return model_config(**self._config["model_config"]["parameter"])._get_parameter()
+        else:
+            raise ValueError(
+                f"The information in the config file does not match the data in the config structure.\n\
+                  config file: {_model_type} != input config: {model_config.__name__}\n\
+                  Please check it again.")
