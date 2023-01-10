@@ -88,7 +88,7 @@ class Learning_Process():
             if self._multi_method is Multi_Method.NONE:
                 self._world_size = 1
             else:
-                self._world_size = world_size if len(self._gpu_list) else world_size * len(self._gpu_list)
+                self._world_size = world_size * len(self._gpu_list) if len(self._gpu_list) else world_size
 
             self._this_rank = this_rank
             self._multi_protocal = multi_protocal
