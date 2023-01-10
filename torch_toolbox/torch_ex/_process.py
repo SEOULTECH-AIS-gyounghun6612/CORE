@@ -14,15 +14,15 @@ from python_ex._vision import cv2
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Tracking, Process_Type
-    from torch_ex._label import Label
+    from torch_ex._torch_base import Learning_Mode, Tracking, Parameter_Type
+    from torch_ex._label import Label, File_Profile
     from torch_ex._dataset import Custom_Dataset, Augment
     from torch_ex._layer import Custom_Model
     from torch_ex._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Tracking, Process_Type
-    from ._label import Label
+    from ._torch_base import Learning_Mode, Tracking, Parameter_Type
+    from ._label import Label, File_Profile
     from ._dataset import Custom_Dataset, Augment
     from ._layer import Custom_Model
     from ._optimizer import _LRScheduler, Suport_Optimizer, Suport_Schedule, _Optimizer_build
@@ -46,53 +46,63 @@ class Learning_Process():
             self,
             max_epoch: int,
             learning_mode: List[Learning_Mode],
-            batch_size: int,
-            num_worker: int,
+            batch_size_per_node: int,
+            num_worker_per_node: int,
             last_epoch: int = -1,
-            save_root: str = "./",
-            gpu_id: Optional[int] = None,
             project_name: Optional[str] = None,
-            description: Optional[str] = None
+            description: Optional[str] = None,
+            save_root: str = "./",
+            world_size: int = 1,
+            this_rank: int = 0,
+            gpu_ids: List[int] = list(range(cuda.device_count())),
+            multi_method: Multi_Method = Multi_Method.DDP,
+            multi_protocal: Optional[str] = "tcp://127.0.0.1:10001",
         ):
-            # information about this learning
+            # Information about this learning
             self._project_name = project_name
             self._description = description
 
-            # setting about file I/O
+            # Setting about file I/O
             self._save_root = save_root
 
-            # setting about learning
+            # Setting about learning
             # - base
-            self._world_size = 1
-            self._this_rank = 0
-            self._multi_method = Multi_Method.NONE
             self._max_epoch = max_epoch
             self._last_epoch = last_epoch
             self._learning_mode = learning_mode
 
             # - dataloader
-            self._batch_size = batch_size
-            self._num_worker = num_worker
+            self._batch_size = batch_size_per_node
+            self._num_worker = num_worker_per_node
 
             # - gpu
-            self._gpu_list: List[int] = [] if gpu_id is None else [gpu_id, ]
+            self._gpu_list = gpu_ids
+
+            if len(self._gpu_list) > 1:
+                cv2.setNumThreads(0)
+                cv2.ocl.setUseOpenCL(False)
+
+            # - multiprocess (default -> Not use)
+            self._world_size = world_size
+            self._this_rank = this_rank
+            self._multi_method = multi_method
+            self._multi_protocal = multi_protocal
 
         # Freeze function
         # --- for init function --- #
         def _Set_dataset(
-            self,
-            label_process: Label.Process.Basement,
-            label_io: Label.File_IO.Basement,
-            amplification: Dict[Learning_Mode, int],
-            augmentation: Dict[Learning_Mode, Augment.Basement]
+                self,
+                dataset_class: Type[Custom_Dataset],
+                label_process: Label.Process.Basement,
+                file_profiles: Dict[Learning_Mode, List[File_Profile]],
+                amplification: Dict[Learning_Mode, int],
+                augmentation: Dict[Learning_Mode, Augment.Basement]
         ):
-            # self._Log._insert({"03_dataloader": dateset_config._convert_to_dict()}, access_point=self._Log._Annotation)
-
             self._dataset: Dict[Learning_Mode, Custom_Dataset] = {}
-            for _mode in self._learning_mode:
-                label_io._Set_learning_mode(_mode)
-                _file_profiles = label_io._Get_file_profiles()
-                self._dataset[_mode] = Custom_Dataset(label_process, _file_profiles, amplification[_mode], augmentation[_mode])
+            for _mode, file_info in file_profiles.items():
+                self._dataset.update({
+                    _mode: dataset_class(label_process, file_info, amplification[_mode], augmentation[_mode])
+                })
 
         def _Set_model_parameter(self, model_structure: Type[Custom_Model], **model_parameter):
             self._model_structure = model_structure
@@ -105,38 +115,10 @@ class Learning_Process():
             self._schedule_name = schedule_name
             self._schedule_option = schedule_parmeter
 
-        def _Set_multi_process(
-            self,
-            world_size: int,
-            this_rank: int,
-            batch_size_per_node: int,
-            num_worker_per_node: int,
-            multi_method: Multi_Method = Multi_Method.DDP,
-            multi_protocal: Optional[str] = "tcp://127.0.0.1:10001",
-            gpu_list: List[int] = list(range(cuda.device_count()))
-        ) -> None:
-            # setting about multi-process
-            # - process init
-            self._world_size = world_size
-            self._this_rank = this_rank
-            self._multi_method = multi_method
-            self._multi_protocal = multi_protocal
-
-            # - dataloader
-            self._batch_size = batch_size_per_node
-            self._num_worker = num_worker_per_node
-
-            # - gpu
-            self._gpu_list = gpu_list
-
-            if len(self._gpu_list) > 1:
-                cv2.setNumThreads(0)
-                cv2.ocl.setUseOpenCL(False)
-
         def _Set_tracker(
             self,
-            tracking_param: Dict[Learning_Mode, Dict[Process_Type, List[str]]],
-            observing_param: Dict[Learning_Mode, Dict[Process_Type, Optional[List[str]]]]
+            tracking_param: Dict[Learning_Mode, Dict[Parameter_Type, List[str]]],
+            observing_param: Dict[Learning_Mode, Dict[Parameter_Type, Optional[List[str]]]]
         ):
             self._tracker = Tracking.To_Process(tracking_param, observing_param)
             # insert learning info
@@ -217,19 +199,19 @@ class Learning_Process():
             Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
 
         def _Process(self, processer_num: int, share_block: Optional[multiprocessing.Queue] = None):
-            _num_of_this_node = self._this_rank + processer_num
+            _this_node = self._this_rank + processer_num
             _this_gpu_id = self._gpu_list[processer_num] if len(self._gpu_list) else -1
 
             _dataloader: Dict[Learning_Mode, DataLoader] = {}
             _sampler: Dict[Learning_Mode, Optional[DistributedSampler]] = {}
 
-            # set process init
+            # Set process init
+            # - Initialize distributed
             if self._multi_method == Multi_Method.DDP:
-                # Initialize distributed
-                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=_num_of_this_node)
+                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=_this_node)
                 # Set dataloader and sampler
                 for _this_mode in self._learning_mode:
-                    _sampler[_this_mode] = DistributedSampler(self._dataset[_this_mode], rank=_num_of_this_node, shuffle=(_this_mode == Learning_Mode.TRAIN))
+                    _sampler[_this_mode] = DistributedSampler(self._dataset[_this_mode], rank=_this_node, shuffle=(_this_mode == Learning_Mode.TRAIN))
                     _dataloader[_this_mode] = DataLoader(
                         dataset=self._dataset[_this_mode],
                         batch_size=self._batch_size,
@@ -237,9 +219,9 @@ class Learning_Process():
                         sampler=_sampler[_this_mode])
                 # Set model optim and scheduler
                 _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
-                _model = DistributedDataParallel(_model, device_ids=[_num_of_this_node if _this_gpu_id == -1 else _this_gpu_id])
-
-            else:  # not use multi-process
+                _model = DistributedDataParallel(_model, device_ids=[_this_node if _this_gpu_id == -1 else _this_gpu_id])
+            # - Not use multi-process
+            else:
                 # Set dataloader and sampler
                 for _this_mode in self._learning_mode:
                     _sampler[_this_mode] = None
@@ -253,25 +235,25 @@ class Learning_Process():
 
             # Do learning process
             for _epoch in range(self._last_epoch + 1, self._max_epoch):
-                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _num_of_this_node is MAIN_RANK else f"{self._save_root}{_epoch}{Directory._Divider}"
+                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _this_node is MAIN_RANK else f"{self._save_root}{_epoch}{Directory._Divider}"
 
                 for _this_mode in self._learning_mode:
                     _this_dataloader, _this_sampler = self._Active_mode_change_to(_this_mode, _model, _dataloader, _sampler)
+
+                    # - When use sampler, shuffling
                     _this_sampler.set_epoch(_epoch) if _this_sampler is not None else ...
 
-                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _num_of_this_node is MAIN_RANK else f"{_epoch_dir}{_this_mode.value}{Directory._Divider}"
-
+                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _this_node is MAIN_RANK else f"{_epoch_dir}{_this_mode.value}{Directory._Divider}"
                     if _this_mode == Learning_Mode.TRAIN:
-                        self._Learning(_num_of_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+                        self._Learning(_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
                     else:
                         with no_grad():
-                            self._Learning(_num_of_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
+                            self._Learning(_this_node, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
 
-                if _scheduler is not None:
-                    _scheduler.step()
+                _scheduler.step() if _scheduler is not None else ...
 
                 # save log file
-                if _num_of_this_node is MAIN_RANK:
+                if _this_node is MAIN_RANK:
                     self._tracker._insert({"_Last_epoch": _epoch}, self._tracker._Annotation)
                     self._tracker._save(self._save_root, "trainer_log.json")
 
