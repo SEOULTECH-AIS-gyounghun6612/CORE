@@ -275,16 +275,17 @@ class Learning_Process():
                     distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
                     param.grad.data /= size
 
-        def _Work(self, num_of_processer: int = 0):
+        def _Work(self):
             _this_date = Utils.Time._apply_text_form(Utils.Time._stemp(), is_local=True, text_format="%Y-%m-%d")
             self._tracker._insert({"Date": _this_date}, self._tracker._Annotation)
             self._save_root = Directory._make(Directory._divider_check(f"{_this_date}/"), self._save_root)
 
             if self._multi_method == Multi_Method.DDP:
                 _share_block = multiprocessing.Manager().Queue()
-                spawn(self._Process, nprocs=num_of_processer, args=(_share_block))
+                _gpu_count = len(self._gpu_list)
+                spawn(self._Process, nprocs=_gpu_count, args=(_share_block, ))
             else:
-                self._Process(processer_num=num_of_processer)
+                self._Process(processer_num=0)
 
         # Un-Freeze function
         def _Learning(
