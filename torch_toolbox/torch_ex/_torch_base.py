@@ -15,7 +15,7 @@ class Learning_Mode(Enum):
     TEST = "test"
 
 
-class Process_Type(Enum):
+class Parameter_Type(Enum):
     LOSS = "loss"
     ACC = "acc"
 
@@ -122,7 +122,7 @@ class Tracking():
     class To_Process(Tracker):
         _Data: Dict[str, Dict[str, JSON_WRITEABLE]]  # {Learning_mode:  {Logging_mode: {Logging_Parameter: {Epoch: []}}
 
-        def __init__(self, tracking_param: Dict[Learning_Mode, Dict[Process_Type, List[str]]], observing_param: Dict[Learning_Mode, Dict[Process_Type, Optional[List[str]]]]):
+        def __init__(self, tracking_param: Dict[Learning_Mode, Dict[Parameter_Type, List[str]]], observing_param: Dict[Learning_Mode, Dict[Parameter_Type, Optional[List[str]]]]):
             _tracking_param = dict((
                 _mode_key.value,
                 dict((
@@ -232,7 +232,7 @@ class Tracking():
             _learning_mode = self._Active_mode.value
 
             _tracking = self._observing_param[_learning_mode]
-            _target_key = Process_Type.ACC.value if Process_Type.ACC.value in _tracking.keys() else Process_Type.LOSS.value
+            _target_key = Parameter_Type.ACC.value if Parameter_Type.ACC.value in _tracking.keys() else Parameter_Type.LOSS.value
             _access_point = self._Data[_learning_mode][_target_key]
 
             if isinstance(_access_point, dict):
