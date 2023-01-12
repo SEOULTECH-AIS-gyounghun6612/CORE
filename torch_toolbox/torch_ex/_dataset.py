@@ -139,16 +139,16 @@ class Custom_Dataset(Dataset):
         self._Amplification = amplification
         self._Augment = augmentation
 
+    # Freeze function
     def __len__(self):
         return len(self._file_profiles[0]._file_list) * self._Amplification
 
     def __getitem__(self, index) -> Dict[str, Tensor]:
         _source_index = index // self._Amplification
+        return self._Pre_process(self._label_process._work(self._file_profiles, _source_index))
 
-        _datas: Dict[str, Tensor] = {}
-
-        _pick_data = self._label_process._work(self._file_profiles, _source_index)
+    # Un-Freeze function
+    def _Pre_process(self, _pick_data: Dict[str, Any]) -> Dict[str, Tensor]:
+        _datas = self._Augment(_pick_data)
         _datas.update({"index": tensor(_pick_data["index"])})
-        _datas.update(self._Augment(_pick_data))
-
         return _datas
