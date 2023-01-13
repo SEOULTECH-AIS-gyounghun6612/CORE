@@ -108,7 +108,7 @@ class Augment_Config(Utils.Config):
     # transform_list: Dict[str, Dict[str, Dict[str, JSON_WRITEABLE]]]  # Dict[Learning_Mode, Dict[Tr_name, Parameter dict]]
 
     agment_method: str = Supported_Augment.ALBUIMIENTATIONS.value
-    agment_option: Optional[Dict[str, JSON_WRITEABLE]] = None
+    agment_option: Optional[Dict[str, JSON_WRITEABLE]] = field(default_factory=lambda: {"bbox_parameter": None, "keypoints_parameter": None, "group_parmaeter": None})
 
     def _get_parameter(self):
         _tr_dict = {}
