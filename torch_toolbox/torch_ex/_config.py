@@ -123,7 +123,7 @@ class Augment_Config(Utils.Config):
             _tr_dict.update({"Resize": {"size": self.data_size}})
 
         if self.horizontal_flip_rate or self.vertical_flip_rate:
-            _tr_dict.update({"Random_Flip": {"horizontal_flip_rate": self.horizontal_flip_rate, "vertical_flip_rate": self.vertical_flip_rate}})
+            _tr_dict.update({"Random_Flip": {"horizontal_rate": self.horizontal_flip_rate, "vertical_rate": self.vertical_flip_rate}})
 
         if self.is_norm:
             _param = {}
