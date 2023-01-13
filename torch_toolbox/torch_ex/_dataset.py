@@ -40,7 +40,7 @@ class Supported_Transform():
             if aug_type == "Albumentations":
                 return [A.Rotate(self.angle_limit), ]
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
     @dataclass
     class Normalization(Base):
@@ -51,7 +51,7 @@ class Supported_Transform():
             if aug_type == "Albumentations":
                 return [A.Normalize(self.mean, self.std), ]
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
     @dataclass
     class Random_Flip(Base):
@@ -65,7 +65,7 @@ class Supported_Transform():
                 _list.append(A.VerticalFlip(p=self.vertical_rate)) if self.vertical_rate else ...
                 return _list
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
     @dataclass
     class Resize(Base):
@@ -76,7 +76,7 @@ class Supported_Transform():
                 _h, _w, = self.size[:2]
                 return [A.Resize(_h, _w), ]
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
     @dataclass
     class Random_Crop(Base):
@@ -88,7 +88,7 @@ class Supported_Transform():
                 return [A.RandomCrop(_h, _w), ]
 
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
     @dataclass
     class To_Tenor(Base):
@@ -96,7 +96,7 @@ class Supported_Transform():
             if aug_type == "Albumentations":
                 return [ToTensorV2(), ]
             else:
-                raise ValueError
+                raise ValueError(f"{aug_type} augmentation is not support")
 
 
 class Augment():
