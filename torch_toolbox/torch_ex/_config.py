@@ -1,5 +1,7 @@
-from typing import List, Dict, Any, Tuple, Optional, Type
+from typing import List, Dict, Any, Tuple, Optional, Type, Union
 from dataclasses import dataclass, field
+
+from math import pi, cos, sin, ceil
 
 from torch import cuda
 from python_ex._base import Directory, File, Utils, JSON_WRITEABLE
@@ -92,6 +94,50 @@ class Tracker_Config(Utils.Config):
 
 
 @dataclass
+class Augment_Config(Utils.Config):
+    data_size: List[int]
+    rotate_limit: int = 0
+
+    is_norm: bool = True
+    norm_mean: Optional[List[float]] = None
+    norm_std: Optional[List[float]] = None
+
+    horizontal_flip_rate: float = 0.0
+    vertical_flip_rate: float = 0.0
+
+    # transform_list: Dict[str, Dict[str, Dict[str, JSON_WRITEABLE]]]  # Dict[Learning_Mode, Dict[Tr_name, Parameter dict]]
+
+    agment_method: str = Supported_Augment.ALBUIMIENTATIONS.value
+    agment_option: Optional[Dict[str, JSON_WRITEABLE]] = None
+
+    def _get_parameter(self):
+        _tr_dict = {}
+        if self.rotate_limit:
+            _rad = pi * self.rotate_limit / 180
+            _h = ceil(self.data_size[1] * sin(_rad) + self.data_size[0] * cos(_rad))
+            _w = ceil(self.data_size[0] * sin(_rad) + self.data_size[1] * cos(_rad))
+            _tr_dict.update({"Resize": {"size": [_h, _w] + self.data_size[2:]}})
+            _tr_dict.update({"Rotate": {"angle_limit": self.rotate_limit}})
+            _tr_dict.update({"Random_Crop": {"size": self.data_size}})
+        else:
+            _tr_dict.update({"Resize": {"size": self.data_size}})
+
+        if self.horizontal_flip_rate or self.vertical_flip_rate:
+            _tr_dict.update({"Random_Flip": {"horizontal_flip_rate": self.horizontal_flip_rate, "vertical_flip_rate": self.vertical_flip_rate}})
+
+        if self.is_norm:
+            _param = {}
+            _param.update({"mean": self.norm_mean}) if self.norm_mean is not None else ...
+            _param.update({"std": self.norm_std}) if self.norm_std is not None else ...
+            _tr_dict.update({"Normalization": _param})
+        _tr_dict.update({"To_Tenor": {}})
+
+        _transform_list = [Supported_Transform.__dict__[_tr_name](**_tr_param) for _tr_name, _tr_param in _tr_dict.items()]
+
+        return Augment.__dict__[self.agment_method](_transform_list, **self.agment_option)
+
+
+@dataclass
 class Dataset_Config(Utils.Config):
     label_name: str  # Support_Label
     label_style: List[str]  # List[Label_Style]
@@ -100,12 +146,10 @@ class Dataset_Config(Utils.Config):
 
     amplification: Dict[str, int]  # Dict[Learning_Mode, int]
 
-    transform_list: Dict[str, Dict[str, Dict[str, JSON_WRITEABLE]]]  # Dict[Learning_Mode, Dict[Tr_name, Parameter dict]]
+    augment: Dict[str, Union[Dict[str, Any], List[Dict[str, Any]]]]
 
     meta_file: Optional[str] = None
     data_root: str = "./data/"
-    agment_method: str = Supported_Augment.ALBUIMIENTATIONS.value  # Supported_Augment
-    agment_option: Optional[Dict[str, JSON_WRITEABLE]] = None
 
     def _get_parameter(self) -> Dict[str, Any]:
         return {
@@ -126,8 +170,8 @@ class Dataset_Config(Utils.Config):
             )for _mode_name, _value in self.amplification.items()),
             "augmentation": dict((
                 Learning_Mode(_mode_name),
-                Augment.__dict__[self.agment_method]([Supported_Transform.__dict__[_tr_name](**_tr_param) for _tr_name, _tr_param in _tr_dict.items()], **self.agment_option)
-            ) for _mode_name, _tr_dict in self.transform_list.items())
+                [Augment_Config(**_aug)._get_parameter() for _aug in _aug_param] if isinstance(_aug_param, list) else Augment_Config(**_aug_param)._get_parameter()
+            ) for _mode_name, _aug_param in self.augment.items())
         }
 
 

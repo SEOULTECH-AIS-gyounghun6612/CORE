@@ -1,13 +1,15 @@
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from enum import Enum
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 
 from torch import Tensor, tensor
 from torch.utils.data import Dataset
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+
+from python_ex._base import Utils
 
 
 if __package__ == "":
@@ -26,12 +28,9 @@ class Supported_Augment(Enum):
 # -- Mation Function -- #
 class Supported_Transform():
     @dataclass
-    class Base():
+    class Base(Utils.Config):
         def _Get_augment(self, aug_type: str):
             raise NotImplementedError
-
-        def Convert_to_dict(self):
-            return asdict(self)
 
     @dataclass
     class Rotate(Base):
@@ -133,7 +132,7 @@ class Augment():
 
 
 class Custom_Dataset(Dataset):
-    def __init__(self, label_process: Label.Process.Basement, file_profiles: List[File_Profile], amplification: int, augmentation: Augment.Basement):
+    def __init__(self, label_process: Label.Process.Basement, file_profiles: List[File_Profile], amplification: int, augmentation: Union[Augment.Basement, List[Augment.Basement]]):
         self._label_process = label_process
         self._file_profiles = file_profiles
         self._Amplification = amplification
@@ -149,6 +148,10 @@ class Custom_Dataset(Dataset):
 
     # Un-Freeze function
     def _Pre_process(self, _pick_data: Dict[str, Any]) -> Dict[str, Tensor]:
-        _datas = self._Augment(_pick_data)
-        _datas.update({"index": tensor(_pick_data["index"])})
+        if isinstance(self._Augment, Augment.Basement):
+            _datas = self._Augment(_pick_data)
+        else:
+            raise ValueError("If you want use multiple augment, must make the apply funcion")
+
+        _datas.update({"data_info": tensor(_pick_data["index"])})
         return _datas

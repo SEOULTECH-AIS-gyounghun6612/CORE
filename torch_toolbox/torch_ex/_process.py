@@ -101,7 +101,7 @@ class Learning_Process():
                 label_process: Label.Process.Basement,
                 file_profiles: Label.File_IO.Basement,
                 amplification: Dict[Learning_Mode, int],
-                augmentation: Dict[Learning_Mode, Augment.Basement]
+                augmentation: Dict[Learning_Mode, Union[Augment.Basement, List[Augment.Basement]]]
         ):
             self._dataset: Dict[Learning_Mode, Custom_Dataset] = {}
             for _mode, _amp in amplification.items():
