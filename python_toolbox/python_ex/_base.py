@@ -30,7 +30,6 @@ else:
     from . import _error as _e
 
 # Set constant
-DEBUG = False
 _error = _e.Custom_error(
     module_name="ais_custom_utils_v 2.x",
     file_name="_base.py")
@@ -44,6 +43,9 @@ class OS_Style(Enum):
     OS_WINDOW = "Windows"
     OS_UBUNTU = "Linux"
 
+
+class File_Ext(Enum):
+    ...
 
 # -- DEFINE CONFIG -- #
 
@@ -272,47 +274,6 @@ class File():
         Returns:
             return (dict)   :
         """
-        # # directory check
-        # file_dir = Directory._divider_check(file_dir)
-        # if not Directory._exist_check(file_dir):
-        #     if is_save:
-        #         # !!!WARING!!! save directory not exist
-        #         _error.variable(
-        #             function_name="file.yaml_file",
-        #             variable_list=["file_dir", ],
-        #             AA="Entered directory '{}' not exist. In first make that".format(file_dir))
-        #         Directory._make(file_dir)
-
-        #     else:
-        #         # !!!ERROR!!! load directory not exist
-        #         _error.variable_stop(
-        #             function_name="file.yaml_file",
-        #             variable_list=["file_dir", ],
-        #             AA="Entered directory '{}' not exist".format(file_dir)
-        #         )
-
-        # # file_name check
-        # _, file_name = File._extension_check(file_name, ["yml", 'yaml'], True)
-
-        # # yaml file process load or save
-        # if is_save:
-        #     # json file save
-        #     _file = open(file_dir + file_name, "w")
-        #     yaml.dump(data_dict, _file, indent=4)
-        # else:
-        #     # yaml file load
-        #     if cls._exist_check(file_dir + file_name):
-        #         # yaml file exist
-        #         _file = open(file_dir + file_name, "r")
-        #         return yaml.load(_file)
-
-        #     else:
-        #         # !!!ERROR!!! load yaml file not exist
-        #         _error.variable_stop(
-        #             function_name="file.yaml_file",
-        #             variable_list=["file_dir", "file_name"],
-        #             AA="Load file '{}' not exist".format(file_dir + file_name)
-        #         )
         raise NotImplementedError
 
     @staticmethod
@@ -335,16 +296,13 @@ class Utils():
             """
 
             """
-            return {}
+            return asdict(self)
 
         def _convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
             """
             Returned dictionary value type must be can dumped in json file
             """
             return asdict(self)
-
-        def _restore_from_dict(self, data: Dict[str, JSON_WRITEABLE]):
-            raise NotImplementedError
 
     @staticmethod
     def _progress_board(this_count: int, max_count: int):  # [3/25] -> [03/25]
