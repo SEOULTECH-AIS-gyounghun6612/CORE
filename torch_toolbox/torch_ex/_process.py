@@ -55,7 +55,7 @@ class Learning_Process():
             world_size: int = 1,
             this_rank: int = 0,
             gpu_ids: List[int] = list(range(cuda.device_count())),
-            multi_method: Multi_Method = Multi_Method.DDP,
+            multi_method: Multi_Method = Multi_Method.NONE,
             multi_protocal: Optional[str] = "tcp://127.0.0.1:10001",
         ):
             # Information about this learning
@@ -75,20 +75,24 @@ class Learning_Process():
             self._batch_size = batch_size_per_node
             self._num_worker = num_worker_per_node
 
-            # - gpu
-            self._gpu_list = gpu_ids
-
-            if len(self._gpu_list) > 1:
+            # - gpu & multiprocess (default -> Not use)
+            if len(gpu_ids) > 1 and distributed.is_nccl_available():
+                # - use mult gpu and multi process
+                self._gpu_list = gpu_ids
                 cv2.setNumThreads(0)
                 cv2.ocl.setUseOpenCL(False)
-
-            # - multiprocess (default -> Not use)
-            self._multi_method = multi_method
-
-            if self._multi_method is Multi_Method.NONE:
+                self._multi_method = Multi_Method.DDP
+                self._world_size = world_size * len(self._gpu_list) if self._world_size == 1 else world_size
+            elif len(gpu_ids) == 1:
+                # - use only one gpu
+                self._gpu_list = gpu_ids
+                self._multi_method = Multi_Method.NONE
                 self._world_size = 1
             else:
-                self._world_size = world_size * len(self._gpu_list) if len(self._gpu_list) else world_size
+                # - not use gpu but can use multi process
+                self._gpu_list = []
+                self._multi_method = Multi_Method.NONE if multi_method is Multi_Method.DDP else multi_method
+                self._world_size = 1 if self._multi_method is Multi_Method.NONE else world_size
 
             self._this_rank = this_rank
             self._multi_protocal = multi_protocal
