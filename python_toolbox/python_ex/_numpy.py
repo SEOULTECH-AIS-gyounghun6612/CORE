@@ -1,13 +1,11 @@
 from enum import Enum
-from typing import Any, List, Dict, Union, Optional, Tuple, Literal
+from typing import List, Union, Optional, Tuple, Literal
 import numpy as np
 from numpy import ndarray
 
 if __package__ == "":
-    from _base import File
     import _error as _e
 else:
-    from ._base import File
     from . import _error as _e
 
 _error_message = _e.Custom_error("AIS_utils", "_numpy")
