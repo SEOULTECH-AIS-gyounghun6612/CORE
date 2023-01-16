@@ -1,11 +1,12 @@
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 from enum import Enum
 
-from torch import Tensor, tensor, stack, clip, distributions, cat
+from torch import Tensor, zeros, ones, zeros_like, ones_like, tensor, stack, clip, distributions, cat
+from torch import uint8, float32
 
 from python_ex._base import JSON_WRITEABLE
 from python_ex._result import Tracker
-from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process
+from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process, Random_Process
 
 
 # -- DEFINE CONSTNAT -- #
@@ -20,27 +21,42 @@ class Parameter_Type(Enum):
     ACC = "acc"
 
 
+class Data_Type(Enum):
+    UINT = uint8
+    FLOAT = float32
+
+
 # -- Mation Function -- #
 class Tensor_Process():
     @staticmethod
-    def _holder(sample, is_shape: bool = False, value: int = 0, dtype: Np_Dtype = Np_Dtype.FLOAT):
-        _array = Array_Process._converter(sample, is_shape, value, dtype)
-        return tensor(_array)
+    def _Make_tensor(size: List[int], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Data_Type] = None):
+        _data_type = dtype if dtype is None else dtype.value
+        if isinstance(value, int):
+            return ones(size, dtype=_data_type) * value if value else zeros(size, dtype=_data_type)
+
+        else:
+            # make random tensor -> not yet
+            raise ValueError("function of make random value tensor form size data is not yet")
 
     @staticmethod
-    def _to_numpy(tensor: Tensor, dtype: Np_Dtype = Np_Dtype.FLOAT) -> ndarray:
+    def _Make_tensor_like(sample: Union[ndarray, Tensor], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Data_Type] = None):
+        _data_type = dtype if dtype is None else dtype.value
+        if isinstance(value, int):
+            _sample = tensor(sample) if isinstance(sample, ndarray) else sample
+            return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
+
+        else:
+            # make random tensor -> not yet
+            raise ValueError("function of make random value tensor form sample data is not yet")
+
+    @staticmethod
+    def _To_numpy(tensor: Tensor, dtype: Np_Dtype = Np_Dtype.FLOAT) -> ndarray:
         try:
             _array = tensor.numpy()
         except RuntimeError:
             _array = tensor.detach().numpy()
 
         return Array_Process._converter(_array, dtype=dtype)
-
-    # In later fix it
-    @staticmethod
-    def _make_tensor(size: List[int], shape_sample=None, norm_option=None, dtype: Np_Dtype = Np_Dtype.UINT, value=[0, 1]):
-        _value = Array_Process._get_random_array(size, dtype=dtype)
-        return tensor(_value)
 
     @staticmethod
     def _range_cut(tensor: Tensor, range_min, rage_max):
@@ -63,8 +79,8 @@ class Tensor_Process():
         @staticmethod
         def iou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> ndarray:
             _batch_size, _class_num = result.shape[0: 2]
-            np_result = Tensor_Process._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Tensor_Process._to_numpy(label.cpu().detach())  # [batch_size, h, w]
+            np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
 
@@ -76,8 +92,8 @@ class Tensor_Process():
         @staticmethod
         def miou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> Tuple[ndarray, ndarray]:
             _batch_size, _class_num = result.shape[0: 2]
-            np_result = Tensor_Process._to_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
-            np_label = Tensor_Process._to_numpy(label.cpu().detach())  # [batch_size, h, w]
+            np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
+            np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size, h, w]
 
             iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
             miou = Array_Process._converter([_batch_size, ], True, dtype=Np_Dtype.FLOAT)
