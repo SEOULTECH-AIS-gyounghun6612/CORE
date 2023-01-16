@@ -159,7 +159,7 @@ class Learning_Process():
             return _this_dataloader, _this_sampler
 
         # in later this function remove
-        def _Save_model(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
+        def _Save_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
             save(model.state_dict(), f"{save_dir}model.h5")  # save model state
 
             if optim is not None:
@@ -169,7 +169,7 @@ class Learning_Process():
                 save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
         # in later this function remove
-        def _Load_model(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
+        def _Load_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
             _model_file = f"{save_dir}model.h5"
             if File._exist_check(_model_file):
                 model.load_state_dict(load(_model_file))
@@ -270,7 +270,7 @@ class Learning_Process():
                     self._tracker._save(self._save_root, "trainer_log.json")
 
                     # save model
-                    self._Save_model(_epoch_dir, _model, _optim, _scheduler)
+                    self._Save_weight(_epoch_dir, _model, _optim, _scheduler)
 
         def _Average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
