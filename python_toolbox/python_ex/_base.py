@@ -36,6 +36,8 @@ _error = _e.Custom_error(
 
 
 # -- DEFINE CONSTNAT -- #
+# Data type for hint
+NUMBER = Union[int, float, bool]
 JSON_WRITEABLE = Optional[Union[str, int, float, bool, Tuple, List, Dict]]
 
 
