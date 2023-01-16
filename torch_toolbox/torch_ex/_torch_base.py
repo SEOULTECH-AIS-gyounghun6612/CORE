@@ -1,10 +1,12 @@
 from typing import Dict, List, Tuple, Optional, Union
 from enum import Enum
 
-from torch import Tensor, zeros, ones, zeros_like, ones_like, tensor, stack, clip, distributions, cat
+from torch import Tensor, distributions
 from torch import uint8, float32
+from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, clip, cat
+from torch import rand, randn, rand_like, randn_like
 
-from python_ex._base import JSON_WRITEABLE
+from python_ex._base import NUMBER, JSON_WRITEABLE
 from python_ex._result import Tracker
 from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process, Random_Process
 
@@ -29,25 +31,29 @@ class Data_Type(Enum):
 # -- Mation Function -- #
 class Tensor_Process():
     @staticmethod
-    def _Make_tensor(size: List[int], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Data_Type] = None):
+    def _Make_tensor(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
         _data_type = dtype if dtype is None else dtype.value
-        if isinstance(value, int):
+        if isinstance(value, list):
+            return (rand(size, dtype=_data_type) * max(*value)) - min(*value) if rand_opt is rand_opt.RANDOM else randn(size, dtype=_data_type)
+
+        else:
             return ones(size, dtype=_data_type) * value if value else zeros(size, dtype=_data_type)
 
-        else:
-            # make random tensor -> not yet
-            raise ValueError("function of make random value tensor form size data is not yet")
-
     @staticmethod
-    def _Make_tensor_like(sample: Union[ndarray, Tensor], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Data_Type] = None):
+    def _Make_tensor_like(sample: Union[ndarray, Tensor], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
         _data_type = dtype if dtype is None else dtype.value
-        if isinstance(value, int):
-            _sample = tensor(sample) if isinstance(sample, ndarray) else sample
+        _sample = tensor(sample) if isinstance(sample, ndarray) else sample
+
+        if isinstance(value, list):
+            return (rand_like(_sample, dtype=_data_type) * max(*value)) - min(*value) if rand_opt is rand_opt.RANDOM else randn_like(_sample, dtype=_data_type)
+
+        else:
             return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
 
-        else:
-            # make random tensor -> not yet
-            raise ValueError("function of make random value tensor form sample data is not yet")
+    @staticmethod
+    def _Arange(end: NUMBER, start: NUMBER = 0, step: NUMBER = 1, dtype: Optional[Data_Type] = None):
+        _data_type = dtype if dtype is None else dtype.value
+        return arange(start, end, step, dtype=_data_type)
 
     @staticmethod
     def _To_numpy(tensor: Tensor, dtype: Np_Dtype = Np_Dtype.FLOAT) -> ndarray:
