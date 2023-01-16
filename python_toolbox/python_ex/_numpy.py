@@ -20,16 +20,14 @@ class Np_Dtype(Enum):
     STRING = np.string_
 
 
-# -- DEFINE STRUCTURE -- #
-
-
-# -- DEFINE CONFIG -- #
+class Random_Process(Enum):
+    ...
 
 
 # -- DEFINE FUNCTION -- #
 class Numpy_IO():
     @staticmethod
-    def _save_numpy(save_dir: str, array: ndarray):
+    def _Save(save_dir: str, array: ndarray):
         """
         Args:
             save_dir :
@@ -41,6 +39,10 @@ class Numpy_IO():
             np.savez_compressed(save_dir, data=array)
         else:
             np.savez(save_dir, data=array)
+
+    @staticmethod
+    def _Load(file_name: str, directory: str):
+        ...
 
     class RLE():
         size_key = "size"
@@ -114,6 +116,14 @@ class Numpy_IO():
 
 
 class Array_Process():
+    @staticmethod
+    def _Make_array(size: List[int], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Np_Dtype] = None):
+        ...
+
+    @staticmethod
+    def _Make_array_like(size: List[int], value: Union[int, List[int]], random_option: Optional[Random_Process] = None, dtype: Optional[Np_Dtype] = None):
+        ...
+
     @staticmethod
     def _converter(source: Union[float, List, Tuple, ndarray], is_shape: bool = False, value: int = 0, dtype: Optional[Np_Dtype] = None):
         if isinstance(source, ndarray):
