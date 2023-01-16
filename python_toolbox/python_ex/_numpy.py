@@ -21,7 +21,8 @@ class Np_Dtype(Enum):
 
 
 class Random_Process(Enum):
-    ...
+    RANDOM = "random"
+    NORM = "Norm"
 
 
 # -- DEFINE FUNCTION -- #
