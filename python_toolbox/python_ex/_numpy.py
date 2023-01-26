@@ -381,9 +381,9 @@ class Image_Process():
 
         return _new
 
-    @staticmethod
-    def _string_to_img(string: str, shape: Union[Tuple[int, int], Tuple[int, int, int]]):
-        return np.fromstring(string, dtype=np.uint8).reshape(shape)
+    # @staticmethod
+    # def _string_to_img(string: str, shape: Union[Tuple[int, int], Tuple[int, int, int]]):
+    #     return np.fromstring(string, dtype=np.uint8).reshape(shape)
 
 
 class Evaluation_Process():
