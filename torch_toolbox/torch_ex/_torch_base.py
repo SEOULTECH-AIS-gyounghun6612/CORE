@@ -243,10 +243,12 @@ class Tracking():
 
         def _Get_progress_time(self, epoch: int):
             _learning_mode = self._Active_mode
-            _time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])["process_time"]
+            _spend_time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])["process_time"]
 
-            if isinstance(_time_list, (float, list)):
-                return _time_list if isinstance(_time_list, list) else [_time_list, ]
+            if isinstance(_spend_time_list, float):
+                return [_spend_time_list, ]
+            elif isinstance(_spend_time_list, list):
+                return _spend_time_list
             else:
                 return [0.0, ]
 
