@@ -202,6 +202,11 @@ class Optim_n_Schedule_Config(Utils.Config):
         }
 
 
+@dataclass
+class Custom_Model_Config(Utils.Config):
+    _Model_name: str
+
+
 class Config():
     def __init__(self, file_name: str, file_dir: str = "./config/"):
         self._Load(file_name, file_dir)
@@ -253,19 +258,17 @@ class Config():
     def _Set_optim_n_shedule_config(self, optim_n_shedule_config: Optim_n_Schedule_Config):
         self._config.update({"optim_n_shedule": optim_n_shedule_config._convert_to_dict()})
 
-    def _Set_model_structure_config(self, model_config: Utils.Config):
-        self._config.update({"model_config": {
-            "type": model_config.__class__.__name__,
-            "parameter": model_config._convert_to_dict()
-        }})
-
-    def _Get_model_structure_config(self, model_config: Type[Utils.Config]):
-        _model_type = self._config["model_config"]["type"]
-
-        if model_config.__name__ == _model_type:
+    def _Get_model_structure_config(self, model_config: Type[Custom_Model_Config]):
+        if model_config.__name__ == self._config["model_config"]["type"]:
             return model_config(**self._config["model_config"]["parameter"])._get_parameter()
         else:
             raise ValueError(
                 f"The information in the config file does not match the data in the config structure.\n\
-                  config file: {_model_type} != input config: {model_config.__name__}\n\
+                  config file: {self._config['model_config']['type']} != input config: {model_config.__name__}\n\
                   Please check it again.")
+
+    def _Set_model_structure_config(self, model_config: Custom_Model_Config):
+        self._config.update({"model_config": {
+            "type": model_config.__class__.__name__,
+            "parameter": model_config._convert_to_dict()
+        }})
