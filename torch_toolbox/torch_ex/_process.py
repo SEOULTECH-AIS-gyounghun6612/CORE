@@ -6,7 +6,7 @@ from torch.multiprocessing.spawn import spawn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.autograd.grad_mode import no_grad
-from torch.nn.parallel import DistributedDataParallel
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Optimizer
 
 from python_ex._base import Directory, File, Utils
@@ -29,7 +29,8 @@ else:
 
 
 # -- DEFINE CONSTNAT -- #
-MODEL = Union[Custom_Model, DistributedDataParallel]
+# type hint
+MODEL = Union[Custom_Model, DDP]
 MAIN_RANK: int = 0
 
 
@@ -160,19 +161,22 @@ class Learning_Process():
 
         # in later this function remove
         def _Save_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
-            save(model.state_dict(), f"{save_dir}model.h5")  # save model state
+            save(model.state_dict(), f"{save_dir}{model._model_name}.h5")
 
             if optim is not None:
                 _optim_and_schedule = {
-                    "optimizer": None if optim is None else optim.state_dict(),
+                    "optimizer": optim.state_dict(),
                     "schedule": None if schedule is None else schedule}
                 save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
 
         # in later this function remove
         def _Load_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
-            _model_file = f"{save_dir}model.h5"
+            _model_file = f"{save_dir}{model._model_name}.h5"
+
             if File._exist_check(_model_file):
                 model.load_state_dict(load(_model_file))
+            else:
+                raise FileExistsError(f"model file {model._model_name}.h5 is not exist in {save_dir}. Please check it")
 
             _optim_file = f"{save_dir}optim.h5"
             if File._exist_check(_model_file) and optim is not None:
@@ -231,7 +235,7 @@ class Learning_Process():
                         sampler=_sampler[_this_mode])
                 # Set model optim and scheduler
                 _model, _optim, _scheduler = self._Set_learning_model(_this_gpu_id)
-                _model = DistributedDataParallel(_model, device_ids=[_this_node if _this_gpu_id == -1 else _this_gpu_id])
+                _model = DDP(_model, device_ids=[_this_node if _this_gpu_id == -1 else _this_gpu_id])
             # - Not use multi-process
             else:
                 # Set dataloader and sampler
