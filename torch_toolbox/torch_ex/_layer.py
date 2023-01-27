@@ -1,9 +1,8 @@
-from dataclasses import dataclass
 from enum import Enum
-from typing import List, Dict, Any, Union, Optional, Tuple
+from typing import List, Union, Optional, Tuple
 from math import sqrt, log
 
-from python_ex._base import NUMBER, Utils
+from python_ex._base import NUMBER
 from python_ex._numpy import Random_Process
 
 from torch import Tensor
@@ -47,29 +46,6 @@ class Suport_Backbone(Enum):
 
 class Suport_Attention(Enum):
     Dot_Attention = "Dot_Attention"
-
-
-# -- DEFINE CONFIG -- #
-class Module_Componant_Config():
-    @dataclass
-    class Backbone(Utils.Config):
-        _Name: Suport_Backbone
-        _Type: int
-
-        _Is_pretrained: bool = True
-        _Is_trainable: bool = False
-
-        def _get_parameter(self) -> Dict[str, Any]:
-            return {
-                "name": self._Name,
-                "type": self._Type,
-
-                "is_pretrained": self._Is_pretrained,
-                "is_trainable": self._Is_trainable
-            }
-
-        def _convert_to_dict(self) -> Dict[str, Any]:
-            return super()._convert_to_dict()
 
 
 # -- Mation Function -- #
@@ -168,7 +144,7 @@ class Module_Componant():
                 _x = self._sampling(_x)
                 return _x
 
-    class Position_Encoder():
+    class Position_Embeder():
         class Trigonometric(Module):
             def __init__(self, num_of_data: int, max_token_size: int = 1000):
                 super().__init__()
@@ -354,13 +330,18 @@ class Module_Componant():
             # print(y)
 
     class Backbone():
-        class ResNet(Module):
-            def __init__(self, type: int, is_pretrained: bool, is_trainable: bool):
+        class Backbone_Base(Module):
+            _output_channel: Tuple = ()
+
+        class ResNet(Backbone_Base):
+            def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Module_Componant.Backbone.ResNet, self).__init__()
-                if type == 101:
+                if model_type == 101:
                     _model = models.resnet101(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
+                    self._output_channel = (64, 256, 512, 1024, 2048)
                 else:
                     _model = models.resnet50(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
+                    self._output_channel = (64, 256, 512, 1024, 2048)
 
                 # features parameters doesn't train
                 for _parameters in _model.parameters():
@@ -391,23 +372,23 @@ class Module_Componant():
             def _average_pooling(self, ouput: Tensor):
                 return self.avgpool(ouput)
 
-        class VGG(Module):
-            def __init__(self, config: Module_Componant_Config.Backbone):
+        class VGG(Backbone_Base):
+            def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super().__init__()
-                if config._Type == 11:
-                    _line = models.vgg11(pretrained=config._Is_pretrained)
-                if config._Type == 13:
-                    _line = models.vgg13(pretrained=config._Is_pretrained)
-                elif config._Type == 16:
-                    _line = models.vgg16(pretrained=config._Is_pretrained)
+                if model_type == 11:
+                    _line = models.vgg11(pretrained=is_pretrained)
+                if model_type == 13:
+                    _line = models.vgg13(pretrained=is_pretrained)
+                elif model_type == 16:
+                    _line = models.vgg16(pretrained=is_pretrained)
                 else:
-                    _line = models.vgg19(pretrained=config._Is_pretrained)
+                    _line = models.vgg19(pretrained=is_pretrained)
 
                 self._conv = _line.features
                 self._avgpool = _line.avgpool
 
                 for _parameter in self._conv.parameters():
-                    _parameter.requires_grad = config._Is_trainable
+                    _parameter.requires_grad = is_trainable
 
             def forward(self, x: Tensor):
                 return self._conv(x)  # x shape : batch_size, 512, 7, 7
@@ -415,23 +396,23 @@ class Module_Componant():
             def _average_pooling(self, ouput: Tensor):
                 return self._avgpool(ouput)
 
-        class FCN(Module):
-            def __init__(self, config: Module_Componant_Config.Backbone):
+        class FCN(Backbone_Base):
+            def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Module_Componant.Backbone.FCN, self).__init__()
-                if config._Type == 101:
-                    self._line = models.segmentation.fcn_resnet101(pretrained=config._Is_pretrained)
+                if model_type == 101:
+                    self._line = models.segmentation.fcn_resnet101(pretrained=is_pretrained)
                 else:
-                    self._line = models.segmentation.fcn_resnet50(pretrained=config._Is_pretrained)
+                    self._line = models.segmentation.fcn_resnet50(pretrained=is_pretrained)
 
                 for _module in self._line.parameters():
-                    _module.requires_grad = config._Is_trainable
+                    _module.requires_grad = is_trainable
 
             def forward(self, x):
                 return self._line(x)
 
         @staticmethod
-        def _build(name: Suport_Backbone, type: int, is_pretrained: bool, is_trainable: bool) -> Module:
-            return Module_Componant.Backbone.__dict__[name.value](type, is_pretrained, is_trainable)
+        def _build(name: Suport_Backbone, model_type: int, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
+            return Module_Componant.Backbone.__dict__[name.value](model_type, is_pretrained, is_trainable)
 
 
 class Loss_Function():
