@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Tuple, Optional, Type, Union
+from types import ModuleType
 from dataclasses import dataclass, field
 
 from math import pi, cos, sin, ceil
@@ -258,17 +259,26 @@ class Config():
     def _Set_optim_n_shedule_config(self, optim_n_shedule_config: Optim_n_Schedule_Config):
         self._config.update({"optim_n_shedule": optim_n_shedule_config._convert_to_dict()})
 
-    def _Get_model_structure_config(self, model_config: Type[Custom_Model_Config]):
-        if model_config.__name__ == self._config["model_config"]["type"]:
-            return model_config(**self._config["model_config"]["parameter"])._get_parameter()
+    def _Get_model_structure_config(self, source: ModuleType):
+        _model_config_name = self._config["model_config"]["name"]
+        _model_config_parma = self._config["model_config"]["parameter"]
+        if _model_config_name in source.__dict__.keys():
+            _model_config: Custom_Model_Config = source.__dict__[_model_config_name](**_model_config_parma)
+            if _model_config.model_name in source.__dict__.keys():
+                return source.__dict__[_model_config.model_name], _model_config._get_parameter()
+            else:
+                raise ValueError(
+                    f"The information in the config file have fatal error.\n\
+                    -> Model {self._config['model_config']['parameter']['model_name']} is not exist in {source.__name__}.\n\
+                    Please check it again.")
         else:
             raise ValueError(
-                f"The information in the config file does not match the data in the config structure.\n\
-                  config file: {self._config['model_config']['type']} != input config: {model_config.__name__}\n\
-                  Please check it again.")
+                f"The information in the config file have fatal error.\n\
+                -> Config {self._config['model_config']['name']} is not exist in {source.__name__}.\n\
+                Please check it again.")
 
     def _Set_model_structure_config(self, model_config: Custom_Model_Config):
         self._config.update({"model_config": {
-            "type": model_config.__class__.__name__,
+            "name": model_config.__class__.__name__,
             "parameter": model_config._convert_to_dict()
         }})
