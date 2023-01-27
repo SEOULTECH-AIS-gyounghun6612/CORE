@@ -204,7 +204,7 @@ class Optim_n_Schedule_Config(Utils.Config):
 
 @dataclass
 class Custom_Model_Config(Utils.Config):
-    _model_name: str
+    model_name: str
 
 
 class Config():
