@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple, Optional, Union
+from typing import List, Dict, Any, Tuple, Optional, Union, Type
 from types import ModuleType
 from dataclasses import dataclass, field
 
@@ -11,6 +11,7 @@ from python_ex._base import Directory, File, Utils, JSON_WRITEABLE
 if __package__ == "":
     # if this file in local project
     from torch_ex._torch_base import Learning_Mode, Parameter_Type
+    from torch_ex._layer import Custom_Model
     from torch_ex._process import Multi_Method
     from torch_ex._label import Support_Label, Label_Style, File_Style, Label
     from torch_ex._dataset import Supported_Transform, Supported_Augment, Augment
@@ -18,6 +19,7 @@ if __package__ == "":
 else:
     # if this file in package folder
     from ._torch_base import Learning_Mode, Parameter_Type
+    from ._layer import Custom_Model
     from ._process import Multi_Method
     from ._label import Support_Label, Label_Style, File_Style, Label
     from ._dataset import Supported_Transform, Supported_Augment, Augment
@@ -259,7 +261,7 @@ class Config():
     def _Set_optim_n_shedule_config(self, optim_n_shedule_config: Optim_n_Schedule_Config):
         self._config.update({"optim_n_shedule": optim_n_shedule_config._convert_to_dict()})
 
-    def _Get_model_structure_config(self, source: ModuleType):
+    def _Get_model_structure_config(self, source: ModuleType) -> Tuple[Type[Custom_Model], Dict]:
         _model_config_name = self._config["model_config"]["name"]
         _model_config_parma = self._config["model_config"]["parameter"]
         if _model_config_name in source.__dict__.keys():
