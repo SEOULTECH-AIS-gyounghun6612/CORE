@@ -83,7 +83,7 @@ class Learning_Process():
                 cv2.setNumThreads(0)
                 cv2.ocl.setUseOpenCL(False)
                 self._multi_method = Multi_Method.DDP
-                self._world_size = world_size * len(self._gpu_list) if self._world_size == 1 else world_size
+                self._world_size = world_size * len(self._gpu_list) if world_size == 1 else world_size
             elif len(gpu_ids) == 1:
                 # - use only one gpu
                 self._gpu_list = gpu_ids
