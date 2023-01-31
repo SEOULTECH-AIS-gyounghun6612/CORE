@@ -135,21 +135,21 @@ class Custom_Dataset(Dataset):
     def __init__(self, label_process: Label.Process.Basement, file_profiles: List[File_Profile], amplification: int, augmentation: Union[Augment.Basement, List[Augment.Basement]]):
         self._label_process = label_process
         self._file_profiles = file_profiles
-        self._Amplification = amplification
-        self._Augment = augmentation
+        self._amplification = amplification
+        self._augment = augmentation
 
     # Freeze function
     def __len__(self):
-        return len(self._file_profiles[0]._file_list) * self._Amplification
+        return len(self._file_profiles[0]._file_list) * self._amplification
 
     def __getitem__(self, index) -> Dict[str, Tensor]:
-        _source_index = index // self._Amplification
+        _source_index = index // self._amplification
         return self._Pre_process(self._label_process._work(self._file_profiles, _source_index))
 
     # Un-Freeze function
     def _Pre_process(self, _pick_data: Dict[str, Any]) -> Dict[str, Tensor]:
-        if isinstance(self._Augment, Augment.Basement):
-            _datas = self._Augment(_pick_data)
+        if isinstance(self._augment, Augment.Basement):
+            _datas = self._augment(_pick_data)
         else:
             raise ValueError("If you want use multiple augment, must make the apply funcion")
 
