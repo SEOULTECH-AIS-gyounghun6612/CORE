@@ -14,10 +14,10 @@ from python_ex._base import Utils
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._label import File_Profile, Label
+    from torch_ex._label import Data_Profile, Label
 else:
     # if this file in package folder
-    from ._label import File_Profile, Label
+    from ._label import Data_Profile, Label
 
 
 # -- DEFINE CONSTNAT -- #
@@ -132,19 +132,19 @@ class Augment():
 
 
 class Custom_Dataset(Dataset):
-    def __init__(self, label_process: Label.Process.Basement, file_profiles: List[File_Profile], amplification: int, augmentation: Union[Augment.Basement, List[Augment.Basement]]):
+    def __init__(self, label_process: Label.Process.Basement, data_profiles: List[Data_Profile], amplification: int, augmentation: Union[Augment.Basement, List[Augment.Basement]]):
         self._label_process = label_process
-        self._file_profiles = file_profiles
+        self._data_profiles = data_profiles
         self._amplification = amplification
         self._augment = augmentation
 
     # Freeze function
     def __len__(self):
-        return len(self._file_profiles[0]._file_list) * self._amplification
+        return len(self._data_profiles[0]._data_list) * self._amplification
 
     def __getitem__(self, index) -> Dict[str, Tensor]:
         _source_index = index // self._amplification
-        return self._Pre_process(self._label_process._work(self._file_profiles, _source_index))
+        return self._Pre_process(self._label_process._work(self._data_profiles, _source_index))
 
     # Un-Freeze function
     def _Pre_process(self, _pick_data: Dict[str, Any]) -> Dict[str, Tensor]:

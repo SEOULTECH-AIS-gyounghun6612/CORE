@@ -13,7 +13,7 @@ if __package__ == "":
     from torch_ex._torch_base import Learning_Mode, Parameter_Type
     from torch_ex._layer import Custom_Model
     from torch_ex._process import Multi_Method
-    from torch_ex._label import Support_Label, Label_Style, File_Style, Label
+    from torch_ex._label import Support_Label, Data_Category, File_Style, Label, Label_Structure
     from torch_ex._dataset import Supported_Transform, Supported_Augment, Augment
     from torch_ex._optimizer import Suport_Optimizer, Suport_Schedule
 else:
@@ -21,7 +21,7 @@ else:
     from ._torch_base import Learning_Mode, Parameter_Type
     from ._layer import Custom_Model
     from ._process import Multi_Method
-    from ._label import Support_Label, Label_Style, File_Style, Label
+    from ._label import Support_Label, Data_Category, File_Style, Label, Label_Structure
     from ._dataset import Supported_Transform, Supported_Augment, Augment
     from ._optimizer import Suport_Optimizer, Suport_Schedule
 
@@ -145,7 +145,7 @@ class Dataset_Config(Utils.Config):
     label_name: str  # Support_Label
     label_style: List[str]  # List[Label_Style]
 
-    file_info: Dict[str, List[Tuple[str, str, Optional[Any]]]]  # Dict[Learning_Mode, ]
+    data_info: Dict[str, List[Tuple[str, str, Optional[Any]]]]  # Dict[Learning_Mode, ]
 
     amplification: Dict[str, int]  # Dict[Learning_Mode, int]
 
@@ -158,13 +158,13 @@ class Dataset_Config(Utils.Config):
         return {
             "label_process": Label.Process.__dict__[self.label_name](
                 Support_Label(self.label_name),
-                [Label_Style(_style_name) for _style_name in self.label_style],
+                [Label_Structure.Label_Style(_style_name) for _style_name in self.label_style],
                 self.meta_file),
-            "file_profiles": Label.File_IO.__dict__[self.label_name](
+            "data_profiles": Label.File_IO.__dict__[self.label_name](
                 dict((
                     Learning_Mode(_mode_name),
-                    [(Label_Style(_label_style), File_Style(_file_style), _optional) for _label_style, _file_style, _optional in _data_list]
-                ) for _mode_name, _data_list in self.file_info.items()),
+                    [(Data_Category(_label_style), File_Style(_file_style), _optional) for _label_style, _file_style, _optional in _data_list]
+                ) for _mode_name, _data_list in self.data_info.items()),
                 self.data_root
             ),
             "amplification": dict((

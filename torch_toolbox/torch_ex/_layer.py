@@ -331,7 +331,7 @@ class Module_Componant():
 
     class Backbone():
         class Backbone_Base(Module):
-            _output_channel: Tuple = ()
+            _output_channel: List[int]
 
             def _Average_pooling(self, ouput: Tensor):
                 raise NotImplementedError
@@ -341,10 +341,10 @@ class Module_Componant():
                 super(Module_Componant.Backbone.ResNet, self).__init__()
                 if model_type == 101:
                     _model = models.resnet101(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
-                    self._output_channel = (64, 256, 512, 1024, 2048)
+                    self._output_channel = [64, 256, 512, 1024, 2048]
                 else:
                     _model = models.resnet50(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
-                    self._output_channel = (64, 256, 512, 1024, 2048)
+                    self._output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
                 for _parameters in _model.parameters():
