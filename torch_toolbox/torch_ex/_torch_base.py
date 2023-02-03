@@ -83,6 +83,20 @@ class Tensor_Process():
 
     class Evaluation():
         @staticmethod
+        def accuracy(result: Tensor, label: Tensor, ingnore_class: Optional[List[int]]) -> ndarray:
+            _np_result = Tensor_Process._To_numpy(result.cpu().detach())  # [batch_size, c] or [batch_size]
+            _np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size]
+
+            if len(result.shape) >= 2:
+                _np_result = _np_result.argmax(axis=1)  # [batch_size, 1]
+            else:
+                _np_result = _np_result > 0.5  # [batch_size, 1]
+
+            _result: ndarray = (_np_result == _np_label)
+
+            return _result.tolist()
+
+        @staticmethod
         def iou(result: Tensor, label: Tensor, ingnore_class: List[int]) -> ndarray:
             _batch_size, _class_num = result.shape[0: 2]
             np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
