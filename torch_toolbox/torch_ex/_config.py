@@ -160,7 +160,7 @@ class Dataset_Config(Utils.Config):
                 Support_Label(self.label_name),
                 [Label_Structure.Label_Style(_style_name) for _style_name in self.label_style],
                 self.meta_file),
-            "data_profiles": Label.File_IO.__dict__[self.label_name](
+            "data_process": Label.File_IO.__dict__[self.label_name](
                 dict((
                     Learning_Mode(_mode_name),
                     [(Data_Category(_label_style), File_Style(_file_style), _optional) for _label_style, _file_style, _optional in _data_list]
@@ -249,8 +249,11 @@ class Config():
     def _Set_tracker_config(self, tracker_config: Tracker_Config):
         self._config.update({"tracker": tracker_config._convert_to_dict()})
 
-    def _Get_dataset_config(self):
-        return Dataset_Config(**self._config["dataset"])._get_parameter()
+    def _Get_dataset_config(self, custom_dataset_config: Optional[Type[Dataset_Config]] = None):
+        if custom_dataset_config is None:
+            return Dataset_Config(**self._config["dataset"])._get_parameter()
+        else:
+            return custom_dataset_config(**self._config["dataset"])._get_parameter()
 
     def _Set_dataset_config(self, dataset_config: Dataset_Config):
         self._config.update({"dataset": dataset_config._convert_to_dict()})
