@@ -65,6 +65,11 @@ class Tensor_Process():
         return Array_Process._converter(_array, dtype=dtype)
 
     @staticmethod
+    def _Flatten(tensor: Tensor):
+        _b = tensor.shape[0]
+        return tensor.reshape(_b, -1)
+
+    @staticmethod
     def _range_cut(tensor: Tensor, range_min, rage_max):
         return clip(tensor, range_min, rage_max)
 
@@ -83,16 +88,17 @@ class Tensor_Process():
 
     class Evaluation():
         @staticmethod
-        def accuracy(result: Tensor, label: Tensor, ingnore_class: Optional[List[int]]) -> ndarray:
+        def accuracy(result: Tensor, label: Tensor, threshold: Optional[float] = None) -> List[bool]:
             _np_result = Tensor_Process._To_numpy(result.cpu().detach())  # [batch_size, c] or [batch_size]
             _np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size]
 
-            if len(result.shape) >= 2:
+            if result.shape[1] >= 2:
                 _np_result = _np_result.argmax(axis=1)  # [batch_size, 1]
             else:
-                _np_result = _np_result > 0.5  # [batch_size, 1]
+                _threshold = 0.0 if threshold is None else threshold
+                _np_result = _np_result > _threshold  # [batch_size, 1]
 
-            _result: ndarray = (_np_result == _np_label)
+            _result: ndarray = Array_Process._converter((_np_result == _np_label))
 
             return _result.tolist()
 
