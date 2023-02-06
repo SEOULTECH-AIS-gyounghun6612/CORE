@@ -251,7 +251,8 @@ class Learning_Process():
 
             # Do learning process
             for _epoch in range(self._last_epoch + 1, self._max_epoch):
-                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _this_node is MAIN_RANK else f"{self._save_root}{Directory._Divider}{_epoch}"
+                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _this_node is MAIN_RANK\
+                    else f"{self._save_root}{Directory._Divider}{_epoch}{Directory._Divider}"
 
                 for _this_mode in self._learning_mode:
                     _this_dataloader, _this_sampler = self._Active_mode_change_to(_this_mode, _model, _dataloader, _sampler)
@@ -259,7 +260,8 @@ class Learning_Process():
                     # - When use sampler, shuffling
                     _this_sampler.set_epoch(_epoch) if _this_sampler is not None else ...
 
-                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _this_node is MAIN_RANK else f"{_epoch_dir}{Directory._Divider}{_this_mode.value}"
+                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _this_node is MAIN_RANK\
+                        else f"{_epoch_dir}{Directory._Divider}{_this_mode.value}{Directory._Divider}"
                     if _this_mode == Learning_Mode.TRAIN:
                         self._Learning(processer_num, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
                     else:

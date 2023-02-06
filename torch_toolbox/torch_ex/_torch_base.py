@@ -98,7 +98,7 @@ class Tensor_Process():
                 _threshold = 0.0 if threshold is None else threshold
                 _np_result = _np_result > _threshold  # [batch_size, 1]
 
-            _result: ndarray = Array_Process._converter((_np_result == _np_label))
+            _result: ndarray = Array_Process._converter((_np_result == _np_label), dtype=Np_Dtype.FLOAT).reshape(_np_result.shape[0])
 
             return _result.tolist()
 

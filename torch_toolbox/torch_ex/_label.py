@@ -17,6 +17,7 @@ else:
 
 # -- DEFINE CONSTNAT -- #
 class Support_Label(Enum):
+    CUSTOM = "custom_dataset"
     BDD_100k = "BDD_100k"
     COCO = "COCO"
 
