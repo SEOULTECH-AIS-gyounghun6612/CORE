@@ -104,14 +104,14 @@ class Learning_Process():
                 self,
                 dataset_class: Type[Custom_Dataset],
                 label_process: Label.Process.Basement,
-                file_profiles: Label.File_IO.Basement,
+                data_process: Label.File_IO.Basement,
                 amplification: Dict[Learning_Mode, int],
                 augmentation: Dict[Learning_Mode, Union[Augment.Basement, List[Augment.Basement]]]
         ):
             self._dataset: Dict[Learning_Mode, Custom_Dataset] = {}
             for _mode, _amp in amplification.items():
                 self._dataset.update({
-                    _mode: dataset_class(label_process, file_profiles._Get_file_profiles(_mode), _amp, augmentation[_mode])
+                    _mode: dataset_class(label_process, data_process._Get_file_profiles(_mode), _amp, augmentation[_mode])
                 })
 
             # in later make the code, that data info update to tracker's annotation
@@ -161,7 +161,7 @@ class Learning_Process():
 
         # in later this function remove
         def _Save_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
-            save(model.state_dict(), f"{save_dir}{model._model_name}.h5")
+            save(model.state_dict(), f"{save_dir}_model.h5")
 
             if optim is not None:
                 _optim_and_schedule = {
@@ -171,12 +171,12 @@ class Learning_Process():
 
         # in later this function remove
         def _Load_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
-            _model_file = f"{save_dir}{model._model_name}.h5"
+            _model_file = f"{save_dir}_model..h5"
 
             if File._exist_check(_model_file):
                 model.load_state_dict(load(_model_file))
             else:
-                raise FileExistsError(f"model file {model._model_name}.h5 is not exist in {save_dir}. Please check it")
+                raise FileExistsError(f"model file _model..h5 is not exist in {save_dir}. Please check it")
 
             _optim_file = f"{save_dir}optim.h5"
             if File._exist_check(_model_file) and optim is not None:

@@ -333,7 +333,7 @@ class Module_Componant():
         class Backbone_Base(Module):
             _output_channel: List[int]
 
-            def _Average_pooling(self, ouput: Tensor):
+            def _Average_pooling(self, ouput: Tensor) -> Tensor:
                 raise NotImplementedError
 
         class ResNet(Backbone_Base):
@@ -373,7 +373,7 @@ class Module_Componant():
                 return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
             def _Average_pooling(self, ouput: Tensor):
-                return self.avgpool(ouput)
+                return Tensor_Process._Flatten(self.avgpool(ouput))
 
         class VGG(Backbone_Base):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
