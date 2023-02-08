@@ -147,7 +147,7 @@ class Label():
                                 _holder.update({_image_info["id"]: {"file_name": _image_info["file_name"], "bbox": [], "instances": [], "sementic": {}}})
 
                             for _label in _meta_ann["annotations"]:
-                                _holder[_label["image_id"]]["bbox"].append(_label["bbox"])
+                                _holder[_label["image_id"]]["bbox"].append(_label["bbox"] + [_label["category_id"], ])
                                 _holder[_label["image_id"]]["instances"].append(_label["segmentation"])
 
                                 if _label["category_id"] in _holder[_label["image_id"]]["sementic"].keys():
