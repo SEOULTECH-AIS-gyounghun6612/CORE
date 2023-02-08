@@ -147,13 +147,16 @@ class Label():
                                 _holder.update({_image_info["id"]: {"file_name": _image_info["file_name"], "bbox": [], "instances": [], "sementic": {}}})
 
                             for _label in _meta_ann["annotations"]:
-                                _holder[_label["image_id"]]["bbox"].append(_label["bbox"] + [_label["category_id"], ])
-                                _holder[_label["image_id"]]["instances"].append(_label["segmentation"])
-
-                                if _label["category_id"] in _holder[_label["image_id"]]["sementic"].keys():
-                                    _holder[_label["image_id"]]["sementic"][_label["category_id"]].append(_label["segmentation"])
+                                if isinstance(_label["segmentation"], dict):
+                                    ...  # in later fix it
                                 else:
-                                    _holder[_label["image_id"]]["sementic"][_label["category_id"]] = [_label["segmentation"]]
+                                    _holder[_label["image_id"]]["bbox"].append(_label["bbox"] + [_label["category_id"], ])
+                                    _holder[_label["image_id"]]["instances"].append(_label["segmentation"])
+
+                                    if _label["category_id"] in _holder[_label["image_id"]]["sementic"].keys():
+                                        _holder[_label["image_id"]]["sementic"][_label["category_id"]].append(_label["segmentation"])
+                                    else:
+                                        _holder[_label["image_id"]]["sementic"][_label["category_id"]] = [_label["segmentation"]]
                         else:
                             _holder = {}
 
