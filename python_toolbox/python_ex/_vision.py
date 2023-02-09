@@ -380,21 +380,7 @@ class draw():
         Right = 0b00000
 
     # @staticmethod
-    # def merge(image: List[ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
-    #     _merge_img = image[0]
-    #     if direction == Image_direction.Hight:
-    #         for _img in image[1:]:
-    #             _merge_img = Base_Process.padding(_merge_img, (0, interval, 0, 0), interval_color)
-    #             _merge_img = cv2.vconcat([_merge_img, _img])
-    #     else:  # width
-    #         for _img in image[1:]:
-    #             _merge_img = Base_Process.padding(_merge_img, (0, 0, 0, interval), interval_color)
-    #             _merge_img = cv2.hconcat((_merge_img, _img))
-
-    #     return _merge_img
-
-    # @staticmethod
-    # def text(image: ndarray, text: str):
+    # def _Make_text_box(image: ndarray, text: str, position: text_position):
     #     [_text_w, _text_h], _ = cv2.getTextSize(text=text, fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, thickness=2)
     #     text_padding = 10
 
@@ -427,6 +413,20 @@ class draw():
     #     _tpye_image[_h:, :] = _text_shell
 
     #     return _tpye_image
+
+    # @staticmethod
+    # def merge(image: List[ndarray], direction: Image_direction, interval: int = 10, interval_color: int = 255):
+    #     _merge_img = image[0]
+    #     if direction == Image_direction.Hight:
+    #         for _img in image[1:]:
+    #             _merge_img = Base_Process.padding(_merge_img, (0, interval, 0, 0), interval_color)
+    #             _merge_img = cv2.vconcat([_merge_img, _img])
+    #     else:  # width
+    #         for _img in image[1:]:
+    #             _merge_img = Base_Process.padding(_merge_img, (0, 0, 0, interval), interval_color)
+    #             _merge_img = cv2.hconcat((_merge_img, _img))
+
+    #     return _merge_img
 
     # @staticmethod
     # def rectangle():
