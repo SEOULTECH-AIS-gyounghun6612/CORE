@@ -116,14 +116,18 @@ class Augment_Config(Utils.Config):
     def _get_parameter(self):
         _tr_dict = {}
         if self.rotate_limit:
-            _rad = pi * self.rotate_limit / 180
-            _h = ceil(self.data_size[1] * sin(_rad) + self.data_size[0] * cos(_rad))
-            _w = ceil(self.data_size[0] * sin(_rad) + self.data_size[1] * cos(_rad))
-            _tr_dict.update({"Resize": {"size": [_h, _w] + self.data_size[2:]}})
-            _tr_dict.update({"Rotate": {"angle_limit": self.rotate_limit}})
-            _tr_dict.update({"Random_Crop": {"size": self.data_size}})
+            if self.data_size[0] >= 0 and self.data_size[1] >= 0:
+                _rad = pi * self.rotate_limit / 180
+                _h = ceil(self.data_size[1] * sin(_rad) + self.data_size[0] * cos(_rad))
+                _w = ceil(self.data_size[0] * sin(_rad) + self.data_size[1] * cos(_rad))
+                _tr_dict.update({"Resize": {"size": [_h, _w] + self.data_size[2:]}})
+                _tr_dict.update({"Rotate": {"angle_limit": self.rotate_limit}})
+                _tr_dict.update({"Random_Crop": {"size": self.data_size}})
+            else:
+                _tr_dict.update({"Rotate": {"angle_limit": self.rotate_limit}})
         else:
-            _tr_dict.update({"Resize": {"size": self.data_size}})
+            if self.data_size[0] >= 0 and self.data_size[1] >= 0:
+                _tr_dict.update({"Resize": {"size": self.data_size}})
 
         if self.horizontal_flip_rate or self.vertical_flip_rate:
             _tr_dict.update({"Random_Flip": {"horizontal_rate": self.horizontal_flip_rate, "vertical_rate": self.vertical_flip_rate}})

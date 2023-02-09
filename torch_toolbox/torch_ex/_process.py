@@ -160,14 +160,14 @@ class Learning_Process():
             return _this_dataloader, _this_sampler
 
         # in later this function remove
-        def _Save_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
-            save(model.state_dict(), f"{save_dir}_model.h5")
+        def _Save_weight(self, save_dir: str, file_prefix: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
+            save(model.state_dict(), f"{save_dir}{file_prefix}_model.h5")
 
             if optim is not None:
                 _optim_and_schedule = {
                     "optimizer": optim.state_dict(),
                     "schedule": None if schedule is None else schedule}
-                save(_optim_and_schedule, f"{save_dir}optim.h5")  # save optim and schedule state
+                save(_optim_and_schedule, f"{save_dir}{file_prefix}_optim.h5")  # save optim and schedule state
 
         # in later this function remove
         def _Load_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
@@ -212,7 +212,7 @@ class Learning_Process():
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._tracker._Learning_observing(epoch)
 
-            Utils._progress_bar(_data_count, _max_data_len, _pre, _suf, decimals, length, fill)
+            Utils._progress_bar(_data_count, _allocated_len, _pre, _suf, decimals, length, fill)
 
         def _Process(self, processer_num: int, share_block: Optional[multiprocessing.Queue] = None):
             _this_node = self._this_rank + processer_num
@@ -271,12 +271,16 @@ class Learning_Process():
                 _scheduler.step() if _scheduler is not None else ...
 
                 # save log file
-                if _this_node is MAIN_RANK:
-                    self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
-                    self._tracker._save(self._save_root, "trainer_log.json")
+                # if _this_node is MAIN_RANK:
+                #     self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                #     self._tracker._save(self._save_root, "trainer_log.json")
 
-                    # save model
-                    self._Save_weight(_epoch_dir, _model, _optim, _scheduler)
+                #     # save model
+                #     self._Save_weight(_epoch_dir, _model, _optim, _scheduler)
+
+                self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                self._tracker._save(self._save_root, f"trainer_log_{processer_num}.json")
+                self._Save_weight(_epoch_dir, f"{processer_num}", _model, _optim, _scheduler)
 
         def _Average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
