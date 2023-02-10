@@ -22,7 +22,6 @@ class Np_Dtype(Enum):
 
 class Random_Process(Enum):
     UNIFORM = "uniform"
-    RANDOM = "random"
     NORM = "norm"
 
 
