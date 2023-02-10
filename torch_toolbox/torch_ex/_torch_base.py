@@ -34,7 +34,13 @@ class Tensor_Process():
     def _Make_tensor(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
         _data_type = dtype if dtype is None else dtype.value
         if isinstance(value, list):
-            return (rand(size, dtype=_data_type) * max(*value)) - min(*value) if rand_opt is rand_opt.RANDOM else randn(size, dtype=_data_type)
+            _max_value = max(*value)
+            _min_value = min(*value)
+
+            if rand_opt is rand_opt.UNIFORM:
+                return (randn(size, dtype=_data_type) * (_max_value - _min_value)) + _min_value
+            else:  # random process => unifrom
+                return (rand(size, dtype=_data_type) * _max_value) - _min_value
 
         else:
             return ones(size, dtype=_data_type) * value if value else zeros(size, dtype=_data_type)
@@ -45,7 +51,13 @@ class Tensor_Process():
         _sample = tensor(sample) if isinstance(sample, ndarray) else sample
 
         if isinstance(value, list):
-            return (rand_like(_sample, dtype=_data_type) * max(*value)) - min(*value) if rand_opt is rand_opt.RANDOM else randn_like(_sample, dtype=_data_type)
+            _max_value = max(*value)
+            _min_value = min(*value)
+
+            if rand_opt is rand_opt.UNIFORM:
+                return (randn_like(_sample, dtype=_data_type) * (_max_value - _min_value)) + _min_value
+            else:  # random process => unifrom
+                return (rand_like(_sample, dtype=_data_type) * _max_value) - _min_value
 
         else:
             return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
