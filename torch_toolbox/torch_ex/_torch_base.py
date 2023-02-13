@@ -37,7 +37,7 @@ class Tensor_Process():
             _max_value = max(*value)
             _min_value = min(*value)
 
-            if rand_opt is rand_opt.UNIFORM:
+            if rand_opt is rand_opt.NORM:
                 return (randn(size, dtype=_data_type) * (_max_value - _min_value)) + _min_value
             else:  # random process => unifrom
                 return (rand(size, dtype=_data_type) * _max_value) - _min_value
@@ -61,6 +61,10 @@ class Tensor_Process():
 
         else:
             return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
+
+    @staticmethod
+    def _Converter():
+        ...
 
     @staticmethod
     def _Arange(end: NUMBER, start: NUMBER = 0, step: NUMBER = 1, dtype: Optional[Data_Type] = None):
