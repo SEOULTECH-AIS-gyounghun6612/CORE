@@ -63,7 +63,7 @@ class Tensor_Process():
             return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
 
     @staticmethod
-    def _Converter():
+    def _Converte_from():
         ...
 
     @staticmethod
