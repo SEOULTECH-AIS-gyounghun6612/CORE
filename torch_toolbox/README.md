@@ -16,19 +16,11 @@
 
 #### _torch_base.py
 - 텐서 생성 코드 수정
-   - [ ] 크기 기반
-   - [ ] 샘플 기반
+   - [x] 평가 함수 내 코드 중 _python_ex._numpy.py 변경 사항 (Array_Process._converter 함수 삭제) 대응
 
 #### _process.py
-- 모델 학습을 위한 모듈
-   - [X] E2E
-
 - 강화학습을 위한 모듈
    - [ ] A2C
-
-#### _layer.py
-- 불필요한 config 구성 정리
-   - [ ] 
 
 ## Install
 1. pip 사용
