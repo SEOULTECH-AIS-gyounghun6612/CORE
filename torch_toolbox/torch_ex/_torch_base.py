@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Any, Tuple, Optional, Union
 from enum import Enum
 
 from torch import Tensor, distributions
@@ -46,9 +46,9 @@ class Tensor_Process():
             return ones(size, dtype=_data_type) * value if value else zeros(size, dtype=_data_type)
 
     @staticmethod
-    def _Make_tensor_like(sample: Union[ndarray, Tensor], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
+    def _Make_tensor_like(sample: Any, value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
         _data_type = dtype if dtype is None else dtype.value
-        _sample = tensor(sample) if isinstance(sample, ndarray) else sample
+        _sample = tensor(sample) if not isinstance(sample, Tensor) else sample
 
         if isinstance(value, list):
             _max_value = max(*value)
