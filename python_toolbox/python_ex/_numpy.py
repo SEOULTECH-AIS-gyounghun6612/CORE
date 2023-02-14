@@ -1,13 +1,13 @@
 from enum import Enum
-from typing import List, Union, Optional, Tuple, Literal
+from typing import List, Dict, Union, Optional, Tuple, Literal
 import numpy as np
 from numpy import ndarray
 from numpy.random import rand, randn
 
 if __package__ == "":
-    from _base import NUMBER
+    from _base import NUMBER, Directory
 else:
-    from ._base import NUMBER
+    from ._base import NUMBER, Directory
 
 
 # -- DEFINE CONSTNAT -- #
@@ -27,54 +27,122 @@ class Random_Process(Enum):
 # -- DEFINE FUNCTION -- #
 class Numpy_IO():
     @staticmethod
-    def _Save(save_dir: str, array: ndarray):
+    def _Save(save_dir: str, file_name: str, array: Union[ndarray, List[ndarray], Dict[str, ndarray]], is_compress: bool = True):
+        """Auto save array.
+
+        If save ONE array, using "numpy.save". The others, using "numpy.savez" or "numpy.savez_compressed"
+
+        Parameters
+        --------------------
+        save_dir
+            Directory to save data.
+        file_name
+            File name to save data. This function automatically fixes if you use the wrong ext or don't know what to use ext.
+        array
+            Saved data.
+        is_compress
+            When saving multi-array and this value is True, switch to using compressed.
         """
-        Args:
-            save_dir :
-            data :
-        Returns:
-            Empty
-        """
-        if save_dir.split("/")[-1].split(".")[-1] == "npz":
-            np.savez_compressed(save_dir, data=array)
+        assert Directory._Exist_check(save_dir), f"Data save Directrory : {save_dir} is NOT EXIST.\n check it"   # if save directory not exist, raise error
+
+        _file_ext = "npy" if isinstance(array, ndarray) else "npz"
+
+        if file_name.find(".") == -1:
+            _file_name = f"{file_name}.{_file_ext}"
+        elif file_name.split(".")[-1] is _file_ext:
+            _file_name = file_name
         else:
-            np.savez(save_dir, data=array)
+            _file_name = file_name.replace(file_name.split(".")[-1], _file_ext)
+
+        _save_file = f"{Directory._Divider_check(save_dir)}{_file_name}"
+
+        if _file_ext == "npy":
+            np.save(_save_file, array)
+        elif isinstance(array, list):
+            np.savez(_save_file, *array) if is_compress else np.savez(_save_file, *array)
+        else:
+            np.savez_compressed(_save_file, **array) if is_compress else np.savez_compressed(_save_file, **array)
 
     @staticmethod
     def _Load(file_name: str, directory: str):
-        ...
+        raise NotImplementedError
 
 
 class Array_Process():
     @staticmethod
-    def _Make_array(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Np_Dtype] = None):
+    def _Make_array(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Np_Dtype] = None) -> ndarray:
+        """Make array from size information.
+
+        Parameters
+        --------------------
+        size
+            Size information.
+        value
+            Value to fill array. If enter list data, fill data that in between max and min value.
+        rand_opt
+            When filling in the random value, the method for the random value
+        dtype
+            Data type in the array. If enter None, use numpy.float64
+        """
         _data_type = dtype if dtype is None else dtype.value
+
+        # Fill random value in the array
         if isinstance(value, list):
             _max_value = max(*value)
             _min_value = min(*value)
 
-            if rand_opt is rand_opt.UNIFORM:
+            if rand_opt is rand_opt.NORM:
                 return (randn(size, dtype=_data_type) * (_max_value - _min_value)) + _min_value
             else:  # random process => unifrom
                 return (rand(size, dtype=_data_type) * _max_value) - _min_value
 
+        # Fill same value in the array
         else:
             return np.ones(size, dtype=_data_type) * value if value else np.zeros(size, dtype=_data_type)
 
     @staticmethod
-    def _Make_array_like(sample: ndarray, value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Np_Dtype] = None):
-        _data_type = dtype if dtype is None else dtype.value
-        _sample = np.array(sample) if not isinstance(sample, ndarray) else sample
+    def _Make_array_like(
+            sample: Union[List, Tuple, ndarray],
+            value: Union[NUMBER, List[NUMBER]],
+            rand_opt: Random_Process = Random_Process.NORM,
+            dtype: Optional[Np_Dtype] = None) -> ndarray:
+        """Make array from sample size.
 
+        Parameters
+        --------------------
+        sample
+            Sample to provide information for array creation.
+        value
+            Value to fill array. If enter list data, fill data that in between max and min value.
+        rand_opt
+            When filling in the random value, the method for the random value
+        dtype
+            Data type in the array. If enter None, use sample's data type
+        """
+        _data_type = None if dtype is None else dtype.value
+        _sample = sample if isinstance(sample, ndarray) else np.array(sample)
+
+        # Fill random value in the array
         if isinstance(value, list):
             return Array_Process._Make_array(_sample.shape, value, rand_opt, dtype)
+
+        # Fill same value in the array
         else:
             return np.ones_like(_sample, dtype=_data_type) * value if value else np.zeros_like(_sample, dtype=_data_type)
 
     @staticmethod
-    def _Convert_from(source: Union[NUMBER, List[NUMBER], Tuple, ndarray], dtype: Optional[Np_Dtype] = None):
-        _source = source if isinstance(source, ndarray) else np.array(source)
-        return _source if dtype is None else _source.astype(dtype.value)
+    def _Convert_from(sample: Union[NUMBER, List[NUMBER], Tuple, ndarray], dtype: Optional[Np_Dtype] = None) -> ndarray:
+        """Make array from sample data.
+
+        Parameters
+        --------------------
+        sample
+            Sample to provide information for array creation.
+        dtype
+            Data type in the array. If enter None, use sample's data type
+        """
+        _sample = sample if isinstance(sample, ndarray) else np.array(sample)
+        return _sample if dtype is None else _sample.astype(dtype.value)
 
     @staticmethod
     def _Clip(array: ndarray, value_min: int, value_max: int):

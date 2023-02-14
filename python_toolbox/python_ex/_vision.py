@@ -80,7 +80,7 @@ class Segmentation_Style(Enum):
 class File_IO():
     @staticmethod
     def _Image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
-        _exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+        _exist, file_path = File._Extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
 
         if not _exist:
             raise ValueError(f"image file {file_path} not exist")
@@ -101,7 +101,7 @@ class File_IO():
 
     @staticmethod
     def _Image_write(file_path: str, image: ndarray):
-        _, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
+        _, file_path = File._Extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
         cv2.imwrite(file_path, image)
 
     # @staticmethod  # in later fix

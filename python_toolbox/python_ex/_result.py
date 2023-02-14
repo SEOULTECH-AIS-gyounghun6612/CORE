@@ -17,18 +17,13 @@ class Tracker():
 
     def __init__(self, info: Dict = {}, data: Dict = {}, file_dir: Optional[str] = None, file_name: str = "log.json"):
         if file_dir is None:
-            self._insert(info, self._Annotation)
-            self._insert(data, self._Data)
+            self._Insert(info, self._Annotation)
+            self._Insert(data, self._Data)
 
         else:
-            self._load(file_dir, file_name) if File._exist_check(Directory._divider_check(f"{file_dir}{file_name}", True)) else ...
+            self._Load(file_dir, file_name) if File._Exist_check(Directory._Divider_check(f"{file_dir}{file_name}", True)) else ...
 
-    def _insert(
-            self,
-            data_block: Dict[str, JSON_WRITEABLE],
-            access_point: Dict[str, JSON_WRITEABLE],
-            is_overwrite: bool = True):
-
+    def _Insert(self, data_block: Dict[str, JSON_WRITEABLE], access_point: Dict[str, JSON_WRITEABLE], is_overwrite: bool = True):
         # pick data in search point
         for _key, _data in data_block.items():
             _key_exist = _key in access_point.keys()
@@ -47,7 +42,7 @@ class Tracker():
                 continue
             # go to deep
             elif isinstance(_data, dict) or isinstance(_slot, dict):
-                self._insert(_data, _slot, is_overwrite) if isinstance(_data, dict) and isinstance(_slot, dict) else ...
+                self._Insert(_data, _slot, is_overwrite) if isinstance(_data, dict) and isinstance(_slot, dict) else ...
                 continue
             # add
             elif not isinstance(_slot, list):
@@ -61,7 +56,7 @@ class Tracker():
                 else:
                     _slot.append(_data)
 
-    def _get_data(
+    def _Get_data(
             self,
             data_info: Optional[Dict[str, Optional[Union[str, Dict]]]],
             access_point: Dict[str, JSON_WRITEABLE],
@@ -91,30 +86,30 @@ class Tracker():
                     _pick = _access_point.pop(_tag_info) if is_pop else _access_point[_tag_info]
                     _holder.update({_data_name: _pick})
                 else:
-                    _pick = self._get_data(_tag_info, _access_point, is_pop)
+                    _pick = self._Get_data(_tag_info, _access_point, is_pop)
                     _holder.update(dict((f"{_data_name}_{_key}", _value) for _key, _value in _pick.items()))
         return _holder
         # in later change this function => return dict or list
 
-    def _get_length(
+    def _Get_length(
             self,
             data_info: Optional[Dict[str, Optional[Union[str, Dict]]]],
             access_point: Dict[str, JSON_WRITEABLE]):
 
-        _data = self._get_data(data_info, access_point)
+        _data = self._Get_data(data_info, access_point)
 
         return dict((_key, len(value) if isinstance(value, (list, tuple, dict)) else 1) for _key, value in _data.items())
 
-    def _load(self, file_dir: str, file_name: str):
-        _save_pakage = File._json(file_dir, file_name)
+    def _Load(self, file_dir: str, file_name: str):
+        _save_pakage = File._Json(file_dir, file_name)
 
         if _save_pakage is not None:
-            self._insert(_save_pakage["annotation"], self._Annotation)
-            self._insert(_save_pakage["data"], self._Data)
+            self._Insert(_save_pakage["annotation"], self._Annotation)
+            self._Insert(_save_pakage["data"], self._Data)
 
-    def _save(self, file_dir: str, file_name: str):
+    def _Save(self, file_dir: str, file_name: str):
         _save_pakage = {
             "annotation": self._Annotation,
             "data": self._Data}
 
-        File._json(file_dir, file_name, is_save=True, data_dict=_save_pakage)
+        File._Json(file_dir, file_name, is_save=True, data_dict=_save_pakage)
