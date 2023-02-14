@@ -35,7 +35,7 @@ class Learning_Config:
         description: str = "Empty"
 
         # _date: str = Utils.Time._apply_text_form(Utils.Time._stemp(), True, "%Y-%m-%d")
-        save_root: str = Directory._relative_root()
+        save_root: str = Directory._Relative_root()
 
         # About Learning type and style
         max_epoch: int = 100
@@ -52,8 +52,8 @@ class Learning_Config:
         multi_method: str = Multi_Method.DDP.value
         multi_protocal: Optional[str] = "tcp://127.0.0.1:10001"
 
-        def _get_parameter(self) -> Dict[str, Any]:
-            _param = super()._get_parameter()
+        def _Get_parameter(self) -> Dict[str, Any]:
+            _param = super()._Get_parameter()
 
             _param["learning_mode"] = [Learning_Mode(_value) for _value in self.learning_mode]
 
@@ -85,7 +85,7 @@ class Tracker_Config(Utils.Config):
     # Learning_Mode -> Parameter_Type -> obj_name
     observing: Dict[str, Dict[str, Optional[List[str]]]] = field(default_factory=dict)
 
-    def _get_parameter(self) -> Dict[str, Any]:
+    def _Get_parameter(self) -> Dict[str, Any]:
         return {
             "tracking_param": dict((
                 Learning_Mode(_mode),
@@ -113,7 +113,7 @@ class Augment_Config(Utils.Config):
     agment_method: str = Supported_Augment.ALBUIMIENTATIONS.value
     agment_option: Optional[Dict[str, JSON_WRITEABLE]] = field(default_factory=lambda: {"bbox_parameter": None, "keypoints_parameter": None, "group_parmaeter": None})
 
-    def _get_parameter(self):
+    def _Get_parameter(self):
         _tr_dict = {}
         if self.rotate_limit:
             if self.data_size[0] >= 0 and self.data_size[1] >= 0:
@@ -158,7 +158,7 @@ class Dataset_Config(Utils.Config):
     meta_file: Optional[str] = None
     data_root: str = "./data/"
 
-    def _get_parameter(self) -> Dict[str, Any]:
+    def _Get_parameter(self) -> Dict[str, Any]:
         return {
             "label_process": Label.Process.__dict__[self.label_name](
                 Support_Label(self.label_name),
@@ -177,7 +177,7 @@ class Dataset_Config(Utils.Config):
             )for _mode_name, _value in self.amplification.items()),
             "augmentation": dict((
                 Learning_Mode(_mode_name),
-                [Augment_Config(**_aug)._get_parameter() for _aug in _aug_param] if isinstance(_aug_param, list) else Augment_Config(**_aug_param)._get_parameter()
+                [Augment_Config(**_aug)._Get_parameter() for _aug in _aug_param] if isinstance(_aug_param, list) else Augment_Config(**_aug_param)._Get_parameter()
             ) for _mode_name, _aug_param in self.augment.items())
         }
 
@@ -195,7 +195,7 @@ class Optim_n_Schedule_Config(Utils.Config):
     schedule_term: int = 10
     schedule_term_amp: int = 1
 
-    def _get_parameter(self) -> Dict[str, Any]:
+    def _Get_parameter(self) -> Dict[str, Any]:
         return {
             "optim_name": Suport_Optimizer(self.optim_name),
             "initial_lr": self.initial_lr,
@@ -220,53 +220,53 @@ class Config():
 
     # Freeze function
     def _Save(self, file_name: str, file_dir: str = "./config/"):
-        _, _file_name = File._extension_check(file_name, ["json"], True)
-        _file_dir = Directory._divider_check(file_dir)
+        _, _file_name = File._Extension_check(file_name, ["json"], True)
+        _file_dir = Directory._Divider_check(file_dir)
 
-        File._json(_file_dir, _file_name, True, self._config)
+        File._Json(_file_dir, _file_name, True, self._config)
 
     def _Load(self, file_name: str, file_dir: str = "./config/"):
-        _, _file_name = File._extension_check(file_name, ["json"], True)
-        _file_dir = Directory._divider_check(file_dir)
+        _, _file_name = File._Extension_check(file_name, ["json"], True)
+        _file_dir = Directory._Divider_check(file_dir)
 
         _config_file = f"{_file_dir}{_file_name}"
 
-        if File._exist_check(_config_file):
+        if File._Exist_check(_config_file):
             # load config
-            self._config: Dict[str, Any] = File._json(_file_dir, _file_name)
+            self._config: Dict[str, Any] = File._Json(_file_dir, _file_name)
         else:
             self._config = {}
             print(f"config file {_config_file} not exsit. \nyou must config data initialize before use it")
 
     def _Get_learning_config(self):
-        return Learning_Config._Build(self._config["learning"])._get_parameter()
+        return Learning_Config._Build(self._config["learning"])._Get_parameter()
 
     def _Set_learning_config(self, learning_config: Learning_Config.E2E):
         self._config.update({"learning": {
             "type": learning_config.__class__.__name__,
-            "parameter": learning_config._convert_to_dict()
+            "parameter": learning_config._Convert_to_dict()
         }})
 
     def _Get_tracker_config(self):
-        return Tracker_Config(**self._config["tracker"])._get_parameter()
+        return Tracker_Config(**self._config["tracker"])._Get_parameter()
 
     def _Set_tracker_config(self, tracker_config: Tracker_Config):
-        self._config.update({"tracker": tracker_config._convert_to_dict()})
+        self._config.update({"tracker": tracker_config._Convert_to_dict()})
 
     def _Get_dataset_config(self, custom_dataset_config: Optional[Type[Dataset_Config]] = None):
         if custom_dataset_config is None:
-            return Dataset_Config(**self._config["dataset"])._get_parameter()
+            return Dataset_Config(**self._config["dataset"])._Get_parameter()
         else:
-            return custom_dataset_config(**self._config["dataset"])._get_parameter()
+            return custom_dataset_config(**self._config["dataset"])._Get_parameter()
 
     def _Set_dataset_config(self, dataset_config: Dataset_Config):
-        self._config.update({"dataset": dataset_config._convert_to_dict()})
+        self._config.update({"dataset": dataset_config._Convert_to_dict()})
 
     def _Get_optim_n_shedule_config(self):
-        return Optim_n_Schedule_Config(**self._config["optim_n_shedule"])._get_parameter()
+        return Optim_n_Schedule_Config(**self._config["optim_n_shedule"])._Get_parameter()
 
     def _Set_optim_n_shedule_config(self, optim_n_shedule_config: Optim_n_Schedule_Config):
-        self._config.update({"optim_n_shedule": optim_n_shedule_config._convert_to_dict()})
+        self._config.update({"optim_n_shedule": optim_n_shedule_config._Convert_to_dict()})
 
     def _Get_model_structure_config(self, source: ModuleType) -> Tuple[Type[Custom_Model], Dict]:
         _model_config_name = self._config["model_config"]["name"]
@@ -274,7 +274,7 @@ class Config():
         if _model_config_name in source.__dict__.keys():
             _model_config: Custom_Model_Config = source.__dict__[_model_config_name](**_model_config_parma)
             if _model_config.model_name in source.__dict__.keys():
-                return source.__dict__[_model_config.model_name], _model_config._get_parameter()
+                return source.__dict__[_model_config.model_name], _model_config._Get_parameter()
             else:
                 raise ValueError(
                     f"The information in the config file have fatal error.\n\
@@ -289,5 +289,5 @@ class Config():
     def _Set_model_structure_config(self, model_config: Custom_Model_Config):
         self._config.update({"model_config": {
             "name": model_config.__class__.__name__,
-            "parameter": model_config._convert_to_dict()
+            "parameter": model_config._Convert_to_dict()
         }})

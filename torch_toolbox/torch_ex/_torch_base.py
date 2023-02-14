@@ -78,7 +78,7 @@ class Tensor_Process():
         except RuntimeError:
             _array = tensor.detach().numpy()
 
-        return Array_Process._converter(_array, dtype=dtype)
+        return Array_Process._Convert_from(_array, dtype=dtype)
 
     @staticmethod
     def _Flatten(tensor: Tensor):
@@ -114,7 +114,7 @@ class Tensor_Process():
                 _threshold = 0.0 if threshold is None else threshold
                 _np_result = _np_result > _threshold  # [batch_size, 1]
 
-            _result: ndarray = Array_Process._converter((_np_result == _np_label), dtype=Np_Dtype.FLOAT).reshape(_np_result.shape[0])
+            _result: ndarray = Array_Process._Convert_from((_np_result == _np_label), dtype=Np_Dtype.FLOAT).reshape(_np_result.shape[0])
 
             return _result.tolist()
 
@@ -124,7 +124,7 @@ class Tensor_Process():
             np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
             np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size, h, w]
 
-            iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
+            iou = Array_Process._Make_array_like([_batch_size, _class_num], 0, dtype=Np_Dtype.FLOAT)
 
             for _b in range(_batch_size):
                 iou[_b] = Evaluation_Process._iou(np_result[_b], np_label[_b], _class_num, ingnore_class)
@@ -137,8 +137,8 @@ class Tensor_Process():
             np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
             np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size, h, w]
 
-            iou = Array_Process._converter([_batch_size, _class_num], True, dtype=Np_Dtype.FLOAT)
-            miou = Array_Process._converter([_batch_size, ], True, dtype=Np_Dtype.FLOAT)
+            iou = Array_Process._Make_array_like([_batch_size, _class_num], 0, dtype=Np_Dtype.FLOAT)
+            miou = Array_Process._Make_array_like([_batch_size, ], 0, dtype=Np_Dtype.FLOAT)
 
             for _b in range(_batch_size):
                 iou[_b], miou[_b] = Evaluation_Process._miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
@@ -248,7 +248,7 @@ class Tracking():
                     return f"{data:>7.3f}, "
 
                 elif isinstance(data, (tuple, list)):
-                    _data = Array_Process._converter(data, dtype=Np_Dtype.FLOAT)
+                    _data = Array_Process._Convert_from(data, dtype=Np_Dtype.FLOAT)
                     if len(_data.shape) >= 2:
                         _list_string = "["
                         for _value in _data.mean(0):
@@ -269,7 +269,7 @@ class Tracking():
                 _access_point = self._Data[_learning_mode][_target_key]
 
                 if isinstance(_access_point, dict):
-                    _picked_data = self._get_data(
+                    _picked_data = self._Get_data(
                         data_info=dict((_log_param, f"{epoch}") for _log_param in _tracking[_target_key].keys()),
                         access_point=_access_point)
 
@@ -279,7 +279,7 @@ class Tracking():
 
         def _Get_progress_time(self, epoch: int):
             _learning_mode = self._Active_mode
-            _spend_time_list = self._get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])["process_time"]
+            _spend_time_list = self._Get_data(data_info={"process_time": f"{epoch}"}, access_point=self._Data[_learning_mode.value])["process_time"]
 
             if isinstance(_spend_time_list, float):
                 return [_spend_time_list, ]
@@ -297,7 +297,7 @@ class Tracking():
 
             if isinstance(_access_point, dict):
                 _access_key = list(_tracking[_target_key].keys())[0]
-                _picked_data = self._get_data(
+                _picked_data = self._Get_data(
                     data_info={_access_key: f"{epoch}"},
                     access_point=_access_point)[_access_key]
 

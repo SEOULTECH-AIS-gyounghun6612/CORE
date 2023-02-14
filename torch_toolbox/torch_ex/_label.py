@@ -77,7 +77,7 @@ class Label():
             _directory: Dict
 
             def __init__(self, file_info: Dict[Learning_Mode, List[Tuple[Data_Category, File_Style, Any]]], root: str) -> None:
-                self._root_dir = root if Directory._exist_check(root) else Directory._relative_root()
+                self._root_dir = root if Directory._Exist_check(root) else Directory._Relative_root()
                 self._file_info = file_info
 
             # Un-Freeze function
@@ -93,10 +93,10 @@ class Label():
         class BDD_100k(Basement):
             _directory: Dict[Data_Category, Dict[File_Style, str]] = {
                 Data_Category.IMAGE: {
-                    File_Style.IMAGE_FILE: Directory._divider_check("bdd100k/images/{}/{}/"),
+                    File_Style.IMAGE_FILE: Directory._Divider_check("bdd100k/images/{}/{}/"),
                 },
                 Data_Category.SEMENTIC_SEG: {
-                    File_Style.IMAGE_FILE: Directory._divider_check("bdd100k/labels/sem_seg/colormaps/{}/")
+                    File_Style.IMAGE_FILE: Directory._Divider_check("bdd100k/labels/sem_seg/colormaps/{}/")
                 }
             }
 
@@ -109,7 +109,7 @@ class Label():
                         _dir = f"{self._root_dir}{self._directory[_info[0]][_info[1]]}"
                         _dir = _dir.format(_info[2], mode.value) if _info[0] is Data_Category.IMAGE else _dir.format(mode.value)
 
-                        _data_list = sorted(Directory._inside_search(_dir))
+                        _data_list = sorted(Directory._Search(_dir))
                     else:
                         _data_list = []
 
@@ -120,7 +120,7 @@ class Label():
         class COCO(Basement):
             _directory: Dict[Data_Category, Dict[File_Style, str]] = {
                 Data_Category.IMAGE: {
-                    File_Style.IMAGE_FILE: Directory._divider_check("coco/{}2017/"),
+                    File_Style.IMAGE_FILE: Directory._Divider_check("coco/{}2017/"),
                 }
             }
 
@@ -139,7 +139,7 @@ class Label():
 
                     _annotation_type: str = _info[2]
                     if _annotation_data[_annotation_type] == {}:
-                        _meta_ann = File._json(f"{self._root_dir}coco/annotations/", f"{_annotation_type}_{mode.value}2017.json")
+                        _meta_ann = File._Json(f"{self._root_dir}coco/annotations/", f"{_annotation_type}_{mode.value}2017.json")
 
                         if _annotation_type == "instances":
                             _holder = {}
@@ -197,14 +197,14 @@ class Label():
 
                 # Parameter for Label pre-process
                 # Get label data
-                if meta_file is not None and File._exist_check(meta_file):
+                if meta_file is not None and File._Exist_check(meta_file):
                     # from custom meta file
-                    [_meta_dir, _meta_file] = File._file_name_from_path(meta_file, just_file_name=False)
+                    [_meta_dir, _meta_file] = File._Extrect_file_name(meta_file, just_file_name=False)
                 else:
                     # from default meta file
-                    _meta_dir = f"{Directory._devide(__file__)[0]}data_file{Directory._Divider}"
+                    _meta_dir = f"{Directory._Devide(__file__)[0]}data_file{Directory._Divider}"
                     _meta_file = f"{self._lable_name.value}.json"
-                _meta_data: Dict[str, List[Dict]] = File._json(file_dir=_meta_dir, file_name=_meta_file)
+                _meta_data: Dict[str, List[Dict]] = File._Json(file_dir=_meta_dir, file_name=_meta_file)
 
                 self._activate_label: Dict[Label_Structure.Label_Style, Dict[int, List[Any]]] = {}
                 # Make active_label from meta data
@@ -243,7 +243,7 @@ class Label():
 
         class BDD_100k(Basement):
             def _work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
-                _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._converter(index, dtype=Np_Dtype.INT)}
+                _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._Convert_from(index, dtype=Np_Dtype.INT)}
                 _count: Dict[str, int] = {
                     "image": 0,
                     "classification": 0,
@@ -255,7 +255,7 @@ class Label():
                 for _profile in file_profiles:
                     _pick_file = _profile._data_list[index]
                     if _profile._file_style == File_Style.IMAGE_FILE:
-                        _data = File_IO._image_read(_pick_file)
+                        _data = File_IO._Image_read(_pick_file)
                         if _profile._data_category is Data_Category.SEMENTIC_SEG:
                             _data = Label_Img_Process._color_map_to_classification(_data, self._activate_label[Label_Structure.Label_Style.MASK])
                         elif _profile._data_category is Data_Category.INSTANCES_SEG:
@@ -273,7 +273,7 @@ class Label():
 
         class COCO(Basement):
             def _work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
-                _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._converter(index, dtype=Np_Dtype.INT)}
+                _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._Convert_from(index, dtype=Np_Dtype.INT)}
                 _count: Dict[str, int] = dict((_style.value, 0) for _style in Data_Category)
 
                 for profile in file_profiles:
@@ -281,7 +281,7 @@ class Label():
                     _data_style = profile._data_category.value
 
                     if profile._file_style == File_Style.IMAGE_FILE:
-                        _data = File_IO._image_read(_pick_file)
+                        _data = File_IO._Image_read(_pick_file)
 
                     elif profile._file_style == File_Style.ANNOTATION:
                         _data = _pick_file
@@ -322,7 +322,7 @@ class Label_Img_Process():
     @staticmethod
     def _classification_to_color_map(classification: ndarray, activate_label: Dict[int, List]) -> ndarray:
         _label_ids = sorted(activate_label.keys())
-        _color_list = Array_Process._converter([activate_label[_id][0] for _id in _label_ids], dtype=Np_Dtype.UINT)
+        _color_list = Array_Process._Convert_from([activate_label[_id][0] for _id in _label_ids], dtype=Np_Dtype.UINT)
         return _color_list[classification]
 
     # (h, w, 3) -> (h, w, class count)
@@ -331,15 +331,15 @@ class Label_Img_Process():
         _h, _w, _ = color_map.shape
 
         _label_ids = sorted(activate_label.keys())
-        _class_map = Array_Process._converter([_h, _w, len(_label_ids)], True, dtype=Np_Dtype.UINT)
+        _class_map = Array_Process._Make_array([_h, _w, len(_label_ids)], dtype=Np_Dtype.UINT)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
             _color_list = [_label for _label in activate_label[_label_id]]
-            _class_map[:, :, _label_id] = Array_Process._converter(Image_Process._color_finder(color_map, _color_list), dtype=Np_Dtype.UINT)
+            _class_map[:, :, _label_id] = Array_Process._Convert_from(Image_Process._color_finder(color_map, _color_list), dtype=Np_Dtype.UINT)
 
         # make ignore
-        _class_map[:, :, -1] = Array_Process._converter(1 - Array_Process._converter(_class_map.sum(axis=2), dtype=Np_Dtype.BOOL), dtype=Np_Dtype.UINT)
+        _class_map[:, :, -1] = Array_Process._Convert_from(1 - Array_Process._Convert_from(_class_map.sum(axis=2), dtype=Np_Dtype.BOOL), dtype=Np_Dtype.UINT)
         return _class_map
 
     # (h, w, 3) -> (h, w)
@@ -358,7 +358,7 @@ class Label_Img_Process():
     @staticmethod
     def _classification_to_class_map(classification: ndarray, num_id: int) -> ndarray:
         _h, _w = classification.shape
-        _class_map = Array_Process._converter([_h, _w, num_id], True, dtype=Np_Dtype.UINT)
+        _class_map = Array_Process._Make_array([_h, _w, num_id], dtype=Np_Dtype.UINT)
 
         for _id in range(num_id):
             _class_map[:, :, _id] = classification == _id

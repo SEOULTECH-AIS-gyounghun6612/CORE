@@ -64,7 +64,7 @@ class Learning_Process():
             self._description = description
 
             # Setting about file I/O
-            self._save_root = Directory._make(Directory._divider_check(f"{project_name}/{description}/"), save_root)
+            self._save_root = Directory._Make(Directory._Divider_check(f"{project_name}/{description}/"), save_root)
 
             # Setting about learning
             # - base
@@ -115,7 +115,7 @@ class Learning_Process():
                 })
 
             # in later make the code, that data info update to tracker's annotation
-            self._save_root = Directory._make(Directory._divider_check(f"{label_process._lable_name.value}/"), self._save_root)
+            self._save_root = Directory._Make(Directory._Divider_check(f"{label_process._lable_name.value}/"), self._save_root)
 
         def _Set_model_parameter(self, model_structure: Type[Custom_Model], **model_parameter):
             self._model_structure = model_structure
@@ -173,13 +173,13 @@ class Learning_Process():
         def _Load_weight(self, save_dir: str, model: MODEL, optim: Optional[Optimizer] = None, schedule: Optional[_LRScheduler] = None):
             _model_file = f"{save_dir}_model..h5"
 
-            if File._exist_check(_model_file):
+            if File._Exist_check(_model_file):
                 model.load_state_dict(load(_model_file))
             else:
                 raise FileExistsError(f"model file _model..h5 is not exist in {save_dir}. Please check it")
 
             _optim_file = f"{save_dir}optim.h5"
-            if File._exist_check(_model_file) and optim is not None:
+            if File._Exist_check(_model_file) and optim is not None:
                 _optim_and_schedule = load(_optim_file)
                 optim.load_state_dict(_optim_and_schedule["optimizer"])
                 if schedule is not None:
@@ -194,11 +194,11 @@ class Learning_Process():
                 decimals: int = 1,
                 length: int = 25,
                 fill: str = '█'):
-            _epoch_board = Utils._progress_board(epoch, self._max_epoch)
+            _epoch_board = Utils.Progress._Count_aligning(epoch, self._max_epoch)
 
             _max_data_len = self._dataset[mode].__len__()
             _data_count = self._tracker._Get_observing_length(epoch)
-            _data_board = Utils._progress_board(_data_count, _max_data_len)
+            _data_board = Utils.Progress._Count_aligning(_data_count, _max_data_len)
 
             _batch_size = self._batch_size
 
@@ -206,13 +206,13 @@ class Learning_Process():
             _max_batch_ct = _allocated_len // _batch_size + int((_allocated_len % _batch_size) > 0)
 
             _this_time = self._tracker._Get_progress_time(epoch)
-            _this_time_str = Utils.Time._apply_text_form(sum(_this_time), text_format="%H:%M:%S")
-            _max_time_str = Utils.Time._apply_text_form(_max_batch_ct * sum(_this_time) / len(_this_time), text_format="%H:%M:%S")
+            _this_time_str = Utils.Time._Apply_text_form(sum(_this_time), text_format="%H:%M:%S")
+            _max_time_str = Utils.Time._Apply_text_form(_max_batch_ct * sum(_this_time) / len(_this_time), text_format="%H:%M:%S")
 
             _pre = f"{mode.value} {_epoch_board} {_data_board} {_this_time_str}/{_max_time_str} "
             _suf = self._tracker._Learning_observing(epoch)
 
-            Utils._progress_bar(_data_count, _allocated_len, _pre, _suf, decimals, length, fill)
+            Utils.Progress._Progress_bar(_data_count, _allocated_len, _pre, _suf, decimals, length, fill)
 
         def _Process(self, processer_num: int, share_block: Optional[multiprocessing.Queue] = None):
             _this_node = self._this_rank + processer_num
@@ -251,7 +251,7 @@ class Learning_Process():
 
             # Do learning process
             for _epoch in range(self._last_epoch + 1, self._max_epoch):
-                _epoch_dir = Directory._make(f"{_epoch}", self._save_root) if _this_node is MAIN_RANK\
+                _epoch_dir = Directory._Make(f"{_epoch}", self._save_root) if _this_node is MAIN_RANK\
                     else f"{self._save_root}{Directory._Divider}{_epoch}{Directory._Divider}"
 
                 for _this_mode in self._learning_mode:
@@ -260,7 +260,7 @@ class Learning_Process():
                     # - When use sampler, shuffling
                     _this_sampler.set_epoch(_epoch) if _this_sampler is not None else ...
 
-                    _mode_dir = Directory._make(f"{_this_mode.value}", _epoch_dir) if _this_node is MAIN_RANK\
+                    _mode_dir = Directory._Make(f"{_this_mode.value}", _epoch_dir) if _this_node is MAIN_RANK\
                         else f"{_epoch_dir}{Directory._Divider}{_this_mode.value}{Directory._Divider}"
                     if _this_mode == Learning_Mode.TRAIN:
                         self._Learning(processer_num, _epoch, _this_mode, _this_dataloader, _model, _optim, _mode_dir, share_block)
@@ -278,8 +278,8 @@ class Learning_Process():
                 #     # save model
                 #     self._Save_weight(_epoch_dir, _model, _optim, _scheduler)
 
-                self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
-                self._tracker._save(self._save_root, f"trainer_log_{processer_num}.json")
+                self._tracker._Insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                self._tracker._Save(self._save_root, f"trainer_log_{processer_num}.json")
                 self._Save_weight(_epoch_dir, f"{processer_num}", _model, _optim, _scheduler)
 
         def _Average_gradients(self, model: Custom_Model):
@@ -290,9 +290,9 @@ class Learning_Process():
                     param.grad.data /= size
 
         def _Work(self):
-            _this_date = Utils.Time._apply_text_form(Utils.Time._stemp(), is_local=True, text_format="%Y-%m-%d")
-            self._tracker._insert({"Date": _this_date}, self._tracker._Annotation)
-            self._save_root = Directory._make(Directory._divider_check(f"{_this_date}/"), self._save_root)
+            _this_date = Utils.Time._Apply_text_form(Utils.Time._Stemp(), is_local=True, text_format="%Y-%m-%d")
+            self._tracker._Insert({"Date": _this_date}, self._tracker._Annotation)
+            self._save_root = Directory._Make(Directory._Divider_check(f"{_this_date}/"), self._save_root)
 
             if self._multi_method == Multi_Method.DDP:
                 _share_block = multiprocessing.Manager().Queue()
