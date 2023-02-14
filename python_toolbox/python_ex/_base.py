@@ -337,6 +337,10 @@ class Utils():
         if iteration == total:
             print()
 
+    @staticmethod
+    def _Stop_point():
+        ...
+
     class Time():
         @staticmethod
         def _stemp(source: Optional[float] = None):

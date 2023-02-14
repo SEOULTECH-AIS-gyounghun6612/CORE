@@ -79,7 +79,7 @@ class Segmentation_Style(Enum):
 # -- Mation Function -- #
 class File_IO():
     @staticmethod
-    def _image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
+    def _Image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
         _exist, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
 
         if not _exist:
@@ -100,7 +100,7 @@ class File_IO():
         return _read_img
 
     @staticmethod
-    def _image_write(file_path: str, image: ndarray):
+    def _Image_write(file_path: str, image: ndarray):
         _, file_path = File._extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
         cv2.imwrite(file_path, image)
 
@@ -130,22 +130,7 @@ class File_IO():
 
 class Base_Process():
     @staticmethod
-    def image_stack(images, channel_option: Channel_Style):
-        if channel_option.value:  # stack to last channel
-            _axis = -1
-        else:               # stack to first channel
-            _axis = 0
-        return Array_Process.stack(images, _axis)
-
-    @staticmethod
-    def channel_converter(image, channel_option: Channel_Style):
-        if channel_option.value:  # [w, h, c]
-            return Image_Process._conver_to_last_channel(image)
-        else:  # [c, w, h]
-            return Image_Process._conver_to_first_channel(image)
-
-    @staticmethod
-    def resize(image: ndarray, size: list):
+    def _Resize(image: ndarray, size: List[Union[int, float]]):
         _h, _w = image.shape[:2]
         _interpolation = cv2.INTER_AREA
 
@@ -163,6 +148,21 @@ class Base_Process():
 
         else:
             return image
+
+    @staticmethod
+    def image_stack(images, channel_option: Channel_Style):
+        if channel_option.value:  # stack to last channel
+            _axis = -1
+        else:               # stack to first channel
+            _axis = 0
+        return Array_Process.stack(images, _axis)
+
+    @staticmethod
+    def channel_converter(image, channel_option: Channel_Style):
+        if channel_option.value:  # [w, h, c]
+            return Image_Process._conver_to_last_channel(image)
+        else:  # [c, w, h]
+            return Image_Process._conver_to_first_channel(image)
 
     @staticmethod
     def range_converter(image, form_range: R_option, to_range: R_option):
@@ -270,8 +270,9 @@ class edge():
         def sobel(image: ndarray, is_euclid: bool = True):
             if len(image.shape) > 2:
                 # color image
-                delta_holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
-                direction_holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
+                delta_holder = Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
+                direction_holder = Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
+
                 for _ch_ct in range(image.shape[-1]):
                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
                     delta_holder += result[0]
@@ -289,7 +290,7 @@ class edge():
     def gradient_to_edge(gradient: List[ndarray], threshold: Union[int, Tuple[int, int]] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
         # gradient -> [delta, direction]
         _delta = gradient[0]
-        _filterd = Array_Process.range_cut(Array_Process._normalization(_delta), threshold, "upper")
+        _filterd = Array_Process.range_cut(Array_Process._Norm(_delta), threshold, "upper")
 
         if is_edge_shrink:
             _direction = gradient[1]
@@ -318,7 +319,7 @@ class edge():
             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
             dxy = Image_Process._distance(dx, dy, is_euclid) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = Array_Process.range_cut(Array_Process._normalization(dxy), threshold, ouput_type="value")
+            _edge = Array_Process.range_cut(Array_Process._Norm(dxy), threshold, ouput_type="value")
 
             if is_edge_shrink:
                 direction = Image_Process._gredient_direction(dx, dy)
@@ -343,7 +344,7 @@ class edge():
 
 class gui_process():
     @staticmethod
-    def display(image: ndarray, dispaly_window: str, ms_delay: int = -1):
+    def _Display(image: ndarray, dispaly_window: str, ms_delay: int = -1):
         cv2.imshow(dispaly_window, image)
         return cv2.waitKeyEx(ms_delay)
 
