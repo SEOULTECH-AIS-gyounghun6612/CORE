@@ -22,7 +22,11 @@
 - 강화학습을 위한 모듈
    - [ ] A2C
 
+#### _label.py
+- 코드 보수 작업
+   - [ ] 라벨 데이터 처리 작업 관련 코드(Label.Process) 재구성
+
 ## Install
 1. pip 사용
-   - https 버전 -> pip install git+https://https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+   - https 버전 -> pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
    - ssh 버전   -> pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
