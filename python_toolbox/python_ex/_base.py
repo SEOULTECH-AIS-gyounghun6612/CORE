@@ -56,16 +56,16 @@ class Directory():
         """
         # each os's directory divide slash fix
         if cls._Divider == "\\":
-            from_dived = "/"
+            _from_dived = "/"
         else:
-            from_dived = "\\"
-        directory.replace(from_dived, cls._Divider)
+            _from_dived = "\\"
+        _dir = directory.replace(_from_dived, cls._Divider)
 
         if not is_file:
             # if checked path is dir, check last slach exist in end of text
-            return directory if directory[-len(cls._Divider):] == cls._Divider else directory + cls._Divider
+            return _dir if _dir[-len(cls._Divider):] == cls._Divider else f"{_dir}{cls._Divider}"
 
-        return directory
+        return _dir
 
     @staticmethod
     def _Exist_check(directory: str):
@@ -76,8 +76,8 @@ class Directory():
         _dir = cls._Divider_check(directory)
         _comp = _dir.split(cls._Divider)[:-1]
 
-        _front = cls._Divider.join(_comp[:level])
-        _back = cls._Divider.join(_comp[level:])
+        _front = cls._Divider_check(cls._Divider.join(_comp[:level]))
+        _back = cls._Divider_check(cls._Divider.join(_comp[level:]))
 
         return _front, _back
 
@@ -191,9 +191,9 @@ class File():
 
     @staticmethod
     def _Extrect_file_name(file_path: str, just_file_name: bool = True):
-        file_path = Directory._Divider_check(file_path, is_file=True)
-        _file_dir, _file_name = path.split(file_path)
-        return _file_name if just_file_name else [_file_dir, _file_name]
+        _file_path = Directory._Divider_check(file_path, is_file=True)
+        _file_dir, _file_name = path.split(_file_path)
+        return _file_name if just_file_name else [Directory._Divider_check(_file_dir), _file_name]
 
     @staticmethod
     def _Extension_check(file_path: str, exts: List[str], is_fix: bool = False) -> Tuple[bool, str]:
