@@ -331,7 +331,7 @@ class Label_Img_Process():
         _h, _w, _ = color_map.shape
 
         _label_ids = sorted(activate_label.keys())
-        _class_map = Array_Process._Make_array([_h, _w, len(_label_ids)], dtype=Np_Dtype.UINT)
+        _class_map = Array_Process._Make_array([_h, _w, len(_label_ids)], 0, dtype=Np_Dtype.UINT)
 
         # color compare
         for _label_id in _label_ids[:-1]:  # last channel : ignore
@@ -358,7 +358,7 @@ class Label_Img_Process():
     @staticmethod
     def _classification_to_class_map(classification: ndarray, num_id: int) -> ndarray:
         _h, _w = classification.shape
-        _class_map = Array_Process._Make_array([_h, _w, num_id], dtype=Np_Dtype.UINT)
+        _class_map = Array_Process._Make_array([_h, _w, num_id], 0, dtype=Np_Dtype.UINT)
 
         for _id in range(num_id):
             _class_map[:, :, _id] = classification == _id

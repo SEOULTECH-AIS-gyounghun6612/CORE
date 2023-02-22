@@ -237,7 +237,7 @@ class Tracking():
             if process_time is not None:
                 _holder["process_time"] = {f"{epoch}": process_time}
 
-            self._insert(_holder, access_point=self._Data[self._Active_mode.value], is_overwrite=False)
+            self._Insert(_holder, access_point=self._Data[self._Active_mode.value], is_overwrite=False)
 
         def _Learning_observing(self, epoch: int):
             def _Make_string(data: JSON_WRITEABLE):

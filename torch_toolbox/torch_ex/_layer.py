@@ -73,7 +73,7 @@ class Module_Componant():
         return Sequential(*componant_list)
 
     @staticmethod
-    def _Make_weight(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
+    def _Make_weight(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Optional[Data_Type] = None):
         return parameter.Parameter(Tensor_Process._Make_tensor(size, value, rand_opt, dtype))
 
     class Linear(Module):
