@@ -137,8 +137,8 @@ class Tensor_Process():
             np_result = Tensor_Process._To_numpy(result.cpu().detach()).argmax(axis=1)  # [batch_size, h, w]
             np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size, h, w]
 
-            iou = Array_Process._Make_array_like([_batch_size, _class_num], 0, dtype=Np_Dtype.FLOAT)
-            miou = Array_Process._Make_array_like([_batch_size, ], 0, dtype=Np_Dtype.FLOAT)
+            iou = Array_Process._Make_array([_batch_size, _class_num], 0, dtype=Np_Dtype.FLOAT)
+            miou = Array_Process._Make_array([_batch_size, ], 0, dtype=Np_Dtype.FLOAT)
 
             for _b in range(_batch_size):
                 iou[_b], miou[_b] = Evaluation_Process._miou(np_result[_b], np_label[_b], _class_num, ingnore_class)
