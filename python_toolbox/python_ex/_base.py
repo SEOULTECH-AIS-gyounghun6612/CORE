@@ -18,13 +18,13 @@ import time
 from math import log10, floor
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, Dict, List, Union, Optional, Tuple
+from typing import Any, Dict, List, Union, Optional, Tuple, TypeAlias
 
 
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
-NUMBER = Union[int, float, bool]
-JSON_WRITEABLE = Optional[Union[NUMBER, str, Tuple, List, Dict]]
+NUMBER: TypeAlias = Union[int, float, bool]
+JSON_WRITEABLE: TypeAlias = Optional[Union[NUMBER, str, Tuple, List, Dict]]
 
 
 class OS_Style(Enum):
@@ -110,7 +110,7 @@ class Directory():
     def _Search(object_dir: str, name_keyword: Optional[str] = None, ext: Optional[str] = None, data_filter: Optional[File_Ext] = None):
         # Make fillter string
         _dir = Directory._Divider_check(object_dir)
-        _name = "" if name_keyword is None else f"*{name_keyword}*"
+        _name = "*" if name_keyword is None else f"*{name_keyword}*"
         _ext_info = "" if (data_filter is None or data_filter is File_Ext.DIRECTORY) else [f".{_ext}" for _ext in data_filter.value]
 
         # return directory list or all data

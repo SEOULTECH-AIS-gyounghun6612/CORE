@@ -56,7 +56,7 @@ class Numpy_IO():
 
         _save_file = f"{Directory._Divider_check(save_dir)}{_file_name}"
 
-        if _file_ext == "npy":
+        if isinstance(array, ndarray):
             np.save(_save_file, array)
         elif isinstance(array, list):
             np.savez(_save_file, *array) if is_compress else np.savez(_save_file, *array)
@@ -70,7 +70,11 @@ class Numpy_IO():
 
 class Array_Process():
     @staticmethod
-    def _Make_array(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Np_Dtype] = None) -> ndarray:
+    def _Make_array(
+            size: Union[int, List[int], Tuple],
+            value: Union[NUMBER, List[NUMBER]],
+            rand_opt: Random_Process = Random_Process.NORM,
+            dtype: Optional[Np_Dtype] = None) -> ndarray:
         """Make array from size information.
 
         Parameters
@@ -90,11 +94,14 @@ class Array_Process():
         if isinstance(value, list):
             _max_value = max(*value)
             _min_value = min(*value)
+            _size = [size] if isinstance(size, int) else size
 
             if rand_opt is rand_opt.NORM:
-                return (randn(size, dtype=_data_type) * (_max_value - _min_value)) + _min_value
+                _array: ndarray = (randn(*_size) * (_max_value - _min_value)) + _min_value
+                return _array.astype(_data_type)
             else:  # random process => unifrom
-                return (rand(size, dtype=_data_type) * _max_value) - _min_value
+                _array: ndarray = (rand(*_size) * (_max_value - _min_value)) + _min_value
+                return _array.astype(_data_type)
 
         # Fill same value in the array
         else:
@@ -156,7 +163,7 @@ class Array_Process():
 
     class RLE():
         @staticmethod
-        def _from_nparray(data: ndarray, order='F'):
+        def _from_nparray(data: ndarray, order: Literal['A', 'C', 'F'] = 'F'):
             if data is not None:
                 _size = data.shape
                 _size = (int(_size[0]), int(_size[1]))
