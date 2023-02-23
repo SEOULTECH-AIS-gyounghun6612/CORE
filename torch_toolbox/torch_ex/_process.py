@@ -271,16 +271,16 @@ class Learning_Process():
                 _scheduler.step() if _scheduler is not None else ...
 
                 # save log file
-                # if _this_node is MAIN_RANK:
-                #     self._tracker._insert({"Last_epoch": _epoch}, self._tracker._Annotation)
-                #     self._tracker._save(self._save_root, "trainer_log.json")
+                if _this_node is MAIN_RANK:
+                    self._tracker._Insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                    self._tracker._Save(self._save_root, "trainer_log.json")
 
-                #     # save model
-                #     self._Save_weight(_epoch_dir, _model, _optim, _scheduler)
+                    # save model
+                    self._Save_weight(_epoch_dir, "", _model, _optim, _scheduler)
 
-                self._tracker._Insert({"Last_epoch": _epoch}, self._tracker._Annotation)
-                self._tracker._Save(self._save_root, f"trainer_log_{processer_num}.json")
-                self._Save_weight(_epoch_dir, f"{processer_num}", _model, _optim, _scheduler)
+                # self._tracker._Insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                # self._tracker._Save(self._save_root, f"trainer_log_{processer_num}.json")
+                # self._Save_weight(_epoch_dir, f"{processer_num}", _model, _optim, _scheduler)
 
         def _Average_gradients(self, model: Custom_Model):
             size = float(distributed.get_world_size())
