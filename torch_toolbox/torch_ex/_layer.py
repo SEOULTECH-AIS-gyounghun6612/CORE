@@ -19,7 +19,7 @@ from torch.nn import Linear, Conv2d, Upsample
 import torchvision.models as models  # for backbone
 
 # loss
-from torch.nn import MSELoss, CrossEntropyLoss
+from torch.nn import MSELoss, CrossEntropyLoss, BCEWithLogitsLoss
 
 if __package__ == "":
     # if this file in local project
@@ -442,15 +442,19 @@ class Loss_Function():
         return mean(output - target)
 
     @staticmethod
-    def _Cross_Entropy(output, target, ignore_index=-100) -> Tensor:
+    def _Cross_Entropy(output: Tensor, target: Tensor, ignore_index=-100) -> Tensor:
         """
         Args:
-            output: [batch, class_num, h, w]
-            target: [batch, h, w]
+            output: [batch, class_num, :]
+            target: [batch, :]
         Return:
             loss value
         """
-        return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
+
+        if output.shape[1] == 1:
+            return BCEWithLogitsLoss()(output, target)
+        else:
+            return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
 
     @staticmethod
     def _Mean(output, target) -> Tensor:
