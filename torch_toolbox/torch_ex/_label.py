@@ -238,11 +238,11 @@ class Label():
                 return _type
 
             # Un-Freeze function
-            def _work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, ndarray]:
+            def _Work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, ndarray]:
                 raise NotImplementedError
 
         class BDD_100k(Basement):
-            def _work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
+            def _Work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
                 _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._Convert_from(index, dtype=Np_Dtype.INT)}
                 _count: Dict[str, int] = {
                     "image": 0,
@@ -272,7 +272,7 @@ class Label():
                 return _holder
 
         class COCO(Basement):
-            def _work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
+            def _Work(self, file_profiles: List[Data_Profile], index: int) -> Dict[str, Optional[ndarray]]:
                 _holder: Dict[str, Optional[ndarray]] = {"index": Array_Process._Convert_from(index, dtype=Np_Dtype.INT)}
                 _count: Dict[str, int] = dict((_style.value, 0) for _style in Data_Category)
 
