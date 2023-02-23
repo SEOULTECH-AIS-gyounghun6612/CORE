@@ -144,7 +144,7 @@ class Custom_Dataset(Dataset):
 
     def __getitem__(self, index) -> Dict[str, Tensor]:
         _source_index = index // self._amplification
-        return self._Pre_process(self._label_process._work(self._data_profiles, _source_index))
+        return self._Pre_process(self._label_process._Work(self._data_profiles, _source_index))
 
     # Un-Freeze function
     def _Pre_process(self, _pick_data: Dict[str, Any]) -> Dict[str, Tensor]:
