@@ -273,6 +273,7 @@ class Learning_Process():
                 # save log file
                 if _this_node is MAIN_RANK:
                     self._tracker._Insert({"Last_epoch": _epoch}, self._tracker._Annotation)
+                    self._tracker._Insert({"Learning_rate": _scheduler.get_lr()}, self._tracker._Annotation, False) if _scheduler is not None else ...
                     self._tracker._Save(self._save_root, "trainer_log.json")
 
                     # save model

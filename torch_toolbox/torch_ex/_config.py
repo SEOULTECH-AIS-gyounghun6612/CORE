@@ -187,7 +187,7 @@ class Optim_n_Schedule_Config(Utils.Config):
     optim_name: str  # Suport_Optimizer
     schedule_name: str  # Suport_Schedule
 
-    initial_lr: float = 0.0005
+    initial_lr: float = 0.0001
     maximum_lr: float = 0.0001
     minimum_lr: float = 0.00001
     lr_decay: float = 0.99
