@@ -1,4 +1,5 @@
 from typing import Dict, List, Any, Tuple, Optional, Union
+from subprocess import check_output
 from enum import Enum
 
 from torch import Tensor, distributions
@@ -12,13 +13,13 @@ from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Proces
 
 
 # -- DEFINE CONSTNAT -- #
-class Learning_Mode(Enum):
+class Process_Name(Enum):
     TRAIN = "train"
     VALIDATION = "val"
     TEST = "test"
 
 
-class Parameter_Type(Enum):
+class Scale_Type(Enum):
     LOSS = "loss"
     ACC = "acc"
 
@@ -29,6 +30,74 @@ class Data_Type(Enum):
 
 
 # -- Mation Function -- #
+class System_Utils():
+    @staticmethod
+    def _Get_useable_gpu_list(threshold_of_rate: float = 0.5, threshold_of_size: Optional[int] = None) -> List[Tuple[int, str]]:
+        _command = "nvidia-smi --format=csv --query-gpu=name,index,memory.total,memory.used,memory.free"
+        _memory_info_text = check_output(_command.split()).decode('ascii').split('\n')[:-1][1:]
+
+        _useable_gpu_list = []
+
+        for _each_info in _memory_info_text:
+            _info_list = _each_info.replace(" MiB", "").split(",")  # gpu name, gpu index, total memory, used memory, free memory
+
+            if threshold_of_size is not None:
+                if int(_info_list[4]) >= threshold_of_size:
+                    _useable_gpu_list.append((int(_info_list[1]), _info_list[0]))
+            else:
+                if int(_info_list[4]) / int(_info_list[2]) >= threshold_of_rate:
+                    _useable_gpu_list.append((int(_info_list[1]), _info_list[0]))
+
+        return _useable_gpu_list
+
+    class Learning_Logger(Tracker):
+        def __init__(self, Learning_info: Dict, logging_param: Dict[Process_Name, str]):
+            """
+
+            """
+            _tracking_param = dict((_mode_key.value, {_logging_params: {}}) for _mode_key, _logging_params in logging_param.items())
+
+            # dict((_param_name, {}) if isinstance(_param_name, dict) else (_param_name, {}) for _param_name in _logging_params)
+            #  _logging_params if isinstance(_logging_params, str) else _logging_params
+
+            super().__init__(Learning_info, _tracking_param)
+
+        def _Learning_logging(self, process_name: Process_Name, epoch: int, data: Dict[str, NUMBER]):
+            """
+
+            """
+            self._Insert(data_block=dict((_logging_param, {epoch: _value}) for _logging_param, _value in data.items()), access_point=self._Data[process_name.value])
+
+        def _Learning_tracking(self, process_name: Process_Name, epoch: int, observering_params: List[str], is_convert_string: bool = True):
+            _trackin_string = ""
+            _holder = {}
+
+            for _param in observering_params:
+                _observing_data = self._Get_data(data_info={epoch: None}, access_point=self._Data[process_name.value][_param])
+
+                if isinstance(_observing_data, int):
+                    _string = f"{_observing_data:>4d}, "
+                    _holder.update({_param: _observing_data})
+                elif isinstance(_observing_data, float):
+                    _string = f"{_observing_data:>7.3f}, "
+                    _holder.update({_param: _observing_data})
+                elif isinstance(_observing_data, (tuple, list)):
+                    _data = Array_Process._Convert_from(_observing_data, dtype=Np_Dtype.FLOAT)
+                    _string = f"[{', '.join([f'{_value:>7.3f}' for _value in _data.mean(0)])}], " if len(_data.shape) >= 2 else f"{_data.mean():>7.3f}, "
+                    _holder.update({_param: _data})
+                else:
+                    _string = "Dict data"
+                    _holder.update({_param: _observing_data})
+
+                _trackin_string = f"{_trackin_string} {_param}: {_string}, "
+
+            return _trackin_string[:-2] if is_convert_string else _holder
+
+        def _Get_logging_length(self, process_name: Process_Name, epoch: int, observering_param: str):
+            _observing_data = self._Get_data(data_info={epoch: None}, access_point=self._Data[process_name.value][observering_param])
+            return len(_observing_data)
+
+
 class Tensor_Process():
     @staticmethod
     def _Make_tensor(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
@@ -180,7 +249,7 @@ class Tracking():
     class To_Process(Tracker):
         _Data: Dict[str, Dict[str, JSON_WRITEABLE]]  # {Learning_mode:  {Logging_mode: {Logging_Parameter: {Epoch: []}}
 
-        def __init__(self, tracking_param: Dict[Learning_Mode, Dict[Parameter_Type, List[str]]], observing_param: Dict[Learning_Mode, Dict[Parameter_Type, Optional[List[str]]]]):
+        def __init__(self, tracking_param: Dict[Process_Name, Dict[Scale_Type, List[str]]], observing_param: Dict[Process_Name, Dict[Scale_Type, Optional[List[str]]]]):
             _tracking_param = dict((
                 _mode_key.value,
                 dict((
@@ -213,7 +282,7 @@ class Tracking():
                 _holder[_mode]["process_time"] = {}
             return _holder
 
-        def _Set_activate_mode(self, learing_mode: Learning_Mode):
+        def _Set_activate_mode(self, learing_mode: Process_Name):
             self._Active_mode = learing_mode
 
         def _Learning_tracking(
@@ -292,7 +361,7 @@ class Tracking():
             _learning_mode = self._Active_mode.value
 
             _tracking = self._observing_param[_learning_mode]
-            _target_key = Parameter_Type.ACC.value if Parameter_Type.ACC.value in _tracking.keys() else Parameter_Type.LOSS.value
+            _target_key = Scale_Type.ACC.value if Scale_Type.ACC.value in _tracking.keys() else Scale_Type.LOSS.value
             _access_point = self._Data[_learning_mode][_target_key]
 
             if isinstance(_access_point, dict):

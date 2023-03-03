@@ -9,10 +9,10 @@ from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Image_Process
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode
+    from torch_ex._torch_base import Process_Name
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode
+    from ._torch_base import Process_Name
 
 
 # -- DEFINE CONSTNAT -- #
@@ -76,12 +76,12 @@ class Label():
         class Basement():
             _directory: Dict
 
-            def __init__(self, file_info: Dict[Learning_Mode, List[Tuple[Data_Category, File_Style, Any]]], root: str) -> None:
+            def __init__(self, file_info: Dict[Process_Name, List[Tuple[Data_Category, File_Style, Any]]], root: str) -> None:
                 self._root_dir = root if Directory._Exist_check(root) else Directory._Relative_root()
                 self._file_info = file_info
 
             # Un-Freeze function
-            def _Get_file_profiles(self, mode: Learning_Mode) -> List[Data_Profile]:
+            def _Get_file_profiles(self, mode: Process_Name) -> List[Data_Profile]:
                 _file_profiles = []
 
                 if mode in self._file_info.keys():
@@ -100,7 +100,7 @@ class Label():
                 }
             }
 
-            def _Get_file_profiles(self, mode: Learning_Mode) -> List[Data_Profile]:
+            def _Get_file_profiles(self, mode: Process_Name) -> List[Data_Profile]:
                 assert mode in self._file_info.keys()
                 _file_profiles = []
 
@@ -124,7 +124,7 @@ class Label():
                 }
             }
 
-            def _Get_file_profiles(self, mode: Learning_Mode) -> List[Data_Profile]:
+            def _Get_file_profiles(self, mode: Process_Name) -> List[Data_Profile]:
                 _annotation_data: Dict[str, Dict] = {
                     "captions": {},
                     "instances": {},

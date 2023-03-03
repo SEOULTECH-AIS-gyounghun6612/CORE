@@ -10,17 +10,17 @@ from python_ex._base import Directory, File, Utils, JSON_WRITEABLE
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._torch_base import Learning_Mode, Parameter_Type
+    from torch_ex._torch_base import Process_Name, Scale_Type
     from torch_ex._layer import Custom_Model
-    from torch_ex._process import Multi_Method
+    from torch_ex._Learning import Multi_Method
     from torch_ex._label import Support_Label, Data_Category, File_Style, Label, Label_Structure
     from torch_ex._dataset import Supported_Transform, Supported_Augment, Augment
     from torch_ex._optimizer import Suport_Optimizer, Suport_Schedule
 else:
     # if this file in package folder
-    from ._torch_base import Learning_Mode, Parameter_Type
+    from ._torch_base import Process_Name, Scale_Type
     from ._layer import Custom_Model
-    from ._process import Multi_Method
+    from ._Learning import Multi_Method
     from ._label import Support_Label, Data_Category, File_Style, Label, Label_Structure
     from ._dataset import Supported_Transform, Supported_Augment, Augment
     from ._optimizer import Suport_Optimizer, Suport_Schedule
@@ -40,7 +40,7 @@ class Learning_Config:
         # About Learning type and style
         max_epoch: int = 100
         last_epoch: int = -1
-        learning_mode: List[str] = field(default_factory=lambda: [Learning_Mode.TRAIN.value, Learning_Mode.VALIDATION.value])
+        learning_mode: List[str] = field(default_factory=lambda: [Process_Name.TRAIN.value, Process_Name.VALIDATION.value])
 
         batch_size_per_node: int = 4
         num_worker_per_node: int = 2
@@ -55,11 +55,11 @@ class Learning_Config:
         def _Get_parameter(self) -> Dict[str, Any]:
             _param = super()._Get_parameter()
 
-            _param["learning_mode"] = [Learning_Mode(_value) for _value in self.learning_mode]
+            _param["learning_mode"] = [Process_Name(_value) for _value in self.learning_mode]
 
             _param["multi_method"] = Multi_Method(_param["multi_method"])
 
-            if _param["multi_method"] is Multi_Method.NONE:
+            if _param["multi_method"] is Multi_Method.NOT_USE:
                 _param["world_size"] = 1
             else:
                 if self.this_rank * cuda.device_count() > self.world_size:
@@ -88,11 +88,11 @@ class Tracker_Config(Utils.Config):
     def _Get_parameter(self) -> Dict[str, Any]:
         return {
             "tracking_param": dict((
-                Learning_Mode(_mode),
-                dict((Parameter_Type(_process), _obj) for _process, _obj in _tracking_info.items())) for _mode, _tracking_info in self.tracking.items()),
+                Process_Name(_mode),
+                dict((Scale_Type(_process), _obj) for _process, _obj in _tracking_info.items())) for _mode, _tracking_info in self.tracking.items()),
             "observing_param": dict((
-                Learning_Mode(_mode),
-                dict((Parameter_Type(_process), _obj) for _process, _obj in _observing_info.items())) for _mode, _observing_info in self.observing.items())
+                Process_Name(_mode),
+                dict((Scale_Type(_process), _obj) for _process, _obj in _observing_info.items())) for _mode, _observing_info in self.observing.items())
         }
 
 
@@ -166,17 +166,17 @@ class Dataset_Config(Utils.Config):
                 self.meta_file),
             "data_process": Label.File_IO.__dict__[self.label_name](
                 dict((
-                    Learning_Mode(_mode_name),
+                    Process_Name(_mode_name),
                     [(Data_Category(_label_style), File_Style(_file_style), _optional) for _label_style, _file_style, _optional in _data_list]
                 ) for _mode_name, _data_list in self.data_info.items()),
                 self.data_root
             ),
             "amplification": dict((
-                Learning_Mode(_mode_name),
+                Process_Name(_mode_name),
                 _value
             )for _mode_name, _value in self.amplification.items()),
             "augmentation": dict((
-                Learning_Mode(_mode_name),
+                Process_Name(_mode_name),
                 [Augment_Config(**_aug)._Get_parameter() for _aug in _aug_param] if isinstance(_aug_param, list) else Augment_Config(**_aug_param)._Get_parameter()
             ) for _mode_name, _aug_param in self.augment.items())
         }
