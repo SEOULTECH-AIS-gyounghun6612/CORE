@@ -1,3 +1,13 @@
+"""
+PYTHON_EX
+===
+
+How to use this package
+-----
+
+"""
+
+
 if __package__ == "":
     # if this module call to local for another project
     import sys

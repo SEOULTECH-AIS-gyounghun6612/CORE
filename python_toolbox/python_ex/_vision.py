@@ -168,7 +168,7 @@ class Base_Process():
     def range_converter(image, form_range: R_option, to_range: R_option):
         if form_range == R_option.ZtoO:
             if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
-                return Array_Process._converter(image * 0xff, dtype=Np_Dtype.UINT)
+                return Array_Process._Convert_from(image * 0xff, dtype=Np_Dtype.UINT)
             else:
                 return image
         elif form_range == R_option.ZtoFF:
@@ -190,7 +190,7 @@ class Base_Process():
     def filtering(image: ndarray, array):
         if len(image.shape) > 2:
             # color image
-            holder = Array_Process._converter(image, dtype=Np_Dtype.UINT)
+            holder = Array_Process._Convert_from(image, dtype=Np_Dtype.UINT)
             for _ch_ct in range(image.shape[-1]):
                 holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
             return holder
@@ -220,7 +220,7 @@ class Base_Process():
         _holder_shape[0] += _t_pad + _b_pad  # h padding
         _holder_shape[1] += _l_pad + _r_pad  # w padding
 
-        _holder = Array_Process._converter(_holder_shape, is_shape=True, value=value, dtype=Np_Dtype.UINT)
+        _holder = Array_Process._Make_array(_holder_shape, value=value, dtype=Np_Dtype.UINT)
 
         _t_pad = _t_pad if _t_pad else None
         _b_pad = -_b_pad if _b_pad else None
@@ -280,8 +280,8 @@ class edge():
 
                 return delta_holder / 3, (direction_holder / 3).round()
             else:
-                dx = Base_Process.filtering(image, Array_Process._converter([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Np_Dtype.FLOAT))
-                dy = Base_Process.filtering(image, Array_Process._converter([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Np_Dtype.FLOAT))
+                dx = Base_Process.filtering(image, Array_Process._Convert_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Np_Dtype.FLOAT))
+                dy = Base_Process.filtering(image, Array_Process._Convert_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Np_Dtype.FLOAT))
                 dxy = Image_Process._distance(dx, dy, is_euclid)
                 direction = Image_Process._gredient_direction(dx, dy)
                 return dxy, direction

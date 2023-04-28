@@ -1,10 +1,5 @@
 from typing import Dict, Union, Optional
-
-
-if __package__ == "":
-    from _base import Directory, File, JSON_WRITEABLE
-else:
-    from ._base import Directory, File, JSON_WRITEABLE
+from ._base import Directory, File, JSON_WRITEABLE
 
 
 # -- DEFINE CONSTNAT -- #

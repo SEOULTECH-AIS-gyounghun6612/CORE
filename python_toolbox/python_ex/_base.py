@@ -18,24 +18,18 @@ import time
 from math import log10, floor
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, Dict, List, Union, Optional, Tuple, TypeAlias
+from typing import Any, Dict, List, Union, Optional, Tuple
 
 
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
-NUMBER: TypeAlias = Union[int, float, bool]
-JSON_WRITEABLE: TypeAlias = Optional[Union[NUMBER, str, Tuple, List, Dict]]
+NUMBER = Union[int, float, bool]
+JSON_WRITEABLE = Optional[Union[NUMBER, str, Tuple, List, Dict]]
 
 
 class OS_Style(Enum):
     OS_WINDOW = "Windows"
     OS_UBUNTU = "Linux"
-
-
-class File_Ext(Enum):
-    DIRECTORY = "directory"
-    IMAGE = ["jpg", "png"]
-    json = ["json",]
 
 
 # -- Mation Function -- #
@@ -107,16 +101,16 @@ class Directory():
         return _dir
 
     @staticmethod
-    def _Search(object_dir: str, name_keyword: Optional[str] = None, ext: Optional[str] = None, data_filter: Optional[File_Ext] = None):
+    def _Search(object_dir: str, keyword: Optional[str] = None, ext_filter: Union[str, List[str]] = "Directory"):
         # Make fillter string
         _dir = Directory._Divider_check(object_dir)
-        _name = "*" if name_keyword is None else f"*{name_keyword}*"
-        _ext_info = "" if (data_filter is None or data_filter is File_Ext.DIRECTORY) else [f".{_ext}" for _ext in data_filter.value]
+        _name = "*" if keyword is None else f"*{keyword}*"
+        _ext_info = "" if ext_filter == "Directory" else [f".{_ext}" for _ext in ext_filter]
 
         # return directory list or all data
         if isinstance(_ext_info, str):
             _search_list = sorted(glob(f"{_dir}{_name}{_ext_info}"))
-            return _search_list if data_filter is None else [data for data in _search_list if Directory._Exist_check(data)]
+            return _search_list if ext_filter is None else [data for data in _search_list if Directory._Exist_check(data)]
 
         # retrun file list
         else:
@@ -191,12 +185,11 @@ class File():
 
     @staticmethod
     def _Extrect_file_name(file_path: str, just_file_name: bool = True):
-        _file_path = Directory._Divider_check(file_path, is_file=True)
-        _file_dir, _file_name = path.split(_file_path)
+        _file_dir, _file_name = path.split(file_path)
         return _file_name if just_file_name else [Directory._Divider_check(_file_dir), _file_name]
 
     @staticmethod
-    def _Extension_check(file_path: str, exts: List[str], is_fix: bool = False) -> Tuple[bool, str]:
+    def _Extension_check(file_path: str, ext_filter: List[str], is_fix: bool = False) -> Tuple[bool, str]:
         # _file_ext = "npy" if isinstance(array, ndarray) else "npz"
 
         # if file_name.find(".") == -1:
@@ -209,9 +202,9 @@ class File():
         _file_dir, _file_name = File._Extrect_file_name(file_path, False)
 
         if _file_name == "" or _file_name.split(".")[-1] == "":  # "file_path" is dir or extension not exist in that
-            return (True, f"{file_path}.{exts[0]}") if is_fix else (False, file_path)
-        elif _file_name.split(".")[-1] not in exts:  # path extension not exist in exts
-            _file_name = _file_name.replace(_file_name.split(".")[-1], exts[0])
+            return (True, f"{file_path}.{ext_filter[0]}") if is_fix else (False, file_path)
+        elif _file_name.split(".")[-1] not in ext_filter:  # path extension not exist in exts
+            _file_name = _file_name.replace(_file_name.split(".")[-1], ext_filter[0])
             return (True, f"{_file_dir}{Directory._Divider}{_file_name}") if is_fix else (False, file_path)
         else:
             return (True, file_path)
@@ -288,7 +281,8 @@ class Utils():
 
         @staticmethod
         def _Progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
-            """Call in a loop to create terminal progress bar
+            """
+            Call in a loop to create terminal progress bar
 
             Parameters
             --------------------

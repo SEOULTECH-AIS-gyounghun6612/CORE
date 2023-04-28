@@ -4,17 +4,14 @@ import numpy as np
 from numpy import ndarray
 from numpy.random import rand, randn
 
-if __package__ == "":
-    from _base import NUMBER, Directory
-else:
-    from ._base import NUMBER, Directory
+from ._base import NUMBER, Directory
 
 
 # -- DEFINE CONSTNAT -- #
 class Np_Dtype(Enum):
     INT = np.int32
     UINT = np.uint8
-    BOOL = np.bool8
+    BOOL = bool
     FLOAT = np.float32
     STRING = np.string_
 
@@ -59,13 +56,13 @@ class Numpy_IO():
         if isinstance(array, ndarray):
             np.save(_save_file, array)
         elif isinstance(array, list):
-            np.savez(_save_file, *array) if is_compress else np.savez(_save_file, *array)
+            np.savez_compressed(_save_file, *array) if is_compress else np.savez(_save_file, *array)
         else:
-            np.savez_compressed(_save_file, **array) if is_compress else np.savez_compressed(_save_file, **array)
+            np.savez_compressed(_save_file, **array) if is_compress else np.savez(_save_file, **array)
 
     @staticmethod
     def _Load(file_name: str, directory: str):
-        raise NotImplementedError
+        return np.load(f"{Directory._Divider_check(directory)}{file_name}")
 
 
 class Array_Process():
@@ -97,11 +94,11 @@ class Array_Process():
             _size = [size] if isinstance(size, int) else size
 
             if rand_opt is rand_opt.NORM:
-                _array: ndarray = (randn(*_size) * (_max_value - _min_value)) + _min_value
-                return _array.astype(_data_type)
+                _array: ndarray = (randn(_size[0], *_size[1:]) * (_max_value - _min_value)) + _min_value
             else:  # random process => unifrom
-                _array: ndarray = (rand(*_size) * (_max_value - _min_value)) + _min_value
-                return _array.astype(_data_type)
+                _array: ndarray = (rand(_size[0], *_size[1:]) * (_max_value - _min_value)) + _min_value
+
+            return _array.astype(_data_type)
 
         # Fill same value in the array
         else:
