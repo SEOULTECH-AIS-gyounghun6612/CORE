@@ -23,14 +23,14 @@ from torch.nn import MSELoss, CrossEntropyLoss, BCEWithLogitsLoss
 
 if __package__ == "":
     # if this file in local project
-    from _torch_base import Tensor_Process, Data_Type
+    from torch_ex._Torch_base import Tensor_Process, Data_Type
 
 else:
     # if this file in package folder
-    from ._torch_base import Tensor_Process, Data_Type
+    from ._Torch_base import Tensor_Process, Data_Type
 
 
-# -- DEFINE CONSTNAT -- #
+# -- DEFINE CONSTANT -- #
 class Suport_Padding(Enum):
     ZEROS = 'zeros'
     REFLECT = 'reflect'
@@ -48,7 +48,7 @@ class Suport_Attention(Enum):
     Dot_Attention = "Dot_Attention"
 
 
-# -- Mation Function -- #
+# -- Main code -- #
 class Custom_Model(Module):
     def __init__(self, model_name: str, **model_parameter):
         super(Custom_Model, self).__init__()

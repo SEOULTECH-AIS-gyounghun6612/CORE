@@ -15,7 +15,7 @@ else:
     ...
 
 
-# -- DEFINE CONSTNAT -- #
+# -- DEFINE CONSTANT -- #
 class Suport_Optimizer(Enum):
     Adam = "Adam"
 
@@ -24,7 +24,7 @@ class Suport_Schedule(Enum):
     Cosin_Annealing = "Cosin_Annealing"
 
 
-# -- Mation Function -- #
+# -- Main code -- #
 class Scheduler():
     class Basement(_LRScheduler):
         def __init__(
