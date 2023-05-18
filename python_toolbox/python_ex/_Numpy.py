@@ -4,7 +4,7 @@ import numpy as np
 from numpy import ndarray
 from numpy.random import rand, randn
 
-from ._Base import NUMBER, Directory
+from ._Base import TYPE_NUMBER, Directory
 
 
 # -- DEFINE CONSTNAT -- #
@@ -69,7 +69,7 @@ class Array_Process():
     @staticmethod
     def _Make_array(
             size: Union[int, List[int], Tuple],
-            value: Union[NUMBER, List[NUMBER]],
+            value: Union[TYPE_NUMBER, List[TYPE_NUMBER]],
             rand_opt: Random_Process = Random_Process.NORM,
             dtype: Optional[Np_Dtype] = None) -> ndarray:
         """Make array from size information.
@@ -107,7 +107,7 @@ class Array_Process():
     @staticmethod
     def _Make_array_like(
             sample: Union[List, Tuple, ndarray],
-            value: Union[NUMBER, List[NUMBER]],
+            value: Union[TYPE_NUMBER, List[TYPE_NUMBER]],
             rand_opt: Random_Process = Random_Process.NORM,
             dtype: Optional[Np_Dtype] = None) -> ndarray:
         """Make array from sample size.
@@ -135,7 +135,7 @@ class Array_Process():
             return np.ones_like(_sample, dtype=_data_type) * value if value else np.zeros_like(_sample, dtype=_data_type)
 
     @staticmethod
-    def _Convert_from(sample: Union[NUMBER, List[NUMBER], Tuple, ndarray], dtype: Optional[Np_Dtype] = None) -> ndarray:
+    def _Convert_from(sample: Union[TYPE_NUMBER, List[TYPE_NUMBER], Tuple, ndarray], dtype: Optional[Np_Dtype] = None) -> ndarray:
         """Make array from sample data.
 
         Parameters

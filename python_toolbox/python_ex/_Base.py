@@ -8,23 +8,19 @@ Requirement
     None
 """
 # Import module
-from dataclasses import asdict, dataclass
 from enum import Enum
 import json
 # import yaml
 import platform
-import time
 
-from math import log10, floor
 from glob import glob
 from os import path, system, getcwd, mkdir
-from typing import Any, Dict, List, Union, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
-NUMBER = Union[int, float, bool]
-JSON_WRITEABLE = Optional[Union[NUMBER, str, Tuple, List, Dict]]
+TYPE_NUMBER = int | float
 
 
 class OS_Style(Enum):
@@ -80,7 +76,7 @@ class Directory():
         return Directory._Devide(getcwd())[-1] if just_name else Directory._Divider_check(getcwd())
 
     @staticmethod
-    def _Make(obj_dir: str, root_dir: Optional[str] = None):
+    def _Make(obj_dir: str, root_dir: str | None = None):
         if root_dir is not None:
             # use root directory
             # root directory check
@@ -101,7 +97,7 @@ class Directory():
         return _dir
 
     @staticmethod
-    def _Search(object_dir: str, keyword: Optional[str] = None, ext_filter: Union[str, List[str]] = "Directory"):
+    def _Search(object_dir: str, keyword: str | None = None, ext_filter: str | List[str] = "Directory"):
         # Make fillter string
         _dir = Directory._Divider_check(object_dir)
         _name = "*" if keyword is None else f"*{keyword}*"
@@ -178,9 +174,14 @@ class Directory():
     #     raise NotImplementedError
 
 
+TYPE_JSON_KEYABLE = TYPE_NUMBER | bool | str
+TYPE_JSON_VALUEABLE = TYPE_JSON_KEYABLE | Tuple | List | Dict | None
+TYPE_JSON_WRITEABLE = Dict[TYPE_JSON_KEYABLE, TYPE_JSON_VALUEABLE]
+
+
 class File():
     @staticmethod
-    def _Exist_check(file_path: Optional[str]) -> bool:
+    def _Exist_check(file_path: str | None) -> bool:
         return False if file_path is None else path.isfile(file_path)
 
     @staticmethod
@@ -210,7 +211,7 @@ class File():
             return (True, file_path)
 
     @staticmethod
-    def _Json(file_dir: str, file_name: str, is_save: bool = False, data_dict: Optional[Dict] = None) -> Dict:
+    def _Json(file_dir: str, file_name: str, is_save: bool = False, data_dict: Dict | None = None) -> Dict:
         # directory check
         _file_dir = Directory._Divider_check(file_dir)
         assert Directory._Exist_check(_file_dir), f"Data save Directrory : {_file_dir} is NOT EXIST.\n check it"
@@ -254,70 +255,3 @@ class File():
     # @staticmethod
     # def _copy_to(dir, file):
     #     raise NotImplementedError
-
-
-class Utils():
-    @dataclass
-    class Config():
-        def _Get_parameter(self) -> Dict[str, Any]:
-            """
-
-            """
-            return asdict(self)
-
-        def _Convert_to_dict(self) -> Dict[str, JSON_WRITEABLE]:
-            """
-            Returned dictionary value type must be can dumped in json file
-            """
-            return asdict(self)
-
-    class Progress():
-        @staticmethod
-        def _Count_aligning(this_count: int, max_count: int):
-            _string_ct = floor(log10(max_count)) + 1
-            _this = f"{this_count}".rjust(_string_ct, "0")
-
-            return f"{_this}/{max_count}"
-
-        @staticmethod
-        def _Progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
-            """
-            Call in a loop to create terminal progress bar
-
-            Parameters
-            --------------------
-            iteration
-                current iteration
-            total
-                total iterations (Int)
-            prefix
-                prefix string (Str)
-            suffix
-                suffix string (Str)
-            decimals
-                positive number of decimals in percent complete (Int)
-            length
-                character length of bar (Int)
-            fill
-                bar fill character (Str)
-            """
-            percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-            filledLength = int(length * iteration // total)
-            bar = fill * filledLength + '-' * (length - filledLength)
-            print(f'\r{prefix} |{bar}| {percent}% {suffix}', end="\r")
-            # Print New Line on Complete
-            if iteration == total:
-                print()
-
-    @staticmethod
-    def _Stop_point():
-        ...
-
-    class Time():
-        @staticmethod
-        def _Stemp(source: Optional[float] = None):
-            return time.time() if source is None else source
-
-        @staticmethod
-        def _Apply_text_form(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
-            return time.strftime(text_format, time.localtime(source) if is_local else time.gmtime(source))
