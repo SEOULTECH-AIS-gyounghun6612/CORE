@@ -9,16 +9,16 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
    - [ ] _Custom_Debuger.py
 
 - 코드내 인자 명명법 수정
-   - [x] _base.py
-   - [x] _numpy.py
-   - [x] _result.py
-   - [ ] _vision.py
+   - [x] _Base.py
+   - [x] _Numpy.py
+   - [x] _Project.py
+   - [ ] _Vision.py
 
 - 함수 주석 작업
-   - [ ] _base.py
-   - [ ] _numpy.py
-   - [ ] _result.py
-   - [ ] _vision.py
+   - [ ] _Base.py
+   - [ ] _Numpy.py
+   - [ ] _Project.py
+   - [ ] _Vision.py
 
 #### _error.py
 - 자체적인 에러 생성 코드 방법 구성
