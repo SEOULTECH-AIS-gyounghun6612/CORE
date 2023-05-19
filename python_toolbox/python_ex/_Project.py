@@ -1,10 +1,10 @@
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict
 from dataclasses import asdict, dataclass
 
 import time
 from math import log10, floor
 
-from ._Base import Directory, File, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
+from ._Base import File, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
 
 
 # -- DEFINE CONSTNAT -- #
@@ -129,7 +129,7 @@ class Debuging():
             # Print New Line on Complete
             if iteration == total:
                 print()
-    
+
     class Logging():
         """
         프로젝트 진행에 따른 기록을 남기기 위한 객체 기본 구조
