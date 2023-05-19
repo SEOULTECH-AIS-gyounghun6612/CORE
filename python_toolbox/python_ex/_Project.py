@@ -1,10 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 from dataclasses import asdict, dataclass
 
 import time
 from math import log10, floor
 
-from ._Base import File, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
+from ._Base import File, TYPE_JSON_KEYABLE, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
 
 
 # -- DEFINE CONSTNAT -- #
@@ -162,6 +162,29 @@ class Debuging():
                     else:
                         _slot = [save_point[_key], ]
                         save_point[_key] = _slot + _data if isinstance(_data, list) else _slot + [_data, ]
+
+        def _Pick(self, pick: Dict[TYPE_JSON_KEYABLE, Dict | List | None], access_point: TYPE_JSON_WRITEABLE):
+            _holder = {}
+
+            for _key, _pick_info in pick.items():
+                _pick_data = access_point[_key] if _key in access_point.keys() else None
+
+                if _pick_info is None:
+                    _holder.update({_key: _pick_data})
+
+                elif isinstance(_pick_data, dict):
+                    _holder.update(
+                        {
+                            _key: self._Pick(
+                                _pick_info if isinstance(_pick_info, dict) else dict((_data_name, _pick_info) for _data_name in _pick_data.keys()),
+                                _pick_data)
+                        })
+                elif isinstance(_pick_info, list):
+                    _holder.update({_key: _pick_data[_pick_info[0]: _pick_info[-1]] if isinstance(_pick_data, list) else _pick_data})
+                else:
+                    _holder.update({_key: None})
+
+            return _holder
 
         def _Load(self, file_dir: str, file_name: str):
             _save_pakage: dict[str, TYPE_JSON_WRITEABLE] = File._Json(file_dir, file_name)
