@@ -5,16 +5,16 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 ## Update plan
 
 ### 공통 과정
-- 신규 데이터 모듈 생성
-   - [ ] _Custom_Debuger.py
-
 - 코드내 인자 명명법 수정
    - [x] _Base.py
    - [x] _Numpy.py
    - [x] _Project.py
    - [ ] _Vision.py
 
-- 함수 주석 작업
+- docstring 작업  
+   작업한 코드를 보다 쉽게 사용하기 위하여 python docstring 작업  
+   아래와 같은 규칙으로 docstring 작업을 진행.
+   
    - [ ] _Base.py
    - [ ] _Numpy.py
    - [ ] _Project.py
