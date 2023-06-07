@@ -85,7 +85,7 @@ class Debuging():
             ### Parameters
             - source : 시간 정보
             - is_local : 프로그램이 작동하는 단말기의 지역시간 적용 여부
-            - text_format : 생성하고자 하는 텍스트의 포멧 => https://docs.python.org/ko/3/library/time.html#time.strftime 참고
+            - text_format : 생성하고자 하는 텍스트의 포멧. (https://docs.python.org/ko/3/library/time.html#time.strftime 참고)
 
             ### Return
             - time_text : 입력된 조건에 따라 시간 정보로 부터 생성된 텍스트

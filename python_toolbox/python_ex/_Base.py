@@ -13,6 +13,7 @@ import json
 # import yaml
 import platform
 
+import sys
 from glob import glob
 from os import path, system, getcwd, mkdir
 from typing import Dict, List, Tuple
@@ -21,6 +22,9 @@ from typing import Dict, List, Tuple
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
 TYPE_NUMBER = int | float
+
+# System Constant
+PYTHON_VERSION = sys.version_info
 
 
 class OS_Style(Enum):
@@ -58,8 +62,8 @@ class Directory():
         return _dir
 
     @staticmethod
-    def _Exist_check(directory: str):
-        return path.isdir(directory)
+    def _Exist_check(directory: str | None):
+        return False if directory is None else path.isdir(directory)
 
     @classmethod
     def _Devide(cls, directory: str, level: int = -1):
@@ -181,8 +185,8 @@ TYPE_JSON_WRITEABLE = Dict[TYPE_JSON_KEYABLE, TYPE_JSON_VALUEABLE]
 
 class File():
     @staticmethod
-    def _Exist_check(file_path: str | None) -> bool:
-        return False if file_path is None else path.isfile(file_path)
+    def _Exist_check(file_dir: str | None, file_name: str | None) -> bool:
+        return False if file_dir is None or file_name is None or not Directory._Exist_check(file_dir) or not path.isfile("".join([file_dir, file_name])) else True
 
     @staticmethod
     def _Extrect_file_name(file_path: str, just_file_name: bool = True):
