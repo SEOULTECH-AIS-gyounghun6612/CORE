@@ -2,17 +2,17 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Tuple, Any, Optional
 
-from python_ex._base import Directory, File, Utils
-from python_ex._vision import File_IO
-from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Image_Process
+from python_ex._Base import Directory, File, Utils
+from python_ex._Vision import File_IO
+from python_ex._Numpy import Array_Process, Np_Dtype, ndarray, Image_Process
 
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._Torch_base import Process_Name
+    from torch_ex._Base import Process_Name
 else:
     # if this file in package folder
-    from ._Torch_base import Process_Name
+    from ._Base import Process_Name
 
 
 # -- DEFINE CONSTANT -- #

@@ -1,4 +1,6 @@
-from typing import Tuple, Dict, List, Any
+from __future__ import annotations
+
+from typing import Tuple, Dict, List, Any, Generator
 from enum import Enum
 from math import pi, cos, sin, ceil
 from dataclasses import dataclass
@@ -9,311 +11,425 @@ from torch.utils.data import Dataset
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-from python_ex._base import Directory, File, Utils
-# from python_ex._vision import File_IO
-# from python_ex._numpy import Array_Process, Np_Dtype, ndarray, Image_Process
+from python_ex._Base import Directory, File
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._Torch_base import Process_Name
+    from torch_ex._Base import Process_Name
 else:
     # if this file in package folder
-    from ._Torch_base import Process_Name
+    from ._Base import Process_Name
 
 
 # -- DEFINE CONSTANT -- #
-class Label_Style(Enum):
-    CLASSIFICATION = "Classification"
-    SEMENTIC_SEG = "Mask"
-
-
-class Data_Format(Enum):
-    image = "image"
-    colormaps = "colormaps"
-    polygons = "polygons"
-
-
-class Label():
-    @dataclass
-    class Basement(Utils.Config):
-        """
-        ### 훈련에 사용되는 물체 정보
-        -------------------------------------------------------------------------------------------
-        ## Parameters
-            identity_num (int)
-                : 고유번호
-            train_num: (int)
-                : 훈련에서 사용되는 구분번호
-            cateogry: (str)
-                : 물체 범주
-            ignore_in_eval: (bool)
-                : 평가 포함 여부
-            name: (str)
-                : 물체 이름
-            class_info (Any)
-                : 물체 표현 정보
-        -------------------------------------------------------------------------------------------
-        """
-        identity_num: int
-        train_num: int
-        cateogry: str
-        ignore_in_eval: bool
-        name: str
-        class_info: Any
-
-    @dataclass
-    class Classification(Basement):
-        class_info: str
-
-    @dataclass
-    class Mask(Basement):
-        class_info: List[int]
-
-
-@dataclass
-class Data_Profile():
-    data_format: Data_Format
-    data_list: List[Any]
-
-    def __len__(self):
-        return len(self.data_list)
-
-    def _Get_data(self, num: int):
-        ...
-
-
-class Supported_Augment(Enum):
-    ALBUIMIENTATIONS = "Albumentations"
 
 
 # -- Main code -- #
-class Label_Organization():
-    class Basement():
-        # initialize
-        def __init__(self, active_style: List[Label_Style], meta_file: str | None = None):
-            # Get label data
-            # Directory check
-            if meta_file is None:
-                _meta_dir = Directory._Devide(__file__)[0]
-                _meta_file = f"{self.__class__.__name__}.json"
-            else:
-                _meta_dir, _meta_file = Directory._Devide(meta_file)
-                _meta_dir = Directory._Divider_check(_meta_dir) if Directory._Exist_check(_meta_dir) else Directory._Devide(__file__)[0]
-                _meta_file = _meta_file if meta_file is not None and File._Exist_check(meta_file) else f"{self.__class__.__name__}.json"
+class Label():
+    '''
+    라벨과 관련데 일련의 처리 과정을 위한 모듈
 
-            _raw_data: Dict[str, List[Dict]] = File._Json(file_dir=_meta_dir, file_name=_meta_file)
+    - ```Style``` : 처리 가능한 라벨의 스타일과 그에 따른 라벨 데이터 구조를 명시
+    - ```Structure``` : 라벨 데이터 구조를 명시
+    - ```Organization``` : 라벨 정보 파일을 읽고, 라벨 데이터 구조를 생성
 
-            self._infomation: Dict[Label_Style, Dict[int, List[Label.Basement]]] = {}
 
-            # Make active_label from meta data
-            for _style in active_style:
-                self._Make_active_label(_style, [Label.__dict__[_style.value](**data) for data in _raw_data[_style.value]])
+    -------------------------------------------------------------------------------------------
+    '''
+    class Style(Enum):
+        '''
+        라벨의 스타일에 따른 라벨 데이터 구조 맵핑
 
-        # Freeze function
-        def _Make_active_label(self, style: Label_Style, raw_label: List[Label.Basement]):
-            self._infomation[style] = {}
-            for _label in raw_label:
-                if _label.train_num in self._infomation[style].keys():
-                    self._infomation[style][_label.train_num].append(_label)
+        각 라벨의 스타일에 따라 매칭되는 라벨 데이터 구조는 아래와 같음
+        - ```Style.CLASSIFICATION``` -> ```Label.Classification```
+        - ```Style.SEMENTIC``` -> ```Label.Mask```
+
+        -------------------------------------------------------------------------------------------
+        '''
+
+        CLASSIFICATION = "Classification"
+        SEMENTIC = "Mask"
+
+    class Structure():
+        @dataclass
+        class Label_Base():
+            '''
+            라벨 데이터 자료 기본 구조
+
+            ----------
+            ### Parameters - Attributes
+            identity_num :
+                객체의 고유번호
+            train_num :
+                학습 과정 중 객체에 할당된 호출번호
+            cateogry :
+                객체의 서술 범주
+            ignore_in_eval :
+                평가 인자 계산 과정 중 포함 여부
+            name :
+                객체 이름
+            class_info :
+                객체 구분 정보
+
+            ----------
+            '''
+            identity_num: int
+            train_num: int
+            cateogry: str
+            ignore_in_eval: bool
+            name: str
+            class_info: Any
+
+        @dataclass
+        class Classification(Label_Base):
+            class_info: str
+
+        @dataclass
+        class Mask(Label_Base):
+            class_info: List[int]
+
+    class Organization():
+        '''
+
+        -------------------------------------------------------------------------------------------
+        '''
+        class Basement():
+            '''
+            라벨 처리 기본 구조
+
+            ----------
+            ### Parameters
+            - active_style : 주어진 라벨 정보 파일을 통해 표현하려는 라벨 스타일
+            - label_dir : 라벨 정보 파일의 디렉토리
+            - label_file : 라벨 정보 파일 이름
+
+            ----------
+            ### Attributes
+            _active_label :
+                주어진 라벨 스타일을 바탕으로 구성한 라벨 데이터 구조
+
+            ----------
+            '''
+            def __init__(self, label_dir: str = "", label_file: str = ""):
+                # Get label data
+                self._meta_data = self._Load_from_file(label_dir, label_file)
+
+                self._active_label: Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]] = {}
+
+            def _Save_to_file(self, label_dir: str, label_file: str):
+                raise NotImplementedError
+
+            def _Load_from_file(self, label_dir: str = "", label_file: str = ""):
+                if File._Exist_check(label_dir, label_file):
+                    return File._Json(file_dir=label_dir, file_name=label_file)
                 else:
-                    self._infomation[style][_label.train_num] = [_label, ]
+                    assert self.__class__.__name__ != "Basement"
+                    return File._Json(file_dir=Directory._Devide(__file__)[0], file_name=f"{self.__class__.__name__}.json")
 
-        def _Get_label_fron_info_data(self, style: Label_Style, key: str | List[int]):
-            _selected_datas = self._infomation[style]
-            _pick_info = {}
-
-            for _info, _obj_datas in _selected_datas.items():
-                _is_pick = False
-
-                for _data in _obj_datas:
-                    if all(key == _data.class_info):
-                        _is_pick = True
-                        break
-
-                if _is_pick:
-                    _pick_info[_info] = _obj_datas
-                    break
-
-            return _pick_info
-
-    class Cityscape(Basement):
-        ...
-
-    class BDD_100k(Basement):
-        ...
-
-    class COCO(Basement):
-        ...
-
-    # class Imagenet_1k(Basement):
-    #     ...
-
-    # class Imagenet_22k(Basement):
-    #     ...
-
-    # class PASCAL(Basement):
-    #     ...
-
-    # class CDnet(Basement):
-    #     ...
-
-    @staticmethod
-    def _Build(label: str, active_style: List[Label_Style], meta_file: str | None = None):
-        if meta_file is None:
-            assert label in Label_Organization.__dict__.keys()
-            Label_Organization.__dict__[label](active_style, meta_file)
-        else:
-            Label_Organization.Basement(active_style, meta_file)
+            # Freeze function
+            def _Make_active_label(self, active_style: List[Label.Style]) -> Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]]:
+                '''
 
 
-class Data_Organization():
-    class Basement():
-        """
-        ### 데이터 증폭을 위한 변형 설정
+                ----------
+                ### Parameters
+                active_style :
+                    주어진 라벨 정보 파일을 통해 표현하려는 라벨 스타일
+                label_data :
+                    라벨 구조를 구성하기 위한 정보 데이터
 
-        -------------------------------------------------------------------------------------------
-        ## Parameters
-            root_dir (str)
-                :
-            mode: (List[Process_Name])
-                :
-            data_format: (List[Tuple[Label.Style | None, Target.Format]])
-                :
-            label_meta_file: (str | None)
-                :
-        -------------------------------------------------------------------------------------------
-        """
-        _default_label: str
-        _active_mode: Process_Name = Process_Name.TRAIN
+                ----------
+                ### Return
+                active_label :
+                    주어진 라벨 스타일을 바탕으로 구성한 라벨 데이터 구조
 
-        _data_dir: Dict[Label_Style, Dict[str, str]]
+                ----------
+                '''
+                _holder: Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]] = {}
 
-        def __init__(self, root_dir: str, activate_mode: List[Process_Name], data_info: List[Tuple[Label_Style, Data_Format]], label_meta_file: str | None = None):
-            # set learning info
-            self._apply_mode = activate_mode
+                for _style in active_style:
+                    _holder.update({_style: {}})
+                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.__dict__[_style.value](**data) for data in self._meta_data[_style.value])
 
-            # make label process
-            _label = [_data[0] for _data in data_info if _data[0] is not None]
-            self._label = Label_Organization._Build(self._default_label, _label, label_meta_file)
+                    for _label in _labels:
+                        _holder[_style].update({
+                            _label.train_num: _holder[_style][_label.train_num] + [_label,] if _label.train_num in _holder[_style].keys() else [_label,]
+                        })
 
-            # make meta data from dir
-            _root_dir = Directory._Divider_check(root_dir)
+                return _holder
 
-            # _data_profile: Dict[Process_Name, Dict[Label.Style, Target.Format]] = {}
+            def _Pick_label(self, style: Label.Style, train_num: int | List[int]):
+                if isinstance(train_num, int):
+                    return self._active_label[style][train_num]
 
-            # self._data_holder: Dict[Process_Name, Dict[str, List[Tuple[Target.Format, ]]]] = {}
-            # for _mode in activate_mode:
-            #     if _mode is Process_Name.TEST:
-            #         self._data_holder[_mode] = dict((_target.value, dict()) for _style, _target in data_format if _style is None)
-            #     else:
-            #         self._data_holder[_mode] = dict((_target.value, dict()) for _, _target in data_format)
-            self._data_profiles = self._Make_dataprofiles(_root_dir, activate_mode, data_info)
+                else:
+                    return [self._active_label[style][_ct] for _ct in train_num]
+
+        class Cityscape(Basement):
+            ...
+
+        class BDD_100k(Basement):
+            ...
+
+        class COCO(Basement):
+            ...
+
+
+class Data():
+    class Format(Enum):
+        image = "image"
+        colormaps = "colormaps"
+        polygons = "polygons"
+
+    @dataclass
+    class Block():
+        data_format: Data.Format
+        data_list: List[Any]
 
         def __len__(self):
-            raise NotImplementedError
+            return len(self.data_list)
 
-        def _Set_active_mode_from(self, mode: Process_Name):
-            if mode in self._apply_mode:
-                self._active_mode = mode
-            else:
-                # in later, warning coment here!
-                pass
+        def _Get_data(self, num: int):
+            return self.data_list[num]
 
-        def _Make_dataprofiles(
-            self, root_dir: str, activate_mode: List[Process_Name], data_info: List[Tuple[Label_Style, Data_Format]]
-        ) -> Dict[Process_Name, Dict[str, List[Data_Profile]]]:
-            raise NotImplementedError
+    class Organize():
+        class Basement():
+            """
+            ### 데이터 증폭을 위한 변형 설정
 
-        def _Get_data_clusturing(self):
-            _profiles = self._data_profiles[self._active_mode]
-            _clustur = {}
-            for _key, _data in _profiles.items():
-                _clustur.update(dict((f"{_key}{_ct}", _key) for _ct in range(1, len(_data))))
+            -------------------------------------------------------------------------------------------
+            ## Parameters
+                root_dir (str)
+                    :
+                mode: (List[Process_Name])
+                    :
+                data_format: (List[Tuple[Label.Style | None, Target.Format]])
+                    :
+                label_meta_file: (str | None)
+                    :
+            -------------------------------------------------------------------------------------------
+            """
+            _active_mode: Process_Name = Process_Name.TRAIN
 
-            return _clustur if len(_clustur) else None
+            _data_structure: Dict[Label.Style, Dict[str, str]]
 
-        def _Get_target(self, num: int) -> Dict[str, Any]:
-            raise NotImplementedError
+            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement):
+                # set learning info
+                self._apply_mode = mode_list
+                # data root dir
+                self._root_dir = Directory._Divider_check(root_dir)
+                # called data info
+                self._data_info = data_info
 
-    class BDD_100k(Basement):
-        _default_label = "BDD_100k"
+                # apply label style in label process
+                self._label = self._Apply_label_process(label_process)
 
-        _data_dir = {
-            Label_Style.SEMENTIC_SEG: {
-                "image": "bdd100k/images/10k/{}/",
-                "label": "bdd100k/labels/sem_seg/{}/{}/"
-            },
-        }
+                # make data_profiles
+                (self._data_blocks, self._data_profiles) = self._Make_data_block_and_profiles()
 
-        def __len__(self):
-            return len(self._data_profiles[self._active_mode]["image"][0])
+            def __len__(self):
+                raise NotImplementedError
 
-        def _Make_dataprofiles(
-            self, root_dir: str, activate_mode: List[Process_Name], data_info: List[Tuple[Label_Style, Data_Format]]
-        ) -> Dict[Process_Name, Dict[str, List[Data_Profile]]]:
+            def _Set_active_mode_from(self, mode: Process_Name):
+                if mode in self._apply_mode:
+                    self._active_mode = mode
+                else:
+                    # in later, warning coment here!
+                    pass
 
-            _profiles: Dict[Process_Name, Dict[str, List[Data_Profile]]] = {}
-            for _mode in activate_mode:
-                _profiles[_mode] = {}
-                for _style, _format in data_info:
-                    if _style is Label_Style.SEMENTIC_SEG:
-                        _input_list = Directory._Search(Directory._Divider.join([root_dir, self._data_dir[_style]["image"].format(_mode.value)]))
-                        _profiles[_mode]["image"] = [Data_Profile(Data_Format.image, _input_list), ]
+            def _Apply_label_process(self, label_process: Label.Organization.Basement):
+                return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])
 
-                        if _mode is not Process_Name.TEST:
-                            _label_list = Directory._Search(Directory._Divider.join([root_dir, self._data_dir[_style]["label"].format(_format.value, _mode.value)]))
-                            _profiles[_mode]["mask"] = [Data_Profile(_format, _label_list), ]
+            def _Make_data_block_and_profiles(self) -> Tuple[Dict[Process_Name, Dict[str, Data.Block]], Dict[Process_Name, Dict[str, str]]]:
+                raise NotImplementedError
 
-            return _profiles
+            def _Pick_up(self, num: int) -> Dict[str, Any]:
+                raise NotImplementedError
 
-        def _Get_data_clusturing(self):
-            _profiles = self._data_profiles[self._active_mode]
-            _clustur = {}
-            for _key, _data in _profiles.items():
-                _clustur.update(dict((f"{_key}{_ct}", _key) for _ct in range(1, len(_data))))
+        class BDD_100k(Basement):
+            _data_structure = {
+                Label.Style.SEMENTIC: {
+                    "image": "bdd100k/images/10k/{}/",
+                    "label": "bdd100k/labels/sem_seg/{}/{}/"
+                },
+            }
 
-            return _clustur
+            def __len__(self):
+                return len(self._data_blocks[self._active_mode]["image"])
 
-        def _Get_target(self, num: int):
-            _actrive_data = self._data_profiles[self._active_mode]
-            return dict(
-                (
-                    f"{_info_style}{_ct - 1}" if _ct else f"{_info_style}",
-                    _profile
-                ) for _info_style, _profiles in _actrive_data.items() for _ct, _profile in enumerate(_profiles))
+            def _Make_data_block_and_profiles(self) -> Tuple[Dict[Process_Name, Dict[str, Data.Block]], Dict[Process_Name, Dict[str, str]]]:
+                _blocks: Dict[Process_Name, Dict[str, Data.Block]] = {}
+                _profiles: Dict[Process_Name, Dict[str, str]] = {}
 
-    class COCO(Basement):
-        ...
+                for _mode in self._apply_mode:
+                    _blocks[_mode] = {}
+                    for _style, _format in self._data_info:
+                        # ------------------------------------------------------------- #
+                        if _style is Label.Style.SEMENTIC:
+                            _input_list = Directory._Search(Directory._Divider.join([self._root_dir, self._data_structure[_style]["image"].format(_mode.value)]))
+                            _blocks[_mode]["image"] = Data.Block(Data.Format.image, _input_list)
 
-    @staticmethod
-    def _Build(
-        dataset: str, root_dir: str, mode: List[Process_Name], data_info: List[Tuple[Label_Style, Data_Format]], label_meta_file: str | None = None
-    ) -> Basement:
-        assert dataset in Data_Organization.__dict__.keys()
-        return Data_Organization.__dict__[dataset](root_dir, mode, data_info, label_meta_file)
+                            if _mode is not Process_Name.TEST:
+                                _label_list = Directory._Search(Directory._Divider.join([self._root_dir, self._data_structure[_style]["label"].format(_format.value, _mode.value)]))
+                                _blocks[_mode]["mask"] = Data.Block(_format, _label_list)
+                        # ------------------------------------------------------------- #
+
+                return _blocks, _profiles
+
+            def _Pick_up(self, num: int):
+                _pakage = {}
+
+                for _data_category, _data_profile in self._data_blocks[self._active_mode].items():
+                    _meta = _data_profile.data_list[num]
+
+                    if _data_profile.data_format == Data.Format.polygons:
+                        _data = _meta
+                    elif _data_profile.data_format == Data.Format.colormaps:
+                        _data = _meta
+                    else:  # _data_profile.data_format == Data.Format.image
+                        _data = _meta
+
+                    _pakage.update({_data_category: _data})
+
+                return _pakage
+
+        class COCO(Basement):
+            ...
+
+        # @staticmethod
+        # def _Build(
+        #     dataset: str, root_dir: str, mode: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]], label_meta_file: str | None = None
+        # ) -> Basement:
+        #     assert dataset in Data_Organization.__dict__.keys()
+        #     return Data_Organization.__dict__[dataset](root_dir, mode, data_info, label_meta_file)
 
 
 class Augment():
-    class Basement():
-        def __init__(
-            self,
-            output_size: List[int],
-            rotate_limit: int = 0,
-            hflip_rate: float = 0.0,
-            vflip_rate: float = 0.0,
-            is_norm: bool = True,
-            norm_mean: List[float] = [0.485, 0.456, 0.406],
-            norm_std: List[float] = [0.229, 0.224, 0.225],
-            apply_to_tensor: bool = True,
-            group_parmaeter: Dict | None = None,
-            **augment_constructer
-        ) -> None:
+    class Supported(Enum):
+        ALBUIMIENTATIONS = "Albumentations"
 
-            _componant_list = self._Make_componant_list(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor)
-            self._transform = self._Build_transform(_componant_list, group_parmaeter, **augment_constructer)
+    @dataclass
+    class Plan():
+        amplification: int
+        augmentations: List[Augment.Process.Basement]
 
-        def _Make_componant_list(
-            self,
+    class Process():
+        class Basement():
+            def __init__(
+                self,
+                output_size: List[int],
+                rotate_limit: int = 0,
+                hflip_rate: float = 0.0,
+                vflip_rate: float = 0.0,
+                is_norm: bool = True,
+                norm_mean: List[float] = [0.485, 0.456, 0.406],
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = True,
+                group_parmaeter: Dict | None = None,
+                **augment_constructer
+            ) -> None:
+
+                _componant_list = self._Make_componant_list(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor)
+                self._transform = self._Build_transform(_componant_list, group_parmaeter, **augment_constructer)
+
+            def _Make_componant_list(
+                self,
+                output_size: List[int],
+                rotate_limit: int | List[int] = 0,
+                hflip_rate: float = 0.0,
+                vflip_rate: float = 0.0,
+                is_norm: bool = True,
+                norm_mean: List[float] = [0.485, 0.456, 0.406],
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = False
+            ) -> List:
+                _transform_list = [self._To_tensor(), ] if apply_to_tensor else []
+
+                # about rotate
+                if (rotate_limit if isinstance(rotate_limit, int) else any(rotate_limit)):  # use rotate
+                    _transform_list.append(self._Resize(self._Get_padding_size(output_size, rotate_limit)))
+                    _transform_list.append(self._Rotate_within(rotate_limit))
+                    _transform_list.append(self._Random_Crop(output_size))
+                else:
+                    _transform_list.append(self._Resize(output_size))
+
+                # about flip
+                if hflip_rate or vflip_rate:
+                    _transform_list += self._Random_Flip(hflip_rate, vflip_rate)
+
+                # apply norm
+                if is_norm:
+                    _transform_list.append(self._Normalization(norm_mean, norm_std))
+
+                return _transform_list
+
+            def _Get_padding_size(self, output_size: List[int], rotate_limit: int | List[int] = 0) -> List[int]:
+                raise NotImplementedError
+
+            def _To_tensor(self):
+                raise NotImplementedError
+
+            def _Resize(self, size: List[int]):
+                raise NotImplementedError
+
+            def _Random_Crop(self, size: List[int]):
+                raise NotImplementedError
+
+            def _Rotate_within(self, limit_angle: int | List[int]):
+                raise NotImplementedError
+
+            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float) -> List:
+                raise NotImplementedError
+
+            def _Normalization(self, mean: List[float], std: List[float]):
+                raise NotImplementedError
+
+            def _Build_transform(self, transform_list: List, group_parmaeter: Dict | None, **augment_constructer):
+                raise NotImplementedError
+
+            def __call__(self, data: Dict[str, Any]) -> Dict[str, Tensor]:
+                return self._transform(**data)
+
+        class Albumentations(Basement):
+            def _Get_padding_size(self, output_size: List[int], rotate_limit: int = 0) -> List[int]:
+                _rad = pi * rotate_limit / 180
+                _h = ceil(output_size[1] * sin(_rad) + output_size[0] * cos(_rad))
+                _w = ceil(output_size[0] * sin(_rad) + output_size[1] * cos(_rad))
+
+                return [_h, _w]
+
+            def _To_tensor(self):
+                return ToTensorV2()
+
+            def _Resize(self, size: List[int]):
+                return A.Resize(height=size[0], width=size[1])
+
+            def _Random_Crop(self, size: List[int]):
+                return A.RandomCrop(height=size[0], width=size[1])
+
+            def _Rotate_within(self, limit_angle: int):
+                return A.Rotate(limit_angle)
+
+            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float):
+                _list = []
+                _list.append(A.HorizontalFlip(p=horizontal_rate)) if horizontal_rate else ...
+                _list.append(A.VerticalFlip(p=vertical_rate)) if vertical_rate else ...
+                return _list
+
+            def _Normalization(self, mean: List[float], std: List[float]):
+                return A.Normalize(mean, std)
+
+            def _Build_transform(
+                    self,
+                    transform_list,
+                    group_parmaeter: Dict[str, str] | None = None,
+                    bbox_parameter: Dict[str, str] | None = None,
+                    keypoints_parameter: Dict[str, str] | None = None):
+                return A.Compose(transform_list, bbox_parameter, keypoints_parameter, additional_targets=group_parmaeter)
+
+        @staticmethod
+        def _Build(
+            apply_mathod: Augment.Supported,
             output_size: List[int],
             rotate_limit: int | List[int] = 0,
             hflip_rate: float = 0.0,
@@ -321,133 +437,35 @@ class Augment():
             is_norm: bool = True,
             norm_mean: List[float] = [0.485, 0.456, 0.406],
             norm_std: List[float] = [0.229, 0.224, 0.225],
-            apply_to_tensor: bool = False
-        ) -> List:
-            _transform_list = [self._To_tensor(), ] if apply_to_tensor else []
-
-            # about rotate
-            if (rotate_limit if isinstance(rotate_limit, int) else any(rotate_limit)):  # use rotate
-                _transform_list.append(self._Resize(self._Get_padding_size(output_size, rotate_limit)))
-                _transform_list.append(self._Rotate_within(rotate_limit))
-                _transform_list.append(self._Random_Crop(output_size))
-            else:
-                _transform_list.append(self._Resize(output_size))
-
-            # about flip
-            if hflip_rate or vflip_rate:
-                _transform_list += self._Random_Flip(hflip_rate, vflip_rate)
-
-            # apply norm
-            if is_norm:
-                _transform_list.append(self._Normalization(norm_mean, norm_std))
-
-            return _transform_list
-
-        def _Get_padding_size(self, output_size: List[int], rotate_limit: int | List[int] = 0) -> List[int]:
-            raise NotImplementedError
-
-        def _To_tensor(self):
-            raise NotImplementedError
-
-        def _Resize(self, size: List[int]):
-            raise NotImplementedError
-
-        def _Random_Crop(self, size: List[int]):
-            raise NotImplementedError
-
-        def _Rotate_within(self, limit_angle: int | List[int]):
-            raise NotImplementedError
-
-        def _Random_Flip(self, horizontal_rate: float, vertical_rate: float) -> List:
-            raise NotImplementedError
-
-        def _Normalization(self, mean: List[float], std: List[float]):
-            raise NotImplementedError
-
-        def _Build_transform(self, transform_list: List, group_parmaeter: Dict | None, **augment_constructer):
-            raise NotImplementedError
-
-        def __call__(self, data: Dict[str, Any]) -> Dict[str, Tensor]:
-            return self._transform(**data)
-
-    class Albumentations(Basement):
-        def _Get_padding_size(self, output_size: List[int], rotate_limit: int = 0) -> List[int]:
-            _rad = pi * rotate_limit / 180
-            _h = ceil(output_size[1] * sin(_rad) + output_size[0] * cos(_rad))
-            _w = ceil(output_size[0] * sin(_rad) + output_size[1] * cos(_rad))
-
-            return [_h, _w]
-
-        def _To_tensor(self):
-            return ToTensorV2()
-
-        def _Resize(self, size: List[int]):
-            return A.Resize(height=size[0], width=size[1])
-
-        def _Random_Crop(self, size: List[int]):
-            return A.RandomCrop(height=size[0], width=size[1])
-
-        def _Rotate_within(self, limit_angle: int):
-            return A.Rotate(limit_angle)
-
-        def _Random_Flip(self, horizontal_rate: float, vertical_rate: float):
-            _list = []
-            _list.append(A.HorizontalFlip(p=horizontal_rate)) if horizontal_rate else ...
-            _list.append(A.VerticalFlip(p=vertical_rate)) if vertical_rate else ...
-            return _list
-
-        def _Normalization(self, mean: List[float], std: List[float]):
-            return A.Normalize(mean, std)
-
-        def _Build_transform(
-                self,
-                transform_list,
-                group_parmaeter: Dict[str, str] | None = None,
-                bbox_parameter: Dict[str, str] | None = None,
-                keypoints_parameter: Dict[str, str] | None = None):
-            return A.Compose(transform_list, bbox_parameter, keypoints_parameter, additional_targets=group_parmaeter)
-
-    @staticmethod
-    def _Build(
-        apply_mathod: Supported_Augment,
-        output_size: List[int],
-        rotate_limit: int | List[int] = 0,
-        hflip_rate: float = 0.0,
-        vflip_rate: float = 0.0,
-        is_norm: bool = True,
-        norm_mean: List[float] = [0.485, 0.456, 0.406],
-        norm_std: List[float] = [0.229, 0.224, 0.225],
-        apply_to_tensor: bool = True,
-        **augment_constructer
-    ) -> Basement:
-        return Augment.__dict__[apply_mathod.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
+            apply_to_tensor: bool = True,
+            **augment_constructer
+        ) -> Basement:
+            return Augment.__dict__[apply_mathod.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
 
 
 class Custom_Dataset_Process(Dataset):
     def __init__(
         self,
-        organization: Data_Organization.Basement,
-        amplification: Dict[Process_Name, int],
-        augmentations: Dict[Process_Name, List[Augment.Basement]]
+        data_process: Data.Organize.Basement,
+        plan_for_process: Dict[Process_Name, Augment.Plan]
     ):
-        self._apply_mode = organization._apply_mode
-        self._organization = organization
-        self._amplification = amplification
-        self._augment = augmentations
+        self._organization = data_process
+        self._plan_for_process = plan_for_process
 
     # Freeze function
     def __len__(self):
-        return len(self._organization) * self._amplification[self._organization._active_mode]
+        return len(self._organization) * self._plan_for_process[self._organization._active_mode].amplification
 
     def __getitem__(self, index) -> Dict[str, Tensor]:
-        _source_index = index // self._amplification
-        return self._Convert_to_tensor(_source_index)
+        _augment = self._plan_for_process[self._organization._active_mode]
+        _source_index = index // _augment.amplification
+        return self._Convert_to_tensor(_source_index, _augment.augmentations)
 
     def _Set_active_mode_from(self, mode: Process_Name):
         self._organization._Set_active_mode_from(mode)
 
     # Un-Freeze function
-    def _Convert_to_tensor(self, _source_index: int) -> Dict[str, Tensor]:
-        _datas = self._augment[self._organization._active_mode][0](self._organization._Get_target(_source_index))
-        _datas.update({"data_info": tensor(_source_index)})
+    def _Convert_to_tensor(self, source_index: int, augment: List[Augment.Process.Basement]) -> Dict[str, Tensor]:
+        _datas = augment[0](self._organization._Pick_up(source_index))
+        _datas.update({"data_info": tensor(source_index)})
         return _datas

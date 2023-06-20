@@ -1,57 +1,41 @@
-from enum import Enum
-from typing import List, Union, Optional, Tuple
-from math import sqrt, log
+from __future__ import annotations
 
-from python_ex._base import NUMBER
-from python_ex._numpy import Random_Process
+from enum import Enum
+from typing import List, Tuple, Type
+
+from python_ex._Base import TYPE_NUMBER
+from python_ex._Numpy import Random_Process
 
 from torch import Tensor
-from torch import exp, sin, cos, mean, matmul
+from torch import exp, cos, sin, matmul
+import math
 
 # layer utils
-from torch.nn import Module, init, functional, ModuleList, Sequential, parameter
-from torch.nn.common_types import _size_2_t
 from torchsummary import summary as ModelSummary
-from einops import rearrange
 
 # modules
+from torch.nn.common_types import _size_2_t
+from torch.nn import Module, ModuleList, Sequential, Dropout
+from torch.nn import parameter, init
 from torch.nn import Linear, Conv2d, Upsample
-import torchvision.models as models  # for backbone
+from torch.nn import LayerNorm
+from torch.nn.functional import softmax, gelu
 
-# loss
-from torch.nn import MSELoss, CrossEntropyLoss, BCEWithLogitsLoss
+from torchvision.models import resnet101, resnet50, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn
+from torchvision.models.segmentation import fcn_resnet101, fcn_resnet50
 
-if __package__ == "":
-    # if this file in local project
-    from torch_ex._Torch_base import Tensor_Process, Data_Type
+from einops import rearrange
 
-else:
-    # if this file in package folder
-    from ._Torch_base import Tensor_Process, Data_Type
+# optim
+from torch import optim
+from torch.optim.lr_scheduler import _LRScheduler
 
-
-# -- DEFINE CONSTANT -- #
-class Suport_Padding(Enum):
-    ZEROS = 'zeros'
-    REFLECT = 'reflect'
-    REPLICATE = 'replicate'
-    CIRCULAR = 'circular'
+from ._Base import Tensor_Process, Data_Type
 
 
-class Suport_Backbone(Enum):
-    ResNet = "ResNet"
-    VGG = "VGG"
-    FCN = "FCN"
-
-
-class Suport_Attention(Enum):
-    Dot_Attention = "Dot_Attention"
-
-
-# -- Main code -- #
-class Custom_Model(Module):
+class Model(Module):
     def __init__(self, model_name: str, **model_parameter):
-        super(Custom_Model, self).__init__()
+        super(Model, self).__init__()
         self._model_name = model_name
 
     # Freeze function
@@ -63,7 +47,7 @@ class Custom_Model(Module):
         raise NotImplementedError
 
 
-class Module_Componant():
+class Model_Componant():
     @staticmethod
     def _Make_module_list(module_list: List) -> ModuleList:
         return ModuleList(module_list)
@@ -73,7 +57,7 @@ class Module_Componant():
         return Sequential(*componant_list)
 
     @staticmethod
-    def _Make_weight(size: Union[int, List[int]], value: Union[NUMBER, List[NUMBER]], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Optional[Data_Type] = None):
+    def _Make_weight(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Data_Type | None = None):
         return parameter.Parameter(Tensor_Process._Make_tensor(size, value, rand_opt, dtype))
 
     class Linear(Module):
@@ -82,10 +66,10 @@ class Module_Componant():
             input: int,
             output: int,
             is_bias: bool = True,
-            normization: Optional[Module] = None,
-            activate: Optional[Module] = None
+            normization: Module | None = None,
+            activate: Module | Type | None = None
         ):
-            super(Module_Componant.Linear, self).__init__()
+            super(Model_Componant.Linear, self).__init__()
 
             self._linear = Linear(input, output, is_bias)
             self._norm = normization
@@ -97,7 +81,7 @@ class Module_Componant():
             _x = self._active(_x) if self._active is not None else _x
             return _x
 
-    class Conv2D(Module):
+    class Conv2d(Module):
         def __init__(
             self,
             input: int,
@@ -105,16 +89,16 @@ class Module_Componant():
             kernel: _size_2_t = 1,
             stride: _size_2_t = 1,
             padding: _size_2_t = 0,
-            padding_mode: Suport_Padding = Suport_Padding.ZEROS,
+            padding_mode: str = 'zeros',
             dilation: _size_2_t = 1,
             groups: int = 1,
             is_bias: bool = True,
-            normization: Optional[Module] = None,
-            activate: Optional[Module] = None
+            normization: Module | None = None,
+            activate: Module | None = None
         ):
-            super(Module_Componant.Conv2D, self).__init__()
+            super(Model_Componant.Conv2d, self).__init__()
 
-            self._conv2D = Conv2d(input, output, kernel, stride, padding, dilation, groups, is_bias, padding_mode.value)
+            self._conv2D = Conv2d(input, output, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
             self._norm = normization
             self._activate = activate
 
@@ -125,18 +109,21 @@ class Module_Componant():
             return _x
 
     class Decoder():
+        class Skip_Upconv2d(Module):
+            ...
+
         class PUP(Module):
             def __init__(
                 self,
                 input: int,
                 output: int,
                 scale_factor: int = 2,
-                normization: Optional[Module] = None,
-                activate: Optional[Module] = None
+                normization: Module | None = None,
+                activate: Module | None = None
             ):
                 super().__init__()
 
-                self._conv_module = Module_Componant.Conv2D(input, output, 3, 1, 1, normization=normization, activate=activate)
+                self._conv_module = Model_Componant.Conv2d(input, output, 3, 1, 1, normization=normization, activate=activate)
                 self._sampling = Upsample(scale_factor=scale_factor, mode="bilinear")
 
             def forward(self, x: Tensor) -> Tensor:
@@ -150,7 +137,7 @@ class Module_Componant():
                 super().__init__()
                 _pe = Tensor_Process._Make_tensor([max_token_size, num_of_data], value=0)
                 _position = Tensor_Process._Arange(max_token_size, dtype=Data_Type.FLOAT).unsqueeze(1)
-                _div_term = exp(Tensor_Process._Arange(num_of_data, step=2, dtype=Data_Type.FLOAT) * (-log(10000.0) / num_of_data))
+                _div_term = exp(Tensor_Process._Arange(num_of_data, step=2, dtype=Data_Type.FLOAT) * (-math.log(10000.0) / num_of_data))
                 _pe[:, 0::2] = sin(_position * _div_term)
                 _pe[:, 1::2] = cos(_position * _div_term)
                 _pe = _pe.unsqueeze(0)
@@ -167,6 +154,9 @@ class Module_Componant():
             ...
 
     class Attention():
+        class Supported(Enum):
+            Dot_Attention = "Dot_Attention"
+
         class Base(Module):
             def __init__(self, input_dim: int, output_dim: int, head_count: int):
                 super().__init__()
@@ -175,19 +165,19 @@ class Module_Componant():
                 self._head_count = head_count
                 self._head_dim = _output_dim // head_count
 
-                self.q_maker = Module_Componant.Linear(input_dim, output_dim)
+                self.q_maker = Model_Componant.Linear(input_dim, output_dim)
                 init.xavier_uniform_(self.q_maker._linear.weight)
                 self.q_maker._linear.bias.data.fill_(0)
 
-                self.k_maker = Module_Componant.Linear(input_dim, output_dim)
+                self.k_maker = Model_Componant.Linear(input_dim, output_dim)
                 init.xavier_uniform_(self.k_maker._linear.weight)
                 self.k_maker._linear.bias.data.fill_(0)
 
-                self.v_maker = Module_Componant.Linear(input_dim, output_dim)
+                self.v_maker = Model_Componant.Linear(input_dim, output_dim)
                 init.xavier_uniform_(self.v_maker._linear.weight)
                 self.v_maker._linear.bias.data.fill_(0)
 
-                self.o_maker = Module_Componant.Linear(output_dim, output_dim)
+                self.o_maker = Model_Componant.Linear(output_dim, output_dim)
                 init.xavier_uniform_(self.o_maker._linear.weight)
                 self.o_maker._linear.bias.data.fill_(0)
 
@@ -196,9 +186,8 @@ class Module_Componant():
                 Q_source: Tensor,
                 K_source: Tensor,
                 V_source: Tensor,
-                mask: Optional[Tensor] = None,
-                is_get_map: bool = False
-            ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+                mask: Tensor | None = None
+            ) -> Tuple[Tensor, Tensor]:
                 raise NotImplementedError
 
         class Dot_Attention(Base):
@@ -207,12 +196,12 @@ class Module_Componant():
 
             def _Dot_product(self, Q, K, V, mask=None):  # dot_product
                 _logits = matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
-                _logits /= sqrt(self._head_dim)
+                _logits = _logits / math.sqrt(self._head_dim)
 
                 if mask is not None:
                     _logits = _logits.masked_fill(mask == 0, -9e15)
 
-                _attention = functional.softmax(_logits, dim=-1)
+                _attention = softmax(_logits, dim=-1)
 
                 return matmul(_attention, V), _attention
 
@@ -221,9 +210,8 @@ class Module_Componant():
                 Q_source: Tensor,
                 K_source: Tensor,
                 V_source: Tensor,
-                mask: Optional[Tensor] = None,
-                is_get_map: bool = False
-            ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+                mask: Tensor | None = None
+            ) -> Tuple[Tensor, Tensor]:
                 _q = self.q_maker(Q_source)
                 _q = rearrange(_q, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._head_dim, head_num=self._head_count)
 
@@ -237,31 +225,31 @@ class Module_Componant():
 
                 _value = rearrange(_value, 'batch head_num seq head_dim -> batch seq (head_dim head_num)')
                 _outpot = self.o_maker(_value)
-                return (_outpot, _attention) if is_get_map else _outpot
+                return _outpot, _attention
 
-    # class Transformer():
-    #     def __init__(self, input_dim: int, output_dim: int, head_count: int, hidden_rate: int = 2, drop_rate: float = 0.5):
-    #         super().__init__()
+    class Transformer(Module):
+        def __init__(self, input_dim: int, output_dim: int, head_count: int, hidden_rate: int, drop_rate: float, attention_method: Model_Componant.Attention.Supported):
+            super().__init__()
 
-    #         _output_dim = output_dim + (output_dim % head_count) if (output_dim % head_count) else output_dim
-    #         self._head_count = head_count
-    #         self._head_dim = _output_dim // head_count
+            _output_dim = output_dim + (output_dim % head_count) if (output_dim % head_count) else output_dim
+            self._head_count = head_count
+            self._head_dim = _output_dim // head_count
 
-    #         self._front_norm = LayerNorm(_output_dim)
-    #         self._attention = Module_Componant.Attention.Dot_Attention(input_dim, _output_dim, head_count)
-    #         self._back_norm = LayerNorm(_output_dim)
+            self._front_norm = LayerNorm(_output_dim)
+            self._attention = Model_Componant.Attention.__dict__[attention_method.value](input_dim, _output_dim, head_count)
+            self._back_norm = LayerNorm(_output_dim)
 
-    #         self.linear_block = Module_Componant._Make_sequential([
-    #             Module_Componant.Linear(_output_dim, _output_dim * hidden_rate, activate=GELU()),
-    #             Dropout(drop_rate),
-    #             Module_Componant.Linear(_output_dim * hidden_rate, _output_dim)
-    #         ])
+            self.linear_block = Model_Componant._Make_sequential([
+                Model_Componant.Linear(_output_dim, _output_dim * hidden_rate, activate=gelu),
+                Dropout(drop_rate),
+                Model_Componant.Linear(_output_dim * hidden_rate, _output_dim)
+            ])
 
-    #     def forward(self, x) -> Tensor:
-    #         _x = self._front_norm(x + self._attention(x, x, x))
-    #         _x = self._back_norm(_x + self.linear_block(_x))
+        def forward(self, x) -> Tensor:
+            _x = self._front_norm(x + self._attention(x, x, x))
+            _x = self._back_norm(_x + self.linear_block(_x))
 
-    #         return _x
+            return _x
 
     # class PerceiverIO(Module):
     #     def __init__(self):
@@ -330,6 +318,11 @@ class Module_Componant():
             # print(y)
 
     class Backbone():
+        class Supported(Enum):
+            ResNet = "ResNet"
+            VGG = "VGG"
+            FCN = "FCN"
+
         class Backbone_Base(Module):
             _output_channel: List[int]
 
@@ -338,12 +331,12 @@ class Module_Componant():
 
         class ResNet(Backbone_Base):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super(Module_Componant.Backbone.ResNet, self).__init__()
+                super(Model_Componant.Backbone.ResNet, self).__init__()
                 if model_type == 101:
-                    _model = models.resnet101(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
+                    _model = resnet101(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
                     self._output_channel = [64, 256, 512, 1024, 2048]
                 else:
-                    _model = models.resnet50(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
+                    _model = resnet50(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
                     self._output_channel = [64, 256, 512, 1024, 2048]
 
                 # features parameters doesn't train
@@ -379,13 +372,13 @@ class Module_Componant():
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super().__init__()
                 if model_type == 11:
-                    _line = models.vgg11(pretrained=is_pretrained)
+                    _line = vgg11_bn(pretrained=is_pretrained)
                 if model_type == 13:
-                    _line = models.vgg13(pretrained=is_pretrained)
+                    _line = vgg13_bn(pretrained=is_pretrained)
                 elif model_type == 16:
-                    _line = models.vgg16(pretrained=is_pretrained)
+                    _line = vgg16_bn(pretrained=is_pretrained)
                 else:
-                    _line = models.vgg19(pretrained=is_pretrained)
+                    _line = vgg19_bn(pretrained=is_pretrained)
 
                 self._conv = _line.features
                 self._avgpool = _line.avgpool
@@ -401,11 +394,11 @@ class Module_Componant():
 
         class FCN(Backbone_Base):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super(Module_Componant.Backbone.FCN, self).__init__()
+                super(Model_Componant.Backbone.FCN, self).__init__()
                 if model_type == 101:
-                    self._line = models.segmentation.fcn_resnet101(pretrained=is_pretrained)
+                    self._line = fcn_resnet101(pretrained=is_pretrained)
                 else:
-                    self._line = models.segmentation.fcn_resnet50(pretrained=is_pretrained)
+                    self._line = fcn_resnet50(pretrained=is_pretrained)
 
                 for _module in self._line.parameters():
                     _module.requires_grad = is_trainable
@@ -414,48 +407,90 @@ class Module_Componant():
                 return self._line(x)
 
         @staticmethod
-        def _Build(name: Suport_Backbone, model_type: int, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
-            return Module_Componant.Backbone.__dict__[name.value](model_type, is_pretrained, is_trainable)
+        def _Build(name: Supported, model_type: int, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
+            return Model_Componant.Backbone.__dict__[name.value](model_type, is_pretrained, is_trainable)
 
 
-class Loss_Function():
+class Optim():
+    class Supported(Enum):
+        Adam = "Adam"
+
+    class Scheduler():
+        class Supported(Enum):
+            Cosin_Annealing = "Cosin_Annealing"
+
+        class Basement(_LRScheduler):
+            def __init__(
+                    self,
+                    optimizer: optim.Optimizer,
+                    term: int | List[int],
+                    term_amp: float,
+                    maximum: float,
+                    minimum: float,
+                    decay: float,
+                    last_epoch: int = -1) -> None:
+                self._Cycle: int = 0
+                self._Term = term  # int -> fixed term list[int] -> milestone
+                self._Term_amp = term_amp
+
+                self._Maximum = maximum
+                self._Minimum = minimum
+                self._Decay = decay
+
+                self._This_count: int = last_epoch
+                self._This_term: int = self._get_next_term()
+
+                super().__init__(optimizer, last_epoch)
+
+            # Freeze function
+            def _get_next_term(self):
+                if isinstance(self._Term, list):
+                    return self._Term[-1] if self._Cycle >= len(self._Term) else self._Term[self._Cycle]
+                else:
+                    return round(self._Term * (self._Term_amp ** self._Cycle))
+
+            def step(self, epoch: int | None = None):
+                if epoch is None:  # go to next epoch
+                    self.last_epoch += 1
+                    self._This_count += 1
+
+                    if self._This_count >= self._This_term:
+                        self._This_count = 0
+                        self._Cycle += 1
+                        self._This_term = self._get_next_term()
+
+                else:  # restore session
+                    while epoch >= self._This_term:
+                        epoch = epoch - self._This_term
+                        self._Cycle += 1
+                        self._This_term = self._get_next_term()
+
+                    self._This_count = epoch
+
+                for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):  # type: ignore
+                    param_group['lr'] = lr
+
+            # Un-Freeze function
+            def get_lr(self):
+                return [self._Maximum for _ in self.base_lrs]  # type: ignore
+
+        class Cosin_Annealing(Basement):
+            def get_lr(self):
+                _amp = (1 + math.cos(math.pi * (self._This_count) / (self._This_term))) / 2
+                _value = self._Minimum + (self._Maximum - self._Minimum) * _amp
+                return [_value for _ in self.base_lrs]  # type: ignore
+
     @staticmethod
-    def _Mean_squared_error(output, target) -> Tensor:
-        """
-        Args:
-            output: [batch, c, h, w]
-            target: [batch, c, h, w]
-        Return:
-            loss
-        """
-        return MSELoss()(output, target)
+    def _build(
+        optim_name: Supported,
+        model: Module,
+        initial_lr: float,
+        schedule_name: Scheduler.Supported | None,
+        last_epoch: int = -1,
+        **additional_parameter
+    ) -> Tuple[optim.Optimizer, _LRScheduler | None]:
 
-    @staticmethod
-    def _Mean_absolute_error(output, target) -> Tensor:
-        """
-        Args:
-            output: [batch, c, h, w]
-            target: [batch, c, h, w]
-        Return:
-            loss
-        """
-        return mean(output - target)
+        _optim = optim.__dict__[optim_name.value](model.parameters(), initial_lr)
+        _scheduler = Optim.Scheduler.__dict__[schedule_name.value](_optim, last_epoch=last_epoch, **additional_parameter) if schedule_name is not None else None
 
-    @staticmethod
-    def _Cross_Entropy(output: Tensor, target: Tensor, ignore_index=-100) -> Tensor:
-        """
-        Args:
-            output: [batch, class_num, :]
-            target: [batch, :]
-        Return:
-            loss value
-        """
-
-        if output.shape[1] == 1:
-            return BCEWithLogitsLoss()(output, target)
-        else:
-            return CrossEntropyLoss(ignore_index=ignore_index)(output, target)
-
-    @staticmethod
-    def _Mean(output, target) -> Tensor:
-        return mean(output * target)
+        return _optim, _scheduler

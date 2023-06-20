@@ -2,19 +2,20 @@ from typing import List, Dict, Any, Tuple, Type
 from types import ModuleType
 from dataclasses import dataclass, field
 
-from python_ex._base import Directory, File, Utils, JSON_WRITEABLE
+from python_ex._Base import Directory, File
+from python_ex._Project import Debuging, Config
 
 
 if __package__ == "":
     # if this file in local project
-    from torch_ex._Torch_base import Process_Name
+    from torch_ex._Base import Process_Name
     from torch_ex._Layer import Custom_Model
     from torch_ex._Learning import Multi_Method
     from torch_ex._Dataset import Supported_Augment, Custom_Dataset_Process, Data_Organization, Augment, Label_Style, Data_Format
     from torch_ex._optimizer import Suport_Optimizer, Suport_Schedule
 else:
     # if this file in package folder
-    from ._Torch_base import Process_Name
+    from ._Base import Process_Name
     from ._Layer import Custom_Model
     from ._Learning import Multi_Method
     from ._Dataset import Supported_Augment, Custom_Dataset_Process, Data_Organization, Augment, Label_Style, Data_Format
@@ -24,7 +25,7 @@ else:
 # -- Main code -- #
 class Learning_Config:
     @dataclass
-    class E2E(Utils.Config):
+    class E2E(Config):
         # Infomation about learning
         project_name: str
         description: str
@@ -100,12 +101,12 @@ class Learning_Config:
             }
 
     @staticmethod
-    def _Build(type: str, config_data: Dict[str, Any]) -> Utils.Config:
+    def _Build(type: str, config_data: Dict[str, Any]) -> Config:
         return Learning_Config.__dict__[type](**config_data)
 
 
 @dataclass
-class Augment_Config(Utils.Config):
+class Augment_Config(Config):
     """
     ### 데이터 증폭을 위한 변형 설정
 
