@@ -7,7 +7,7 @@ requirments_package = [
     'einops',
     'albumentations',
     'torchsummary',
-    'Tensorboard']
+    'tensorboard']
 
 dependency_links = [
     "git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@veralpha=python_ex"
