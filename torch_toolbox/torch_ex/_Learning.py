@@ -14,12 +14,15 @@ from python_ex._Base import Directory, File
 from python_ex._Project import Debuging
 from python_ex._Vision import cv2
 
-from ._Base import Process_Name, System_Utils, MAIN_RANK
+from ._Base import Process_Name, System_Utils
 from ._Dataset import Custom_Dataset_Process
 from ._Model_n_Optim import Model, Optim, _LRScheduler
 
 
 # -- DEFINE CONSTANT -- #
+MAIN_RANK: int = 0
+
+
 class Multi_Method(Enum):
     NOT_USE = "None"
     DP = "DataParallel"
@@ -32,13 +35,13 @@ class End_to_End():
     ### 모델 학습을 위한 End_to_End 학습 과정
 
     -------------------------------------------------------------------------------------------
-    ## Parameters
-     - project_name (str) : 훈련이 진행되는 프로젝트 이름
-     - description (str) : 훈련의 목적 및 세부 설명
-     - save_root (str) : 훈련 과정 및 결과를 저장하기 위한 경로
-     - mode_list (List[Process_Name]) : 훈련에서 진행하고자 하는 과정 -> Train, Validation, Test
-     - max_epoch (int) : 훈련에 적용하고자 하는 최대 epoch
-     - last_epoch (int) : 훈련의 초기 epoch
+    ## Argument
+     - project_name : 훈련이 진행되는 프로젝트 이름
+     - description : 훈련의 목적 및 세부 설명
+     - save_root : 훈련 과정 및 결과를 저장하기 위한 경로
+     - mode_list : 훈련에서 진행하고자 하는 과정 -> Train, Validation, Test
+     - max_epoch : 훈련에 적용하고자 하는 최대 epoch
+     - last_epoch : 훈련의 초기 epoch
     -------------------------------------------------------------------------------------------
     """
     def __init__(self, project_name: str, description: str, save_root: str, mode_list: List[Process_Name], max_epoch: int, last_epoch: int = 0):
@@ -243,6 +246,7 @@ class End_to_End():
         """
         # set processer infomation
         _process_num = self._device_rank + processer_num
+        _is_this_main = _process_num is MAIN_RANK
         _gpu_info = self._gpu_info[processer_num] if len(self._gpu_info) else None
 
         # set logger in learning
@@ -250,6 +254,44 @@ class End_to_End():
             self._save_root,
             f"_rank_{_process_num}_cpu" if _gpu_info is None else f"_rank_{_process_num}_gpu_{_gpu_info[0]}_{_gpu_info[1]}")
 
+        # initialize model, optimizer, dataset and data process
+        _model, _model_name, _optim, _scheduler, _dataloader, _sampler = self._Process_init(_process_num, _gpu_info)
+
+        # initialize parameter for best performing
+
+        # _best_epoch = 0
+        # _best_loss = float("inf")
+        # _best_acc = float("-inf")
+
+        # Do learning
+        for _epoch in range(self._last_epoch + 1, self._max_epoch):
+            _epoch_dir = Directory._Make(f"{_epoch}", self._save_root) if _is_this_main\
+                else Directory._Divider_check(Directory._Divider.join([self._save_root, f"{_epoch}"]))
+
+            for _active_mode in self._mode_list:
+                self._Apply_active_mode(_active_mode, _model)
+
+                # When use sampler, shuffling
+                _sampler.set_epoch(_epoch) if _sampler is not None else ...
+                
+                # Make save directory for each mode process
+                _mode_dir = Directory._Make(_active_mode.value, _epoch_dir) if _is_this_main\
+                    else Directory._Divider_check(Directory._Divider.join([_epoch_dir, _active_mode.value]))
+
+                self._Learning_core(_epoch, _gpu_info, _active_mode, _dataloader, _model, _optim, _logger, _mode_dir, _is_this_main)
+
+            self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler) if _is_this_main else ...
+            _scheduler.step() if _scheduler is not None else ...
+
+            # save log file check
+            # _logger.flush()
+
+        _logger.close()
+
+        print(f"Set Learning process for model {_model_name}is finish")
+        # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
+
+    def _Process_init(self, process_num: int, gpu_info: Tuple[int, str] | None):
         # initialize model, optimizer, dataset and data process
         _model = self._model_structure(**self._model_option)
 
@@ -264,14 +306,14 @@ class End_to_End():
             **self._schedule_option)
 
         if self._last_epoch:
-            _model, _optim, _scheduler = self._Load(System_Utils._Make_directory(f"{self._last_epoch}", _process_num, self._save_root), _model_name, _model, _optim, _scheduler)
+            _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._save_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
 
         # initialize multi process or not
         if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
-            distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=_process_num)
-            _model = DDP(_model, device_ids=[_process_num if _gpu_info is None else _gpu_info[0]])
+            distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
+            _model = DDP(_model, device_ids=[process_num if gpu_info is None else gpu_info[0]])
 
-            _sampler = DistributedSampler(self._dataset, rank=_process_num)
+            _sampler = DistributedSampler(self._dataset, rank=process_num)
             _dataloader = DataLoader(
                 dataset=self._dataset,
                 batch_size=self._batch_size,
@@ -290,78 +332,70 @@ class End_to_End():
 
         print(f"Set Learning model {_model_name}, optimizer, Dataset")
 
-        # initialize parameter for best performing
-        # _best_epoch = 0
-        # _best_loss = float("inf")
-        # _best_acc = float("-inf")
+        return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
 
-        # Do learning
-        for _epoch in range(self._last_epoch + 1, self._max_epoch):
-            _epoch_dir = System_Utils._Make_directory(f"{_epoch}", _process_num, self._save_root)
-
-            for _active_mode in self._mode_list:
-                self._Apply_active_mode(_active_mode, [_model, ])
-
-                # - When use sampler, shuffling
-                _sampler.set_epoch(_epoch) if _sampler is not None else ...
-                _mode_dir = System_Utils._Make_directory(f"{_active_mode.value}", _process_num, _epoch_dir)
-
-                # initialize parameter for observing
-                _progress_loss = 0
-                _progress_acc = 0
-                _data_count = 0
-                _display_milestone = 0
-                _dispalt_term = int(_dataloader.__len__() * self._display_term) if isinstance(self._display_term, float) else self._display_term
-                _start_time = Debuging.Time._Stemp()
-
-                for _datas in _dataloader:
-                    _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, _gpu_info)
-                    _data_count += _data_size
-
-                    # doing learning
-                    if _active_mode == Process_Name.TRAIN:  # for Train
-                        _output: Tensor | List[Tensor] = _model(*_input_datas)
-                        _loss, _acc = self._Get_loss_n_acc(_output, _label_data, _logger)
-
-                        _optim.zero_grad()
-                        _loss.backward()
-                        # self._average_gradients(model)
-                        _optim.step()
-
-                    else:  # for validation
-                        with no_grad():
-                            _output: Tensor | List[Tensor] = _model(*_input_datas)
-                            _loss, _acc = self._Get_loss_n_acc(_output, _label_data, _logger, _mode_dir, **_data_info)
-
-                    # update learning process observation
-                    _progress_loss += _loss.item()
-                    _progress_acc += _acc.item()
-
-                    if _data_count >= _display_milestone:
-                        _display_milestone += _dispalt_term
-                        self._Progress_dispaly(_epoch, _active_mode, _progress_loss, _progress_acc, Debuging.Time._Stemp(_start_time), _data_count, _dataloader.__len__())\
-                            if _process_num is MAIN_RANK else ...
-
-            self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler) if _process_num is MAIN_RANK else ...
-            _scheduler.step() if _scheduler is not None else ...
-
-            # save log file check
-            # _logger.flush()
-
-        _logger.close()
-
-        print(f"Set Learning process for model {_model_name}is finish")
-        # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
-
-    def _Move_to_gpu(self, datas, gpu_info) -> Tuple[List[Tensor], List[Tensor] | None, int, Dict[str, Any]]:
-        raise NotImplementedError
-
-    def _Apply_active_mode(self, mode: Process_Name, model: List[Model | DDP]):
-        for _model in model:
-            _model.train() if mode == Process_Name.TRAIN else _model.eval()
+    def _Apply_active_mode(self, mode: Process_Name, model: Model | DDP):
+        model.train() if mode == Process_Name.TRAIN else model.eval()
         self._dataset._Set_active_mode_from(mode)
 
-    def _Get_loss_n_acc(
+    def _Move_to_gpu(self, datas, gpu_info: Tuple[int, str] | None) -> Tuple[List[Tensor], List[Tensor] | None, int, Dict[str, Any]]:
+        raise NotImplementedError
+
+    def _Learning_core(
+        self,
+        epoch,
+        gpu_info: Tuple[int, str] | None,
+        mode: Process_Name,
+        dataloader: DataLoader,
+        model: Model | DDP,
+        optim: Optimizer,
+        logger: SummaryWriter,
+        save_dir: str,
+        is_main_rank: bool
+    ):
+        # initialize parameter for observing
+        _progress_loss = 0
+        _progress_observe_param = 0
+        _data_count = 0
+        _display_milestone = 0
+        _dispalt_term = int(dataloader.__len__() * self._display_term) if isinstance(self._display_term, float) else self._display_term
+        _start_time = Debuging.Time._Stemp()
+
+        for _datas in dataloader:
+            _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
+            _data_count += _data_size
+
+            # doing learning
+            if mode == Process_Name.TRAIN:  # for Train
+                _output: Tensor | List[Tensor] = model(*_input_datas)
+                _loss, _observe_param = self._Get_loss_n_observe_param(_output, _label_data, logger)
+
+                optim.zero_grad()
+                _loss.backward()
+                # self._average_gradients(model)
+                optim.step()
+
+            else:  # for validation
+                with no_grad():
+                    _output: Tensor | List[Tensor] = model(*_input_datas)
+                    _loss, _observe_param = self._Get_loss_n_observe_param(_output, _label_data, logger, save_dir, **_data_info)
+
+            # update learning process observation
+            _progress_loss += _loss.item()
+            _progress_observe_param += _observe_param.item()
+
+            if _data_count >= _display_milestone:
+                _display_milestone += _dispalt_term
+                self._Progress_dispaly(
+                    epoch,
+                    mode,
+                    _progress_loss,
+                    _progress_observe_param,
+                    Debuging.Time._Stemp(_start_time),
+                    _data_count, dataloader.__len__()
+                ) if is_main_rank else ...
+
+    def _Get_loss_n_observe_param(
         self,
         output: Tensor | List[Tensor],
         label: Tensor | List[Tensor] | None,
@@ -400,7 +434,7 @@ class End_to_End():
             epoch: int,
             mode: Process_Name,
             progress_loss: float,
-            progress_acc: float,
+            progress_observe_param: float,
             spend_time: float,
             data_size: int,
             data_length: int
