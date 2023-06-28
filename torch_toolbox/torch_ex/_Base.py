@@ -7,14 +7,12 @@ from torch import uint8, float32
 from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, clip, cat
 from torch import rand, randn, rand_like, randn_like
 
-from python_ex._Base import TYPE_NUMBER, TYPE_JSON_WRITEABLE, Directory
+from python_ex._Base import TYPE_NUMBER, TYPE_JSON_WRITEABLE
 from python_ex._Project import Debuging
 from python_ex._Numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process, Random_Process
 
+
 # -- DEFINE CONSTANT -- #
-MAIN_RANK: int = 0
-
-
 class Process_Name(Enum):
     TRAIN = "train"
     VALIDATION = "val"
@@ -28,10 +26,6 @@ class Data_Type(Enum):
 
 # -- Main code -- #
 class System_Utils():
-    @staticmethod
-    def _Make_directory(obj_dir: str, process_id: int, root_dir: str | None = None) -> str:
-        return Directory._Make(f"{obj_dir}", root_dir) if process_id is MAIN_RANK else Directory._Divider_check(f"{root_dir}{Directory._Divider}{obj_dir}{Directory._Divider}")
-
     class Cuda():
         @staticmethod
         def _Get_useable_gpu_list(threshold_of_rate: float = 0.5, threshold_of_size: Optional[int] = None) -> List[Tuple[int, str]]:
