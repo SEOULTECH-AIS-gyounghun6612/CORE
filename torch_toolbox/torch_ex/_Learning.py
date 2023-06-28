@@ -35,7 +35,7 @@ class End_to_End():
     ### 모델 학습을 위한 End_to_End 학습 과정
 
     -------------------------------------------------------------------------------------------
-    ## Argument
+    ## Argument & Parameters
      - project_name : 훈련이 진행되는 프로젝트 이름
      - description : 훈련의 목적 및 세부 설명
      - save_root : 훈련 과정 및 결과를 저장하기 위한 경로
@@ -44,7 +44,7 @@ class End_to_End():
      - last_epoch : 훈련의 초기 epoch
     -------------------------------------------------------------------------------------------
     """
-    def __init__(self, project_name: str, description: str, save_root: str, mode_list: List[Process_Name], max_epoch: int, last_epoch: int = 0):
+    def __init__(self, project_name: str, description: str, save_root: str, mode_list: List[Process_Name], max_epoch: int, last_epoch: int = -1):
         self._project_name = project_name
         self._description = description
         self._save_root = self._Make_save_root(save_root)
@@ -56,7 +56,7 @@ class End_to_End():
 
         print(f"Set the Learning for {self._project_name}.\n Result of this Learing, save at {self._save_root}")
         print("Set the basement of learning option.")
-        _debug_process_text = f"This Learing work to at {self._max_epoch} epoch from {self._last_epoch} epoch.\n"
+        _debug_process_text = f"This Learing work to at {self._max_epoch} epoch from {self._last_epoch + 1} epoch.\n"
         _debug_mode_list_text = f"This learning process, that consist of {', '.join(_mode.value for _mode in self._mode_list[: -1])} and {self._mode_list[-1].value}.\n"
         print(f"\t{_debug_process_text}\n\t{_debug_mode_list_text}")
 
@@ -273,7 +273,7 @@ class End_to_End():
 
                 # When use sampler, shuffling
                 _sampler.set_epoch(_epoch) if _sampler is not None else ...
-                
+
                 # Make save directory for each mode process
                 _mode_dir = Directory._Make(_active_mode.value, _epoch_dir) if _is_this_main\
                     else Directory._Divider_check(Directory._Divider.join([_epoch_dir, _active_mode.value]))
@@ -302,10 +302,10 @@ class End_to_End():
             model=_model,
             initial_lr=self._initial_lr,
             schedule_name=self._schedule_name,
-            last_epoch=-1 if self._last_epoch else self._last_epoch,
+            last_epoch=self._last_epoch,
             **self._schedule_option)
 
-        if self._last_epoch:
+        if self._last_epoch + 1:
             _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._save_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
 
         # initialize multi process or not
@@ -343,7 +343,7 @@ class End_to_End():
 
     def _Learning_core(
         self,
-        epoch,
+        epoch: int,
         gpu_info: Tuple[int, str] | None,
         mode: Process_Name,
         dataloader: DataLoader,
@@ -358,7 +358,7 @@ class End_to_End():
         _progress_observe_param = 0
         _data_count = 0
         _display_milestone = 0
-        _dispalt_term = int(dataloader.__len__() * self._display_term) if isinstance(self._display_term, float) else self._display_term
+        _display_term = int(dataloader.__len__() * self._display_term) if isinstance(self._display_term, float) else self._display_term
         _start_time = Debuging.Time._Stemp()
 
         for _datas in dataloader:
@@ -368,7 +368,7 @@ class End_to_End():
             # doing learning
             if mode == Process_Name.TRAIN:  # for Train
                 _output: Tensor | List[Tensor] = model(*_input_datas)
-                _loss, _observe_param = self._Get_loss_n_observe_param(_output, _label_data, logger)
+                _loss, _observe_param = self._Get_loss_n_observe_param(epoch, mode, _output, _label_data, logger)
 
                 optim.zero_grad()
                 _loss.backward()
@@ -378,25 +378,20 @@ class End_to_End():
             else:  # for validation
                 with no_grad():
                     _output: Tensor | List[Tensor] = model(*_input_datas)
-                    _loss, _observe_param = self._Get_loss_n_observe_param(_output, _label_data, logger, save_dir, **_data_info)
+                    _loss, _observe_param = self._Get_loss_n_observe_param(epoch, mode, _output, _label_data, logger, save_dir, **_data_info)
 
             # update learning process observation
             _progress_loss += _loss.item()
             _progress_observe_param += _observe_param.item()
 
             if _data_count >= _display_milestone:
-                _display_milestone += _dispalt_term
-                self._Progress_dispaly(
-                    epoch,
-                    mode,
-                    _progress_loss,
-                    _progress_observe_param,
-                    Debuging.Time._Stemp(_start_time),
-                    _data_count, dataloader.__len__()
-                ) if is_main_rank else ...
+                _display_milestone += _display_term
+                self._Progress_dispaly(epoch, mode, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _data_count, dataloader.__len__()) if is_main_rank else ...
 
     def _Get_loss_n_observe_param(
         self,
+        epoch: int,
+        mode: Process_Name,
         output: Tensor | List[Tensor],
         label: Tensor | List[Tensor] | None,
         logger: SummaryWriter,
@@ -429,16 +424,7 @@ class End_to_End():
     #             distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
     #             param.grad.data /= size
 
-    def _Progress_dispaly(
-            self,
-            epoch: int,
-            mode: Process_Name,
-            progress_loss: float,
-            progress_observe_param: float,
-            spend_time: float,
-            data_size: int,
-            data_length: int
-    ):
+    def _Progress_dispaly(self, epoch: int, mode: Process_Name, progress_loss: float, progress_observe_param: float, spend_time: float, data_size: int, data_length: int):
         raise NotImplementedError
 
     def _Save(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer | None = None, schedule: _LRScheduler | None = None):
