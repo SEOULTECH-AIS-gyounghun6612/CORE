@@ -21,7 +21,7 @@ from torch.nn import Linear, Conv2d, Upsample
 from torch.nn import LayerNorm
 from torch.nn.functional import softmax, gelu
 
-from torchvision.models import resnet101, resnet50, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn
+from torchvision.models import resnet101, resnet50, vgg11, vgg13, vgg16, vgg19
 from torchvision.models.segmentation import fcn_resnet101, fcn_resnet50
 
 from einops import rearrange
@@ -63,15 +63,15 @@ class Model_Componant():
     class Linear(Module):
         def __init__(
             self,
-            input: int,
-            output: int,
+            input_size: int,
+            output_size: int,
             is_bias: bool = True,
             normization: Module | None = None,
             activate: Module | Type | None = None
         ):
             super(Model_Componant.Linear, self).__init__()
 
-            self._linear = Linear(input, output, is_bias)
+            self._linear = Linear(input_size, output_size, is_bias)
             self._norm = normization
             self._active = activate
 
@@ -84,8 +84,8 @@ class Model_Componant():
     class Conv2d(Module):
         def __init__(
             self,
-            input: int,
-            output: int,
+            input_size: int,
+            output_size: int,
             kernel: _size_2_t = 1,
             stride: _size_2_t = 1,
             padding: _size_2_t = 0,
@@ -98,7 +98,7 @@ class Model_Componant():
         ):
             super(Model_Componant.Conv2d, self).__init__()
 
-            self._conv2D = Conv2d(input, output, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
+            self._conv2D = Conv2d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
             self._norm = normization
             self._activate = activate
 
@@ -115,15 +115,15 @@ class Model_Componant():
         class PUP(Module):
             def __init__(
                 self,
-                input: int,
-                output: int,
+                input_size: int,
+                output_size: int,
                 scale_factor: int = 2,
                 normization: Module | None = None,
                 activate: Module | None = None
             ):
                 super().__init__()
 
-                self._conv_module = Model_Componant.Conv2d(input, output, 3, 1, 1, normization=normization, activate=activate)
+                self._conv_module = Model_Componant.Conv2d(input_size, output_size, 3, 1, 1, normization=normization, activate=activate)
                 self._sampling = Upsample(scale_factor=scale_factor, mode="bilinear")
 
             def forward(self, x: Tensor) -> Tensor:
@@ -319,9 +319,14 @@ class Model_Componant():
 
     class Backbone():
         class Supported(Enum):
-            ResNet = "ResNet"
-            VGG = "VGG"
-            FCN = "FCN"
+            ResNet_50 = ("ResNet", 50)
+            ResNet_101 = ("ResNet", 101)
+            VGG_11 = ("VGG", 11)
+            VGG_13 = ("VGG", 13)
+            VGG_16 = ("VGG", 16)
+            VGG_19 = ("VGG", 19)
+            FCN_50 = ("FCN", 50)
+            FCN_101 = ("FCN", 101)
 
         class Backbone_Base(Module):
             _output_channel: List[int]
@@ -372,13 +377,13 @@ class Model_Componant():
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super().__init__()
                 if model_type == 11:
-                    _line = vgg11_bn(pretrained=is_pretrained)
+                    _line = vgg11(pretrained=is_pretrained)
                 if model_type == 13:
-                    _line = vgg13_bn(pretrained=is_pretrained)
+                    _line = vgg13(pretrained=is_pretrained)
                 elif model_type == 16:
-                    _line = vgg16_bn(pretrained=is_pretrained)
+                    _line = vgg16(pretrained=is_pretrained)
                 else:
-                    _line = vgg19_bn(pretrained=is_pretrained)
+                    _line = vgg19(pretrained=is_pretrained)
 
                 self._conv = _line.features
                 self._avgpool = _line.avgpool
@@ -407,8 +412,11 @@ class Model_Componant():
                 return self._line(x)
 
         @staticmethod
-        def _Build(name: Supported, model_type: int, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
-            return Model_Componant.Backbone.__dict__[name.value](model_type, is_pretrained, is_trainable)
+        def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
+            _name = model_info.value[0]
+            _type = model_info.value[1]
+
+            return Model_Componant.Backbone.__dict__[_name](_type, is_pretrained, is_trainable)
 
 
 class Optim():
