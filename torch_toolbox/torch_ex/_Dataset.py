@@ -13,18 +13,9 @@ from albumentations.pytorch import ToTensorV2
 
 from python_ex._Base import Directory, File
 
-if __package__ == "":
-    # if this file in local project
-    from torch_ex._Base import Process_Name
-else:
-    # if this file in package folder
-    from ._Base import Process_Name
+from torch_ex._Base import Process_Name
 
 
-# -- DEFINE CONSTANT -- #
-
-
-# -- Main code -- #
 class Label():
     '''
     라벨과 관련데 일련의 처리 과정을 위한 모듈
@@ -183,7 +174,18 @@ class Data():
 
     @dataclass
     class Block():
+        """
+        ### 학습 과정에 사용하는 데이터 묶음
+
+        -------------------------------------------------------------------------------------------
+        ## Argument & Parameters
+        - data_format : 해당 묶음의 데이터 포멧
+        - follow_target : 데이터 증폭 과정을 추종할 대상
+        - data_list : 해당 데이터 리스트
+        -------------------------------------------------------------------------------------------
+        """
         data_format: Data.Format
+        follow_target: str
         data_list: List[Any]
 
         def __len__(self):
@@ -211,9 +213,7 @@ class Data():
             """
             _active_mode: Process_Name = Process_Name.TRAIN
 
-            _data_structure: Dict[Label.Style, Dict[str, str]]
-
-            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement):
+            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
                 # set learning info
                 self._apply_mode = mode_list
                 # data root dir
@@ -221,11 +221,11 @@ class Data():
                 # called data info
                 self._data_info = data_info
 
-                # apply label style in label process
-                self._label = self._Apply_label_process(label_process)
+                # make label style in label info
+                self._label = self._Label_update(label_process) if label_process is not None else {}
 
-                # make data_profiles
-                (self._data_blocks, self._data_profiles) = self._Make_data_block_and_profiles()
+                # make data_blocks
+                self._data_blocks = self._Make_data_block(mode_list, data_info)
 
             def __len__(self):
                 raise NotImplementedError
@@ -237,61 +237,22 @@ class Data():
                     # in later, warning coment here!
                     pass
 
-            def _Apply_label_process(self, label_process: Label.Organization.Basement):
+            def _Label_update(self, label_process: Label.Organization.Basement):
                 return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])
 
-            def _Make_data_block_and_profiles(self) -> Tuple[Dict[Process_Name, Dict[str, Data.Block]], Dict[Process_Name, Dict[str, str]]]:
+            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Process_Name, List[Data.Block]]:
                 raise NotImplementedError
 
             def _Pick_up(self, num: int) -> Dict[str, Any]:
                 raise NotImplementedError
 
         class BDD_100k(Basement):
-            _data_structure = {
-                Label.Style.SEMENTIC: {
-                    "image": "bdd100k/images/10k/{}/",
-                    "label": "bdd100k/labels/sem_seg/{}/{}/"
-                },
-            }
-
-            def __len__(self):
-                return len(self._data_blocks[self._active_mode]["image"])
-
-            def _Make_data_block_and_profiles(self) -> Tuple[Dict[Process_Name, Dict[str, Data.Block]], Dict[Process_Name, Dict[str, str]]]:
-                _blocks: Dict[Process_Name, Dict[str, Data.Block]] = {}
-                _profiles: Dict[Process_Name, Dict[str, str]] = {}
-
-                for _mode in self._apply_mode:
-                    _blocks[_mode] = {}
-                    for _style, _format in self._data_info:
-                        # ------------------------------------------------------------- #
-                        if _style is Label.Style.SEMENTIC:
-                            _input_list = Directory._Search(Directory._Divider.join([self._root_dir, self._data_structure[_style]["image"].format(_mode.value)]))
-                            _blocks[_mode]["image"] = Data.Block(Data.Format.image, _input_list)
-
-                            if _mode is not Process_Name.TEST:
-                                _label_list = Directory._Search(Directory._Divider.join([self._root_dir, self._data_structure[_style]["label"].format(_format.value, _mode.value)]))
-                                _blocks[_mode]["mask"] = Data.Block(_format, _label_list)
-                        # ------------------------------------------------------------- #
-
-                return _blocks, _profiles
-
-            def _Pick_up(self, num: int):
-                _pakage = {}
-
-                for _data_category, _data_profile in self._data_blocks[self._active_mode].items():
-                    _meta = _data_profile.data_list[num]
-
-                    if _data_profile.data_format == Data.Format.polygons:
-                        _data = _meta
-                    elif _data_profile.data_format == Data.Format.colormaps:
-                        _data = _meta
-                    else:  # _data_profile.data_format == Data.Format.image
-                        _data = _meta
-
-                    _pakage.update({_data_category: _data})
-
-                return _pakage
+            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
+                self._data_directory = {
+                    Data.Format.image: "bdd100k/images/{}/{}/",
+                    Data.Format.colormaps: "bdd100k/labels/sem_seg/{}/{}/"
+                }
+                super().__init__(root_dir, mode_list, data_info, label_process)
 
         class COCO(Basement):
             ...
