@@ -323,6 +323,7 @@ class End_to_End():
                 drop_last=True)
 
         else:  # not consist multi-process
+            _model = _model if gpu_info is None else _model.cuda(gpu_info[0])
             _sampler = None
             _dataloader = DataLoader(
                 dataset=self._dataset,
