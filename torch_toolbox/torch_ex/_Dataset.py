@@ -401,7 +401,7 @@ class Augment():
             apply_to_tensor: bool = True,
             **augment_constructer
         ) -> Basement:
-            return Augment.__dict__[apply_mathod.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
+            return Augment.Process.__dict__[apply_mathod.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
 
 
 class Custom_Dataset_Process(Dataset):

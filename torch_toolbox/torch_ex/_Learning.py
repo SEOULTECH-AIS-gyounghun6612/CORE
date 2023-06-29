@@ -310,8 +310,9 @@ class End_to_End():
 
         # initialize multi process or not
         if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
+            assert gpu_info is not None
             distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
-            _model = DDP(_model, device_ids=[process_num if gpu_info is None else gpu_info[0]])
+            _model = DDP(_model.cuda(gpu_info[0]))
 
             _sampler = DistributedSampler(self._dataset, rank=process_num)
             _dataloader = DataLoader(
@@ -436,7 +437,7 @@ class End_to_End():
                 "schedule": None if schedule is None else schedule.state_dict()}
             save(_optim_and_schedule, f"{save_dir}{file_name}_optim.h5")  # save optim and schedule state
 
-    def _Load(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer, schedule: _LRScheduler | None = None):
+    def _Load(self, save_dir: str, file_name: str, model: Model, optim: Optimizer, schedule: _LRScheduler | None = None):
         _save_dir = Directory._Divider_check(save_dir)
         if File._Exist_check(_save_dir, f"{file_name}_model.h5"):
             model.load_state_dict(load(f"{_save_dir}{file_name}_model.h5"))
