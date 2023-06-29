@@ -304,7 +304,7 @@ class Augment():
                 norm_std: List[float] = [0.229, 0.224, 0.225],
                 apply_to_tensor: bool = False
             ) -> List:
-                _transform_list = [self._To_tensor(), ] if apply_to_tensor else []
+                _transform_list = []
 
                 # about rotate
                 if (rotate_limit if isinstance(rotate_limit, int) else any(rotate_limit)):  # use rotate
@@ -321,6 +321,8 @@ class Augment():
                 # apply norm
                 if is_norm:
                     _transform_list.append(self._Normalization(norm_mean, norm_std))
+
+                _transform_list.append(self._To_tensor()) if apply_to_tensor else ...
 
                 return _transform_list
 
