@@ -289,7 +289,7 @@ class Learning_Process():
                     _mode_dir = Directory._Make(_active_mode.value, _epoch_dir) if _is_this_main\
                         else Directory._Divider_check(Directory._Divider.join([_epoch_dir, _active_mode.value]))
 
-                    self._Learning_core(_epoch, _gpu_info, _active_mode, _dataloader, _model, _optim, _logger, _mode_dir, _is_this_main)
+                    self._Learning_core((_epoch, _active_mode), _gpu_info, _dataloader, _model, _optim, _logger, _mode_dir, _is_this_main)
 
                 self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler) if _is_this_main else ...
                 _scheduler.step() if _scheduler is not None else ...
@@ -310,9 +310,8 @@ class Learning_Process():
 
         def _Learning_core(
             self,
-            epoch: int,
+            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
             gpu_info: Tuple[int, str] | None,
-            mode: Process_Name,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -324,8 +323,7 @@ class Learning_Process():
 
         def _Get_loss_n_observe_param(
             self,
-            epoch: int,
-            mode: Process_Name,
+            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
             output: Tensor | List[Tensor],
             label: Tensor | List[Tensor] | None,
             logger: SummaryWriter,
@@ -358,7 +356,7 @@ class Learning_Process():
         #             distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
         #             param.grad.data /= size
 
-        def _Progress_dispaly(self, epoch: int, mode: Process_Name, progress_loss: float, progress_observe_param: float, spend_time: float, data_size: int, data_length: int):
+        def _Progress_dispaly(self, learning_info: Tuple[int, Process_Name], progress_loss: float, progress_observe_param: float, spend_time: float, data_size: int, data_length: int):
             raise NotImplementedError
 
 
@@ -434,9 +432,8 @@ class Learning_Process():
 
         def _Learning_core(
             self,
-            epoch: int,
+            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
             gpu_info: Tuple[int, str] | None,
-            mode: Process_Name,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -445,6 +442,7 @@ class Learning_Process():
             is_main_rank: bool
         ):
             # learning info
+            _, _mode = learning_info
             # _batch_pool_size = len(dataloader)
             _max_count = self._dataset_count
             _this_count = 0
@@ -461,9 +459,9 @@ class Learning_Process():
                 _this_count += _data_size
 
                 # doing learning
-                if mode == Process_Name.TRAIN:  # for Train
+                if _mode == Process_Name.TRAIN:  # for Train
                     _output: Tensor | List[Tensor] = model(*_input_datas)
-                    _loss, _observe_param = self._Get_loss_n_observe_param(epoch, mode, _output, _label_data, logger, **_data_info)
+                    _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, **_data_info)
 
                     optim.zero_grad()
                     _loss.backward()
@@ -473,7 +471,7 @@ class Learning_Process():
                 else:  # for validation
                     with no_grad():
                         _output: Tensor | List[Tensor] = model(*_input_datas)
-                        _loss, _observe_param = self._Get_loss_n_observe_param(epoch, mode, _output, _label_data, logger, save_dir, **_data_info)
+                        _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
 
                 # update learning process observation
                 _progress_loss += _loss.item()
@@ -481,9 +479,9 @@ class Learning_Process():
 
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(epoch, mode, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count) if is_main_rank else ...
+                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count) if is_main_rank else ...
 
-    class Policy_Reinforcement(Basement):
+    class Reinforcement(Basement):
         def _Set_reinforcement_option(
             self,
             max_step: int,
@@ -528,13 +526,12 @@ class Learning_Process():
             self._reaplay_memory = deque(maxlen=memory_size) if memory_size != -1 else deque(maxlen=1)
             self._memory_minimum = memory_minimum
 
-            self.Reward_model = reward_model
+            self._reward_model = reward_model
 
         def _Learning_core(
             self,
-            epoch: int,
+            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
             gpu_info: Tuple[int, str] | None,
-            mode: Process_Name,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -543,6 +540,7 @@ class Learning_Process():
             is_main_rank: bool
         ):
             # learning info
+            _, _mode = learning_info
             # _batch_pool_size = len(dataloader)
             _max_count = self._dataset_count
             _this_count = 0
@@ -562,17 +560,17 @@ class Learning_Process():
 
                 # doing learning
                 for _ in range(self._max_step):
-                    if mode == Process_Name.TRAIN:  # for Train
+                    if _mode == Process_Name.TRAIN:  # for Train
                         _output: Tensor | List[Tensor] = model(*_this_state)
                     else:  # for validation or test
                         with no_grad(): _output: Tensor | List[Tensor] = model(*_this_state)
 
-                    _next_state, is_done = self._Step(_this_state, _output)
+                    _next_state, _is_done = self._Step(_this_state, _output)
                     with no_grad(): _next_output: Tensor | List[Tensor] = model(*_next_state)
 
-                    _next_state, _loss, _observe_param = self._Get_loss_n_observe_param(epoch, mode, [_output, _next_output], _label_data, is_done, logger, save_dir, **_data_info)
+                    _next_state, _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
 
-                    if mode == Process_Name.TRAIN:
+                    if _mode == Process_Name.TRAIN:
                         optim.zero_grad()
                         _loss.backward()
                         # self._average_gradients(model)
@@ -590,23 +588,14 @@ class Learning_Process():
 
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(
-                        epoch,
-                        mode,
-                        _progress_loss,
-                        _progress_observe_param,
-                        Debuging.Time._Stemp(_start_time),
-                        _this_count,
-                        _max_count
-                    ) if is_main_rank else ...
+                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count ) if is_main_rank else ...
 
         def _Step(self, state: Tensor | List[Tensor], output: Tensor | List[Tensor]):
             raise NotImplementedError
 
         def _Get_loss_n_observe_param(
             self,
-            epoch: int,
-            mode: Process_Name,
+            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
             output: List[Tensor | List[Tensor]],
             label: Tensor | List[Tensor] | None,
             is_done: bool,
