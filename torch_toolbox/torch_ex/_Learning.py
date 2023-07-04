@@ -302,10 +302,60 @@ class Learning_Process():
             print(f"Set Learning process for model {_model_name}is finish")
             # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
 
-        def _Process_init(self, process_num: int, gpu_info: Tuple[int, str] | None) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
-            raise NotImplementedError
+        def _Process_init(
+            self,
+            process_num: int,
+            gpu_info: Tuple[int, str] | None
+        ) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
+            # initialize model, optimizer, dataset and data process
+            _model = self._model_structure(**self._model_option)
 
-        def _Move_to_gpu(self, datas, gpu_info: Tuple[int, str] | None) -> Tuple[Tensor | List[Tensor], Tensor | List[Tensor] | None, int, Dict[str, Any]]:
+            _model_name = _model._model_name
+
+            _optim, _scheduler = Optim._build(
+                optim_name=self._optim_name,
+                model=_model,
+                initial_lr=self._initial_lr,
+                schedule_name=self._schedule_name,
+                last_epoch=self._last_epoch,
+                **self._schedule_option)
+
+            if self._last_epoch + 1:
+                _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._result_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
+
+            # initialize multi process or not
+            if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
+                assert gpu_info is not None
+                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
+                _model = DDP(_model.cuda(gpu_info[0]))
+
+                _sampler = DistributedSampler(self._dataset, rank=process_num)
+                _dataloader = DataLoader(
+                    dataset=self._dataset,
+                    batch_size=self._batch_size,
+                    num_workers=self._num_worker,
+                    sampler=_sampler,
+                    drop_last=True)
+
+            else:  # not consist multi-process
+                _model = _model if gpu_info is None else _model.cuda(gpu_info[0])
+                _sampler = None
+                _dataloader = DataLoader(
+                    dataset=self._dataset,
+                    batch_size=self._batch_size,
+                    num_workers=self._num_worker,
+                    shuffle=True,
+                    drop_last=True)
+
+            print(f"Set Learning model {_model_name}, optimizer, Dataset")
+
+            return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
+
+        def _Move_to_gpu(
+            self,
+            datas: Dict[str, Tensor],
+            gpu_info: Tuple[int, str] | None
+        ) -> Tuple[Tensor | List[Tensor], Tensor | List[Tensor] | None, int, Dict[str, Any]]:
             raise NotImplementedError
 
         def _Learning_core(
@@ -385,51 +435,6 @@ class Learning_Process():
             return model, optim, schedule
 
     class E2E(Basement):
-        def _Process_init(self, process_num: int, gpu_info: Tuple[int, str] | None):
-            # initialize model, optimizer, dataset and data process
-            _model = self._model_structure(**self._model_option)
-
-            _model_name = _model._model_name
-
-            _optim, _scheduler = Optim._build(
-                optim_name=self._optim_name,
-                model=_model,
-                initial_lr=self._initial_lr,
-                schedule_name=self._schedule_name,
-                last_epoch=self._last_epoch,
-                **self._schedule_option)
-
-            if self._last_epoch + 1:
-                _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._result_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
-
-            # initialize multi process or not
-            if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
-                assert gpu_info is not None
-                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
-                _model = DDP(_model.cuda(gpu_info[0]))
-
-                _sampler = DistributedSampler(self._dataset, rank=process_num)
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    sampler=_sampler,
-                    drop_last=True)
-
-            else:  # not consist multi-process
-                _model = _model if gpu_info is None else _model.cuda(gpu_info[0])
-                _sampler = None
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    shuffle=True,
-                    drop_last=True)
-
-            print(f"Set Learning model {_model_name}, optimizer, Dataset")
-
-            return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
-
         def _Learning_core(
             self,
             learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
@@ -568,7 +573,7 @@ class Learning_Process():
                     _next_state, _is_done = self._Step(_this_state, _output)
                     with no_grad(): _next_output: Tensor | List[Tensor] = model(*_next_state)
 
-                    _next_state, _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
+                    _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
 
                     if _mode == Process_Name.TRAIN:
                         optim.zero_grad()
@@ -602,5 +607,5 @@ class Learning_Process():
             logger: SummaryWriter,
             save_dir: str | None = None,
             **data_info
-        ) -> Tuple[Tensor | List[Tensor], Tensor, Tensor]:
+        ) -> Tuple[Tensor, Tensor]:
             raise NotImplementedError
