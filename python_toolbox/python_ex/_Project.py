@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 import time
 from math import log10, floor
 
-from ._Base import File, TYPE_JSON_KEYABLE, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
+from ._Base import Directory, File, TYPE_JSON_KEYABLE, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
 
 
 # -- DEFINE CONSTNAT -- #
@@ -50,6 +50,18 @@ class Config():
         return asdict(self)
 
 
+class Project():
+    def __init__(self, project_name: str, description: str, save_root: str):
+        self._project_name = project_name
+        self._description = description
+        self._save_root = self._Make_save_root(save_root)
+
+    def _Make_save_root(self, save_root: str):
+        _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
+
+        return Directory._Make(save_root, Directory._Divider.join([self._project_name, _working_day]))
+
+
 class Debuging():
     """
     프로젝트 진행에 따른 실행 내역 및 결과와 같은 주요 내용을 생성, 출력, 기록하기 위한 모듈
@@ -79,7 +91,7 @@ class Debuging():
         @staticmethod
         def _Apply_text_form(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
             """
-            현재 시간 정보를 생성하는 함수
+            시간 정보를 텍스트로 변환하는 함수
 
             ---------------------------------------------------------------------------------------
             ### Parameters

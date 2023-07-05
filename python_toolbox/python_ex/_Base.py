@@ -105,7 +105,7 @@ class Directory():
         # Make fillter string
         _dir = Directory._Divider_check(object_dir)
         _name = "*" if keyword is None else f"*{keyword}*"
-        _ext_info = "" if ext_filter == "Directory" else [f".{_ext}" for _ext in ext_filter]
+        _ext_info = "" if ext_filter == "Directory" else (_ext if "." in _ext else f".{_ext}"  for _ext in ext_filter)
 
         # return directory list or all data
         if isinstance(_ext_info, str):
@@ -232,9 +232,10 @@ class File():
 
         # Dictionary data load from json file
         else:
-            assert File._Exist_check(_file), f"File '{_file}' not exist"
-            _file = open(_file, "r")
-            return json.load(_file)
+            assert File._Exist_check(_file_dir, file_name), f"File '{_file}' not exist"
+            with open(_file, "r") as _file:
+                _load_data = json.load(_file)
+            return _load_data
 
     # @staticmethod
     # def _yaml(file_dir: str, file_name: str, is_save: bool = False, data_dict: Optional[Dict] = None):
