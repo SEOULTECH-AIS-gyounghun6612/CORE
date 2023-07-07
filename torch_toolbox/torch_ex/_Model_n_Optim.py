@@ -469,7 +469,7 @@ class Optim():
 
                 else:  # restore session
                     while epoch >= self._This_term:
-                        epoch = epoch - self._This_term
+                        epoch -= self._This_term
                         self._Cycle += 1
                         self._This_term = self._get_next_term()
 

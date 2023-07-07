@@ -406,7 +406,15 @@ class Learning_Process():
         #             distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
         #             param.grad.data /= size
 
-        def _Progress_dispaly(self, learning_info: Tuple[int, Process_Name], progress_loss: float, progress_observe_param: float, spend_time: float, data_size: int, data_length: int):
+        def _Progress_dispaly(
+            self,
+            learning_info: Tuple[int, Process_Name],
+            progress_loss: float,
+            progress_observe_param: float,
+            spend_time: float,
+            data_size: int,
+            data_length: int,
+        ):
             raise NotImplementedError
 
 
