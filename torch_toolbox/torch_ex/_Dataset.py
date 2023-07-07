@@ -40,6 +40,9 @@ class Label():
 
         CLASSIFICATION = "Classification"
         SEMENTIC = "Mask"
+        INSTANCES = "Classification"
+        KEY_POINTS = "Classification"
+
 
     class Structure():
         @dataclass
@@ -115,7 +118,11 @@ class Label():
                     return File._Json(file_dir=label_dir, file_name=label_file)
                 else:
                     assert self.__class__.__name__ != "Basement"
-                    return File._Json(file_dir=Directory._Devide(__file__)[0], file_name=f"{self.__class__.__name__}.json")
+
+                    _default_dir = f"{Directory._Devide(__file__)[0]}data_file{ Directory._Divider}"
+                    _default_file_name = f"{self.__class__.__name__}.json"
+
+                    return File._Json(_default_dir, _default_file_name)
 
             # Freeze function
             def _Make_active_label(self, active_style: List[Label.Style]) -> Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]]:
@@ -140,7 +147,7 @@ class Label():
 
                 for _style in active_style:
                     _holder.update({_style: {}})
-                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.__dict__[_style.value](**data) for data in self._meta_data[_style.value])
+                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.Structure.__dict__[_style.value](**data) for data in self._meta_data[_style.value])
 
                     for _label in _labels:
                         _holder[_style].update({
@@ -171,6 +178,7 @@ class Data():
         image = "image"
         colormaps = "colormaps"
         polygons = "polygons"
+        annotations = "annotations"
 
     @dataclass
     class Block():
@@ -217,7 +225,7 @@ class Data():
                 # set learning info
                 self._apply_mode = mode_list
                 # data root dir
-                self._root_dir = Directory._Divider_check(root_dir)
+                self._root_dir = root_dir
                 # called data info
                 self._data_info = data_info
 
@@ -228,7 +236,7 @@ class Data():
                 self._data_blocks = self._Make_data_block(mode_list, data_info)
 
             def __len__(self):
-                raise NotImplementedError
+                return self._data_blocks[self._active_mode][-1].__len__()
 
             def _Set_active_mode_from(self, mode: Process_Name):
                 if mode in self._apply_mode:
@@ -248,14 +256,89 @@ class Data():
 
         class BDD_100k(Basement):
             def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
-                self._data_directory = {
-                    Data.Format.image: "bdd100k/images/{}/{}/",
-                    Data.Format.colormaps: "bdd100k/labels/sem_seg/{}/{}/"
+                # data root dir
+                _root_dir = Directory._Divider_check(root_dir)
+
+                self._data_keyward = {
+                    Label.Style.SEMENTIC: {
+                        Data.Format.colormaps: "".join([f"{_root_dir}bdd100k/labels/sem_seg/", "{}/{}/*.jpg"])
+                    }                    
                 }
+
                 super().__init__(root_dir, mode_list, data_info, label_process)
 
         class COCO(Basement):
-            ...
+            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
+                # data root dir
+                _root_dir = Directory._Divider_check(root_dir)
+
+                self._data_keyward = {
+                    Label.Style.INSTANCES: {
+                        Data.Format.annotations: "".join([f"{_root_dir}COCO/annotations/instances_", "{}2017.json"])
+                    },
+                    Label.Style.KEY_POINTS: {
+                        Data.Format.annotations: "".join([f"{_root_dir}COCO/annotations/person_keypoints_", "{}2017.json"])
+                    }
+                }
+
+                super().__init__(root_dir, mode_list, data_info, label_process)
+            
+            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Process_Name, List[Data.Block]]:
+                _block: Dict[Process_Name, List[Data.Block]] = {}
+
+                for _mode in mode_list:
+                    _block[_mode] = []
+                    _img_dir = "".join([self._root_dir, f"COCO/{_mode.value}2017/"])
+
+                    if _mode is not Process_Name.TEST:
+                        _block[_mode].append(Data.Block(Data.Format.image, "_", []))  # input image
+                        _id_block: Dict[int, int] = {}
+                        _annotation_block: Dict[int, List[List]] = {}
+
+                        # make data index
+                        for _info_ct, (_label_style, _data_format) in enumerate(data_info):
+                            assert _data_format is Data.Format.annotations, "Calling an unsupported data foramt"
+                            _block[_mode].append(Data.Block(_data_format, "_", []))  # input image
+
+                            _dir, _file_name = File._Extrect_file_name(self._data_keyward[_label_style][_data_format].format(_mode.value), False)
+                            _meta_data = File._Json(_dir, _file_name)
+
+                            for _data in _meta_data["annotations"]:
+                                _img_id = _data["image_id"]
+
+                                # check image id
+                                if _img_id in _id_block.keys():
+                                    if (_id_block[_img_id] + 1) < _info_ct:
+                                        _id_block.pop(_img_id)
+                                        _annotation_block.pop(_img_id)
+                                        continue
+                                    
+                                    _id_block[_img_id] = _info_ct
+                                else:
+                                    if _info_ct: continue  # in before data info, this image not use 
+                                    _id_block.update({_img_id: 0})
+                                    _annotation_block.update({_img_id: [[] for _ in range(len(data_info))]})
+
+                                # select annotation file
+                                if _label_style is Label.Style.INSTANCES:  # instance
+                                    # update annotation data
+                                    if _data["iscrowd"]:
+                                        ...
+                                    else:
+                                        _annotation_block[_img_id][_info_ct].append((_data["segmentation"], _data["category_id"], _data["bbox"]))
+                                elif _label_style is Label.Style.KEY_POINTS:
+                                    ...
+                                else:  # captions
+                                    ...
+
+                        for _id, _annotations in zip(_id_block.keys(), _annotation_block.values()):
+                            _block[_mode][0].data_list.append(f"{_img_dir}{_id:0>12d}.jpg")
+                            for _ct, _anno in enumerate(_annotations): _block[_mode][1 + _ct].data_list.append(_anno)
+
+                    else:  # for test
+                        _block[_mode].append(Data.Block(Data.Format.image, "_", Directory._Search(_img_dir, ext_filter=[".jpg", ])))
+
+                return _block
 
         # @staticmethod
         # def _Build(
