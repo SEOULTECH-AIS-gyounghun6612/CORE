@@ -38,10 +38,10 @@ class Label():
         -------------------------------------------------------------------------------------------
         '''
 
-        CLASSIFICATION = "Classification"
-        SEMENTIC = "Mask"
-        INSTANCES = "Classification"
-        KEY_POINTS = "Classification"
+        CLASSIFICATION = "classification"
+        SEMENTIC = "sementic"
+        INSTANCES = "instances"
+        KEY_POINTS = "key_Points"
 
 
     class Structure():
@@ -147,7 +147,13 @@ class Label():
 
                 for _style in active_style:
                     _holder.update({_style: {}})
-                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.Structure.__dict__[_style.value](**data) for data in self._meta_data[_style.value])
+
+                    if _style in [Label.Style.SEMENTIC]:
+                        _key = "Mask"
+                    else:
+                        _key = "Classification"
+
+                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.Structure.__dict__[_key](**data) for data in self._meta_data[_key])
 
                     for _label in _labels:
                         _holder[_style].update({
@@ -325,7 +331,7 @@ class Data():
                                     if _data["iscrowd"]:
                                         ...
                                     else:
-                                        _annotation_block[_img_id][_info_ct].append((_data["segmentation"], _data["category_id"], _data["bbox"]))
+                                        _annotation_block[_img_id][_info_ct].append((_data["segmentation"], _data["category_id"], _data["bbox"]))  # -> left top w, left top h, delta w, delta h
                                 elif _label_style is Label.Style.KEY_POINTS:
                                     ...
                                 else:  # captions
