@@ -99,8 +99,7 @@ class Learning_Process():
             _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
             _result_dir = Directory._Divider.join([self._project_name, dataset_process._organization.__class__.__name__, _working_day])
             self._result_root = Directory._Make(_result_dir, self._result_root)
-            self._dataset_count = dataset_process.__len__()            
-            self._display_term = int(dataset_process.__len__() * display_term) if isinstance(display_term, float) else display_term
+            self._display_term = display_term
 
         def _Set_model_n_optim(
             self,
@@ -456,9 +455,9 @@ class Learning_Process():
             # learning info
             _epoch, _mode = learning_info
             # _batch_pool_size = len(dataloader)
-            _max_count = self._dataset_count
+            _max_data_length = self._dataset.__len__()
+            _display_term = int(self._display_term * _max_data_length) if isinstance(self._display_term, float) else self._display_term
             _this_count = 0
-            _display_term = self._display_term
 
             # initialize parameter for observing
             _progress_loss = 0
@@ -487,13 +486,19 @@ class Learning_Process():
                 _progress_loss += _loss.item() * _data_size
                 for _param, _value in _observe_param.items():
                     if _param in _progress_observe_param.keys():
-                        _progress_observe_param.update({_param: _value.item()})
-                    else:
                         _progress_observe_param[_param] += _value.item()
+                    else:
+                        _progress_observe_param.update({_param: _value.item()})
 
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count) if is_main_rank else ...
+                    self._Progress_dispaly(
+                        learning_info,
+                        _progress_loss,
+                        _progress_observe_param,
+                        Debuging.Time._Stemp(_start_time),
+                        _this_count, _max_data_length
+                    ) if is_main_rank else ...
 
             logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
             for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)            
@@ -559,9 +564,9 @@ class Learning_Process():
             # learning info
             _epoch, _mode = learning_info
             # _batch_pool_size = len(dataloader)
-            _max_count = self._dataset_count
+            _max_data_length = self._dataset.__len__()
+            _display_term = int(self._display_term * _max_data_length) if isinstance(self._display_term, float) else self._display_term
             _this_count = 0
-            _display_term = self._display_term
 
             # initialize parameter for observing
             _progress_loss = 0
@@ -597,9 +602,9 @@ class Learning_Process():
                     _progress_loss += _loss.item() * _data_size
                     for _param, _value in _observe_param.items():
                         if _param in _progress_observe_param.keys():
-                            _progress_observe_param.update({_param: _value.item()})
-                        else:
                             _progress_observe_param[_param] += _value.item()
+                        else:
+                            _progress_observe_param.update({_param: _value.item()})
 
                     if _is_done:
                         break
@@ -609,7 +614,14 @@ class Learning_Process():
 
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count ) if is_main_rank else ...
+                    self._Progress_dispaly(
+                        learning_info,
+                        _progress_loss,
+                        _progress_observe_param,
+                        Debuging.Time._Stemp(_start_time),
+                        _this_count,
+                        _max_data_length
+                    ) if is_main_rank else ...
 
             logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
             for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)
