@@ -7,7 +7,7 @@ from torch import uint8, float32
 from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, clip, cat
 from torch import rand, randn, rand_like, randn_like
 
-from python_ex._Base import TYPE_NUMBER, TYPE_JSON_WRITEABLE
+from python_ex._Base import TYPE_NUMBER, Directory
 from python_ex._Project import Debuging
 from python_ex._Numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process, Random_Process
 
@@ -26,6 +26,15 @@ class Data_Type(Enum):
 
 # -- Main code -- #
 class System_Utils():
+    class Base():
+        @staticmethod
+        def _Print(data: Any, this_rank: int):
+            if this_rank: print(data)
+
+        @staticmethod
+        def _Make_dir(obj_dir: str, root_dir: str, this_rank: int = 0):
+            return Directory._Make(obj_dir, root_dir) if this_rank else Directory._Divider_check(Directory._Divider.join([root_dir, obj_dir]))
+
     class Cuda():
         @staticmethod
         def _Get_useable_gpu_list(threshold_of_rate: float = 0.5, threshold_of_size: Optional[int] = None) -> List[Tuple[int, str]]:
@@ -45,83 +54,6 @@ class System_Utils():
                         _useable_gpu_list.append((int(_info_list[1]), _info_list[0]))
 
             return _useable_gpu_list
-
-    class Learning_Tracker(Debuging.Logging):
-        """
-        학습 진행에 따른 중간 정보를 기록 하기 위한 객체 기본 구조
-
-        -------------------------------------------------------------------------------------------
-        ### Parameters
-        - info : 프로젝트 세부 정보
-
-        -------------------------------------------------------------------------------------------
-        """
-        _Data: Dict[str, Dict[int, TYPE_JSON_WRITEABLE]]
-
-        def __init__(self, info: TYPE_JSON_WRITEABLE):
-            super().__init__(info)
-
-        def _Logging(self, process_name: Process_Name, epoch: int, minibatch_size: int, data: Dict[str, TYPE_NUMBER | List[TYPE_NUMBER]]):
-            """
-            학습 진행에 따른 중간 정보를 기록
-
-            ---------------------------------------------------------------------------------------
-            ### Parameters
-            - process_name : 진행 프로세스 이름
-            - epoch : 진행 epoch
-            - data : 기록하고자 하는 데이터 ->
-
-            ---------------------------------------------------------------------------------------
-            """
-            data.update({"mini_batch": minibatch_size})
-
-            if process_name.value not in self._Data.keys():
-                self._Data.update({process_name.value: {}})
-
-            if epoch not in self._Data[process_name.value].keys():
-                self._Data[process_name.value].update({epoch: {}})
-
-            self._Insert(data={process_name.value: {epoch: data}}, save_point=self._Data[process_name.value][epoch])
-
-        def _Tracking(self, process_name: Process_Name, epoch: int, data_name_list: List[str], start_num: int = 0, end_num: int | None = None):
-            """
-            """
-            _trackin_string = ""
-            _observing_data: Dict = self._Pick(
-                {
-                    process_name.value: {
-                        epoch: dict((data_name, [start_num, end_num] if start_num or end_num is not None else None) for data_name in data_name_list + ["mini_batch"])
-                    }
-                },
-                self._Data[process_name.value][epoch]
-            )
-
-            for _name in data_name_list:
-                if _name in _observing_data.keys():
-                    _pick_data = _observing_data[_name]
-
-                    if isinstance(_pick_data, int):
-                        _string = f"{_observing_data:>4d}, "
-                    elif isinstance(_pick_data, float):
-                        _string = f"{_observing_data:>7.3f}, "
-                    else:
-                        _data = Array_Process._Convert_from(_pick_data, dtype=Np_Dtype.FLOAT)
-                        _mini_batch = Array_Process._Convert_from(_observing_data["mini_batch"], dtype=Np_Dtype.FLOAT)
-                        _average: ndarray = (_mini_batch.reshape(*[1 if _ else -1 for _ in range(len(_data.shape))]) * _data).sum(0) / _mini_batch.sum()
-
-                        _string = "This data have more dimension than 2. check it, in tracking file" if len(_data.shape) >= 2 else f"{_average.item:>7.3f}, "
-
-                    _trackin_string = f"{_trackin_string} {_name}: {_string}, "
-
-                else:
-                    ...
-
-            return _trackin_string[:-2]
-
-        def _Get_conut(self, process_name: Process_Name, epoch: int, start_num: int = 0, end_num: int | None = None) -> int:
-            _length_info = self._Pick({"mini_batch": [start_num, end_num] if start_num or end_num is not None else None}, self._Data[process_name.value][epoch])
-            _tracking_count: ndarray = Array_Process._Convert_from(_length_info["mini_batch"], dtype=Np_Dtype.FLOAT).sum()
-            return _tracking_count.item()
 
 
 class Tensor_Process():
