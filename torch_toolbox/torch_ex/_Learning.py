@@ -27,8 +27,8 @@ MAIN_RANK: int = 0
 
 
 class Multi_Method(Enum):
+    AUTO =  "Auto"
     NOT_USE = "None"
-    DP = "DataParallel"
     DDP = "DistributedDataParallel"
 
 
@@ -147,10 +147,10 @@ class Learning_Process():
 
         def _Set_processer_option(
             self,
-            multi_method: Multi_Method = Multi_Method.NOT_USE,
-            world_size: int = 1,
+            multi_method: Multi_Method = Multi_Method.AUTO,
+            world_size: int = 2,
             device_rank: int = 0,
-            gpu_count: int = 1,
+            max_gpu_count: int = 2,
             multi_protocal: str | None = "tcp://127.0.0.1:10001"
         ):
             """
@@ -165,12 +165,12 @@ class Learning_Process():
                 world_size (int)
                     : 훈련에 사용되는 전체 프로세서 갯수
                 device_rank (int)
-                    : 해당 코드를 실행 하고자 하는 컴퓨터 식별번호
+                    : 해당 코드를 실행 하고자 하는 단말장치의 식별번호 시작값
                 usable_gpus (List[Tuple[int, str]])
                     : 학습에 사용가능한 GPU 리스트. 리스트에 각 데이터는 GPU 식별번호와 GPU 장치 이름으로 구성됨.
                     : List of usable GPUs. Each data consists of a GPU ID and a GPU name
                 multi_protocal (str | None)
-                    : 멀티 프로세서 사이의 통신 설정
+                    : 다른 프로세서와 통신 설정
 
             ## Returns
                 None
@@ -179,42 +179,43 @@ class Learning_Process():
             """
             print("Set the multiprocess option.")
             self._device_rank = device_rank
-            self._multi_protocal = multi_protocal
-            self._gpu_info: List[Tuple[int, str]] = []
 
-            if multi_method is Multi_Method.NOT_USE:  # NOT use multi process
-                # In this flow, parameter _world_size, _multi_protocal in class is not use.
-                self._multi_method: Multi_Method = multi_method
-                print("In this learning session, using single process.")
+            _gpu_info = System_Utils.Cuda._Get_useable_gpu_list()
+            # self._gpu_info: List[Tuple[int, str]] = []
+
+            if len(_gpu_info) >= 2 and not multi_method is Multi_Method.NOT_USE:  # can use gpu
+                print("In this learning session, using multi process.")
                 print("--------------------------------------------------")
-                if gpu_count:  # using one gpu
-                    _gpu_info = System_Utils.Cuda._Get_useable_gpu_list()[0]
-                    print(f"\tGPU device {_gpu_info[0]}: {_gpu_info[1]}")
-                    self._gpu_info.append(_gpu_info)
-                else:  # just use cpu
-                    print("\tCPU device")
+                if not multi_method.AUTO: _gpu_info = _gpu_info[:max_gpu_count]
+                self._gpu_info = []
 
+                for _gpu_id, _gpu_name in _gpu_info:
+                    print(f"\tGPU device {_gpu_id}: {_gpu_name}")
+                    self._gpu_info.append(_gpu_id)
                 print("--------------------------------------------------")
-            else:  # use multi process
-                assert world_size >= device_rank + gpu_count,\
-                    f"paramerter {world_size} is wrong value; in this device process id num overflow the world size"  # In later, change to some function in python_ex._debug.py
 
-                print("\tIn this learning session, using multi process.")
-                # set parameter
-                self._multi_method: Multi_Method = multi_method
+                self._multi_method: Multi_Method = Multi_Method.DDP
                 self._multi_protocal = multi_protocal
-                self._world_size = world_size
+                self._world_size = world_size if world_size >= (device_rank + max_gpu_count) else (device_rank + max_gpu_count)
 
                 # set cv2 setting
                 cv2.setNumThreads(0)
                 cv2.ocl.setUseOpenCL(False)
 
+            else:                
+                print("In this learning session, using single process.")
                 print("--------------------------------------------------")
-                # if use gpu, set the gpu ids
-                self._gpu_info = System_Utils.Cuda._Get_useable_gpu_list()
-                for _info in self._gpu_info:  # if set multi gpu infomations,
-                    print(f"\tUsing GPU device {_info[0]}: {_info[1]}")
+
+                assert len(_gpu_info), "THIS DEVICE CNA'T USE GPU. CHECK IT"
+
+                for _gpu_id, _gpu_name in _gpu_info:
+                    print(f"\tGPU device {_gpu_id}: {_gpu_name}")
+                    self._gpu_info.append(_gpu_id)
                 print("--------------------------------------------------")
+
+                self._multi_method: Multi_Method = Multi_Method.NOT_USE
+                self._multi_protocal = None
+                self._world_size = 1
 
         #  ----------------- #
         def _Work(self):
@@ -236,7 +237,6 @@ class Learning_Process():
             else:
                 self._Process(process_num=0)
 
-        #  ----------------- #
         def _Process(self, process_num: int):
             """
             ### 각 프로세서 별 훈련 과정
@@ -256,42 +256,38 @@ class Learning_Process():
             # set processer infomation
             _process_num = self._device_rank + process_num
             _is_this_main = _process_num is MAIN_RANK
-            _gpu_info = self._gpu_info[process_num] if len(self._gpu_info) else None
+            _gpu_info: int = self._gpu_info[process_num]
 
             # set logger in learning
-            _logger = SummaryWriter(
-                self._result_root,
-                f"_rank_{_process_num}_cpu" if _gpu_info is None else f"_rank_{_process_num}_gpu_{_gpu_info[0]}_{_gpu_info[1]}")
+            _logger_dir = Directory._Make(f"_rank_{_process_num}_gpu_{_gpu_info}", self._result_root)
+            _logger = SummaryWriter(_logger_dir)
 
             # initialize model, optimizer, dataset and data process
             _model, _model_name, _optim, _scheduler, _dataloader, _sampler = self._Process_init(_process_num, _gpu_info)
 
             # initialize parameter for best performing
-
             # _best_epoch = 0
             # _best_loss = float("inf")
             # _best_acc = float("-inf")
 
             # Do learning
             for _epoch in range(self._last_epoch + 1, self._max_epoch):
-                _epoch_dir = Directory._Make(f"{_epoch}", self._result_root) if _is_this_main\
-                    else Directory._Divider_check(Directory._Divider.join([self._result_root, f"{_epoch}"]))
+                _epoch_dir = System_Utils.Base._Make_dir(f"{_epoch}", self._result_root, _process_num)
 
                 for _active_mode in self._mode_list:
                     _model.train() if _active_mode == Process_Name.TRAIN else _model.eval()
                     self._dataset._Set_active_mode_from(_active_mode)
 
                     # When use sampler, shuffling
-                    _sampler.set_epoch(_epoch) if _sampler is not None else ...
+                    if _sampler is not None: _sampler.set_epoch(_epoch)
 
                     # Make save directory for each mode process
-                    _mode_dir = Directory._Make(_active_mode.value, _epoch_dir) if _is_this_main\
-                        else Directory._Divider_check(Directory._Divider.join([_epoch_dir, _active_mode.value]))
+                    _mode_dir = System_Utils.Base._Make_dir(_active_mode.value, _epoch_dir, _process_num)
 
                     self._Learning_core((_epoch, _active_mode), _gpu_info, _dataloader, _model, _optim, _logger, _mode_dir, _is_this_main)
 
-                self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler) if _is_this_main else ...
-                _scheduler.step() if _scheduler is not None else ...
+                if _is_this_main: self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler)
+                if _scheduler is not None: _scheduler.step()
 
                 # save log file check
                 _logger.flush()
@@ -301,14 +297,9 @@ class Learning_Process():
             print(f"Set Learning process for model {_model_name}is finish")
             # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
 
-        def _Process_init(
-            self,
-            process_num: int,
-            gpu_info: Tuple[int, str] | None
-        ) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
+        def _Process_init(self, process_num: int, gpu_info: int) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
             # initialize model, optimizer, dataset and data process
             _model = self._model_structure(**self._model_option)
-
             _model_name = _model._model_name
 
             _optim, _scheduler = Optim._build(
@@ -322,45 +313,60 @@ class Learning_Process():
             if self._last_epoch + 1:
                 _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._result_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
 
+            _model = _model.cuda(gpu_info)
+
             # initialize multi process or not
             if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
-                assert gpu_info is not None
                 distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
-                _model = DDP(_model.cuda(gpu_info[0]))
 
+                _model = DDP(_model)
                 _sampler = DistributedSampler(self._dataset, rank=process_num)
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    sampler=_sampler,
-                    drop_last=True)
+                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, sampler=_sampler, drop_last=True)
 
             else:  # not consist multi-process
-                _model = _model if gpu_info is None else _model.cuda(gpu_info[0])
                 _sampler = None
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    shuffle=True,
-                    drop_last=True)
+                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, shuffle=True, drop_last=True)
 
             print(f"Set Learning model {_model_name}, optimizer, Dataset")
 
             return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
 
+        def _Save(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer | None = None, schedule: _LRScheduler | None = None):
+            save(model.state_dict(), f"{save_dir}{file_name}_model.h5")
+
+            if optim is not None:
+                _optim_and_schedule = {
+                    "optimizer": optim.state_dict(),
+                    "schedule": None if schedule is None else schedule.state_dict()}
+                save(_optim_and_schedule, f"{save_dir}{file_name}_optim.h5")  # save optim and schedule state
+
+        def _Load(self, save_dir: str, file_name: str, model: Model, optim: Optimizer, schedule: _LRScheduler | None = None):
+            _save_dir = Directory._Divider_check(save_dir)
+            if File._Exist_check(_save_dir, f"{file_name}_model.h5"):
+                model.load_state_dict(load(f"{_save_dir}{file_name}_model.h5"))
+            else:
+                raise FileExistsError(f"model file _model.h5 is not exist in {save_dir}. Please check it")
+
+            if File._Exist_check(_save_dir, f"{file_name}_optim.h5"):
+                _optim_and_schedule = load(f"{_save_dir}{file_name}_optim.h5")
+                optim.load_state_dict(_optim_and_schedule["optimizer"])
+                if schedule is not None:
+                    schedule.load_state_dict(_optim_and_schedule["schedule"])
+
+            return model, optim, schedule
+
+        #  ----------------- #
         def _Move_to_gpu(
             self,
             datas: Dict[str, Tensor],
-            gpu_info: Tuple[int, str] | None
+            gpu_info: int
         ) -> Tuple[Tensor | List[Tensor], Tensor | List[Tensor] | None, int, Dict[str, Any]]:
             raise NotImplementedError
 
         def _Learning_core(
             self,
             learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
-            gpu_info: Tuple[int, str] | None,
+            gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -398,13 +404,6 @@ class Learning_Process():
             """
             raise NotImplementedError
 
-        # def _Average_gradients(self, model: Custom_Model):
-        #     size = float(distributed.get_world_size())
-        #     for param in model.parameters():
-        #         if param.grad is not None:
-        #             distributed.all_reduce(param.grad.data, op=distributed.ReduceOp.SUM)
-        #             param.grad.data /= size
-
         def _Progress_dispaly(
             self,
             learning_info: Tuple[int, Process_Name],
@@ -416,35 +415,11 @@ class Learning_Process():
         ):
             raise NotImplementedError
 
-        def _Save(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer | None = None, schedule: _LRScheduler | None = None):
-            save(model.state_dict(), f"{save_dir}{file_name}_model.h5")
-
-            if optim is not None:
-                _optim_and_schedule = {
-                    "optimizer": optim.state_dict(),
-                    "schedule": None if schedule is None else schedule.state_dict()}
-                save(_optim_and_schedule, f"{save_dir}{file_name}_optim.h5")  # save optim and schedule state
-
-        def _Load(self, save_dir: str, file_name: str, model: Model, optim: Optimizer, schedule: _LRScheduler | None = None):
-            _save_dir = Directory._Divider_check(save_dir)
-            if File._Exist_check(_save_dir, f"{file_name}_model.h5"):
-                model.load_state_dict(load(f"{_save_dir}{file_name}_model.h5"))
-            else:
-                raise FileExistsError(f"model file _model.h5 is not exist in {save_dir}. Please check it")
-
-            if File._Exist_check(_save_dir, f"{file_name}_optim.h5"):
-                _optim_and_schedule = load(f"{_save_dir}{file_name}_optim.h5")
-                optim.load_state_dict(_optim_and_schedule["optimizer"])
-                if schedule is not None:
-                    schedule.load_state_dict(_optim_and_schedule["schedule"])
-
-            return model, optim, schedule
-
     class E2E(Basement):
         def _Learning_core(
             self,
             learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
-            gpu_info: Tuple[int, str] | None,
+            gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -490,18 +465,12 @@ class Learning_Process():
                     else:
                         _progress_observe_param.update({_param: _value.item()})
 
-                if _this_count >= _display_milestone:
+                if _this_count >= _display_milestone and is_main_rank:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(
-                        learning_info,
-                        _progress_loss,
-                        _progress_observe_param,
-                        Debuging.Time._Stemp(_start_time),
-                        _this_count, _max_data_length
-                    ) if is_main_rank else ...
+                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
 
-            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
-            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)            
+            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss / _this_count, _epoch)
+            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value / _this_count, _epoch)            
 
     class Reinforcement(Basement):
         def _Set_reinforcement_option(
@@ -553,7 +522,7 @@ class Learning_Process():
         def _Learning_core(
             self,
             learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
-            gpu_info: Tuple[int, str] | None,
+            gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
             optim: Optimizer,
@@ -612,16 +581,9 @@ class Learning_Process():
                         # state update
                         _this_state = _next_state
 
-                if _this_count >= _display_milestone:
+                if _this_count >= _display_milestone and is_main_rank:
                     _display_milestone += _display_term
-                    self._Progress_dispaly(
-                        learning_info,
-                        _progress_loss,
-                        _progress_observe_param,
-                        Debuging.Time._Stemp(_start_time),
-                        _this_count,
-                        _max_data_length
-                    ) if is_main_rank else ...
+                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
 
             logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
             for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)
