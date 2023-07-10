@@ -242,14 +242,13 @@ class Data():
                 self._data_blocks = self._Make_data_block(mode_list, data_info)
 
             def __len__(self):
-                return self._data_blocks[self._active_mode][-1].__len__()
+                return self._this_blocks[-1].__len__()
 
             def _Set_active_mode_from(self, mode: Process_Name):
                 if mode in self._apply_mode:
-                    self._active_mode = mode
+                    self._this_blocks = self._data_blocks[mode]
                 else:
-                    # in later, warning coment here!
-                    pass
+                    pass  # in later, warning coment here!
 
             def _Label_update(self, label_process: Label.Organization.Basement):
                 return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])

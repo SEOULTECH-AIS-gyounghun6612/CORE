@@ -295,7 +295,7 @@ class Learning_Process():
                 _scheduler.step() if _scheduler is not None else ...
 
                 # save log file check
-                # _logger.flush()
+                _logger.flush()
 
             _logger.close()
 
@@ -379,7 +379,7 @@ class Learning_Process():
             logger: SummaryWriter,
             save_dir: str | None = None,
             **data_info
-        ) -> Tuple[Tensor, Tensor]:
+        ) -> Tuple[Tensor, Dict[str, Tensor]]:
             """
             ### 모델의 출력 결과와 정답 이미지를 비교하여 훈련을 위한 loss 구성 및, 훈련 진행 정보를 생성.
 
@@ -410,13 +410,12 @@ class Learning_Process():
             self,
             learning_info: Tuple[int, Process_Name],
             progress_loss: float,
-            progress_observe_param: float,
+            progress_observe_param: Dict[str, float],
             spend_time: float,
             data_size: int,
             data_length: int,
         ):
             raise NotImplementedError
-
 
         def _Save(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer | None = None, schedule: _LRScheduler | None = None):
             save(model.state_dict(), f"{save_dir}{file_name}_model.h5")
@@ -455,7 +454,7 @@ class Learning_Process():
             is_main_rank: bool
         ):
             # learning info
-            _, _mode = learning_info
+            _epoch, _mode = learning_info
             # _batch_pool_size = len(dataloader)
             _max_count = self._dataset_count
             _this_count = 0
@@ -463,7 +462,7 @@ class Learning_Process():
 
             # initialize parameter for observing
             _progress_loss = 0
-            _progress_observe_param = 0
+            _progress_observe_param: Dict[str, float] = {}
             _display_milestone = 0
             _start_time = Debuging.Time._Stemp()
 
@@ -471,28 +470,33 @@ class Learning_Process():
                 _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
                 _this_count += _data_size
 
-                # doing learning
                 if _mode == Process_Name.TRAIN:  # for Train
                     _output: Tensor | List[Tensor] = model(*_input_datas)
-                    _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, **_data_info)
+                else:  # for validation
+                    with no_grad(): _output: Tensor | List[Tensor] = model(*_input_datas)
+                
+                _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
 
+                # doing learning
+                if _mode == Process_Name.TRAIN:  # for Train
                     optim.zero_grad()
                     _loss.backward()
-                    # self._average_gradients(model)
                     optim.step()
 
-                else:  # for validation
-                    with no_grad():
-                        _output: Tensor | List[Tensor] = model(*_input_datas)
-                        _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
-
                 # update learning process observation
-                _progress_loss += _loss.item()
-                _progress_observe_param += _observe_param.item()
+                _progress_loss += _loss.item() * _data_size
+                for _param, _value in _observe_param.items():
+                    if _param in _progress_observe_param.keys():
+                        _progress_observe_param.update({_param: _value.item()})
+                    else:
+                        _progress_observe_param[_param] += _value.item()
 
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
                     self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count) if is_main_rank else ...
+
+            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
+            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)            
 
     class Reinforcement(Basement):
         def _Set_reinforcement_option(
@@ -553,7 +557,7 @@ class Learning_Process():
             is_main_rank: bool
         ):
             # learning info
-            _, _mode = learning_info
+            _epoch, _mode = learning_info
             # _batch_pool_size = len(dataloader)
             _max_count = self._dataset_count
             _this_count = 0
@@ -561,7 +565,7 @@ class Learning_Process():
 
             # initialize parameter for observing
             _progress_loss = 0
-            _progress_observe_param = 0
+            _progress_observe_param = {}
             _display_milestone = 0
             _start_time = Debuging.Time._Stemp()
 
@@ -590,8 +594,12 @@ class Learning_Process():
                         optim.step()
 
                     # update learning process observation
-                    _progress_loss += _loss.item()
-                    _progress_observe_param += _observe_param.item()
+                    _progress_loss += _loss.item() * _data_size
+                    for _param, _value in _observe_param.items():
+                        if _param in _progress_observe_param.keys():
+                            _progress_observe_param.update({_param: _value.item()})
+                        else:
+                            _progress_observe_param[_param] += _value.item()
 
                     if _is_done:
                         break
@@ -602,6 +610,9 @@ class Learning_Process():
                 if _this_count >= _display_milestone:
                     _display_milestone += _display_term
                     self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_count ) if is_main_rank else ...
+
+            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
+            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)
 
         def _Step(self, state: Tensor | List[Tensor], output: Tensor | List[Tensor]):
             raise NotImplementedError
@@ -615,5 +626,5 @@ class Learning_Process():
             logger: SummaryWriter,
             save_dir: str | None = None,
             **data_info
-        ) -> Tuple[Tensor, Tensor]:
+        ) -> Tuple[Tensor, Dict[str, Tensor]]:
             raise NotImplementedError
