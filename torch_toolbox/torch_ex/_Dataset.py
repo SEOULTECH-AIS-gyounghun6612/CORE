@@ -186,28 +186,6 @@ class Data():
         polygons = "polygons"
         annotations = "annotations"
 
-    @dataclass
-    class Block():
-        """
-        ### 학습 과정에 사용하는 데이터 묶음
-
-        -------------------------------------------------------------------------------------------
-        ## Argument & Parameters
-        - data_format : 해당 묶음의 데이터 포멧
-        - follow_target : 데이터 증폭 과정을 추종할 대상
-        - data_list : 해당 데이터 리스트
-        -------------------------------------------------------------------------------------------
-        """
-        data_format: Data.Format
-        follow_target: str
-        data_list: List[Any]
-
-        def __len__(self):
-            return len(self.data_list)
-
-        def _Get_data(self, num: int):
-            return self.data_list[num]
-
     class Organize():
         class Basement():
             """
@@ -239,21 +217,23 @@ class Data():
                 self._label = self._Label_update(label_process) if label_process is not None else {}
 
                 # make data_blocks
-                self._data_blocks = self._Make_data_block(mode_list, data_info)
+                self._all_data = self._Make_data_block(mode_list, data_info)
+
+                self._Set_active_mode_from(mode_list[0])
 
             def __len__(self):
-                return self._this_blocks[-1].__len__()
+                return self._this_data[-1].__len__()
 
             def _Set_active_mode_from(self, mode: Process_Name):
                 if mode in self._apply_mode:
-                    self._this_blocks = self._data_blocks[mode]
+                    self._this_data = self._all_data[mode]
                 else:
                     pass  # in later, warning coment here!
 
             def _Label_update(self, label_process: Label.Organization.Basement):
                 return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])
 
-            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Process_Name, List[Data.Block]]:
+            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Process_Name, List[List]]:
                 raise NotImplementedError
 
             def _Pick_up(self, num: int) -> Dict[str, Any]:
@@ -288,22 +268,22 @@ class Data():
 
                 super().__init__(root_dir, mode_list, data_info, label_process)
             
-            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Process_Name, List[Data.Block]]:
-                _block: Dict[Process_Name, List[Data.Block]] = {}
+            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Process_Name, List[List]]:
+                _block: Dict[Process_Name, List[List]] = {}
 
                 for _mode in mode_list:
                     _block[_mode] = []
                     _img_dir = "".join([self._root_dir, f"COCO/{_mode.value}2017/"])
 
                     if _mode is not Process_Name.TEST:
-                        _block[_mode].append(Data.Block(Data.Format.image, "_", []))  # input image
+                        _block[_mode].append([])  # input image
                         _id_block: Dict[int, int] = {}
                         _annotation_block: Dict[int, List[List]] = {}
 
                         # make data index
                         for _info_ct, (_label_style, _data_format) in enumerate(data_info):
                             assert _data_format is Data.Format.annotations, "Calling an unsupported data foramt"
-                            _block[_mode].append(Data.Block(_data_format, "_", []))  # input image
+                            _block[_mode].append([])  # annotation
 
                             _dir, _file_name = File._Extrect_file_name(self._data_keyward[_label_style][_data_format].format(_mode.value), False)
                             _meta_data = File._Json(_dir, _file_name)
@@ -337,11 +317,11 @@ class Data():
                                     ...
 
                         for _id, _annotations in zip(_id_block.keys(), _annotation_block.values()):
-                            _block[_mode][0].data_list.append(f"{_img_dir}{_id:0>12d}.jpg")
-                            for _ct, _anno in enumerate(_annotations): _block[_mode][1 + _ct].data_list.append(_anno)
+                            _block[_mode][0].append(f"{_img_dir}{_id:0>12d}.jpg")
+                            for _ct, _anno in enumerate(_annotations): _block[_mode][1 + _ct].append(_anno)
 
                     else:  # for test
-                        _block[_mode].append(Data.Block(Data.Format.image, "_", Directory._Search(_img_dir, ext_filter=[".jpg", ])))
+                        _block[_mode].append(Directory._Search(_img_dir, ext_filter=[".jpg", ]))
 
                 return _block
 
