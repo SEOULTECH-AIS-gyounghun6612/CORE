@@ -613,7 +613,6 @@ class Learning_Config():
 
             self._options = self._Load()
 
-        # Freeze function
         def _Set_default_option(self):
             return {
                 # --- basement option --- #
@@ -727,10 +726,36 @@ class Learning_Config():
                 "scheduler_option": _scheduler_option
             }
 
-        def _Make_dataset(self) -> Custom_Dataset_Process:
+        def _Make_dataset_info(self) -> Custom_Dataset_Process:
             raise NotImplementedError
 
         def _Make_dataloader_option(self) -> Dict[str, Any]:
-            _dataloader_option = {"dataset_process": self._Make_dataset()}
+            _dataloader_option = {"dataset_process": self._Make_dataset_info()}
             _dataloader_option.update(dict((_key, self._options[_key]) for _key in ["batch_size_per_node", "num_worker_per_node", "display_term"]))
+            return _dataloader_option
+        
+    class Reinforcement(E2E):
+        def _Set_default_option(self):
+            _opt =  super()._Set_default_option()
+
+            _opt.update({
+                # --- reinforcement option --- #
+                "max_step": 1,
+                "exploration_rate": 0.0,
+                "exploration_discont": 0.0,
+                "exploration_minimum": 0.0,
+                "sequence_depth": 2,
+                "reward_discount": 0.9,
+                "memory_size": -1,
+                "memory_minimum": -1,
+            })
+        
+        def _Make_reward_model(self) -> Callable:
+            raise NotImplementedError
+
+        def _Make_reinforcement_opt(self) -> Dict[str, Any]:
+            _dataloader_option = {"reward_model": self._Make_reward_model()}
+            _dataloader_option.update(
+                dict((_key, self._options[_key]) for _key in [
+                    "max_step", "exploration_rate", "exploration_discont", "exploration_minimum", "sequence_depth", "reward_discount", "memory_size", "memory_minimum"]))
             return _dataloader_option
