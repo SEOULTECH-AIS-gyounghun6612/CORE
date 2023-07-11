@@ -606,7 +606,7 @@ class Learning_Process():
 
 
 class Learning_Config():
-    class Base():
+    class E2E():
         def __init__(self, file_name: str, file_dir: str = "./config/"):
             _, self._file_name = File._Extension_check(file_name, ["json"], True)
             self.file_dir = Directory._Divider_check(file_dir)
