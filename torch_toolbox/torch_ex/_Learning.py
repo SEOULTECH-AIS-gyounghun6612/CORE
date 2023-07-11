@@ -300,6 +300,7 @@ class Learning_Process():
         def _Process_init(self, process_num: int, gpu_info: int) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
             # initialize model, optimizer, dataset and data process
             _model = self._model_structure(**self._model_option)
+            _model = _model.cuda(gpu_info)
             _model_name = _model._model_name
 
             _optim, _scheduler = Optim._build(
@@ -310,10 +311,10 @@ class Learning_Process():
                 last_epoch=self._last_epoch,
                 **self._schedule_option)
 
-            if self._last_epoch + 1:
-                _model, _optim, _scheduler = self._Load(Directory._Divider.join([self._result_root, f"{self._last_epoch}"]), _model_name, _model, _optim, _scheduler)
-
-            _model = _model.cuda(gpu_info)
+            if (self._last_epoch + 1) and (self._weight_dir is not None):
+                _model, _optim, _scheduler = self._Load(self._weight_dir, _model_name, _model, _optim, _scheduler)
+            else:
+                self._last_epoch = -1
 
             # initialize multi process or not
             if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
