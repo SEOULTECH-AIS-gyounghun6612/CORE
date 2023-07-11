@@ -668,7 +668,7 @@ class Learning_Config():
                 # --- scheduler option --- #
                 "optim_name": "Adam",
                 "scheduler_name": "Cosin_Annealing",
-                # "term": float(_max_epoch / 10),
+                "term": 0.1,
                 "term_amp": 1,
                 "maximum": 0.0001,
                 "minimum": 0.00005,
@@ -708,13 +708,15 @@ class Learning_Config():
 
             return _learning_process
 
-        def _Make_model_info(self) -> Tuple[Model, Dict[str, Any]]:
+        def _Make_model_info(self) -> Tuple[Type[Model], Dict[str, Any]]:
             raise NotImplementedError
 
         def _Make_model_n_optim_option(self) -> Dict[str, Any]:
             _model_structure, _model_option = self._Make_model_info()
             _scheduler_option = dict((_key, self._options[_key]) for _key in ["term_amp", "maximum", "minimum", "decay"])
-            _scheduler_option.update({"term": float(self._options["max_epoch"] / 10)})
+
+            _term = self._options["term"]
+            _scheduler_option.update({"term": round(self._options["max_epoch"] * _term) if isinstance(_term, float) else _term})
 
             return {
                 "model_structure": _model_structure,
