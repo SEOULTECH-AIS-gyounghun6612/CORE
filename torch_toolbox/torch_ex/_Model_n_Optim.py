@@ -453,7 +453,7 @@ class Model_Componant():
                 return self._line(x)
 
         @staticmethod
-        def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Module:
+        def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Backbone_Module:
             _name = model_info.value[0]
             _type = model_info.value[1]
 
