@@ -336,6 +336,9 @@ class Model_Componant():
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Model_Componant.Backbone.Backbone_Module, self).__init__()
                 self._output_channel = []
+            
+            def _Average_pooling(self, ouput: Tensor):
+                raise NotImplementedError
 
         class VGG(Backbone_Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
@@ -451,6 +454,9 @@ class Model_Componant():
 
             def forward(self, x):
                 return self._line(x)
+            
+            def _Average_pooling(self, ouput: Tensor):
+                raise NotImplementedError
 
         @staticmethod
         def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Backbone_Module:
