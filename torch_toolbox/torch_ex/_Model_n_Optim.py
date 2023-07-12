@@ -21,9 +21,6 @@ from torch.nn import Linear, Conv2d, Upsample
 from torch.nn import LayerNorm
 from torch.nn.functional import softmax, gelu
 
-from torchvision.models import resnet101, resnet50, vgg11, vgg13, vgg16, vgg19
-from torchvision.models.segmentation import fcn_resnet101, fcn_resnet50
-
 from einops import rearrange
 
 # optim
@@ -319,30 +316,57 @@ class Model_Componant():
 
     class Backbone():
         class Supported(Enum):
-            ResNet_50 = ("ResNet", 50)
-            ResNet_101 = ("ResNet", 101)
+            # from torchvision.models import vgg11, vgg13, vgg16, convnext_base, convnext_large, convnext_small, convnext_tiny
+            # classification
             VGG_11 = ("VGG", 11)
             VGG_13 = ("VGG", 13)
             VGG_16 = ("VGG", 16)
-            VGG_19 = ("VGG", 19)
+            ResNet_50 = ("ResNet", 50)
+            ResNet_101 = ("ResNet", 101)
+            ConvNext_tiny = ("ConvNext", "tiny")
+            ConvNext_small = ("ConvNext", "small")
+            ConvNext_base = ("ConvNext", "base")
+            ConvNext_large = ("ConvNext", "large")
+
+            # segmentation
             FCN_50 = ("FCN", 50)
             FCN_101 = ("FCN", 101)
 
-        class Backbone_Base(Module):
-            _output_channel: List[int]
+        class VGG(Module):
+            def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
+                super().__init__()
+                if model_type == 11:
+                    from torchvision.models import vgg11, VGG11_Weights
+                    _model = vgg11(weights=VGG11_Weights.DEFAULT if is_pretrained else None)
+                if model_type == 13:
+                    from torchvision.models import vgg13, VGG13_Weights
+                    _model = vgg13(weights=VGG13_Weights.DEFAULT if is_pretrained else None)
+                else:
+                    from torchvision.models import vgg16, VGG16_Weights
+                    _model = vgg16(weights=VGG16_Weights.DEFAULT if is_pretrained else None)
 
-            def _Average_pooling(self, ouput: Tensor) -> Tensor:
-                raise NotImplementedError
+                self._conv = _model.features
+                self._avgpool = _model.avgpool
 
-        class ResNet(Backbone_Base):
+                for _parameter in self._conv.parameters():
+                    _parameter.requires_grad = is_trainable
+
+            def forward(self, x: Tensor):
+                return self._conv(x)  # retrun shape : batch_size, 512, h/32, w/32
+
+            def _Average_pooling(self, ouput: Tensor):
+                return self._avgpool(ouput)
+
+        class ResNet(Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Model_Componant.Backbone.ResNet, self).__init__()
+                self._output_channel = [64, 256, 512, 1024, 2048]
                 if model_type == 101:
-                    _model = resnet101(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
-                    self._output_channel = [64, 256, 512, 1024, 2048]
+                    from torchvision.models import resnet101, ResNet101_Weights
+                    _model = resnet101(weights=ResNet101_Weights.DEFAULT if is_pretrained else None)
                 else:
-                    _model = resnet50(pretrained=is_pretrained)  # [64, 256, 512, 1024, 2048]
-                    self._output_channel = [64, 256, 512, 1024, 2048]
+                    from torchvision.models import resnet50, ResNet50_Weights
+                    _model = resnet50(weights=ResNet50_Weights.DEFAULT if is_pretrained else None)
 
                 # features parameters doesn't train
                 for _parameters in _model.parameters():
@@ -361,49 +385,60 @@ class Model_Componant():
             def forward(self, x: Tensor):
                 _x = self.conv1(x)
                 _x = self.bn1(_x)
-                _out_conv1 = self.relu(_x)              # x shape : batch_size, channel #0, h/2, w/2
+                _out_conv1 = self.relu(_x)              # x shape : batch_size, 64, h/2, w/2
                 _x = self.maxpool(_out_conv1)
-                _out_conv2 = self.layer1(_x)            # x shape : batch_size, channel #1, h/4, w/4
-                _out_conv3 = self.layer2(_out_conv2)    # x shape : batch_size, channel #2, h/8, w/8
-                _out_conv4 = self.layer3(_out_conv3)    # x shape : batch_size, channel #3, h/16, w/16
-                _out_conv5 = self.layer4(_out_conv4)    # x shape : batch_size, channel #4, h/32, w/32
+                _out_conv2 = self.layer1(_x)            # x shape : batch_size, 256, h/4, w/4
+                _out_conv3 = self.layer2(_out_conv2)    # x shape : batch_size, 512, h/8, w/8
+                _out_conv4 = self.layer3(_out_conv3)    # x shape : batch_size, 1024, h/16, w/16
+                _out_conv5 = self.layer4(_out_conv4)    # x shape : batch_size, 2048, h/32, w/32
 
                 return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
             def _Average_pooling(self, ouput: Tensor):
                 return Tensor_Process._Flatten(self.avgpool(ouput))
 
-        class VGG(Backbone_Base):
+        class ConvNext(Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super().__init__()
-                if model_type == 11:
-                    _line = vgg11(pretrained=is_pretrained)
-                if model_type == 13:
-                    _line = vgg13(pretrained=is_pretrained)
-                elif model_type == 16:
-                    _line = vgg16(pretrained=is_pretrained)
-                else:
-                    _line = vgg19(pretrained=is_pretrained)
+                super(Model_Componant.Backbone.ConvNext, self).__init__()
+                self._output_channel = [96, 96, 192, 384, 768]
+                if model_type == "tiny":
+                    from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
+                    _model = convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT if is_pretrained else None)
+                elif model_type == "small":
+                    from torchvision.models import convnext_small, ConvNeXt_Small_Weights
+                    _model = convnext_small(weights=ConvNeXt_Small_Weights.DEFAULT if is_pretrained else None)
+                    self._output_channel = [64, 256, 512, 1024, 2048]
+                elif model_type == "base":
+                    from torchvision.models import convnext_base, ConvNeXt_Base_Weights
+                    _model = convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT if is_pretrained else None)
+                    self._output_channel = [64, 256, 512, 1024, 2048]
+                else:  # large
+                    from torchvision.models import convnext_large, ConvNeXt_Large_Weights
+                    _model = convnext_large(weights=ConvNeXt_Large_Weights.DEFAULT if is_pretrained else None)
+                    self._output_channel = [64, 256, 512, 1024, 2048]
 
-                self._conv = _line.features
-                self._avgpool = _line.avgpool
+                self._conv = _model.features
+                self._avgpool = _model.avgpool
 
-                for _parameter in self._conv.parameters():
-                    _parameter.requires_grad = is_trainable
+                # features parameters doesn't train
+                for _parameters in _model.parameters():
+                    _parameters.requires_grad = is_trainable
 
             def forward(self, x: Tensor):
-                return self._conv(x)  # x shape : batch_size, 512, 7, 7
+                return self._conv(x)  # retrun shape : batch_size, 768, h/32, w/32
 
             def _Average_pooling(self, ouput: Tensor):
                 return self._avgpool(ouput)
 
-        class FCN(Backbone_Base):
+        class FCN(Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Model_Componant.Backbone.FCN, self).__init__()
                 if model_type == 101:
-                    self._line = fcn_resnet101(pretrained=is_pretrained)
+                    from torchvision.models.segmentation import fcn_resnet101, FCN_ResNet101_Weights
+                    self._line = fcn_resnet101(weights=FCN_ResNet101_Weights.DEFAULT if is_pretrained else None)
                 else:
-                    self._line = fcn_resnet50(pretrained=is_pretrained)
+                    from torchvision.models.segmentation import fcn_resnet50, FCN_ResNet50_Weights
+                    self._line = fcn_resnet50(weights=FCN_ResNet50_Weights.DEFAULT if is_pretrained else None)
 
                 for _module in self._line.parameters():
                     _module.requires_grad = is_trainable
@@ -412,7 +447,7 @@ class Model_Componant():
                 return self._line(x)
 
         @staticmethod
-        def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Backbone_Base:
+        def _Build(model_info: Supported, is_pretrained: bool, is_trainable: bool) -> Module:
             _name = model_info.value[0]
             _type = model_info.value[1]
 
