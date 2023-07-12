@@ -749,6 +749,8 @@ class Learning_Config():
                 "memory_size": -1,
                 "memory_minimum": -1,
             })
+            
+            return _opt
         
         def _Make_reward_model(self) -> Callable:
             raise NotImplementedError
