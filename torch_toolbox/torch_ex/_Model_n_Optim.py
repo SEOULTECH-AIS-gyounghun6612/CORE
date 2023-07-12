@@ -332,9 +332,15 @@ class Model_Componant():
             FCN_50 = ("FCN", 50)
             FCN_101 = ("FCN", 101)
 
-        class VGG(Module):
+        class Backbone_Module(Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super().__init__()
+                super(Model_Componant.Backbone.Backbone_Module, self).__init__()
+                self._output_channel = []
+
+        class VGG(Backbone_Module):
+            def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
+                super(Model_Componant.Backbone.VGG, self).__init__(model_type, is_pretrained, is_trainable)
+                self._output_channel = [64, 128, 256, 512, 512]
                 if model_type == 11:
                     from torchvision.models import vgg11, VGG11_Weights
                     _model = vgg11(weights=VGG11_Weights.DEFAULT if is_pretrained else None)
@@ -357,9 +363,9 @@ class Model_Componant():
             def _Average_pooling(self, ouput: Tensor):
                 return self._avgpool(ouput)
 
-        class ResNet(Module):
+        class ResNet(Backbone_Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super(Model_Componant.Backbone.ResNet, self).__init__()
+                super(Model_Componant.Backbone.ResNet, self).__init__(model_type, is_pretrained, is_trainable)
                 self._output_channel = [64, 256, 512, 1024, 2048]
                 if model_type == 101:
                     from torchvision.models import resnet101, ResNet101_Weights
@@ -397,9 +403,9 @@ class Model_Componant():
             def _Average_pooling(self, ouput: Tensor):
                 return Tensor_Process._Flatten(self.avgpool(ouput))
 
-        class ConvNext(Module):
+        class ConvNext(Backbone_Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super(Model_Componant.Backbone.ConvNext, self).__init__()
+                super(Model_Componant.Backbone.ConvNext, self).__init__(model_type, is_pretrained, is_trainable)
                 self._output_channel = [96, 96, 192, 384, 768]
                 if model_type == "tiny":
                     from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
@@ -430,9 +436,9 @@ class Model_Componant():
             def _Average_pooling(self, ouput: Tensor):
                 return self._avgpool(ouput)
 
-        class FCN(Module):
+        class FCN(Backbone_Module):
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
-                super(Model_Componant.Backbone.FCN, self).__init__()
+                super(Model_Componant.Backbone.FCN, self).__init__(model_type, is_pretrained, is_trainable)
                 if model_type == 101:
                     from torchvision.models.segmentation import fcn_resnet101, FCN_ResNet101_Weights
                     self._line = fcn_resnet101(weights=FCN_ResNet101_Weights.DEFAULT if is_pretrained else None)
