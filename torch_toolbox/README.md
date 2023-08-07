@@ -6,25 +6,14 @@
 
 ### 공통 과정
 - 코드내 인자 명명법 수정
-   - [ ] _config.py
-   - [ ] _dataset.py
-   - [ ] _label.py
-   - [ ] _layer.py
-   - [ ] _optimizer.py
-   - [ ] _process.py
-   - [ ] _torch_base.py
+   - [x] _Base.py
+   - [x] _Dataset.py
+   - [x] _Learning.py
+   - [x] _Model_n_Optim.py
 
-#### _torch_base.py
-- 텐서 생성 코드 수정
-   - [x] 평가 함수 내 코드 중 _python_ex._numpy.py 변경 사항 (Array_Process._converter 함수 삭제) 대응
+### _Model_n_Optim.py
+   - [ ] Multi GPU 과정 중 Learning_Process.Basement._Process에서 메인 프로세서 구분 방법 변경(인자값 -> DDP 함수)
 
-#### _process.py
-- 강화학습을 위한 모듈
-   - [ ] A2C
-
-#### _label.py
-- 코드 보수 작업
-   - [ ] 라벨 데이터 처리 작업 관련 코드(Label.Process) 재구성
 
 ## Install
 1. pip 사용
