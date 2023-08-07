@@ -15,8 +15,6 @@ from python_ex._Base import Directory, File
 from python_ex._Project import Debuging
 from python_ex._Vision import cv2
 
-from torch_ex._Base import Process_Name
-
 from ._Base import Process_Name, System_Utils
 from ._Dataset import Custom_Dataset_Process
 from ._Model_n_Optim import Model, Optim, _LRScheduler
@@ -69,7 +67,8 @@ class Learning_Process():
             dataset_process: Custom_Dataset_Process,
             batch_size_per_node: int,
             num_worker_per_node: int,
-            display_term: int | float
+            collate_fn: Callable | None = None,
+            display_term: int | float = 0.1
         ):
             """
             ### 훈련 데이터 설정 할당
@@ -94,6 +93,7 @@ class Learning_Process():
             # dataloader
             self._batch_size = batch_size_per_node
             self._num_worker = num_worker_per_node
+            self._collate_fn = collate_fn
 
             # debugging
             _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
@@ -207,10 +207,10 @@ class Learning_Process():
                 print("--------------------------------------------------")
 
                 assert len(_gpu_info), "THIS DEVICE CNA'T USE GPU. CHECK IT"
+                self._gpu_info = []
 
-                for _gpu_id, _gpu_name in _gpu_info:
-                    print(f"\tGPU device {_gpu_id}: {_gpu_name}")
-                    self._gpu_info.append(_gpu_id)
+                print(f"\tGPU device {_gpu_info[0][0]}: {_gpu_info[0][1]}")
+                self._gpu_info.append(_gpu_info[0][0])
                 print("--------------------------------------------------")
 
                 self._multi_method: Multi_Method = Multi_Method.NOT_USE
@@ -263,7 +263,7 @@ class Learning_Process():
             _logger = SummaryWriter(_logger_dir)
 
             # initialize model, optimizer, dataset and data process
-            _model, _model_name, _optim, _scheduler, _dataloader, _sampler = self._Process_init(_process_num, _gpu_info)
+            _model, _model_name, _optim, _scheduler, _dataloader, _sampler = self._Process_init(_process_num, _gpu_info, _process_num)
 
             # initialize parameter for best performing
             # _best_epoch = 0
@@ -297,7 +297,7 @@ class Learning_Process():
             print(f"Set Learning process for model {_model_name}is finish")
             # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
 
-        def _Process_init(self, process_num: int, gpu_info: int) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
+        def _Process_init(self, process_num: int, gpu_info: int, this_rank: bool) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
             # initialize model, optimizer, dataset and data process
             _model = self._model_structure(**self._model_option)
             _model = _model.cuda(gpu_info)
@@ -322,13 +322,13 @@ class Learning_Process():
 
                 _model = DDP(_model)
                 _sampler = DistributedSampler(self._dataset, rank=process_num)
-                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, sampler=_sampler, drop_last=True)
+                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, collate_fn=self._collate_fn, sampler=_sampler, drop_last=True)
 
             else:  # not consist multi-process
                 _sampler = None
-                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, shuffle=True, drop_last=True)
+                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, collate_fn=self._collate_fn, shuffle=True, drop_last=True)
 
-            print(f"Set Learning model {_model_name}, optimizer, Dataset")
+            System_Utils.Base._Print(f"Set Learning model {_model_name}, optimizer, Dataset", this_rank)
 
             return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
 
@@ -544,13 +544,14 @@ class Learning_Process():
             _display_milestone = 0
             _start_time = Debuging.Time._Stemp()
 
+            # doing learning
             for _datas in dataloader:
                 _this_state, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
                 _this_count += _data_size
                 _is_done = False
                 _next_state = None
 
-                # doing learning
+                # step
                 for _ in range(self._max_step):
                     if _mode == Process_Name.TRAIN:  # for Train
                         _output: Tensor | List[Tensor] = model(*_this_state)
@@ -606,6 +607,9 @@ class Learning_Process():
 
 
 class Learning_Config():
+    class uitls():
+        ...
+
     class E2E():
         def __init__(self, file_name: str, file_dir: str = "./config/"):
             _, self._file_name = File._Extension_check(file_name, ["json"], True)
@@ -622,33 +626,37 @@ class Learning_Config():
                 "learning_plan": {
                     "train" : {
                         "amplification": 1,
-                        "augmentations": {
-                            "apply_mathod": "Albumentations",
-                            "output_size": [256, 256],
-                            # "rotate_limit": 0,
-                            # "hflip_rate": 0.0,
-                            # "vflip_rate": 0.0,
-                            # "is_norm": True,
-                            # "norm_mean": [0.485, 0.456, 0.406],
-                            # "norm_std": [0.229, 0.224, 0.225],
-                            # "apply_to_tensor": True,
-                            # "group_parmaeter": None
-                        }
+                        "augmentations": [
+                            {
+                                "apply_method": "Albumentations",
+                                "output_size": [256, 256],
+                                # "rotate_limit": 0,
+                                # "hflip_rate": 0.0,
+                                # "vflip_rate": 0.0,
+                                # "is_norm": True,
+                                # "norm_mean": [0.485, 0.456, 0.406],
+                                # "norm_std": [0.229, 0.224, 0.225],
+                                # "apply_to_tensor": True,
+                                # "group_parmaeter": None
+                            }
+                        ]
                     },
                     "val" : {
                         "amplification": 1,
-                        "augmentations": {
-                            "apply_mathod": "Albumentations",
-                            "output_size": [256, 256],
-                            # "rotate_limit": 0,
-                            # "hflip_rate": 0.0,
-                            # "vflip_rate": 0.0,
-                            # "is_norm": True,
-                            # "norm_mean": [0.485, 0.456, 0.406],
-                            # "norm_std": [0.229, 0.224, 0.225],
-                            # "apply_to_tensor": True,
-                            # "group_parmaeter": None
-                        }
+                        "augmentations": [
+                            {
+                                "apply_method": "Albumentations",
+                                "output_size": [256, 256],
+                                # "rotate_limit": 0,
+                                # "hflip_rate": 0.0,
+                                # "vflip_rate": 0.0,
+                                # "is_norm": True,
+                                # "norm_mean": [0.485, 0.456, 0.406],
+                                # "norm_std": [0.229, 0.224, 0.225],
+                                # "apply_to_tensor": True,
+                                # "group_parmaeter": None
+                            }
+                        ]
                     }
                 },
                 "max_epoch": 100,
@@ -692,9 +700,9 @@ class Learning_Config():
                 print(f"config file {self.file_dir}{self._file_name} not exsit. \nyou must config data initialize before use it")
                 return self._Set_default_option()
 
-        def _Make_learning_process(self, Learning_process: Type[Learning_Process.Basement]):
+        def _Make_learning_process(self, Learning_process: Type[Learning_Process.E2E]):
             # Make learning process
-            _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "learning_plan", "max_epoch", "last_epoch"])
+            _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
             _learning_opt.update({"mode_list": [Process_Name(_mode) for _mode in self._options["learning_plan"].keys()]})
             _learning_process = Learning_process(**_learning_opt)
 
@@ -735,6 +743,22 @@ class Learning_Config():
             return _dataloader_option
         
     class Reinforcement(E2E):
+        def _Make_learning_process(self, Learning_process: type[Learning_Process.Reinforcement]):
+            # Make learning process
+            _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
+            _learning_opt.update({"mode_list": [Process_Name(_mode) for _mode in self._options["learning_plan"].keys()]})
+            _learning_process = Learning_process(**_learning_opt)
+
+            # set multi process 
+            _processer_opt = dict((_key, self._options[_key]) for _key in ["world_size", "device_rank", "max_gpu_count", "multi_protocal"])
+            _processer_opt.update({"multi_method": Multi_Method(self._options["multi_method"])})
+            _learning_process._Set_processer_option(**_processer_opt)
+            _learning_process._Set_model_n_optim(**self._Make_model_n_optim_option())
+            _learning_process._Set_dataloader_option(**self._Make_dataloader_option())
+            _learning_process._Set_reinforcement_option(**self._Make_reinforcement_opt())
+
+            return _learning_process
+
         def _Set_default_option(self):
             _opt =  super()._Set_default_option()
 

@@ -1,10 +1,9 @@
-from typing import Dict, List, Any, Tuple, Optional, Union
+from typing import Type, List, Any, Tuple
 from subprocess import check_output
 from enum import Enum
 
 from torch import Tensor, distributions
-from torch import uint8, float32
-from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, clip, cat
+from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, clip, cat, float32
 from torch import rand, randn, rand_like, randn_like
 
 from python_ex._Base import TYPE_NUMBER, Directory
@@ -19,11 +18,6 @@ class Process_Name(Enum):
     TEST = "test"
 
 
-class Data_Type(Enum):
-    UINT = uint8
-    FLOAT = float32
-
-
 # -- Main code -- #
 class System_Utils():
     class Base():
@@ -33,11 +27,11 @@ class System_Utils():
 
         @staticmethod
         def _Make_dir(obj_dir: str, root_dir: str, this_rank: int = 0):
-            return Directory._Make(obj_dir, root_dir) if this_rank else Directory._Divider_check(Directory._Divider.join([root_dir, obj_dir]))
+            return Directory._Make(obj_dir, root_dir) if not this_rank else Directory._Divider_check("".join([root_dir, obj_dir]))
 
     class Cuda():
         @staticmethod
-        def _Get_useable_gpu_list(threshold_of_rate: float = 0.5, threshold_of_size: Optional[int] = None) -> List[Tuple[int, str]]:
+        def _Get_useable_gpu_list(threshold_of_rate: float = 0.5, threshold_of_size: int | None = None) -> List[Tuple[int, str]]:
             _command = "nvidia-smi --format=csv --query-gpu=name,index,memory.total,memory.used,memory.free"
             _memory_info_text = check_output(_command.split()).decode('ascii').split('\n')[:-1][1:]
 
@@ -58,11 +52,11 @@ class System_Utils():
 
 class Tensor_Process():
     @staticmethod
-    def _Make_tensor(size: Union[int, List[int]], value: Union[TYPE_NUMBER, List[TYPE_NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
-        _data_type = dtype if dtype is None else dtype.value
+    def _Make_tensor(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = None, dtype: Type | None = None)-> Tensor:
         if isinstance(value, list):
             _max_value = max(*value)
             _min_value = min(*value)
+            _data_type = type(_max_value) if dtype is None else dtype
 
             if rand_opt is rand_opt.NORM:
                 return (randn(size, dtype=_data_type) * (_max_value - _min_value)) + _min_value
@@ -70,16 +64,17 @@ class Tensor_Process():
                 return (rand(size, dtype=_data_type) * _max_value) - _min_value
 
         else:
+            _data_type = float32 if dtype is None else dtype
             return ones(size, dtype=_data_type) * value if value else zeros(size, dtype=_data_type)
 
     @staticmethod
-    def _Make_tensor_like(sample: Any, value: Union[TYPE_NUMBER, List[TYPE_NUMBER]], rand_opt: Random_Process = Random_Process.NORM, dtype: Optional[Data_Type] = None):
-        _data_type = dtype if dtype is None else dtype.value
+    def _Make_tensor_like(sample: Any, value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = None, dtype: Type | None = None):
         _sample = tensor(sample) if not isinstance(sample, Tensor) else sample
 
         if isinstance(value, list):
             _max_value = max(*value)
             _min_value = min(*value)
+            _data_type = sample.dtype if dtype is None else dtype
 
             if rand_opt is rand_opt.UNIFORM:
                 return (randn_like(_sample, dtype=_data_type) * (_max_value - _min_value)) + _min_value
@@ -87,15 +82,19 @@ class Tensor_Process():
                 return (rand_like(_sample, dtype=_data_type) * _max_value) - _min_value
 
         else:
+            _data_type = sample.dtype if dtype is None else dtype
             return ones_like(_sample, dtype=_data_type) * value if value else zeros_like(_sample, dtype=_data_type)
 
     @staticmethod
-    def _Converte_from():
-        ...
+    def _Convert_from(source: Tensor | ndarray | List | Tuple, dtype: Type | None = None):
+        if isinstance(source, Tensor):
+            return source if dtype is None else source.to(dtype=dtype)
+        else:
+            raise NotImplementedError
 
     @staticmethod
-    def _Arange(end: TYPE_NUMBER, start: TYPE_NUMBER = 0, step: TYPE_NUMBER = 1, dtype: Optional[Data_Type] = None):
-        _data_type = dtype if dtype is None else dtype.value
+    def _Arange(end: TYPE_NUMBER, start: TYPE_NUMBER = 0, step: TYPE_NUMBER = 1, dtype: Type | None = None) -> Tensor:
+        _data_type = float32 if dtype is None else dtype
         return arange(start, end, step, dtype=_data_type)
 
     @staticmethod
@@ -108,9 +107,9 @@ class Tensor_Process():
         return Array_Process._Convert_from(_array, dtype=dtype)
 
     @staticmethod
-    def _Flatten(tensor: Tensor):
-        _b = tensor.shape[0]
-        return tensor.reshape(_b, -1)
+    def _Flatten(tensor: Tensor, is_minibatch= True):
+        _shape = tensor.shape
+        return tensor.reshape(_shape[0], -1) if is_minibatch else tensor.reshape(-1)
 
     @staticmethod
     def _range_cut(tensor: Tensor, range_min, rage_max):
@@ -121,7 +120,7 @@ class Tensor_Process():
         return distributions.Normal(mu, std)
 
     @staticmethod
-    def _stack(tensor_list: Tuple[Tensor], dim: int):
+    def _stack(tensor_list: List[Tensor], dim: int = 0):
         return stack(tensor_list, dim=dim)
 
     @staticmethod
@@ -131,7 +130,7 @@ class Tensor_Process():
 
     class Evaluation():
         @staticmethod
-        def accuracy(result: Tensor, label: Tensor, threshold: Optional[float] = None) -> List[bool]:
+        def accuracy(result: Tensor, label: Tensor, threshold: float | None = None) -> List[bool]:
             _np_result = Tensor_Process._To_numpy(result.cpu().detach())  # [batch_size, c] or [batch_size]
             _np_label = Tensor_Process._To_numpy(label.cpu().detach())  # [batch_size]
 

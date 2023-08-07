@@ -7,27 +7,22 @@ from python_ex._Base import TYPE_NUMBER
 from python_ex._Numpy import Random_Process
 
 from torch import Tensor
-from torch import exp, cos, sin, matmul
 import math
 
 # layer utils
 from torchsummary import summary as ModelSummary
 
 # modules
-from torch.nn.common_types import _size_2_t
 from torch.nn import Module, ModuleList, Sequential, Dropout
-from torch.nn import parameter, init
-from torch.nn import Linear, Conv2d, Upsample
+from torch.nn import parameter
+from torch.nn import Linear, Conv1d, Conv2d, Upsample, MultiheadAttention
 from torch.nn import LayerNorm
-from torch.nn.functional import softmax, gelu
-
-from einops import rearrange
 
 # optim
 from torch import optim
 from torch.optim.lr_scheduler import _LRScheduler
 
-from ._Base import Tensor_Process, Data_Type
+from ._Base import Tensor_Process
 
 
 class Model(Module):
@@ -54,7 +49,7 @@ class Model_Componant():
         return Sequential(*componant_list)
 
     @staticmethod
-    def _Make_weight(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Data_Type | None = None):
+    def _Make_weight(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Type | None = None):
         return parameter.Parameter(Tensor_Process._Make_tensor(size, value, rand_opt, dtype))
 
     class Linear(Module):
@@ -64,7 +59,7 @@ class Model_Componant():
             output_size: int,
             is_bias: bool = True,
             normization: Module | None = None,
-            activate: Module | Type | None = None
+            activate: Type | None = None
         ):
             super(Model_Componant.Linear, self).__init__()
 
@@ -78,20 +73,47 @@ class Model_Componant():
             _x = self._active(_x) if self._active is not None else _x
             return _x
 
+    class Conv1d(Module):
+        def __init__(
+            self,
+            input_size: int,
+            output_size: int,
+            kernel: int = 1,
+            stride: int = 1,
+            padding: int = 0,
+            padding_mode: str = 'zeros',
+            dilation: int = 1,
+            groups: int = 1,
+            is_bias: bool = True,
+            normization: Module | None = None,
+            activate: Type | None = None
+        ):
+            super(Model_Componant.Conv1d, self).__init__()
+
+            self._conv1D = Conv1d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
+            self._norm = normization
+            self._activate = activate
+
+        def forward(self, x: Tensor) -> Tensor:
+            _x = self._conv1D(x)
+            _x = self._norm(_x) if self._norm is not None else _x
+            _x = self._activate(_x) if self._activate is not None else _x
+            return _x
+
     class Conv2d(Module):
         def __init__(
             self,
             input_size: int,
             output_size: int,
-            kernel: _size_2_t = 1,
-            stride: _size_2_t = 1,
-            padding: _size_2_t = 0,
+            kernel: int | Tuple[int, int] = 1,
+            stride: int | Tuple[int, int] = 1,
+            padding: int | Tuple[int, int] = 0,
             padding_mode: str = 'zeros',
-            dilation: _size_2_t = 1,
+            dilation: int | Tuple[int, int] = 1,
             groups: int = 1,
             is_bias: bool = True,
             normization: Module | None = None,
-            activate: Module | None = None
+            activate: Type | None = None
         ):
             super(Model_Componant.Conv2d, self).__init__()
 
@@ -116,7 +138,7 @@ class Model_Componant():
                 output_size: int,
                 scale_factor: int = 2,
                 normization: Module | None = None,
-                activate: Module | None = None
+                activate: Type | None = None
             ):
                 super().__init__()
 
@@ -129,124 +151,178 @@ class Model_Componant():
                 return _x
 
     class Position_Embeder():
-        class Trigonometric(Module):
-            def __init__(self, num_of_data: int, max_token_size: int = 1000):
-                super().__init__()
-                _pe = Tensor_Process._Make_tensor([max_token_size, num_of_data], value=0)
-                _position = Tensor_Process._Arange(max_token_size, dtype=Data_Type.FLOAT).unsqueeze(1)
-                _div_term = exp(Tensor_Process._Arange(num_of_data, step=2, dtype=Data_Type.FLOAT) * (-math.log(10000.0) / num_of_data))
-                _pe[:, 0::2] = sin(_position * _div_term)
-                _pe[:, 1::2] = cos(_position * _div_term)
-                _pe = _pe.unsqueeze(0)
+        class Supported(Enum):
+            TRIGONOMETRIC = "Trigonometric"
+            GAUSSIAN = "Gaussian"
+            TRAINABLE = "Trainable"
 
-                self.register_buffer("_Position_value", _pe, persistent=False)
+        class Embeder_Module(Module):
+            def __init__(self, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
+                super().__init__()
+                self._is_normalize = normalize
+                
+                # make dimention term
+                self._dim_term = temperature ** (2 * (Tensor_Process._Arange(num_of_data) // 2) / num_of_data)
+                self._dim_term.requires_grad = False
+
+        class Trigonometric(Embeder_Module):
+            def __init__(self, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
+                super().__init__(num_of_data, temperature, normalize, scale)
+
+                if scale is None:
+                    scale = 2 * math.pi
+                self.scale = scale
 
             def forward(self, x: Tensor):
-                if isinstance(self._Position_value, Tensor):
-                    return x + self._Position_value[:, : x.size(1)]
-                else:
-                    raise TypeError(f"Parameter '_Position_value' in {self.__class__.__name__} type incorrect")
+                _tensor_shape = x.shape
+                assert len(_tensor_shape) == 3, f"Default Position_Embeder {self.__class__.__name__} is supported 3 demention data (batch channel data)."
 
-        class Gaussian(Module):
-            ...
+                _pos = Tensor_Process._Make_tensor([_tensor_shape[0], _tensor_shape[2]], 0).to(device=x.device)
+                _pos = _pos[:, :, None] / self._dim_term.to(device=x.device)
+                _pos = Tensor_Process._stack([_pos[:, :, 0::2].sin(), _pos[:, :, 1::2].cos()], dim=3).flatten(2).permute(0, 2, 1)
+
+                return _pos
+
+        class Gaussian(Embeder_Module):
+            def __init__(self, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
+                super().__init__(num_of_data, temperature, normalize, scale)
+
+        class Trainable(Embeder_Module):
+            def __init__(self, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
+                super().__init__(num_of_data, temperature, normalize, scale)
+
+        @staticmethod
+        def _Build(Type: Supported, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
+            return Model_Componant.Position_Embeder.__dict__[Type.value](num_of_data, temperature, normalize, scale)
 
     class Attention():
-        class Supported(Enum):
-            Dot_Attention = "Dot_Attention"
-
-        class Base(Module):
-            def __init__(self, input_dim: int, output_dim: int, head_count: int):
+        class Muiltihead(Module):
+            def __init__(self, input_dim: int, head_count: int, drop_rate: float) -> None:
                 super().__init__()
-                _output_dim = output_dim + (output_dim % head_count) if (output_dim % head_count) else output_dim
+                self.attention = MultiheadAttention(input_dim, head_count, drop_rate)
+                self.dropout = Dropout(drop_rate)
 
-                self._head_count = head_count
-                self._head_dim = _output_dim // head_count
+            def _Make_QKV(self, x: Tuple[Tensor, Tensor], **additional_parm) -> List[Tensor]:
+                return [x[0], x[1], x[1]]
+            
+            def forward(self, x: Tuple[Tensor, Tensor], mask: Tensor | None = None, key_padding_mask: Tensor | None = None, **additional_parm):
+                _q, _k, _v = self._Make_QKV(x, **additional_parm)
+                _x, _map = self.attention(query=_q, key=_k, value=_v, attn_mask=mask, key_padding_mask=key_padding_mask)
+                _x = x[0] + self.dropout(_x)
 
-                self.q_maker = Model_Componant.Linear(input_dim, output_dim)
-                init.xavier_uniform_(self.q_maker._linear.weight)
-                self.q_maker._linear.bias.data.fill_(0)
+                return _x, _map
 
-                self.k_maker = Model_Componant.Linear(input_dim, output_dim)
-                init.xavier_uniform_(self.k_maker._linear.weight)
-                self.k_maker._linear.bias.data.fill_(0)
+        class Self_Muiltihead(Muiltihead):
+            def _Make_QKV(self, x: Tensor, **additional_parm) -> List[Tensor]:
+                return [x, x, x]
+            
+            def forward(self, x: Tensor, mask: Tensor | None = None, key_padding_mask: Tensor | None = None, **additional_parm):
+                _q, _k, _v = self._Make_QKV(x, **additional_parm)
+                _x, _map = self.attention(query=_q, key=_k, value=_v, attn_mask=mask, key_padding_mask=key_padding_mask)
+                _x = x + self.dropout(_x)
 
-                self.v_maker = Model_Componant.Linear(input_dim, output_dim)
-                init.xavier_uniform_(self.v_maker._linear.weight)
-                self.v_maker._linear.bias.data.fill_(0)
+                return _x, _map
 
-                self.o_maker = Model_Componant.Linear(output_dim, output_dim)
-                init.xavier_uniform_(self.o_maker._linear.weight)
-                self.o_maker._linear.bias.data.fill_(0)
+    class Transformer():
+        class Encoder(Module):
+            def __init__(
+                self,
+                input_dim: int,
+                head_count: int,
+                feadforward_dim: int,
+                drop_rate: float,
+                attention_method: Type[Model_Componant.Attention.Self_Muiltihead],
+                activation: Type,
+                normalize_before: bool = False
+            ):
+                super().__init__()
+                self._normalize_before = normalize_before
+
+                self._front_norm = LayerNorm(input_dim)
+                self._attention = attention_method(input_dim, head_count, drop_rate)
+                self._back_norm = LayerNorm(input_dim)
+
+                self._linear_block = Model_Componant._Make_sequential([
+                    Model_Componant.Linear(input_dim, feadforward_dim, activate=activation),
+                    Dropout(drop_rate),
+                    Model_Componant.Linear(feadforward_dim, input_dim),
+                    Dropout(drop_rate)
+                ])
+
+            def forward(self, x: Tensor, mask: Tensor | None = None, key_padding_mask: Tensor | None = None, **additional_parm):
+                if self._normalize_before:
+                    # attention
+                    _x = self._front_norm(x)
+                    _attention_out, _map = self._attention(_x, mask, key_padding_mask, **additional_parm)
+
+                    # fc
+                    _x = self._back_norm(_attention_out)
+                    _x = _attention_out + self._linear_block(_x)
+                else:
+                    # attention
+                    _attention_out, _map = self._attention(x, mask, key_padding_mask, **additional_parm)
+                    _attention_out = self._front_norm(_attention_out)
+
+                    # fc
+                    _x = _attention_out + self._linear_block(_attention_out)
+                    _x = self._back_norm(_x)
+                return _x, _map
+
+        class Decoder(Module):
+            def __init__(
+                self,
+                input_dim: int,
+                head_count: int,
+                feadforward_dim: int,
+                drop_rate: float,
+                attention_method: Tuple[Type[Model_Componant.Attention.Self_Muiltihead], Type[Model_Componant.Attention.Muiltihead]],
+                activation: Type,
+                normalize_before: bool = False
+            ):
+                super().__init__()
+                self._normalize_before = normalize_before
+
+                self._front_norm = LayerNorm(input_dim)
+                self._self_attention = attention_method[0](input_dim, head_count, drop_rate)
+                self._mid_norm = LayerNorm(input_dim)
+                self._multi_attention = attention_method[1](input_dim, head_count, drop_rate)
+                self._back_norm = LayerNorm(input_dim)
+
+                self._linear_block = Model_Componant._Make_sequential([
+                    Model_Componant.Linear(input_dim, feadforward_dim, activate=activation),
+                    Dropout(drop_rate),
+                    Model_Componant.Linear(feadforward_dim, input_dim),
+                    Dropout(drop_rate)
+                ])
 
             def forward(
-                self,
-                Q_source: Tensor,
-                K_source: Tensor,
-                V_source: Tensor,
-                mask: Tensor | None = None
-            ) -> Tuple[Tensor, Tensor]:
-                raise NotImplementedError
+                    self,
+                    x: Tuple[Tensor, Tensor],
+                    mask: Tuple[Tensor | None, Tensor | None] = (None, None),
+                    key_padding_mask: Tuple[Tensor | None, Tensor | None] = (None, None),
+                    **additional_parm
+                ):
+                if self._normalize_before:
+                    # attention
+                    _x = self._front_norm(x[0])
+                    _attention_out, _self_attention_map = self._self_attention(_x, mask[0], key_padding_mask[0], **additional_parm)
+                    _x = self._mid_norm(_attention_out)
+                    _attention_out, _multi_attention_map = self._multi_attention([_x, x[1]], mask[1], key_padding_mask[1], **additional_parm)
 
-        class Dot_Attention(Base):
-            def __init__(self, input_dim: int, output_dim: int, head_count: int):
-                super().__init__(input_dim, output_dim, head_count)
+                    # fc
+                    _x = self._back_norm(_attention_out)
+                    _x = _attention_out + self._linear_block(_x)
+                else:
+                    # attention
+                    _attention_out, _self_attention_map = self._self_attention(x[0], mask[0], key_padding_mask[0], **additional_parm)
+                    _x = self._front_norm(_attention_out)
+                    _attention_out, _multi_attention_map = self._multi_attention([_x, x[1]], mask[1], key_padding_mask[1], **additional_parm)
+                    _x = self._mid_norm(_attention_out)
 
-            def _Dot_product(self, Q, K, V, mask=None):  # dot_product
-                _logits = matmul(Q, rearrange(K, 'batch head_num seq head_dim -> batch head_num head_dim seq'))  # -> batch head_num seq seq
-                _logits = _logits / math.sqrt(self._head_dim)
-
-                if mask is not None:
-                    _logits = _logits.masked_fill(mask == 0, -9e15)
-
-                _attention = softmax(_logits, dim=-1)
-
-                return matmul(_attention, V), _attention
-
-            def forward(
-                self,
-                Q_source: Tensor,
-                K_source: Tensor,
-                V_source: Tensor,
-                mask: Tensor | None = None
-            ) -> Tuple[Tensor, Tensor]:
-                _q = self.q_maker(Q_source)
-                _q = rearrange(_q, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._head_dim, head_num=self._head_count)
-
-                _k = self.k_maker(K_source)
-                _k = rearrange(_k, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._head_dim, head_num=self._head_count)
-
-                _v = self.v_maker(V_source)
-                _v = rearrange(_v, 'batch seq (head_dim head_num) -> batch head_num seq head_dim', head_dim=self._head_dim, head_num=self._head_count)
-
-                _value, _attention = self._Dot_product(_q, _k, _v, mask)  # value -> batch head_num seq head_dim
-
-                _value = rearrange(_value, 'batch head_num seq head_dim -> batch seq (head_dim head_num)')
-                _outpot = self.o_maker(_value)
-                return _outpot, _attention
-
-    class Transformer(Module):
-        def __init__(self, input_dim: int, output_dim: int, head_count: int, hidden_rate: int, drop_rate: float, attention_method: Model_Componant.Attention.Supported):
-            super().__init__()
-
-            _output_dim = output_dim + (output_dim % head_count) if (output_dim % head_count) else output_dim
-            self._head_count = head_count
-            self._head_dim = _output_dim // head_count
-
-            self._front_norm = LayerNorm(_output_dim)
-            self._attention = Model_Componant.Attention.__dict__[attention_method.value](input_dim, _output_dim, head_count)
-            self._back_norm = LayerNorm(_output_dim)
-
-            self.linear_block = Model_Componant._Make_sequential([
-                Model_Componant.Linear(_output_dim, _output_dim * hidden_rate, activate=gelu),
-                Dropout(drop_rate),
-                Model_Componant.Linear(_output_dim * hidden_rate, _output_dim)
-            ])
-
-        def forward(self, x) -> Tensor:
-            _x = self._front_norm(x + self._attention(x, x, x))
-            _x = self._back_norm(_x + self.linear_block(_x))
-
-            return _x
+                    # fc
+                    _x = _attention_out + self._linear_block(_x)
+                    _x = self._back_norm(_x)
+                return _x, _self_attention_map, _multi_attention_map
 
     # class PerceiverIO(Module):
     #     def __init__(self):

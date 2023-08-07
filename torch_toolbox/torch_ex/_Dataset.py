@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from typing import Tuple, Dict, List, Any, Generator
+from typing import Tuple, Dict, List, Any, Generator, Callable
 from enum import Enum
 from math import pi, cos, sin, ceil
 from dataclasses import dataclass
+from random import randrange, random
 
-from torch import Tensor, tensor
+from numpy import ndarray
+
+from torch import Tensor, tensor, zeros, min, all
 from torch.utils.data import Dataset
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+
+from torchvision import transforms as T
+from torchvision.transforms import functional as F
 
 from python_ex._Base import Directory, File
 
@@ -278,7 +284,7 @@ class Data():
                     if _mode is not Process_Name.TEST:
                         _block[_mode].append([])  # input image
                         _id_block: Dict[int, int] = {}
-                        _annotation_block: Dict[int, List[List]] = {}
+                        _annotation_block: Dict[int, List[Dict[str, List]]] = {}
 
                         # make data index
                         for _info_ct, (_label_style, _data_format) in enumerate(data_info):
@@ -302,15 +308,26 @@ class Data():
                                 else:
                                     if _info_ct: continue  # in before data info, this image not use 
                                     _id_block.update({_img_id: 0})
-                                    _annotation_block.update({_img_id: [[] for _ in range(len(data_info))]})
+                                    _annotation_block.update({_img_id: [{} for _ in range(len(data_info))]})
 
                                 # select annotation file
+                                _pick_block = _annotation_block[_img_id][_info_ct]
+
                                 if _label_style is Label.Style.INSTANCES:  # instance
-                                    # update annotation data
+                                    # make annotation data
                                     if _data["iscrowd"]:
                                         ...
                                     else:
-                                        _annotation_block[_img_id][_info_ct].append((_data["segmentation"], _data["category_id"], _data["bbox"]))  # -> left top w, left top h, delta w, delta h
+                                        _bbox_info = _data["bbox"]
+                                        _bbox = (_bbox_info[0], _bbox_info[1], _bbox_info[0] + _bbox_info[2], _bbox_info[1] + _bbox_info[3])
+                                        _seg = _data["segmentation"],
+                                        _class_id = _data["category_id"]
+
+                                    # updata annotation data
+                                    _pick_block["seg"].append(_seg) if "seg" in _pick_block.keys() else _pick_block.update({"seg": [_seg]})
+                                    _pick_block["bbox"].append(_bbox) if "bbox" in _pick_block.keys() else _pick_block.update({"bbox": [_bbox]})
+                                    _pick_block["class_id"].append(_class_id) if "class_id" in _pick_block.keys() else _pick_block.update({"class_id": [_class_id]})
+
                                 elif _label_style is Label.Style.KEY_POINTS:
                                     ...
                                 else:  # captions
@@ -336,6 +353,7 @@ class Data():
 class Augment():
     class Supported(Enum):
         ALBUIMIENTATIONS = "Albumentations"
+        TORCHVISION = "Torchvision"
 
     @dataclass
     class Plan():
@@ -364,9 +382,54 @@ class Augment():
             def _Make_componant_list(
                 self,
                 output_size: List[int],
-                rotate_limit: int | List[int] = 0,
+                rotate_limit: int = 0,
                 hflip_rate: float = 0.0,
                 vflip_rate: float = 0.0,
+                is_norm: bool = True,
+                norm_mean: List[float] = [0.485, 0.456, 0.406],
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = False
+            ) -> List:
+                raise NotImplementedError
+
+            def _Get_padding_size(self, output_size: List[int], rotate_limit: int = 0) -> List[int]:
+                _rad = pi * rotate_limit / 180
+                _h = ceil(output_size[1] * sin(_rad) + output_size[0] * cos(_rad))
+                _w = ceil(output_size[0] * sin(_rad) + output_size[1] * cos(_rad))
+
+                return [_h, _w]
+
+            def _To_tensor(self):
+                raise NotImplementedError
+
+            def _Resize(self, size: List[int]):
+                raise NotImplementedError
+
+            def _Random_Crop(self, size: List[int]):
+                raise NotImplementedError
+
+            def _Rotate_within(self, limit_angle: int | List[int]):
+                raise NotImplementedError
+
+            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float) -> List:
+                raise NotImplementedError
+
+            def _Normalization(self, mean: List[float], std: List[float]):
+                raise NotImplementedError
+
+            def _Build_transform(self, transform_list: List, group_parmaeter: Dict | None, **augment_constructer):
+                raise NotImplementedError
+
+            def __call__(self, data: Dict[str, Any]) -> Dict[str, Tensor]:
+                return self._transform(**data)
+
+        class Albumentations(Basement):
+            def _Make_componant_list(
+                self,
+                output_size: List[int],
+                rotate_limit: int = 0,
+                hflip_rate: float = 0,
+                vflip_rate: float = 0,
                 is_norm: bool = True,
                 norm_mean: List[float] = [0.485, 0.456, 0.406],
                 norm_std: List[float] = [0.229, 0.224, 0.225],
@@ -394,41 +457,6 @@ class Augment():
 
                 return _transform_list
 
-            def _Get_padding_size(self, output_size: List[int], rotate_limit: int | List[int] = 0) -> List[int]:
-                raise NotImplementedError
-
-            def _To_tensor(self):
-                raise NotImplementedError
-
-            def _Resize(self, size: List[int]):
-                raise NotImplementedError
-
-            def _Random_Crop(self, size: List[int]):
-                raise NotImplementedError
-
-            def _Rotate_within(self, limit_angle: int | List[int]):
-                raise NotImplementedError
-
-            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float) -> List:
-                raise NotImplementedError
-
-            def _Normalization(self, mean: List[float], std: List[float]):
-                raise NotImplementedError
-
-            def _Build_transform(self, transform_list: List, group_parmaeter: Dict | None, **augment_constructer):
-                raise NotImplementedError
-
-            def __call__(self, data: Dict[str, Any]) -> Dict[str, Tensor]:
-                return self._transform(**data)
-
-        class Albumentations(Basement):
-            def _Get_padding_size(self, output_size: List[int], rotate_limit: int = 0) -> List[int]:
-                _rad = pi * rotate_limit / 180
-                _h = ceil(output_size[1] * sin(_rad) + output_size[0] * cos(_rad))
-                _w = ceil(output_size[0] * sin(_rad) + output_size[1] * cos(_rad))
-
-                return [_h, _w]
-
             def _To_tensor(self):
                 return ToTensorV2()
 
@@ -451,16 +479,230 @@ class Augment():
                 return A.Normalize(mean, std)
 
             def _Build_transform(
-                    self,
-                    transform_list,
-                    group_parmaeter: Dict[str, str] | None = None,
-                    bbox_parameter: Dict[str, str] | None = None,
-                    keypoints_parameter: Dict[str, str] | None = None):
+                self,
+                transform_list,
+                group_parmaeter: Dict[str, str] | None = None,
+                bbox_parameter: Dict[str, str] | None = None,
+                keypoints_parameter: Dict[str, str] | None = None
+            ):
                 return A.Compose(transform_list, bbox_parameter, keypoints_parameter, additional_targets=group_parmaeter)
+
+        class Torchvision(Basement):
+            class Tr_Comp():
+                def __call__(self, image: Tensor | List[Tensor], target: Dict[str, Any] | None) -> Tuple[Tensor | List[Tensor], Dict[str, Any] | None]:
+                    raise NotImplementedError
+
+            class Random_Crop(Tr_Comp):
+                def __init__(self, size: Tuple[int, int]) -> None:
+                    self._section_x, self._section_y = size
+
+                def __call__(self, image: Tensor | List[Tensor], target: Dict[str, Tensor] | None) -> Any:
+                    _section_y = self._section_y
+                    _section_x = self._section_x
+                    _c, _h, _w = image[0].shape if isinstance(image, list) else image.shape
+
+                    _lt_y = randrange(0, max(1, _h - _section_y))
+                    _lt_x = randrange(0, max(1, _w - _section_x))
+
+                    # imput image
+                    if isinstance(image, list):
+                        for _ct, _img in enumerate(image):
+                            if _h < _section_y or _w < _section_x:
+                                _new_h = _section_y if _h < _section_y else _h
+                                _new_w = _section_x if _w < _section_x else _w
+                                _new_img = zeros((_c, _new_h, _new_w), dtype=_img.dtype)
+                                _new_img[:, 0: _h, 0: _w] = _img
+                                _img = _new_img
+                            
+                            image[_ct] = _img[:, _lt_y: _lt_y + _section_y, _lt_x: _lt_x + _section_x]
+
+                    else:
+                        if _h < _section_y or _w < _section_x:
+                            _new_h = _section_y if _h < _section_y else _h
+                            _new_w = _section_x if _w < _section_x else _w
+                            _new_img = zeros((_c, _new_h, _new_w), dtype=image.dtype)
+                            _new_img[:, 0: _h, 0: _w] = image
+                            image = _new_img
+
+                        image = image[:, _lt_y: _lt_y + _section_y, _lt_x: _lt_x + _section_x]
+
+                    # target
+                    if isinstance(target, dict):
+                        for _key, items in target.items():
+                            if _key.find("mask") != -1:
+                                # items: ndarray
+                                if _h < _section_y or _w < _section_x:
+                                    _new_h = _section_y if _h < _section_y else _h
+                                    _new_w = _section_x if _w < _section_x else _w
+
+                                    _new_img = zeros((_new_h, _new_w, _c), dtype=items.dtype)
+                                    _new_img[:, 0: _h, 0: _w] = items
+                                    items = _new_img
+
+                                target[_key] = items[_lt_y: _lt_y + _section_y, _lt_x: _lt_x + _section_x]
+
+                            elif _key.find("bbox") != -1:
+                                _bbox: Tensor = min(items["bbox"].reshape([-1, 2, 2]), tensor([_section_x, _section_y])).clamp(0)
+                                _keep = all(_bbox[:, 1, :] > _bbox[:, 0, :], dim=1)
+                                
+                                target[_key] = {
+                                    "class_id": items["class_id"][_keep],
+                                    "bbox": _bbox[_keep].reshape(-1, 4)
+                                }
+
+                    return image, target
+
+            class Random_Flip(Tr_Comp):
+                def __init__(self, horizontal_rate: float, vertical_rate: float) -> None:
+                    self._horiz_p = horizontal_rate
+                    self._verti_p = vertical_rate
+                
+                def __call__(self, image: Tensor | List[Tensor], target: Dict[str, Tensor] | None):
+                    _horiz = random() >= self._horiz_p
+                    _verti = random() >= self._verti_p
+
+                    # imput image
+                    if isinstance(image, list):
+                        _c, _h, _w = image[0].shape
+
+                        for _ct, _img in enumerate(image):
+                            if _horiz : _img = F.hflip(_img)
+                            if _verti : _img = F.vflip(_img)
+
+                            image[_ct] = _img
+
+                    else:
+                        _c, _h, _w = image.shape
+                        if _horiz : image = F.hflip(image)
+                        if _verti : image = F.vflip(image)
+
+                    # target
+                    if isinstance(target, dict):
+                        for _key, items in target.items():
+                            if _key.find("mask") != -1:
+                                if _horiz : items = F.hflip(items)
+                                if _verti : items = F.vflip(items)
+                                target[_key] = items
+                            elif _key.find("bbox") != -1:
+                                if _horiz:  # <->
+                                    _bbox = (tensor([_w, 0, _w, 0]) + items["bbox"] * tensor([-1, 1, -1, 1]))[:, [2, 1, 0, 3]]
+                                if _verti:
+                                    _bbox = (tensor([0, _h, 0, _h]) + items["bbox"] * tensor([1, -1, 1, -1]))[:, [0, 3, 2, 1]]
+                                    
+                                items = {
+                                    "class_id": items["class_id"],
+                                    "bbox": _bbox
+                                }
+
+                    return image, target
+
+            class Normalize(Tr_Comp):
+                def __init__(self, mean: List[float], std: List[float]) -> None:
+                    self._mean = mean
+                    self._std = std
+
+                def __call__(self, image: Tensor | List[Tensor], target: Any):
+                    image = [F.normalize(_img, mean=self._mean, std=self._std) for _img in image] if isinstance(image, list) else F.normalize(image, mean=self._mean, std=self._std)
+                    return image, target
+
+            class Compose(Tr_Comp):
+                class Data_Converter():
+                    def __call__(self, image: ndarray | List[ndarray], target: Dict[str, Any] | None):
+                        # imput image
+                        if isinstance(image, list):
+                            _tensor_img = [F.to_tensor(_img) for _img in image]
+                        else:
+                            _tensor_img = F.to_tensor(image)
+
+                        # target
+                        if isinstance(target, dict):
+                            for _key, items in target.items():
+                                if _key.find("mask") != -1:
+                                    target[_key] = [F.to_tensor(_mask) for _mask in items]
+                                elif _key.find("bbox") != -1:
+                                    target[_key] = {
+                                    "class_id": tensor(items["class_id"]),
+                                    "bbox": tensor(items["bbox"])
+                                }
+
+                        return _tensor_img, target
+
+                def __init__(self, transforms: List[Augment.Process.Torchvision.Tr_Comp]):
+                    self._data_converter = self.Data_Converter()
+                    self._transforms = transforms                    
+
+                def __call__(self, image: ndarray | List[ndarray], target: Dict[str, Any] | None = None, **info):
+                    _image, _target = self._data_converter(image, target)
+
+                    for _t in self._transforms:
+                        _image, _target = _t(_image, _target)
+
+                    info.update(
+                        {"image": _image} if _target is None else {"image": _image, "target": _target}
+                    )
+
+                    return info
+ 
+                def __repr__(self):
+                    _format_string = self.__class__.__name__ + "("
+                    for _t in self._transforms:
+                        _format_string += "\n"
+                        _format_string += "    {0}".format(_t)
+                    _format_string += "\n)"
+                    return _format_string
+
+            # def _Resize(self, size: List[int]):
+            #     return T.Resize(size)
+
+            def _Random_Crop(self, size: Tuple[int, int]):
+                return self.Random_Crop(size)
+
+            # def _Rotate_within(self, limit_angle: int):
+            #     return T.RandomRotation(limit_angle)
+
+            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float):
+                return self.Random_Flip(horizontal_rate, vertical_rate)
+
+            def _Normalization(self, mean: List[float], std: List[float]):
+                return self.Normalize(mean, std)
+            
+            def _Make_componant_list(
+                self,
+                output_size: List[int],
+                rotate_limit: int = 0,
+                hflip_rate: float = 0,
+                vflip_rate: float = 0,
+                is_norm: bool = True,
+                norm_mean: List[float] = [0.485, 0.456, 0.406],
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = False
+            ) -> List:
+                _transform_list = []
+
+                if output_size[0] != -1 and output_size[1] != -1: 
+                    _transform_list.append(self._Random_Crop((output_size[0], output_size[1])))
+
+                # about flip
+                if hflip_rate or vflip_rate:
+                    _transform_list.append(self._Random_Flip(hflip_rate, vflip_rate))
+
+                # apply norm
+                if is_norm:
+                    _transform_list.append(self._Normalization(norm_mean, norm_std))
+
+                return _transform_list
+
+            def _Build_transform(
+                self,
+                transform_list,
+                group_parmaeter,
+                # keypoints_parameter: Dict[str, str] | None = None
+            ):
+                return self.Compose(transform_list)
 
         @staticmethod
         def _Build(
-            apply_mathod: Augment.Supported,
+            apply_method: Augment.Supported,
             output_size: List[int],
             rotate_limit: int | List[int] = 0,
             hflip_rate: float = 0.0,
@@ -471,7 +713,7 @@ class Augment():
             apply_to_tensor: bool = True,
             **augment_constructer
         ) -> Basement:
-            return Augment.Process.__dict__[apply_mathod.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
+            return Augment.Process.__dict__[apply_method.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
 
 
 class Custom_Dataset_Process(Dataset):
