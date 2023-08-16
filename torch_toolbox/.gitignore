@@ -1,9 +1,13 @@
-# ignore option
+# ignore option for utils
 # data file and directory
 data/
 *.png
 *.jpg
 *.npy
+*.json
+
+# not ignore data config file
+!torch_ex/data_file/*.json
 
 # tmeporary or test file and directory
 temp*.*
