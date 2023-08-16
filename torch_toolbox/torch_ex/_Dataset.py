@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, Dict, List, Any, Generator, Callable
+from typing import Tuple, Dict, List, Any, Generator
 from enum import Enum
 from math import pi, cos, sin, ceil
 from dataclasses import dataclass
@@ -14,12 +14,11 @@ from torch.utils.data import Dataset
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-from torchvision import transforms as T
 from torchvision.transforms import functional as F
 
 from python_ex._Base import Directory, File
 
-from torch_ex._Base import Process_Name
+from torch_ex._Base import Learning_Process
 
 
 class Label():
@@ -48,7 +47,6 @@ class Label():
         SEMENTIC = "sementic"
         INSTANCES = "instances"
         KEY_POINTS = "key_Points"
-
 
     class Structure():
         @dataclass
@@ -163,7 +161,7 @@ class Label():
 
                     for _label in _labels:
                         _holder[_style].update({
-                            _label.train_num: _holder[_style][_label.train_num] + [_label,] if _label.train_num in _holder[_style].keys() else [_label,]
+                            _label.train_num: _holder[_style][_label.train_num] + [_label, ] if _label.train_num in _holder[_style].keys() else [_label, ]
                         })
 
                 return _holder
@@ -209,9 +207,15 @@ class Data():
                     :
             -------------------------------------------------------------------------------------------
             """
-            _active_mode: Process_Name = Process_Name.TRAIN
+            _active_mode: Learning_Process = Learning_Process.TRAIN
 
-            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
+            def __init__(
+                self,
+                root_dir: str,
+                mode_list: List[Learning_Process],
+                data_info: List[Tuple[Label.Style | None, Data.Format]],
+                label_process: Label.Organization.Basement | None
+            ):
                 # set learning info
                 self._apply_mode = mode_list
                 # data root dir
@@ -230,7 +234,7 @@ class Data():
             def __len__(self):
                 return self._this_data[-1].__len__()
 
-            def _Set_active_mode_from(self, mode: Process_Name):
+            def _Set_active_mode_from(self, mode: Learning_Process):
                 if mode in self._apply_mode:
                     self._this_data = self._all_data[mode]
                 else:
@@ -239,27 +243,39 @@ class Data():
             def _Label_update(self, label_process: Label.Organization.Basement):
                 return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])
 
-            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Process_Name, List[List]]:
+            def _Make_data_block(self, mode_list: List[Learning_Process], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Learning_Process, List[List]]:
                 raise NotImplementedError
 
             def _Pick_up(self, num: int) -> Dict[str, Any]:
                 raise NotImplementedError
 
         class BDD_100k(Basement):
-            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
+            def __init__(
+                self,
+                root_dir: str,
+                mode_list: List[Learning_Process],
+                data_info: List[Tuple[Label.Style | None, Data.Format]],
+                label_process: Label.Organization.Basement | None
+            ):
                 # data root dir
                 _root_dir = Directory._Divider_check(root_dir)
 
                 self._data_keyward = {
                     Label.Style.SEMENTIC: {
                         Data.Format.colormaps: "".join([f"{_root_dir}bdd100k/labels/sem_seg/", "{}/{}/*.jpg"])
-                    }                    
+                    }
                 }
 
                 super().__init__(root_dir, mode_list, data_info, label_process)
 
         class COCO(Basement):
-            def __init__(self, root_dir: str, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style | None, Data.Format]], label_process: Label.Organization.Basement | None):
+            def __init__(
+                self,
+                root_dir: str,
+                mode_list: List[Learning_Process],
+                data_info: List[Tuple[Label.Style | None, Data.Format]],
+                label_process: Label.Organization.Basement | None
+            ):
                 # data root dir
                 _root_dir = Directory._Divider_check(root_dir)
 
@@ -273,15 +289,15 @@ class Data():
                 }
 
                 super().__init__(root_dir, mode_list, data_info, label_process)
-            
-            def _Make_data_block(self, mode_list: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Process_Name, List[List]]:
-                _block: Dict[Process_Name, List[List]] = {}
+
+            def _Make_data_block(self, mode_list: List[Learning_Process], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Learning_Process, List[List]]:
+                _block: Dict[Learning_Process, List[List]] = {}
 
                 for _mode in mode_list:
                     _block[_mode] = []
                     _img_dir = "".join([self._root_dir, f"COCO/{_mode.value}2017/"])
 
-                    if _mode is not Process_Name.TEST:
+                    if _mode is not Learning_Process.TEST:
                         _block[_mode].append([])  # input image
                         _id_block: Dict[int, int] = {}
                         _annotation_block: Dict[int, List[Dict[str, List]]] = {}
@@ -303,10 +319,10 @@ class Data():
                                         _id_block.pop(_img_id)
                                         _annotation_block.pop(_img_id)
                                         continue
-                                    
+
                                     _id_block[_img_id] = _info_ct
                                 else:
-                                    if _info_ct: continue  # in before data info, this image not use 
+                                    if _info_ct: continue  # in before data info, this image not use
                                     _id_block.update({_img_id: 0})
                                     _annotation_block.update({_img_id: [{} for _ in range(len(data_info))]})
 
@@ -513,7 +529,7 @@ class Augment():
                                 _new_img = zeros((_c, _new_h, _new_w), dtype=_img.dtype)
                                 _new_img[:, 0: _h, 0: _w] = _img
                                 _img = _new_img
-                            
+
                             image[_ct] = _img[:, _lt_y: _lt_y + _section_y, _lt_x: _lt_x + _section_x]
 
                     else:
@@ -544,7 +560,7 @@ class Augment():
                             elif _key.find("bbox") != -1:
                                 _bbox: Tensor = min(items["bbox"].reshape([-1, 2, 2]), tensor([_section_x, _section_y])).clamp(0)
                                 _keep = all(_bbox[:, 1, :] > _bbox[:, 0, :], dim=1)
-                                
+
                                 target[_key] = {
                                     "class_id": items["class_id"][_keep],
                                     "bbox": _bbox[_keep].reshape(-1, 4)
@@ -556,7 +572,7 @@ class Augment():
                 def __init__(self, horizontal_rate: float, vertical_rate: float) -> None:
                     self._horiz_p = horizontal_rate
                     self._verti_p = vertical_rate
-                
+
                 def __call__(self, image: Tensor | List[Tensor], target: Dict[str, Tensor] | None):
                     _horiz = random() >= self._horiz_p
                     _verti = random() >= self._verti_p
@@ -566,29 +582,29 @@ class Augment():
                         _c, _h, _w = image[0].shape
 
                         for _ct, _img in enumerate(image):
-                            if _horiz : _img = F.hflip(_img)
-                            if _verti : _img = F.vflip(_img)
+                            if _horiz: _img = F.hflip(_img)
+                            if _verti: _img = F.vflip(_img)
 
                             image[_ct] = _img
 
                     else:
                         _c, _h, _w = image.shape
-                        if _horiz : image = F.hflip(image)
-                        if _verti : image = F.vflip(image)
+                        if _horiz: image = F.hflip(image)
+                        if _verti: image = F.vflip(image)
 
                     # target
                     if isinstance(target, dict):
                         for _key, items in target.items():
                             if _key.find("mask") != -1:
-                                if _horiz : items = F.hflip(items)
-                                if _verti : items = F.vflip(items)
+                                if _horiz: items = F.hflip(items)
+                                if _verti: items = F.vflip(items)
                                 target[_key] = items
                             elif _key.find("bbox") != -1:
                                 if _horiz:  # <->
                                     _bbox = (tensor([_w, 0, _w, 0]) + items["bbox"] * tensor([-1, 1, -1, 1]))[:, [2, 1, 0, 3]]
                                 if _verti:
                                     _bbox = (tensor([0, _h, 0, _h]) + items["bbox"] * tensor([1, -1, 1, -1]))[:, [0, 3, 2, 1]]
-                                    
+
                                 items = {
                                     "class_id": items["class_id"],
                                     "bbox": _bbox
@@ -602,8 +618,9 @@ class Augment():
                     self._std = std
 
                 def __call__(self, image: Tensor | List[Tensor], target: Any):
-                    image = [F.normalize(_img, mean=self._mean, std=self._std) for _img in image] if isinstance(image, list) else F.normalize(image, mean=self._mean, std=self._std)
-                    return image, target
+                    _norm_img = [F.normalize(_img, mean=self._mean, std=self._std) for _img in image] if isinstance(image, list) \
+                        else F.normalize(image, mean=self._mean, std=self._std)
+                    return _norm_img, target
 
             class Compose(Tr_Comp):
                 class Data_Converter():
@@ -620,29 +637,20 @@ class Augment():
                                 if _key.find("mask") != -1:
                                     target[_key] = [F.to_tensor(_mask) for _mask in items]
                                 elif _key.find("bbox") != -1:
-                                    target[_key] = {
-                                    "class_id": tensor(items["class_id"]),
-                                    "bbox": tensor(items["bbox"])
-                                }
-
+                                    target[_key] = {"class_id": tensor(items["class_id"]), "bbox": tensor(items["bbox"])}
                         return _tensor_img, target
 
                 def __init__(self, transforms: List[Augment.Process.Torchvision.Tr_Comp]):
                     self._data_converter = self.Data_Converter()
-                    self._transforms = transforms                    
+                    self._transforms = transforms
 
                 def __call__(self, image: ndarray | List[ndarray], target: Dict[str, Any] | None = None, **info):
                     _image, _target = self._data_converter(image, target)
-
-                    for _t in self._transforms:
-                        _image, _target = _t(_image, _target)
-
-                    info.update(
-                        {"image": _image} if _target is None else {"image": _image, "target": _target}
-                    )
+                    for _t in self._transforms: _image, _target = _t(_image, _target)
+                    info.update({"image": _image} if _target is None else {"image": _image, "target": _target})
 
                     return info
- 
+
                 def __repr__(self):
                     _format_string = self.__class__.__name__ + "("
                     for _t in self._transforms:
@@ -665,7 +673,7 @@ class Augment():
 
             def _Normalization(self, mean: List[float], std: List[float]):
                 return self.Normalize(mean, std)
-            
+
             def _Make_componant_list(
                 self,
                 output_size: List[int],
@@ -678,14 +686,11 @@ class Augment():
                 apply_to_tensor: bool = False
             ) -> List:
                 _transform_list = []
-
-                if output_size[0] != -1 and output_size[1] != -1: 
+                if output_size[0] != -1 and output_size[1] != -1:
                     _transform_list.append(self._Random_Crop((output_size[0], output_size[1])))
-
                 # about flip
                 if hflip_rate or vflip_rate:
                     _transform_list.append(self._Random_Flip(hflip_rate, vflip_rate))
-
                 # apply norm
                 if is_norm:
                     _transform_list.append(self._Normalization(norm_mean, norm_std))
@@ -713,14 +718,16 @@ class Augment():
             apply_to_tensor: bool = True,
             **augment_constructer
         ) -> Basement:
-            return Augment.Process.__dict__[apply_method.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
+            _augmnet_process = Augment.Process.__dict__[apply_method.value]
+
+            return _augmnet_process(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
 
 
 class Custom_Dataset_Process(Dataset):
     def __init__(
         self,
         data_process: Data.Organize.Basement,
-        plan_for_process: Dict[Process_Name, Augment.Plan]
+        plan_for_process: Dict[Learning_Process, Augment.Plan]
     ):
         self._organization = data_process
         self._plan_for_process = plan_for_process
@@ -734,7 +741,7 @@ class Custom_Dataset_Process(Dataset):
         _source_index = index // _augment.amplification
         return self._Convert_to_tensor(_source_index, _augment.augmentations)
 
-    def _Set_active_mode_from(self, mode: Process_Name):
+    def _Set_active_mode_from(self, mode: Learning_Process):
         self._organization._Set_active_mode_from(mode)
 
     # Un-Freeze function

@@ -15,7 +15,7 @@ from python_ex._Base import Directory, File
 from python_ex._Project import Debuging
 from python_ex._Vision import cv2
 
-from ._Base import Process_Name, System_Utils
+from ._Base import Learning_Process, System_Utils
 from ._Dataset import Custom_Dataset_Process
 from ._Model_n_Optim import Model, Optim, _LRScheduler
 
@@ -25,7 +25,7 @@ MAIN_RANK: int = 0
 
 
 class Multi_Method(Enum):
-    AUTO =  "Auto"
+    AUTO = "Auto"
     NOT_USE = "None"
     DDP = "DistributedDataParallel"
 
@@ -46,7 +46,7 @@ class Learning_Process():
         - last_epoch : 훈련의 초기 epoch
         -------------------------------------------------------------------------------------------
         """
-        def __init__(self, project_name: str, description: str, result_root: str, mode_list: List[Process_Name], max_epoch: int, last_epoch: int = -1):
+        def __init__(self, project_name: str, description: str, result_root: str, mode_list: List[Learning_Process], max_epoch: int, last_epoch: int = -1):
             self._project_name = project_name
             self._description = description
             self._result_root = result_root
@@ -57,9 +57,9 @@ class Learning_Process():
 
             print(f"Set the Learning for {self._project_name}.\n Result of this Learing, save at {self._result_root}")
             print("Set the basement of learning option.")
-            _debug_process_text = f"This Learing work to at {self._max_epoch} epoch from {self._last_epoch + 1} epoch.\n"
-            _debug_mode_list_text = f"This learning process, that consist of {', '.join(_mode.value for _mode in self._mode_list[: -1])} and {self._mode_list[-1].value}.\n"
-            print(f"\t{_debug_process_text}\n\t{_debug_mode_list_text}")
+            _process_text = f"This Learing work to at {self._max_epoch} epoch from {self._last_epoch + 1} epoch.\n"
+            _modelist_text = f"This learning process, that consist of {', '.join(_mode.value for _mode in self._mode_list[: -1])} and {self._mode_list[-1].value}.\n"
+            print(f"\t{_process_text}\n\t{_modelist_text}")
 
         #  ----------------- #
         def _Set_dataloader_option(
@@ -143,7 +143,7 @@ class Learning_Process():
             self._schedule_name = scheduler_name
             self._schedule_option = scheduler_option
 
-            self._weight_dir= weight_dir
+            self._weight_dir = weight_dir
 
         def _Set_processer_option(
             self,
@@ -183,7 +183,7 @@ class Learning_Process():
             _gpu_info = System_Utils.Cuda._Get_useable_gpu_list()
             # self._gpu_info: List[Tuple[int, str]] = []
 
-            if len(_gpu_info) >= 2 and not multi_method is Multi_Method.NOT_USE:  # can use gpu
+            if len(_gpu_info) >= 2 and multi_method is not Multi_Method.NOT_USE:  # can use gpu
                 print("In this learning session, using multi process.")
                 print("--------------------------------------------------")
                 if not multi_method.AUTO: _gpu_info = _gpu_info[:max_gpu_count]
@@ -202,7 +202,7 @@ class Learning_Process():
                 cv2.setNumThreads(0)
                 cv2.ocl.setUseOpenCL(False)
 
-            else:                
+            else:
                 print("In this learning session, using single process.")
                 print("--------------------------------------------------")
 
@@ -275,7 +275,7 @@ class Learning_Process():
                 _epoch_dir = System_Utils.Base._Make_dir(f"{_epoch}", self._result_root, _process_num)
 
                 for _active_mode in self._mode_list:
-                    _model.train() if _active_mode == Process_Name.TRAIN else _model.eval()
+                    _model.train() if _active_mode == Learning_Process.TRAIN else _model.eval()
                     self._dataset._Set_active_mode_from(_active_mode)
 
                     # When use sampler, shuffling
@@ -297,7 +297,12 @@ class Learning_Process():
             print(f"Set Learning process for model {_model_name}is finish")
             # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
 
-        def _Process_init(self, process_num: int, gpu_info: int, this_rank: bool) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
+        def _Process_init(
+            self,
+            process_num: int,
+            gpu_info: int,
+            this_rank: bool
+        ) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
             # initialize model, optimizer, dataset and data process
             _model = self._model_structure(**self._model_option)
             _model = _model.cuda(gpu_info)
@@ -322,11 +327,25 @@ class Learning_Process():
 
                 _model = DDP(_model)
                 _sampler = DistributedSampler(self._dataset, rank=process_num)
-                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, collate_fn=self._collate_fn, sampler=_sampler, drop_last=True)
+                _dataloader = DataLoader(
+                    dataset=self._dataset,
+                    batch_size=self._batch_size,
+                    num_workers=self._num_worker,
+                    collate_fn=self._collate_fn,
+                    sampler=_sampler,
+                    drop_last=True
+                )
 
             else:  # not consist multi-process
                 _sampler = None
-                _dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, num_workers=self._num_worker, collate_fn=self._collate_fn, shuffle=True, drop_last=True)
+                _dataloader = DataLoader(
+                    dataset=self._dataset,
+                    batch_size=self._batch_size,
+                    num_workers=self._num_worker,
+                    collate_fn=self._collate_fn,
+                    shuffle=True,
+                    drop_last=True
+                )
 
             System_Utils.Base._Print(f"Set Learning model {_model_name}, optimizer, Dataset", this_rank)
 
@@ -366,7 +385,7 @@ class Learning_Process():
 
         def _Learning_core(
             self,
-            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
+            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
             gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
@@ -379,7 +398,7 @@ class Learning_Process():
 
         def _Get_loss_n_observe_param(
             self,
-            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
+            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
             output: Tensor | List[Tensor],
             label: Tensor | List[Tensor] | None,
             logger: SummaryWriter,
@@ -407,7 +426,7 @@ class Learning_Process():
 
         def _Progress_dispaly(
             self,
-            learning_info: Tuple[int, Process_Name],
+            learning_info: Tuple[int, Learning_Process],
             progress_loss: float,
             progress_observe_param: Dict[str, float],
             spend_time: float,
@@ -419,7 +438,7 @@ class Learning_Process():
     class E2E(Basement):
         def _Learning_core(
             self,
-            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
+            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
             gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
@@ -445,15 +464,15 @@ class Learning_Process():
                 _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
                 _this_count += _data_size
 
-                if _mode == Process_Name.TRAIN:  # for Train
+                if _mode == Learning_Process.TRAIN:  # for Train
                     _output: Tensor | List[Tensor] = model(*_input_datas)
                 else:  # for validation
                     with no_grad(): _output: Tensor | List[Tensor] = model(*_input_datas)
-                
+
                 _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
 
                 # doing learning
-                if _mode == Process_Name.TRAIN:  # for Train
+                if _mode == Learning_Process.TRAIN:  # for Train
                     optim.zero_grad()
                     _loss.backward()
                     optim.step()
@@ -471,7 +490,7 @@ class Learning_Process():
                     self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
 
             logger.add_scalar(f"Loss/{_mode.value}", _progress_loss / _this_count, _epoch)
-            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value / _this_count, _epoch)            
+            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value / _this_count, _epoch)
 
     class Reinforcement(Basement):
         def _Set_reinforcement_option(
@@ -522,7 +541,7 @@ class Learning_Process():
 
         def _Learning_core(
             self,
-            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
+            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
             gpu_info: int,
             dataloader: DataLoader,
             model: Model | DDP,
@@ -553,7 +572,7 @@ class Learning_Process():
 
                 # step
                 for _ in range(self._max_step):
-                    if _mode == Process_Name.TRAIN:  # for Train
+                    if _mode == Learning_Process.TRAIN:  # for Train
                         _output: Tensor | List[Tensor] = model(*_this_state)
                     else:  # for validation or test
                         with no_grad(): _output: Tensor | List[Tensor] = model(*_this_state)
@@ -563,7 +582,7 @@ class Learning_Process():
 
                     _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
 
-                    if _mode == Process_Name.TRAIN:
+                    if _mode == Learning_Process.TRAIN:
                         optim.zero_grad()
                         _loss.backward()
                         # self._average_gradients(model)
@@ -595,7 +614,7 @@ class Learning_Process():
 
         def _Get_loss_n_observe_param(
             self,
-            learning_info: Tuple[int, Process_Name],  # epoch, learning_mode
+            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
             output: List[Tensor | List[Tensor]],
             label: Tensor | List[Tensor] | None,
             is_done: bool,
@@ -624,7 +643,7 @@ class Learning_Config():
                 "description": "",
                 "result_root": "./runs/",
                 "learning_plan": {
-                    "train" : {
+                    "train": {
                         "amplification": 1,
                         "augmentations": [
                             {
@@ -641,7 +660,7 @@ class Learning_Config():
                             }
                         ]
                     },
-                    "val" : {
+                    "val": {
                         "amplification": 1,
                         "augmentations": [
                             {
@@ -669,7 +688,7 @@ class Learning_Config():
 
                 # dataloader
                 "batch_size_per_node": 512,
-                "num_worker_per_node":8,
+                "num_worker_per_node": 8,
                 "display_term": 0.01,
 
                 # --- scheduler option --- #
@@ -703,10 +722,10 @@ class Learning_Config():
         def _Make_learning_process(self, Learning_process: Type[Learning_Process.E2E]):
             # Make learning process
             _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
-            _learning_opt.update({"mode_list": [Process_Name(_mode) for _mode in self._options["learning_plan"].keys()]})
+            _learning_opt.update({"mode_list": [Learning_Process(_mode) for _mode in self._options["learning_plan"].keys()]})
             _learning_process = Learning_process(**_learning_opt)
 
-            # set multi process 
+            # set multi process
             _processer_opt = dict((_key, self._options[_key]) for _key in ["world_size", "device_rank", "max_gpu_count", "multi_protocal"])
             _processer_opt.update({"multi_method": Multi_Method(self._options["multi_method"])})
             _learning_process._Set_processer_option(**_processer_opt)
@@ -741,15 +760,15 @@ class Learning_Config():
             _dataloader_option = {"dataset_process": self._Make_dataset_info()}
             _dataloader_option.update(dict((_key, self._options[_key]) for _key in ["batch_size_per_node", "num_worker_per_node", "display_term"]))
             return _dataloader_option
-        
+
     class Reinforcement(E2E):
         def _Make_learning_process(self, Learning_process: type[Learning_Process.Reinforcement]):
             # Make learning process
             _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
-            _learning_opt.update({"mode_list": [Process_Name(_mode) for _mode in self._options["learning_plan"].keys()]})
+            _learning_opt.update({"mode_list": [Learning_Process(_mode) for _mode in self._options["learning_plan"].keys()]})
             _learning_process = Learning_process(**_learning_opt)
 
-            # set multi process 
+            # set multi process
             _processer_opt = dict((_key, self._options[_key]) for _key in ["world_size", "device_rank", "max_gpu_count", "multi_protocal"])
             _processer_opt.update({"multi_method": Multi_Method(self._options["multi_method"])})
             _learning_process._Set_processer_option(**_processer_opt)
@@ -760,7 +779,7 @@ class Learning_Config():
             return _learning_process
 
         def _Set_default_option(self):
-            _opt =  super()._Set_default_option()
+            _opt = super()._Set_default_option()
 
             _opt.update({
                 # --- reinforcement option --- #
@@ -773,9 +792,9 @@ class Learning_Config():
                 "memory_size": -1,
                 "memory_minimum": -1,
             })
-            
+
             return _opt
-        
+
         def _Make_reward_model(self) -> Callable:
             raise NotImplementedError
 

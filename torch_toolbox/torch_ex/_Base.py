@@ -7,12 +7,11 @@ from torch import zeros, ones, zeros_like, ones_like, arange, tensor, stack, cli
 from torch import rand, randn, rand_like, randn_like
 
 from python_ex._Base import TYPE_NUMBER, Directory
-from python_ex._Project import Debuging
 from python_ex._Numpy import Array_Process, Np_Dtype, ndarray, Evaluation_Process, Random_Process
 
 
 # -- DEFINE CONSTANT -- #
-class Process_Name(Enum):
+class Learning_Process(Enum):
     TRAIN = "train"
     VALIDATION = "val"
     TEST = "test"
@@ -52,7 +51,7 @@ class System_Utils():
 
 class Tensor_Process():
     @staticmethod
-    def _Make_tensor(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = None, dtype: Type | None = None)-> Tensor:
+    def _Make_tensor(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = None, dtype: Type | None = None) -> Tensor:
         if isinstance(value, list):
             _max_value = max(*value)
             _min_value = min(*value)
@@ -107,7 +106,7 @@ class Tensor_Process():
         return Array_Process._Convert_from(_array, dtype=dtype)
 
     @staticmethod
-    def _Flatten(tensor: Tensor, is_minibatch= True):
+    def _Flatten(tensor: Tensor, is_minibatch=True):
         _shape = tensor.shape
         return tensor.reshape(_shape[0], -1) if is_minibatch else tensor.reshape(-1)
 
