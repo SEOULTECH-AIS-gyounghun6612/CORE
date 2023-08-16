@@ -160,7 +160,7 @@ class Model_Componant():
             def __init__(self, num_of_data: int, temperature: int = 10000, normalize=True, scale=None):
                 super().__init__()
                 self._is_normalize = normalize
-                
+
                 # make dimention term
                 self._dim_term = temperature ** (2 * (Tensor_Process._Arange(num_of_data) // 2) / num_of_data)
                 self._dim_term.requires_grad = False
@@ -204,7 +204,7 @@ class Model_Componant():
 
             def _Make_QKV(self, x: Tuple[Tensor, Tensor], **additional_parm) -> List[Tensor]:
                 return [x[0], x[1], x[1]]
-            
+
             def forward(self, x: Tuple[Tensor, Tensor], mask: Tensor | None = None, key_padding_mask: Tensor | None = None, **additional_parm):
                 _q, _k, _v = self._Make_QKV(x, **additional_parm)
                 _x, _map = self.attention(query=_q, key=_k, value=_v, attn_mask=mask, key_padding_mask=key_padding_mask)
@@ -215,7 +215,7 @@ class Model_Componant():
         class Self_Muiltihead(Muiltihead):
             def _Make_QKV(self, x: Tensor, **additional_parm) -> List[Tensor]:
                 return [x, x, x]
-            
+
             def forward(self, x: Tensor, mask: Tensor | None = None, key_padding_mask: Tensor | None = None, **additional_parm):
                 _q, _k, _v = self._Make_QKV(x, **additional_parm)
                 _x, _map = self.attention(query=_q, key=_k, value=_v, attn_mask=mask, key_padding_mask=key_padding_mask)
@@ -301,7 +301,7 @@ class Model_Componant():
                     mask: Tuple[Tensor | None, Tensor | None] = (None, None),
                     key_padding_mask: Tuple[Tensor | None, Tensor | None] = (None, None),
                     **additional_parm
-                ):
+            ):
                 if self._normalize_before:
                     # attention
                     _x = self._front_norm(x[0])
@@ -412,7 +412,7 @@ class Model_Componant():
             def __init__(self, model_type: int, is_pretrained: bool, is_trainable: bool):
                 super(Model_Componant.Backbone.Backbone_Module, self).__init__()
                 self._output_channel = []
-            
+
             def _Average_pooling(self, ouput: Tensor):
                 raise NotImplementedError
 
@@ -530,7 +530,7 @@ class Model_Componant():
 
             def forward(self, x):
                 return self._line(x)
-            
+
             def _Average_pooling(self, ouput: Tensor):
                 raise NotImplementedError
 
