@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 import time
 from math import log10, floor
 
-from ._Base import Directory, File, TYPE_JSON_KEYABLE, TYPE_JSON_WRITEABLE, TYPE_JSON_VALUEABLE
+from ._System import Path, File
 
 
 # -- DEFINE CONSTNAT -- #
@@ -34,7 +34,7 @@ class Config():
         """
         return asdict(self)
 
-    def _Convert_to_dict(self) -> Dict[str, TYPE_JSON_VALUEABLE]:
+    def _Convert_to_dict(self) -> Dict[str, File.Json.VALUEABLE]:
         """
         인자값을 json 파일에 기록 가능한 dictionary형 데이터로 변환하는 과정
 
@@ -52,14 +52,14 @@ class Config():
 
 class Project():
     def __init__(self, project_name: str, description: str, save_root: str):
-        self._project_name = project_name
-        self._description = description
-        self._save_root = self._Make_save_root(save_root)
+        self.project_name = project_name
+        self.description = description
+        self.save_root = self._Make_save_root(save_root)
 
     def _Make_save_root(self, save_root: str):
         _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
 
-        return Directory._Make(save_root, Directory._Divider.join([self._project_name, _working_day]))
+        return Path._Make_directory(save_root, Path._Join(_working_day, self.project_name))
 
 
 class Debuging():
@@ -152,13 +152,13 @@ class Debuging():
 
         -------------------------------------------------------------------------------------------
         """
-        _Annotation: TYPE_JSON_WRITEABLE = {}
-        _Data: TYPE_JSON_WRITEABLE = {}
+        _Annotation: File.Json.WRITEABLE = {}
+        _Data: File.Json.WRITEABLE = {}
 
-        def __init__(self, info: TYPE_JSON_WRITEABLE = {}):
+        def __init__(self, info: File.Json.WRITEABLE = {}):
             self._Insert(info, self._Annotation, True)
 
-        def _Insert(self, data: TYPE_JSON_WRITEABLE, save_point: TYPE_JSON_WRITEABLE, is_overwrite: bool = False):
+        def _Insert(self, data: File.Json.WRITEABLE, save_point: File.Json.WRITEABLE, is_overwrite: bool = False):
             for _key, _data in data.items():
                 # overwrite or _key not exist in save_point
                 if is_overwrite or _key not in save_point.keys():
@@ -175,7 +175,7 @@ class Debuging():
                         _slot = [save_point[_key], ]
                         save_point[_key] = _slot + _data if isinstance(_data, list) else _slot + [_data, ]
 
-        def _Pick(self, pick: Dict[TYPE_JSON_KEYABLE, Dict | List | None], access_point: TYPE_JSON_WRITEABLE):
+        def _Pick(self, pick: Dict[File.Json.KEYABLE, Dict | List | None], access_point: File.Json.WRITEABLE):
             _holder = {}
 
             for _key, _pick_info in pick.items():
@@ -199,15 +199,18 @@ class Debuging():
             return _holder
 
         def _Load(self, file_dir: str, file_name: str):
-            _save_pakage: dict[str, TYPE_JSON_WRITEABLE] = File._Json(file_dir, file_name)
+            _save_pakage: dict[str, File.Json.WRITEABLE] = File.Json._Read(file_name, file_dir)
 
             if _save_pakage is not None:
                 self._Insert(_save_pakage["annotation"], self._Annotation)
                 self._Insert(_save_pakage["data"], self._Data)
 
         def _Save(self, file_dir: str, file_name: str):
-            _save_pakage = {
+            _save_pakage: File.Json.WRITEABLE = {
                 "annotation": self._Annotation,
                 "data": self._Data}
 
-            File._Json(file_dir, file_name, is_save=True, data_dict=_save_pakage)
+            File.Json._Write(file_name, file_dir, _save_pakage)
+
+    class Visualize():
+        ...

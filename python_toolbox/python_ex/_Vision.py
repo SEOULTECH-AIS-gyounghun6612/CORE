@@ -10,62 +10,26 @@ Requirement
 """
 
 # Import module
+from __future__ import annotations
 from enum import Enum
-from typing import List, Union, Tuple
+from typing import List, Tuple
 from dataclasses import dataclass, field
 import cv2
+import numpy as np
+from numpy import ndarray
 
-if __package__ == "":
-    from python_ex._Base import File
-    from python_ex._Numpy import Array_Process, Image_Process, Np_Dtype, ndarray
-    import python_ex._Error as _e
-
-else:
-    from ._Base import File
-    from ._Numpy import Array_Process, Image_Process, Np_Dtype, ndarray
-    from . import _Error as _e
-
-_error_message = _e.Custom_error("AIS_utils", "_cv2")
+from ._System import Path, File
+from ._Array import Array_IO
 
 
-# -- DEFINE CONSTNAT -- #
-class Color_Option(Enum):
-    BGR = 0
-    RGB = 1
-    BGRA = 2
-    GRAY = 3
+class Format_of():
+    class Image(Enum):
+        BGR = cv2.IMREAD_COLOR
+        BGRA = cv2.IMREAD_UNCHANGED
+        GRAY = cv2.IMREAD_GRAYSCALE
 
-
-class CVT_option(Enum):
-    GRAY2BGR = 0
-    BGR2GRAY = 1
-    BGR2RGB = 2
-
-
-class Channel_Style(Enum):
-    Last = True
-    First = False
-
-
-class R_option(Enum):
-    ZtoFF = 0  # [0, 255]
-    ZtoO = 1  # [0, 1.0]
-
-
-class Image_direction(Enum):
-    Hight = 0
-    width = 1
-
-
-class Support_Image_Extension(Enum):
-    JPG = "jpg"
-    PNG = "png"
-    BMP = "bmp"
-
-
-class Support_Video_Extension(Enum):
-    MP4 = "mp4"
-    AVI = "avi"
+    class Codex(Enum):
+        MP4 = "DIVX"
 
 
 class Segmentation_Style(Enum):
@@ -73,273 +37,337 @@ class Segmentation_Style(Enum):
     COLOR_MAP = 1       # (h, w, 3)
     CLASSIFICATION = 2  # (h, w)
 
-# -- DEFINE CONFIG -- #
 
+@dataclass
+class Camera():
+    cam_id: int
+    image_size: List
+    intrinsic: ndarray
+    rectification: ndarray = np.eye(4)
 
-# -- Mation Function -- #
-class File_IO():
-    @staticmethod
-    def _Image_read(file_path: str, color_option: Color_Option = Color_Option.BGR) -> ndarray:
-        _exist, file_path = File._Extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
-
-        if not _exist:
-            raise ValueError(f"image file {file_path} not exist")
-
-        # data read
-        if color_option == Color_Option.BGR:
-            _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
-        elif color_option == Color_Option.GRAY:
-            _read_img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-        elif color_option == Color_Option.RGB:
-            _read_img = cv2.imread(file_path, cv2.IMREAD_COLOR)
-            _read_img = cv2.cvtColor(_read_img, cv2.COLOR_BGR2RGB)
-        elif color_option == Color_Option.BGRA:
-            # this code dosen't check it. if you wnat use it. check it output
-            _read_img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
-
-        return _read_img
-
-    @staticmethod
-    def _Image_write(file_path: str, image: ndarray):
-        _, file_path = File._Extension_check(file_path, [ext.value for ext in Support_Image_Extension], True)
-        cv2.imwrite(file_path, image)
-
-    # @staticmethod  # in later fix
-    # def _video_capture(location: str, is_file=False):
-    #     _location = Directory._make(location)
-    #     cap = cv2.VideoCapture(_location)
-    #     return cap
-
-    # @classmethod  # in later fix
-    # def _video_write(self, filename: str, video_size, frame=30):
-    #     video_format = filename.split("/")[-1].split(".")[-1]
-
-    #     if not _base.File._extension_check(video_format, self.VIDEO_EXT):
-    #         video_format = "avi"
-    #         filename += "avi" if filename[-1] == "." else ".avi"
-
-    #     _h, _w = video_size[:2]
-
-    #     if video_format == "avi":
-    #         fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-    #     elif video_format == "mp4":
-    #         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-
-    #     return cv2.VideoWriter(filename, fourcc, frame, (_w, _h))
-
-
-class Base_Process():
-    @staticmethod
-    def _Resize(image: ndarray, size: List[Union[int, float]]):
-        _h, _w = image.shape[:2]
-        _interpolation = cv2.INTER_AREA
-
-        # ratiol
-        if type(size[0]) == float and type(size[1]) == float:
-            if size[0] >= 1.0 or size[1] >= 1.0:
-                _interpolation = cv2.INTER_LINEAR
-            return cv2.resize(image, dsize=(0, 0), fx=size[1], fy=size[0], interpolation=_interpolation)
-
-        # absolute
-        elif type(size[0]) == int and type(size[1]) == int:
-            if size[0] >= _w or size[1] >= _h:
-                _interpolation = cv2.INTER_LINEAR
-            return cv2.resize(image, dsize=(size[1], size[0]), interpolation=_interpolation)
-
-        else:
-            return image
-
-    @staticmethod
-    def image_stack(images, channel_option: Channel_Style):
-        if channel_option.value:  # stack to last channel
-            _axis = -1
-        else:               # stack to first channel
-            _axis = 0
-        return Array_Process.stack(images, _axis)
-
-    @staticmethod
-    def channel_converter(image, channel_option: Channel_Style):
-        if channel_option.value:  # [w, h, c]
-            return Image_Process._conver_to_last_channel(image)
-        else:  # [c, w, h]
-            return Image_Process._conver_to_first_channel(image)
-
-    @staticmethod
-    def range_converter(image, form_range: R_option, to_range: R_option):
-        if form_range == R_option.ZtoO:
-            if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
-                return Array_Process._Convert_from(image * 0xff, dtype=Np_Dtype.UINT)
-            else:
-                return image
-        elif form_range == R_option.ZtoFF:
-            if to_range == R_option.ZtoO:  # convert to [0, 255] -> [0.0, 1.0]
-                return image / 0xFF
-            else:
-                return image
-
-    @staticmethod
-    def img_cvt(image, cvt_option: CVT_option):
-        if cvt_option == CVT_option.GRAY2BGR:
-            return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-        elif cvt_option == CVT_option.BGR2GRAY:
-            return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        elif cvt_option == CVT_option.BGR2RGB:
-            return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    @staticmethod
-    def filtering(image: ndarray, array):
-        if len(image.shape) > 2:
-            # color image
-            holder = Array_Process._Convert_from(image, dtype=Np_Dtype.UINT)
-            for _ch_ct in range(image.shape[-1]):
-                holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
-            return holder
-        else:
-            return cv2.filter2D(image, cv2.CV_64F, array)
-
-    @staticmethod
-    def padding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]], value: int):
+    def _world_to_img(self, tr_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, int | None] = (0, None)):
         """
-        padding
-            int  A              -> [top : A, bottom: A, left : A, right: A]\n
-            list [A, B]         -> [top : A, bottom: A, left : B, right: B]\n
-            list [A, B, C, D]   -> [top : A, bottom: B, left : C, right: D]\n
         """
-        # make holder -> in later add multi padding option
-        if isinstance(padding, int):
-            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
+        _extrict = self.rectification @ tr_to_cam
+        _points_on_cam = np.matmul(_extrict, points)
+        _projection: ndarray = np.matmul(self.intrinsic, _points_on_cam)
+
+        _z_min_limit, _z_max_limit = limit_z
+
+        _points_in_front = _projection[:, _projection[2] >= _z_min_limit]
+        _points_in_front = _points_in_front if _z_max_limit is None else _points_in_front[:, _points_in_front[2] < _z_max_limit]
+
+        _depth = _points_in_front[2]
+        if _z_min_limit == 0:
+            _depth[_depth == 0] = -1e-6
+
+        _u = np.round(_points_in_front[0, :] / _depth).astype(int)
+        _v = np.round(_points_in_front[1, :] / _depth).astype(int)
+
+        # filtering the point of that over the image size
+        _filter = (_v >= 0) * (_v < self.image_size[1]) * (_u >= 0) * (_u < self.image_size[0])
+
+        return _u[_filter], _v[_filter], _depth[_filter]
+
+    def _cam_to_world(self, pixel):
+        ...
+
+
+class Vision_IO(File.Basement):
+    class Image():
+        def __init__(self, save_dir: str) -> None:
+            Vision_IO._Path_check("", save_dir)  # If pass this code, save_dir is exist
+            self.save_dir = save_dir
+
+        def _Make_image_list(self):
+            _image_file_list = Path._Search(self.save_dir, Path.Type.FILE)
+            self.file_stream_list = [open(_file, "rb") for _file in _image_file_list]
+            self.image_file_list = _image_file_list
+
+        def _Read_data_in_list(self, id: int, data_format: Format_of.Image):
+            _file_stream = self.file_stream_list[id]
+            _encoded_img = Array_IO._Read_from_binary(_file_stream, np.uint8)
+            return cv2.imdecode(_encoded_img, data_format.value)
+
+    class Video():
+        class Capture():
+            def __init__(self, source_name: int | str, save_dir: str = ""):
+                # get capute source
+                if isinstance(source_name, int):
+                    _source = source_name
+                else:
+                    _, _source = Vision_IO._Path_check(source_name, save_dir, raise_error=True)
+
+                _cap = cv2.VideoCapture(_source)
+
+                if not _cap.isOpened():
+                    raise RuntimeError("Camera open failed!")
+
+                self.capture = _cap
+
+            def _Get_video_info(self):
+                _w = round(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+                _h = round(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                _fps = self.capture.get(cv2.CAP_PROP_FPS)
+
+                return _w, _h, _fps
+
+            def __call__(self):
+                _ret, _frame = self.capture.read()
+
+                if not _ret:
+                    self.capture.release()
+                    return False, None
+                else:
+                    return True, _frame
+
+        class Writer():
+            def __init__(self, img_size: Tuple[int, int], file_name: str, save_dir: str, video_codex: Format_of.Codex, frame: int):
+                _img_h, _img_w = img_size
+
+                # make the vidoe codex and string of ext
+                _ext = video_codex.name.lower()
+                _fourcc = cv2.VideoWriter.fourcc(*video_codex.value)
+
+                _, _file_path = Vision_IO._Path_check(file_name, save_dir, _ext)
+                self._writer = cv2.VideoWriter(_file_path, _fourcc, frame, (_img_w, _img_h))
+
+            def __call__(self, frame: ndarray):
+                self._writer.write(frame)
+
+            def _Close(self):
+                self._writer.release()
+
+
+class Vision_Toolbox():
+    @staticmethod
+    def _format_converter(image: ndarray):
+        return ...
+
+    @staticmethod
+    def _channel_converter(image: ndarray, convert_to_last_ch: bool = False):
+        _shape = image.shape
+
+        if len(_shape) == 2:
+            # [h, w] -> [h, w, 1] or [1, h, w]
+            return image[:, :, np.newaxis] if convert_to_last_ch else image[np.newaxis, :, :]
+
         else:
-            if len(padding) == 2:
-                # [hight_pad, width_pad]
-                _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
-            else:
-                # [top, bottom, left, right]
-                _t_pad, _b_pad, _l_pad, _r_pad = padding
+            # [h, w, c] -> [c, h, w] or [c, h, w] -> [h, w, c]
+            return np.moveaxis(image, 0, -1) if convert_to_last_ch else np.moveaxis(image, -1, 0)
 
-        _holder_shape = [_v for _v in image.shape]
-        _holder_shape[0] += _t_pad + _b_pad  # h padding
-        _holder_shape[1] += _l_pad + _r_pad  # w padding
+# class Base_Process():
+#     @staticmethod
+#     def _Resize(image: ndarray, size: List[Union[int, float]]):
+#         _h, _w = image.shape[:2]
+#         _interpolation = cv2.INTER_AREA
 
-        _holder = Array_Process._Make_array(_holder_shape, value=value, dtype=Np_Dtype.UINT)
+#         # ratiol
+#         if isinstance(size[0], float) and isinstance(size[1], float):
+#             if size[0] >= 1.0 or size[1] >= 1.0:
+#                 _interpolation = cv2.INTER_LINEAR
+#             return cv2.resize(image, dsize=(0, 0), fx=size[1], fy=size[0], interpolation=_interpolation)
 
-        _t_pad = _t_pad if _t_pad else None
-        _b_pad = -_b_pad if _b_pad else None
-        _l_pad = _l_pad if _l_pad else None
-        _r_pad = -_r_pad if _r_pad else None
+#         # absolute
+#         elif isinstance(size[0], int) and isinstance(size[1], int):
+#             if size[0] >= _w or size[1] >= _h:
+#                 _interpolation = cv2.INTER_LINEAR
+#             return cv2.resize(image, dsize=(size[1], size[0]), interpolation=_interpolation)
 
-        _holder[_t_pad: _b_pad, _l_pad: _r_pad] = image
+#         else:
+#             return image
 
-        return _holder
+#     @staticmethod
+#     def image_stack(images, channel_option: Channel_Style):
+#         if channel_option.value:  # stack to last channel
+#             _axis = -1
+#         else:               # stack to first channel
+#             _axis = 0
+#         return Custom_Array_Process.stack(images, _axis)
 
-    @staticmethod
-    def unpadding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]]):
-        # make holder -> in later add multi padding option
-        if isinstance(padding, int):
-            _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
-        else:  # isinstance(padding, list):
-            if len(padding) == 2:
-                # [hight_pad, width_pad]
-                _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
-            else:  # len(padding) == 4
-                # [top, bottom, left, right]
-                _t_pad, _b_pad, _l_pad, _r_pad = padding
+#     @staticmethod
+#     def channel_converter(image, channel_option: Channel_Style):
+#         if channel_option.value:  # [w, h, c]
+#             return Image_Process._conver_to_last_channel(image)
+#         else:  # [c, w, h]
+#             return Image_Process._conver_to_first_channel(image)
 
-        return image[_t_pad: -_b_pad, _l_pad: -_r_pad]
+#     @staticmethod
+#     def range_converter(image, form_range: R_option, to_range: R_option):
+#         if form_range == R_option.ZtoO:
+#             if to_range == R_option.ZtoFF:  # convert to [0.0, 1.0] -> [0, 255]
+#                 return Custom_Array_Process._Convert_from(image * 0xff, dtype=Np_Dtype.UINT)
+#             else:
+#                 return image
+#         elif form_range == R_option.ZtoFF:
+#             if to_range == R_option.ZtoO:  # convert to [0, 255] -> [0.0, 1.0]
+#                 return image / 0xFF
+#             else:
+#                 return image
 
-    class blur():
-        default = {
-            "gaussian": {
-                "ksize": (5, 5),
-                "sigmaX": 0
-            },
-            "bilateral": {
-                "d": -1,
-                "sigmaColor": 10,
-                "sigmaSpace": 5}}
+#     @staticmethod
+#     def img_cvt(image, cvt_option: CVT_Option):
+#         if cvt_option == CVT_Option.GRAY2BGR:
+#             return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+#         elif cvt_option == CVT_Option.BGR2GRAY:
+#             return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#         elif cvt_option == CVT_Option.BGR2RGB:
+#             return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        def __call__(self, image, style):
-            if style == "gaussian":
-                return cv2.GaussianBlur(image, **self.default[style])
-            elif style == "bilateral":
-                return cv2.bilateralFilter(image, **self.default[style])
+#     @staticmethod
+#     def filtering(image: ndarray, array):
+#         if len(image.shape) > 2:
+#             # color image
+#             holder = Custom_Array_Process._Convert_from(image, dtype=Np_Dtype.UINT)
+#             for _ch_ct in range(image.shape[-1]):
+#                 holder[:, :, _ch_ct] = Base_Process.filtering(image[:, :, _ch_ct], array)
+#             return holder
+#         else:
+#             return cv2.filter2D(image, cv2.CV_64F, array)
+
+#     @staticmethod
+#     def padding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]], value: int):
+#         """
+#         padding
+#             int  A              -> [top : A, bottom: A, left : A, right: A]\n
+#             list [A, B]         -> [top : A, bottom: A, left : B, right: B]\n
+#             list [A, B, C, D]   -> [top : A, bottom: B, left : C, right: D]\n
+#         """
+#         # make holder -> in later add multi padding option
+#         if isinstance(padding, int):
+#             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
+#         else:
+#             if len(padding) == 2:
+#                 # [hight_pad, width_pad]
+#                 _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
+#             else:
+#                 # [top, bottom, left, right]
+#                 _t_pad, _b_pad, _l_pad, _r_pad = padding
+
+#         _holder_shape = [_v for _v in image.shape]
+#         _holder_shape[0] += _t_pad + _b_pad  # h padding
+#         _holder_shape[1] += _l_pad + _r_pad  # w padding
+
+#         _holder = Custom_Array_Process._Make_array(_holder_shape, value=value, dtype=Np_Dtype.UINT)
+
+#         _t_pad = _t_pad if _t_pad else None
+#         _b_pad = -_b_pad if _b_pad else None
+#         _l_pad = _l_pad if _l_pad else None
+#         _r_pad = -_r_pad if _r_pad else None
+
+#         _holder[_t_pad: _b_pad, _l_pad: _r_pad] = image
+
+#         return _holder
+
+#     @staticmethod
+#     def unpadding(image: ndarray, padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]]):
+#         # make holder -> in later add multi padding option
+#         if isinstance(padding, int):
+#             _t_pad, _b_pad, _l_pad, _r_pad = [padding, padding, padding, padding]
+#         else:  # isinstance(padding, list):
+#             if len(padding) == 2:
+#                 # [hight_pad, width_pad]
+#                 _t_pad, _b_pad, _l_pad, _r_pad = [padding[0], padding[0], padding[1], padding[1]]
+#             else:  # len(padding) == 4
+#                 # [top, bottom, left, right]
+#                 _t_pad, _b_pad, _l_pad, _r_pad = padding
+
+#         return image[_t_pad: -_b_pad, _l_pad: -_r_pad]
+
+#     class blur():
+#         default = {
+#             "gaussian": {
+#                 "ksize": (5, 5),
+#                 "sigmaX": 0
+#             },
+#             "bilateral": {
+#                 "d": -1,
+#                 "sigmaColor": 10,
+#                 "sigmaSpace": 5}}
+
+#         def __call__(self, image, style):
+#             if style == "gaussian":
+#                 return cv2.GaussianBlur(image, **self.default[style])
+#             elif style == "bilateral":
+#                 return cv2.bilateralFilter(image, **self.default[style])
 
 
-class edge():
-    class gradient():
-        @staticmethod
-        def sobel(image: ndarray, is_euclid: bool = True):
-            if len(image.shape) > 2:
-                # color image
-                delta_holder = Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
-                direction_holder = Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
+# class edge():
+#     class gradient():
+#         @staticmethod
+#         def sobel(image: ndarray, is_euclid: bool = True):
+#             if len(image.shape) > 2:
+#                 # color image
+#                 delta_holder = Custom_Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
+#                 direction_holder = Custom_Array_Process._Make_array(image.shape[:2], 0, dtype=Np_Dtype.FLOAT)
 
-                for _ch_ct in range(image.shape[-1]):
-                    result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
-                    delta_holder += result[0]
-                    direction_holder += result[1]
+#                 for _ch_ct in range(image.shape[-1]):
+#                     result = edge.gradient.sobel(image[:, :, _ch_ct], is_euclid)
+#                     delta_holder += result[0]
+#                     direction_holder += result[1]
 
-                return delta_holder / 3, (direction_holder / 3).round()
-            else:
-                dx = Base_Process.filtering(image, Array_Process._Convert_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Np_Dtype.FLOAT))
-                dy = Base_Process.filtering(image, Array_Process._Convert_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Np_Dtype.FLOAT))
-                dxy = Image_Process._distance(dx, dy, is_euclid)
-                direction = Image_Process._gredient_direction(dx, dy)
-                return dxy, direction
+#                 return delta_holder / 3, (direction_holder / 3).round()
+#             else:
+#                 dx = Base_Process.filtering(image, Custom_Array_Process._Convert_from([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=Np_Dtype.FLOAT))
+#                 dy = Base_Process.filtering(image, Custom_Array_Process._Convert_from([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=Np_Dtype.FLOAT))
+#                 dxy = Image_Process._distance(dx, dy, is_euclid)
+#                 direction = Image_Process._gredient_direction(dx, dy)
+#                 return dxy, direction
 
-    @staticmethod
-    def gradient_to_edge(gradient: List[ndarray], threshold: Union[int, Tuple[int, int]] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
-        # gradient -> [delta, direction]
-        _delta = gradient[0]
-        _filterd = Array_Process.range_cut(Array_Process._Norm(_delta), threshold, "upper")
+#     @staticmethod
+#     def gradient_to_edge(gradient: List[ndarray], threshold: Union[int, Tuple[int, int]] = 1, is_edge_shrink: bool = True, is_active_map: bool = False):
+#         # gradient -> [delta, direction]
+#         _delta = gradient[0]
+#         _filterd = Custom_Array_Process.range_cut(Custom_Array_Process._Norm(_delta), threshold, "upper")
 
-        if is_edge_shrink:
-            _direction = gradient[1]
-            _edge = Image_Process._direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
-        else:
-            _edge = (_filterd != 0)
+#         if is_edge_shrink:
+#             _direction = gradient[1]
+#             _edge = Image_Process._direction_check(_delta * _filterd, _direction, [0, 1, 2, 3])
+#         else:
+#             _edge = (_filterd != 0)
 
-        return _edge if is_active_map else Array_Process._converter(0xFF * _edge, dtype=Np_Dtype.UINT)
+#         return _edge if is_active_map else Custom_Array_Process._converter(0xFF * _edge, dtype=Np_Dtype.UINT)
 
-    @staticmethod
-    def sobel(
-            image: ndarray,
-            threshold: Union[int, Tuple[int, int]] = (-1, 1),
-            is_euclid: bool = True,
-            is_edge_shrink: bool = True,
-            is_active_map: bool = False):
-        if len(image.shape) > 2:
-            # color image
-            holder = Array_Process._converter(image.shape[:2], is_shape=True, value=0, dtype=Np_Dtype.FLOAT)
-            for _ch_ct in range(image.shape[-1]):
-                holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
-            holder = (holder >= 2)
-            return holder if is_active_map else Array_Process._converter(0xFF * holder, dtype=Np_Dtype.UINT)
-        else:
-            dx = cv2.Sobel(image, -1, 1, 0, delta=128)
-            dy = cv2.Sobel(image, -1, 0, 1, delta=128)
+#     @staticmethod
+#     def sobel(
+#             image: ndarray,
+#             threshold: Union[int, Tuple[int, int]] = (-1, 1),
+#             is_euclid: bool = True,
+#             is_edge_shrink: bool = True,
+#             is_active_map: bool = False):
+#         if len(image.shape) > 2:
+#             # color image
+#             holder = Custom_Array_Process._Make_array(image.shape[:2], value=0, dtype=Np_Dtype.FLOAT)
+#             for _ch_ct in range(image.shape[-1]):
+#                 holder += edge.sobel(image[:, :, _ch_ct], threshold, is_euclid, is_edge_shrink, True)
+#             holder = (holder >= 2)
+#             return holder if is_active_map else Custom_Array_Process._Convert_from(0xFF * holder, dtype=Np_Dtype.UINT)
+#         else:
+#             dx = cv2.Sobel(image, -1, 1, 0, delta=128)
+#             dy = cv2.Sobel(image, -1, 0, 1, delta=128)
 
-            dxy = Image_Process._distance(dx, dy, is_euclid) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
-            _edge = Array_Process.range_cut(Array_Process._Norm(dxy), threshold, ouput_type="value")
+#             dxy = Image_Process._distance(dx, dy, is_euclid) if is_euclid else cv2.addWeighted(dx, 0.5, dy, 0.5, 0)
+#             _edge = Custom_Array_Process.range_cut(Custom_Array_Process._Norm(dxy), threshold, ouput_type="value")
 
-            if is_edge_shrink:
-                direction = Image_Process._gredient_direction(dx, dy)
-                _edge = Image_Process._direction_check(_edge, direction, [0, 1, 2, 3])
+#             if is_edge_shrink:
+#                 direction = Image_Process._gredient_direction(dx, dy)
+#                 _edge = Image_Process._direction_check(_edge, direction, [0, 1, 2, 3])
 
-            else:
-                _edge = (_edge != 0)
+#             else:
+#                 _edge = (_edge != 0)
 
-            return _edge if is_active_map else Array_Process._converter(0xFF * _edge, dtype=Np_Dtype.UINT)
+#             return _edge if is_active_map else Custom_Array_Process._Convert_from(0xFF * _edge, dtype=Np_Dtype.UINT)
 
-    @staticmethod
-    def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=Channel_Style.Last):
-        _high = ths[0]
-        _low = ths[1]
+#     @staticmethod
+#     def canny(gray_image, ths, k_size=3, range=R_option.ZtoFF, channel=Channel_Style.Last):
+#         _high = ths[0]
+#         _low = ths[1]
 
-        canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
-        if channel is not None:
-            canny_image = Base_Process.image_stack([canny_image, canny_image, canny_image], channel)
+#         canny_image = cv2.Canny(gray_image, _low, _high, k_size)  # [h, w]
+#         if channel is not None:
+#             canny_image = Base_Process.image_stack([canny_image, canny_image, canny_image], channel)
 
-        return Base_Process.range_converter(canny_image, R_option.ZtoFF, range)
+#         return Base_Process.range_converter(canny_image, R_option.ZtoFF, range)
 
 
 class gui_process():
@@ -488,3 +516,156 @@ class draw():
 
     #     def draw(self):
     #         pass
+
+# class Image_Process():
+#     @staticmethod
+#     def _Normalization(image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+#         _, _, _c = image.shape
+#         _norm_image = Custom_Array_Process._Make_array_like(image, 0, dtype=Np_Dtype.FLOAT)
+
+#         for _ct_c in range(_c):
+#             _norm_image[:, :, _ct_c] = ((image[:, :, _ct_c] / 255) - mean[_ct_c]) / std[_ct_c]
+
+#         return _norm_image
+
+#     @staticmethod
+#     def _Un_normalization(norm_image: ndarray, mean: List[float] = [0.485, 0.456, 0.40], std: List[float] = [0.229, 0.224, 0.225]):
+#         _, _, _c = norm_image.shape
+#         _denorm_image = Custom_Array_Process._Make_array_like(norm_image, 0, dtype=Np_Dtype.UINT)
+
+#         for _ct_c in range(_c):
+#             _denorm_image[:, :, _ct_c] = np.round(((norm_image[:, :, _ct_c] * std[_ct_c]) + mean[_ct_c]) * 255)
+
+#         return _denorm_image
+
+#     @staticmethod
+#     def _distance(delta_x: ndarray, delta_y: ndarray, is_euclid: bool):
+#         if is_euclid:
+#             return np.sqrt(np.square(delta_x, dtype=np.float32) + np.square(delta_y, dtype=np.float32), dtype=np.float32)
+#         else:
+#             return np.abs(delta_x, dtype=np.float32) + np.abs(delta_y, dtype=np.float32)
+
+#     @staticmethod
+#     def _gredient_direction(delta_x: ndarray, delta_y: ndarray, sector: int = 8, is_half_cut: bool = True):
+#         """
+#         if sector count is even (2n)
+#         +0 ~ +pi -> n sector, n block (size pi / n)
+#         -0 ~ -pi -> n sector, n block (size pi / n)
+
+#         if sector count is odd (2n + 1) => 2 * (2n + 1)
+#         +0 ~ +pi -> 2n + 1 sector, n block (size 2 * pi / (2n + 1)) -> left pi / (2n + 1)
+#         -0 ~ -pi -> 2m + 1 sector, n block (size 2 * pi / (2nm + 1)) -> left pi / (2n + 1)
+#         last one is left sector (2 * pi / (2n + 1))
+#         """
+#         _block = sector if sector % 2 else sector / 2
+#         _block_to_sector = 2 if sector % 2 else 1
+#         _term = _block_to_sector * np.pi / _block
+#         _bais = _term / 2
+
+#         # get theta
+#         theta = np.arctan2(delta_y, delta_x)
+
+#         if is_half_cut and not (sector % 2):
+#             theta = theta + np.pi * (theta < 0)
+#             sector = int(sector / 2)
+
+#         # theta convert to direction -> start in 180 dgree (clockwize)
+#         _tmp_holder = []
+#         _theta = theta.copy()
+#         for _ct in range(sector):
+#             _th = np.pi - (_bais + _term * _ct)
+#             _filterd = (_theta >= _th)
+#             _tmp_holder.append(_filterd)
+#             _theta = _theta - _theta * _filterd
+
+#         _tmp_holder[0] = np.logical_or(_tmp_holder[0], theta == _theta)
+#         _tmp_holder = Custom_Array_Process.stack(_tmp_holder)
+#         _direction = np.argmax(_tmp_holder, -1)
+
+#         return _direction
+
+#     @staticmethod
+#     def _image_shift(image: ndarray, direction: int, step_size: int = 1):
+#         holder = np.zeros_like(image)
+#         if direction == 0:
+#             holder[:, :-step_size] = image[:, step_size:]  # left
+#         elif direction == 1:
+#             holder[:-step_size, :-step_size] = image[step_size:, step_size:]  # left top
+#         elif direction == 2:
+#             holder[:-step_size, :] = image[step_size:, :]  # top
+#         elif direction == 3:
+#             holder[:-step_size, step_size:] = image[step_size:, :-step_size]  # right top
+#         elif direction == 4:
+#             holder[:, step_size:] = image[:, :-step_size]  # right
+#         elif direction == 5:
+#             holder[step_size:, step_size:] = image[:-step_size, :-step_size]  # right down
+#         elif direction == 6:
+#             holder[step_size:, :] = image[:-step_size, :]  # down
+#         elif direction == 7:
+#             holder[step_size:, :-step_size] = image[:-step_size, step_size:]  # left down
+
+#         return holder
+
+#     @staticmethod
+#     def _conver_to_last_channel(image: ndarray):
+#         img_shape = image.shape
+#         if len(img_shape) == 2:
+#             # gray iamge
+#             return image[:, :, np.newaxis]
+#         else:
+#             # else image
+#             divide_data = [image[ct] for ct in range(img_shape[0])]
+#             return Custom_Array_Process.stack(divide_data)
+
+#     @staticmethod
+#     def _conver_to_first_channel(image: ndarray):
+#         img_shape = image.shape
+#         if len(img_shape) == 2:
+#             # gray iamge
+#             return image[np.newaxis, :, :]
+#         else:
+#             # else image
+#             divide_data = [image[:, :, ct] for ct in range(img_shape[-1])]
+#             return Custom_Array_Process.stack(divide_data, 0)
+
+#     @staticmethod
+#     def _direction_check(object_data: ndarray, direction_array: ndarray, check_list: List[int], is_bidirectional: bool = True):
+#         filtered = np.zeros_like(object_data)
+#         for _direction in check_list:
+#             _tmp_direction_check = np.ones_like(object_data)
+#             _label = Image_Process._image_shift(object_data, _direction, 1)
+#             _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
+#             if is_bidirectional:
+#                 _label = Image_Process._image_shift(object_data, _direction + 4, 1)
+#                 _tmp_direction_check *= (object_data * (direction_array == _direction)) > _label
+
+#             filtered += _tmp_direction_check
+
+#         return filtered
+
+#     @staticmethod
+#     def _color_finder(image: ndarray, color_list: List[Union[int, Tuple[int, int, int]]]):
+#         _holder: List[ndarray] = []
+#         for _color in color_list:
+#             _finded = np.all((image == _color), 2) if isinstance(_color, list) else (image == _color)
+#             _holder.append(_finded)
+
+#         return _holder[0].astype(int) if len(_holder) == 1 else np.logical_or(*[data for data in _holder])
+
+#     @staticmethod
+#     def _classfication_resize(original: ndarray, size: List[int]):
+#         _new = Custom_Array_Process._Make_array(size + [original.shape[-1], ], 0)
+
+#         _pos = np.where(original == 1)
+#         _new_pos = []
+#         for _ct in range(len(_pos) - 1):
+#             _new_pos.append(np.round((size[_ct] - 1) * _pos[_ct] / original.shape[_ct]).astype(int))
+#         _new_pos.append(_pos[-1])
+
+#         _new[tuple(_new_pos)] = 1
+
+#         return _new
+
+#     # @staticmethod
+#     # def _string_to_img(string: str, shape: Union[Tuple[int, int], Tuple[int, int, int]]):
+#     #     return np.fromstring(string, dtype=np.uint8).reshape(shape)

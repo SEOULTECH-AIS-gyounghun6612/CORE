@@ -5,7 +5,8 @@ requirments_package = [
     'numpy',
     'opencv-python',
     'pyyaml',
-    'flake8']
+    'flake8',
+    'matplotlib']
 
 dependency_links = []
 package_opt = {}
