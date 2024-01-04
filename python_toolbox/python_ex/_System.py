@@ -150,7 +150,7 @@ class Path():
         _searched_list = []
 
         for _ext in _ext_list:
-            _searched_list += sorted(glob(_obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}"))
+            _searched_list += sorted(glob(Path._Join(_obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}", obj_path)))
 
         return _searched_list
 
