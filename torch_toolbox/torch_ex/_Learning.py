@@ -1,4 +1,7 @@
+from __future__ import annotations
 from typing import Dict, List, Tuple, Type, Any, Callable
+from dataclasses import dataclass, field
+
 from enum import Enum
 from collections import deque
 
@@ -11,581 +14,440 @@ from torch.multiprocessing.spawn import spawn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 
-from python_ex._Base import Directory, File
-from python_ex._Project import Debuging
+from python_ex._System import Path, File
+from python_ex._Project import Debuging, Config
 from python_ex._Vision import cv2
 
-from ._Base import Learning_Process, System_Utils
-from ._Dataset import Custom_Dataset_Process
-from ._Model_n_Optim import Model, Optim, _LRScheduler
+from ._Utils import System_Utils
+from ._Dataset import Data, Data_Config
+from ._Model_n_Optim import Model, Optim, Scheduler, Model_and_Optimizer_Config
 
 
 # -- DEFINE CONSTANT -- #
 MAIN_RANK: int = 0
 
 
-class Multi_Method(Enum):
-    AUTO = "Auto"
-    NOT_USE = "None"
-    DDP = "DistributedDataParallel"
-
-
 # -- Main code -- #
-class Learning_Process():
-    class Basement():
-        """
-        ### 모델 학습을 위한 기본 모듈
+class Learning():
+    class Mode(Enum):
+        TRAIN = "train"
+        VALIDATION = "val"
+        TEST = "test"
 
-        -------------------------------------------------------------------------------------------
-        ## Argument & Parameters
-        - project_name : 훈련이 진행되는 프로젝트 이름
-        - description : 훈련의 목적 및 세부 설명
-        - save_root : 훈련 과정 및 결과를 저장하기 위한 경로
-        - mode_list : 훈련에서 진행하고자 하는 과정 -> Train, Validation, Test
-        - max_epoch : 훈련에 적용하고자 하는 최대 epoch
-        - last_epoch : 훈련의 초기 epoch
-        -------------------------------------------------------------------------------------------
-        """
-        def __init__(self, project_name: str, description: str, result_root: str, mode_list: List[Learning_Process], max_epoch: int, last_epoch: int = -1):
-            self._project_name = project_name
-            self._description = description
-            self._result_root = result_root
+    @dataclass
+    class Dataloader_Config():
+        dataset_process: Data.Process.Basement
+        batch_size_per_node: int
+        num_worker_per_node: int
+        collate_fn: Callable | None = None
+        drop_last: bool = True
 
-            self._max_epoch = max_epoch
-            self._last_epoch = last_epoch
-            self._mode_list = mode_list
+        def _Get_dataloader(self, sampler: DistributedSampler | None = None):
+            return DataLoader(
+                dataset=self.dataset_process,
+                batch_size=self.batch_size_per_node,
+                num_workers=self.num_worker_per_node,
+                collate_fn=self.collate_fn,
+                sampler=sampler,
+                drop_last=self.drop_last
+            )
 
-            print(f"Set the Learning for {self._project_name}.\n Result of this Learing, save at {self._result_root}")
-            print("Set the basement of learning option.")
-            _process_text = f"This Learing work to at {self._max_epoch} epoch from {self._last_epoch + 1} epoch.\n"
-            _modelist_text = f"This learning process, that consist of {', '.join(_mode.value for _mode in self._mode_list[: -1])} and {self._mode_list[-1].value}.\n"
-            print(f"\t{_process_text}\n\t{_modelist_text}")
+    @dataclass
+    class Reward_Opt():
+        dataset_process: Data.Process.Basement
+        batch_size_per_node: int
+        num_worker_per_node: int
+        collate_fn: Callable | None = None
+        drop_last: bool = True
 
-        #  ----------------- #
-        def _Set_dataloader_option(
-            self,
-            dataset_process: Custom_Dataset_Process,
-            batch_size_per_node: int,
-            num_worker_per_node: int,
-            collate_fn: Callable | None = None,
-            display_term: int | float = 0.1
-        ):
+        def _Get_Dataloader(self, sampler: DistributedSampler | None):
+            return DataLoader(
+                dataset=self.dataset_process,
+                batch_size=self.batch_size_per_node,
+                num_workers=self.num_worker_per_node,
+                collate_fn=self.collate_fn,
+                sampler=sampler,
+                drop_last=self.drop_last
+            )
+
+    class Process():
+        class Basement():
             """
-            ### 훈련 데이터 설정 할당
+            ### 모델 학습을 위한 기본 모듈
 
             -------------------------------------------------------------------------------------------
-            ## Parameters
-                data_process (Custom_Dataset_Process)
-                    : 훈련용 데이터 생성 모듈
-                batch_size_per_node (int)
-                    : 학습 데이터의 mini batch 크기
-                num_worker_per_node (int)
-                    : 학습 데이터 생성 프로세서 할당 수
-
-            ## Returns
-                None
-
+            ## Argument & Parameters
+            - project_name : 훈련이 진행되는 프로젝트 이름
+            - description : 훈련의 목적 및 세부 설명
+            - save_root : 훈련 과정 및 결과를 저장하기 위한 경로
+            - max_epoch : 훈련에 적용하고자 하는 최대 epoch
+            - last_epoch : 훈련의 시작 epoch
+            - display_term : 훈련의 진행 사항 중간 보고 간격.
             -------------------------------------------------------------------------------------------
             """
-            # dataset
-            self._dataset = dataset_process
+            def __init__(self, project_name: str, description: str, result_root: str, max_epoch: int, last_epoch: int = -1, display_term: float | int = 0.1):
+                self.project_name = project_name
+                self.description = description
+                self.result_root = result_root
 
-            # dataloader
-            self._batch_size = batch_size_per_node
-            self._num_worker = num_worker_per_node
-            self._collate_fn = collate_fn
+                self.max_epoch = max_epoch
+                self.last_epoch = last_epoch
 
-            # debugging
-            _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
-            _result_dir = Directory._Divider.join([self._project_name, dataset_process._organization.__class__.__name__, _working_day])
-            self._result_root = Directory._Make(_result_dir, self._result_root)
-            self._display_term = display_term
+                self.display_term = display_term
 
-        def _Set_model_n_optim(
-            self,
-            model_structure: Type[Model],
-            model_option: Dict[str, Any],
-            optim_name: Optim.Supported,
-            initial_lr: float,
-            scheduler_name: Optim.Scheduler.Supported | None,
-            scheduler_option: Dict[str, Any],
-            weight_dir: str | None = None
-        ):
-            """
-            ### 훈련을 위한 모델과 Optimizer 설정
+                self.is_multi_gpu = False
+                self.multi_protocal = None
+                self.world_size = 1
 
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                model_structure ()
-                    : 훈련 대상 모델 class
-                model_option ()
-                    : 훈련 대상 모델 생성을 위한 입력 인자
-                optim_name (Suport_Optimizer)
-                    : 훈련에서 사용되는 Optimizer
-                initial_lr (float)
-                    : Optimizer 초기 학습 비율
-                schedule_name (float)
-                    : Optimizer의 학습 비율 변경에 사용되는 scheduler
-                schedule_option (float)
-                    : scheduler 생성을 위한 입력 인자
+                # debugging
+                _debug_process_text = f"Set the Learning for {project_name}.\n\n"
+                _debug_process_text += f"This Learing work to at {max_epoch} epoch from {last_epoch + 1} epoch.\n"
+                print(_debug_process_text)
 
-            ## Returns
-                None
+            #  ----------------- #
+            def _Set_dataloader_option(self, dataloader_opt_block: Dict[Learning.Mode, Learning.Dataloader_Config]):
+                """
+                ### 훈련 데이터 설정 할당
 
-            -------------------------------------------------------------------------------------------
-            """
-            self._model_structure = model_structure
-            self._model_option = model_option
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    data_process (Dataset_Process)
+                        : 훈련용 데이터 생성 모듈
+                    batch_size_per_node (int)
+                        : 학습 데이터의 mini batch 크기
+                    num_worker_per_node (int)
+                        : 학습 데이터 생성 프로세서 할당 수
 
-            self._optim_name = optim_name
-            self._initial_lr = initial_lr
+                ## Returns
+                    None
 
-            self._schedule_name = scheduler_name
-            self._schedule_option = scheduler_option
+                -------------------------------------------------------------------------------------------
+                """
+                # dataloader
+                self.mode_list: List[Learning.Mode] = list(dataloader_opt_block.keys())
+                self.dataloader_param = dataloader_opt_block
 
-            self._weight_dir = weight_dir
+                # set the save dir
+                _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
+                _trial_num = 0
+                while True:
+                    _result_dir = Path._Join([self.project_name, _working_day, f"trial_{_trial_num:0>3d}"], self.result_root)
+                    if not Path._Exist_check(_result_dir, Path.Type.DIRECTORY):
+                        break
+                    else:
+                        _trial_num += 1
 
-        def _Set_processer_option(
-            self,
-            multi_method: Multi_Method = Multi_Method.AUTO,
-            world_size: int = 2,
-            device_rank: int = 0,
-            max_gpu_count: int = 2,
-            multi_protocal: str | None = "tcp://127.0.0.1:10001"
-        ):
-            """
-            ### 멀티 프로세서 관련 설정
+                self.result_root = Path._Make_directory(_result_dir, self.result_root)
 
-            ### Set multi process setting
+                # debug the progress mode list in this learning
+                _debug_process_text = "This learning process, that consist of "
+                if len(self.mode_list) >= 2:
+                    _debug_process_text += f"{', '.join(_mode.value for _mode in self.mode_list[: -1])} and {self.mode_list[-1].value}.\n"
+                else:
+                    _debug_process_text = f"{self.mode_list[-1].value}.\n"
 
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                multi_method (Multi_Method)
-                    : 멀티 프로세서 활동 방법
-                world_size (int)
-                    : 훈련에 사용되는 전체 프로세서 갯수
-                device_rank (int)
-                    : 해당 코드를 실행 하고자 하는 단말장치의 식별번호 시작값
-                usable_gpus (List[Tuple[int, str]])
-                    : 학습에 사용가능한 GPU 리스트. 리스트에 각 데이터는 GPU 식별번호와 GPU 장치 이름으로 구성됨.
-                    : List of usable GPUs. Each data consists of a GPU ID and a GPU name
-                multi_protocal (str | None)
-                    : 다른 프로세서와 통신 설정
+                # debug the term of display for in process result
+                _debug_process_text += "Interim reporting on the process are conducted at "
+                if isinstance(self.display_term, float):
+                    _debug_process_text += f"intervals of {self.display_term} times the total length of each learning process.\n"
+                else:
+                    _debug_process_text += f"{self.display_term} intervals for each learning process.\n"
+                _debug_process_text = f"Result of this learing, save at root directory: {self.result_root}\n"
+                print(_debug_process_text)
 
-            ## Returns
-                None
+            def _Set_model_n_optim(
+                self,
+                model: Model,
+                optim: Optimizer,
+                scheduler: Scheduler.Basement | None
+            ):
+                """
+                ### 훈련을 위한 모델과 Optimizer 설정
 
-            -------------------------------------------------------------------------------------------
-            """
-            print("Set the multiprocess option.")
-            self._device_rank = device_rank
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    model ()
+                        : 
+                    optim (Optimizer)
+                        : 훈련에서 사용되는 Optimizer
+                    scheduler (float)
+                        : Optimizer의 학습 비율 변경에 사용되는 scheduler
 
-            _gpu_info = System_Utils.Cuda._Get_useable_gpu_list()
-            # self._gpu_info: List[Tuple[int, str]] = []
+                ## Returns
+                    None
 
-            if len(_gpu_info) >= 2 and multi_method is not Multi_Method.NOT_USE:  # can use gpu
-                print("In this learning session, using multi process.")
+                -------------------------------------------------------------------------------------------
+                """
+                self._model = model
+                self._optim = optim
+                self._scheduler = scheduler
+
+            def _Set_GPU_option(
+                self,
+                min_of_memory: float | int | None = None,
+                max_gpu_count: int = 1,
+                device_num: int = 0,
+                world_size: int = 1,
+                multi_protocal: str | None = "tcp://127.0.0.1:10001"
+            ):
+                """
+                ### 멀티 프로세서 관련 설정
+
+                ### Set multi process setting
+
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    gpu_count (List[Tuple[int, str]])
+                        : 해당 단말에서 사용하고자 하는 최대 GPU 개수
+                    device_rank (int)
+                        : 해당 코드를 실행 하고자 하는 단말장치의 식별번호 시작값
+                    world_size (int)
+                        : 훈련에 사용되는 전체 프로세서 갯수
+                    multi_protocal (str | None)
+                        : 다른 프로세서와 통신 설정
+
+                ## Returns
+                    None
+
+                -------------------------------------------------------------------------------------------
+                """
+                print("Set the multiprocess option.")
+                _gpu_info = System_Utils.Cuda._Get_gpu_list(min_of_memory)
+
+                assert _gpu_info, "Check the GPU"
+
+                if max_gpu_count > 2:
+                    self.is_multi_gpu = True
+
+                    self.world_size = world_size
+                    self.device_num = device_num
+                    self.multi_protocal = multi_protocal
+
+                    # in later check it for this code must need
+                    cv2.setNumThreads(0)
+                    cv2.ocl.setUseOpenCL(False)
+                    # in later check it for this code must need
+
+                print(f"In this learning session, {'using multi process' if self.is_multi_gpu else 'using single process'}.")
                 print("--------------------------------------------------")
-                if not multi_method.AUTO: _gpu_info = _gpu_info[:max_gpu_count]
-                self._gpu_info = []
 
-                for _gpu_id, _gpu_name in _gpu_info:
-                    print(f"\tGPU device {_gpu_id}: {_gpu_name}")
+                self._gpu_info: List[int] = []
+                for _gpu_name, _gpu_id, _, _, _ in _gpu_info[:max_gpu_count]:
+                    print(f"\tGPU device {_gpu_name}: {_gpu_id}")
                     self._gpu_info.append(_gpu_id)
                 print("--------------------------------------------------")
 
-                self._multi_method: Multi_Method = Multi_Method.DDP
-                self._multi_protocal = multi_protocal
-                self._world_size = world_size if world_size >= (device_rank + max_gpu_count) else (device_rank + max_gpu_count)
+            #  ----------------- #
+            def _Process_initialize(self):
+                ...
 
-                # set cv2 setting
-                cv2.setNumThreads(0)
-                cv2.ocl.setUseOpenCL(False)
-
-            else:
-                print("In this learning session, using single process.")
-                print("--------------------------------------------------")
-
-                assert len(_gpu_info), "THIS DEVICE CNA'T USE GPU. CHECK IT"
-                self._gpu_info = []
-
-                print(f"\tGPU device {_gpu_info[0][0]}: {_gpu_info[0][1]}")
-                self._gpu_info.append(_gpu_info[0][0])
-                print("--------------------------------------------------")
-
-                self._multi_method: Multi_Method = Multi_Method.NOT_USE
-                self._multi_protocal = None
-                self._world_size = 1
-
-        #  ----------------- #
-        def _Work(self):
-            """
-            ### 설정에 따른 훈련 진행
-
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                None
-
-            ## Returns
-                None
-
-            -------------------------------------------------------------------------------------------
-            """
-            if self._multi_method == Multi_Method.DDP:
-                _gpu_count = len(self._gpu_info)
-                spawn(self._Process, nprocs=_gpu_count)
-            else:
-                self._Process(process_num=0)
-
-        def _Process(self, process_num: int):
-            """
-            ### 각 프로세서 별 훈련 과정
-
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                processer_num (int)
-                    : 현재 장치에서 해당 훈련 과정에 할당된 프로세서 번호
-                share_block (multiprocessing.Queue | None)
-                    : 멀티 프로세서 사용시 각 결과를 교환하기 위한 공유 블럭
-
-            ## Returns
-                None
-
-            -------------------------------------------------------------------------------------------
-            """
-            # set processer infomation
-            _process_num = self._device_rank + process_num
-            _is_this_main = _process_num is MAIN_RANK
-            _gpu_info: int = self._gpu_info[process_num]
-
-            # set logger in learning
-            _logger_dir = Directory._Make(f"_rank_{_process_num}_gpu_{_gpu_info}", self._result_root)
-            _logger = SummaryWriter(_logger_dir)
-
-            # initialize model, optimizer, dataset and data process
-            _model, _model_name, _optim, _scheduler, _dataloader, _sampler = self._Process_init(_process_num, _gpu_info, _process_num)
-
-            # initialize parameter for best performing
-            # _best_epoch = 0
-            # _best_loss = float("inf")
-            # _best_acc = float("-inf")
-
-            # Do learning
-            for _epoch in range(self._last_epoch + 1, self._max_epoch):
-                _epoch_dir = System_Utils.Base._Make_dir(f"{_epoch}", self._result_root, _process_num)
-
-                for _active_mode in self._mode_list:
-                    _model.train() if _active_mode == Learning_Process.TRAIN else _model.eval()
-                    self._dataset._Set_active_mode_from(_active_mode)
-
-                    # When use sampler, shuffling
-                    if _sampler is not None: _sampler.set_epoch(_epoch)
-
-                    # Make save directory for each mode process
-                    _mode_dir = System_Utils.Base._Make_dir(_active_mode.value, _epoch_dir, _process_num)
-
-                    self._Learning_core((_epoch, _active_mode), _gpu_info, _dataloader, _model, _optim, _logger, _mode_dir, _is_this_main)
-
-                if _is_this_main: self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler)
-                if _scheduler is not None: _scheduler.step()
-
-                # save log file check
-                _logger.flush()
-
-            _logger.close()
-
-            print(f"Set Learning process for model {_model_name}is finish")
-            # print(f"best epoch is {_best_epoch}; loss {_best_loss}, acc {_best_acc}")
-
-        def _Process_init(
-            self,
-            process_num: int,
-            gpu_info: int,
-            this_rank: bool
-        ) -> tuple[DDP | Model, str, Optimizer, _LRScheduler | None, DataLoader, DistributedSampler | None]:
-            # initialize model, optimizer, dataset and data process
-            _model = self._model_structure(**self._model_option)
-            _model = _model.cuda(gpu_info)
-            _model_name = _model._model_name
-
-            _optim, _scheduler = Optim._build(
-                optim_name=self._optim_name,
-                model=_model,
-                initial_lr=self._initial_lr,
-                schedule_name=self._schedule_name,
-                last_epoch=self._last_epoch,
-                **self._schedule_option)
-
-            if (self._last_epoch + 1) and (self._weight_dir is not None):
-                _model, _optim, _scheduler = self._Load(self._weight_dir, _model_name, _model, _optim, _scheduler)
-            else:
-                self._last_epoch = -1
-
-            # initialize multi process or not
-            if self._multi_method == Multi_Method.DDP:  # Use DistributedDataParallel module for consist multi-process
-                distributed.init_process_group(backend="nccl", init_method=self._multi_protocal, world_size=self._world_size, rank=process_num)
-
-                _model = DDP(_model)
-                _sampler = DistributedSampler(self._dataset, rank=process_num)
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    collate_fn=self._collate_fn,
-                    sampler=_sampler,
-                    drop_last=True
-                )
-
-            else:  # not consist multi-process
-                _sampler = None
-                _dataloader = DataLoader(
-                    dataset=self._dataset,
-                    batch_size=self._batch_size,
-                    num_workers=self._num_worker,
-                    collate_fn=self._collate_fn,
-                    shuffle=True,
-                    drop_last=True
-                )
-
-            System_Utils.Base._Print(f"Set Learning model {_model_name}, optimizer, Dataset", this_rank)
-
-            return _model, _model_name, _optim, _scheduler, _dataloader, _sampler
-
-        def _Save(self, save_dir: str, file_name: str, model: Model | DDP, optim: Optimizer | None = None, schedule: _LRScheduler | None = None):
-            save(model.state_dict(), f"{save_dir}{file_name}_model.h5")
-
-            if optim is not None:
-                _optim_and_schedule = {
-                    "optimizer": optim.state_dict(),
-                    "schedule": None if schedule is None else schedule.state_dict()}
-                save(_optim_and_schedule, f"{save_dir}{file_name}_optim.h5")  # save optim and schedule state
-
-        def _Load(self, save_dir: str, file_name: str, model: Model, optim: Optimizer, schedule: _LRScheduler | None = None):
-            _save_dir = Directory._Divider_check(save_dir)
-            if File._Exist_check(_save_dir, f"{file_name}_model.h5"):
-                model.load_state_dict(load(f"{_save_dir}{file_name}_model.h5"))
-            else:
-                raise FileExistsError(f"model file _model.h5 is not exist in {save_dir}. Please check it")
-
-            if File._Exist_check(_save_dir, f"{file_name}_optim.h5"):
-                _optim_and_schedule = load(f"{_save_dir}{file_name}_optim.h5")
-                optim.load_state_dict(_optim_and_schedule["optimizer"])
-                if schedule is not None:
-                    schedule.load_state_dict(_optim_and_schedule["schedule"])
-
-            return model, optim, schedule
-
-        #  ----------------- #
-        def _Move_to_gpu(
-            self,
-            datas: Dict[str, Tensor],
-            gpu_info: int
-        ) -> Tuple[Tensor | List[Tensor], Tensor | List[Tensor] | None, int, Dict[str, Any]]:
-            raise NotImplementedError
-
-        def _Learning_core(
-            self,
-            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
-            gpu_info: int,
-            dataloader: DataLoader,
-            model: Model | DDP,
-            optim: Optimizer,
-            logger: SummaryWriter,
-            save_dir: str,
-            is_main_rank: bool
-        ):
-            raise NotImplementedError
-
-        def _Get_loss_n_observe_param(
-            self,
-            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
-            output: Tensor | List[Tensor],
-            label: Tensor | List[Tensor] | None,
-            logger: SummaryWriter,
-            save_dir: str | None = None,
-            **data_info
-        ) -> Tuple[Tensor, Dict[str, Tensor]]:
-            """
-            ### 모델의 출력 결과와 정답 이미지를 비교하여 훈련을 위한 loss 구성 및, 훈련 진행 정보를 생성.
-
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                output (Tensor | List[Tensor])
-                    : model을 통해 생성한 출력 결과
-
-                label (Tensor | List[Tensor])
-                    : 훈련 설정에 따라 구성된 Dataloader에서 생성된 라벨 데이터
-
-            ## Returns
-                loss (Tensor)
-                    : 모델 출력과 label 데이터를 기반으로 생성한 loss
-
-            -------------------------------------------------------------------------------------------
-            """
-            raise NotImplementedError
-
-        def _Progress_dispaly(
-            self,
-            learning_info: Tuple[int, Learning_Process],
-            progress_loss: float,
-            progress_observe_param: Dict[str, float],
-            spend_time: float,
-            data_size: int,
-            data_length: int,
-        ):
-            raise NotImplementedError
-
-    class E2E(Basement):
-        def _Learning_core(
-            self,
-            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
-            gpu_info: int,
-            dataloader: DataLoader,
-            model: Model | DDP,
-            optim: Optimizer,
-            logger: SummaryWriter,
-            save_dir: str,
-            is_main_rank: bool
-        ):
-            # learning info
-            _epoch, _mode = learning_info
-            # _batch_pool_size = len(dataloader)
-            _max_data_length = self._dataset.__len__()
-            _display_term = int(self._display_term * _max_data_length) if isinstance(self._display_term, float) else self._display_term
-            _this_count = 0
-
-            # initialize parameter for observing
-            _progress_loss = 0
-            _progress_observe_param: Dict[str, float] = {}
-            _display_milestone = 0
-            _start_time = Debuging.Time._Stemp()
-
-            for _datas in dataloader:
-                _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
-                _this_count += _data_size
-
-                if _mode == Learning_Process.TRAIN:  # for Train
-                    _output: Tensor | List[Tensor] = model(*_input_datas)
-                else:  # for validation
-                    with no_grad(): _output: Tensor | List[Tensor] = model(*_input_datas)
-
-                _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
-
-                # doing learning
-                if _mode == Learning_Process.TRAIN:  # for Train
-                    optim.zero_grad()
-                    _loss.backward()
-                    optim.step()
-
-                # update learning process observation
-                _progress_loss += _loss.item() * _data_size
-                for _param, _value in _observe_param.items():
-                    if _param in _progress_observe_param.keys():
-                        _progress_observe_param[_param] += _value.item()
-                    else:
-                        _progress_observe_param.update({_param: _value.item()})
-
-                if _this_count >= _display_milestone and is_main_rank:
-                    _display_milestone += _display_term
-                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
-
-            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss / _this_count, _epoch)
-            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value / _this_count, _epoch)
-
-    class Reinforcement(Basement):
-        def _Set_reinforcement_option(
-            self,
-            max_step: int,
-            exploration_rate: float,
-            exploration_discont: float,
-            exploration_minimum: float,
-            sequence_depth: int,
-            reward_discount: float,
-            memory_size: int,
-            memory_minimum: int,
-            reward_model: Callable
-        ):
-            """
-            ### 강화학습 훈련에 사용되는 주요 인자 설정
-
-            -------------------------------------------------------------------------------------------
-            ## Argument
-            - max_step : 강화학습에 사용되는 시나리오의 최대 크기
-            - exploration_rate : actor의 행동 중 탐험 비율
-            - exploration_discont : step 진행에 따른 actor의 행동 중 탐험비율 감소율
-            - exploration_minimum : step 진행에 따라 감소되는 행동 중 탐험비율의 최소치
-            - sequence_depth : 학습에 사용되는 시도 길이
-            - reward_discount : step 진행에 따른 actor의 행동 중 탐험비율 감소율
-            - memory_size : 훈련에서 사용되는 메모리 저장 최대 개수
-            - memory_threshold : 훈련이 시작되기 위한 저장된 메모리의 최소 개수
-
-            ## Returns
-                None
-
-            -------------------------------------------------------------------------------------------
-            """
-            self._max_step = max_step
-
-            # Parameter for exploration when make the action from actor output
-            self._exploration_rate = exploration_rate
-            self._exploration_discont = exploration_discont
-            self._exploration_minimum = exploration_minimum
-
-            # Parameter for replay
-            self._sequence_depth = sequence_depth
-            self._reward_discount = reward_discount
-            self._reaplay_memory = deque(maxlen=memory_size) if memory_size != -1 else deque(maxlen=1)
-            self._memory_minimum = memory_minimum
-
-            self._reward_model = reward_model
-
-        def _Learning_core(
-            self,
-            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
-            gpu_info: int,
-            dataloader: DataLoader,
-            model: Model | DDP,
-            optim: Optimizer,
-            logger: SummaryWriter,
-            save_dir: str,
-            is_main_rank: bool
-        ):
-            # learning info
-            _epoch, _mode = learning_info
-            # _batch_pool_size = len(dataloader)
-            _max_data_length = self._dataset.__len__()
-            _display_term = int(self._display_term * _max_data_length) if isinstance(self._display_term, float) else self._display_term
-            _this_count = 0
-
-            # initialize parameter for observing
-            _progress_loss = 0
-            _progress_observe_param = {}
-            _display_milestone = 0
-            _start_time = Debuging.Time._Stemp()
-
-            # doing learning
-            for _datas in dataloader:
-                _this_state, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
-                _this_count += _data_size
-                _is_done = False
-                _next_state = None
-
-                # step
-                for _ in range(self._max_step):
-                    if _mode == Learning_Process.TRAIN:  # for Train
-                        _output: Tensor | List[Tensor] = model(*_this_state)
-                    else:  # for validation or test
-                        with no_grad(): _output: Tensor | List[Tensor] = model(*_this_state)
-
-                    _next_state, _is_done = self._Step(_this_state, _output)
-                    with no_grad(): _next_output: Tensor | List[Tensor] = model(*_next_state)
-
-                    _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
-
-                    if _mode == Learning_Process.TRAIN:
+            def _Core_of_Learning(
+                self,
+                learning_info: Tuple[int, Learning.Mode],  # epoch, learning_mode
+                gpu_info: int,
+                data_info: Tuple[DataLoader, int],
+                model: Model | DDP,
+                optim: Optimizer,
+                logger: SummaryWriter,
+                save_dir: str,
+                is_main_rank: bool
+            ):
+                raise NotImplementedError
+
+            def _Process(self, num_of_p_d: int):
+                """
+                ### 각 프로세서 별 훈련 과정
+
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    num_of_p_d (int)
+                        : 현재 장치에서 해당 훈련 과정에 할당된 프로세서 번호
+                ## Returns
+                    None
+
+                -------------------------------------------------------------------------------------------
+                """
+                # set processer infomation
+                _num_of_p_l = self.device_num + num_of_p_d  # process number in total learning
+                _gpu_info: int = self._gpu_info[num_of_p_d]
+
+                # set logger in learning
+                _logger_dir = Path._Make_directory(f"process_{_num_of_p_l}", self.result_root)
+                _logger = SummaryWriter(_logger_dir)
+
+                # initialize model, optimizer
+                _model = self._model
+                _model = _model.cuda(_gpu_info)
+                _model_name = _model._model_name
+
+                _optim = self._optim
+                _scheduler = self._scheduler
+
+                # initialize dataset and data process
+                _dataloaders: Dict[Learning.Mode, Tuple[DataLoader, DistributedSampler | None, int]] = {}
+
+                if self.is_multi_gpu:  # Use DistributedDataParallel module for consist multi-process
+                    distributed.init_process_group(backend="nccl", init_method=self.multi_protocal, world_size=self.world_size, rank=_num_of_p_l)
+                    _model = DDP(_model)
+                    for _mode, _opt in self.dataloader_param.items():
+                        _this_sampler = DistributedSampler(_opt.dataset_process, rank=num_of_p_d)
+                        _dataloaders[_mode] = (_opt._Get_dataloader(_this_sampler), _this_sampler, _opt.dataset_process.__len__())
+
+                    return _model_name, _model, _optim, _scheduler, _dataloaders
+
+                else:
+                    for _mode, _opt in self.dataloader_param.items():
+                        _dataloaders[_mode] = (_opt._Get_dataloader(None), None, _opt.dataset_process.__len__())
+
+                System_Utils.Base._Print(f"Set Learning model {_model_name}, optimizer, Dataset", num_of_p_d)
+
+                # Do learning
+                for _epoch in range(self.last_epoch + 1, self.max_epoch):
+                    _epoch_dir = System_Utils.Base._Make_dir(f"{_epoch}", self.result_root, _num_of_p_l)
+
+                    for _active_mode in self.mode_list:
+                        self._model.train() if _active_mode == Learning.Mode.TRAIN else _model.eval()
+
+                        _dataloader, _this_sampler, _data_length = _dataloaders[_active_mode]
+
+                        # When use sampler, shuffling
+                        if _this_sampler is not None: _this_sampler.set_epoch(_epoch)
+
+                        # Make save directory for each mode process
+                        _mode_dir = System_Utils.Base._Make_dir(_active_mode.value, _epoch_dir, _process_num)
+
+                        self._Core_of_Learning((_epoch, _active_mode), _gpu_info, (_dataloader, _data_length), _model, _optim, _logger, _mode_dir, _process_num is MAIN_RANK)
+
+                    if not _process_num: self._Save(_epoch_dir, _model_name, _model, _optim, _scheduler)
+                    if _scheduler is not None: _scheduler.step()
+
+                    # save log file check
+                    _logger.flush()
+
+                _logger.close()
+
+                print(f"Set Learning process for model {_model_name}is finish")
+
+            def _Work(self):
+                """
+                ### 설정에 따른 훈련 진행
+
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    None
+
+                ## Returns
+                    None
+
+                -------------------------------------------------------------------------------------------
+                """
+                if self.is_multi_gpu:
+                    _gpu_count = len(self._gpu_info)
+                    spawn(self._Process, nprocs=_gpu_count)
+                else:
+                    self._Process(num_of_p_d=0)
+
+            #  ----------------- #
+            def _Move_to_gpu(
+                self,
+                datas: Dict[str, Tensor],
+                gpu_info: int
+            ) -> Tuple[Tensor | List[Tensor], Tensor | List[Tensor] | None, int, Dict[str, Any]]:
+                raise NotImplementedError
+
+            def _Get_loss_n_observe_param(
+                self,
+                learning_info: Tuple[int, Learning.Mode],  # epoch, learning_mode
+                output: Tensor | List[Tensor],
+                label: Tensor | List[Tensor] | None,
+                logger: SummaryWriter,
+                save_dir: str | None = None,
+                **data_info
+            ) -> Tuple[Tensor, Dict[str, Tensor]]:
+                """
+                ### 모델의 출력 결과와 정답 이미지를 비교하여 훈련을 위한 loss 구성 및, 훈련 진행 정보를 생성.
+
+                -------------------------------------------------------------------------------------------
+                ## Parameters
+                    output (Tensor | List[Tensor])
+                        : model을 통해 생성한 출력 결과
+
+                    label (Tensor | List[Tensor])
+                        : 훈련 설정에 따라 구성된 Dataloader에서 생성된 라벨 데이터
+
+                ## Returns
+                    loss (Tensor)
+                        : 모델 출력과 label 데이터를 기반으로 생성한 loss
+
+                -------------------------------------------------------------------------------------------
+                """
+                raise NotImplementedError
+
+            def _Progress_dispaly(
+                self,
+                learning_info: Tuple[int, Learning.Mode],
+                progress_loss: float,
+                progress_observe_param: Dict[str, float],
+                spend_time: float,
+                data_size: int,
+                data_length: int,
+            ):
+                raise NotImplementedError
+
+            def _Save(
+                self,
+                save_dir: str,
+                file_name: str
+            ):
+                raise NotImplementedError
+
+            def _Load(
+                self,
+                save_dir: str,
+                file_name: str
+            ):
+                raise NotImplementedError
+
+        class E2E(Basement):
+            def _Core_of_Learning(
+                self,
+                learning_info: Tuple[int, Learning.Mode],  # epoch, learning_mode
+                gpu_info: int,
+                data_info: DataLoader,
+                model: Model | DDP,
+                optim: Optimizer,
+                logger: SummaryWriter,
+                save_dir: str,
+                is_main_rank: bool
+            ):
+                # learning info
+                _epoch, _mode = learning_info
+                # _batch_pool_size = len(dataloader)
+                dataloader, _max_data_length = data_info
+                _display_term = int(self.display_term * _max_data_length) if isinstance(self.display_term, float) else self.display_term
+                _this_count = 0
+
+                # initialize parameter for observing
+                _progress_loss = 0
+                _progress_observe_param: Dict[str, float] = {}
+                _display_milestone = 0
+                _start_time = Debuging.Time._Stemp()
+
+                for _datas in dataloader:
+                    _input_datas, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
+                    _this_count += _data_size
+
+                    if _mode == Learning.Mode.TRAIN:  # for Train
+                        _output: Tensor | List[Tensor] = model(*_input_datas)
+                    else:  # for validation
+                        with no_grad(): _output: Tensor | List[Tensor] = model(*_input_datas)
+
+                    _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, _output, _label_data, logger, save_dir, **_data_info)
+
+                    # doing learning
+                    if _mode == Learning.Mode.TRAIN:  # for Train
                         optim.zero_grad()
                         _loss.backward()
-                        # self._average_gradients(model)
                         optim.step()
 
                     # update learning process observation
@@ -596,211 +458,258 @@ class Learning_Process():
                         else:
                             _progress_observe_param.update({_param: _value.item()})
 
-                    if _is_done:
-                        break
-                    else:
-                        # state update
-                        _this_state = _next_state
+                    if _this_count >= _display_milestone and is_main_rank:
+                        _display_milestone += _display_term
+                        self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
 
-                if _this_count >= _display_milestone and is_main_rank:
-                    _display_milestone += _display_term
-                    self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
+                logger.add_scalar(f"Loss/{_mode.value}", _progress_loss / _this_count, _epoch)
+                for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value / _this_count, _epoch)            
 
-            logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
-            for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)
+        class Reinforcement(Basement):
+            def _Set_exploration_option(
+                self,
+                max_step: int,
+                exploration_rate: float,
+                exploration_discont: float,
+                exploration_minimum: float,
+                sequence_depth: int,
+                reward_discount: float,
+                memory_size: int,
+                memory_minimum: int,
+                reward_model: Callable
+            ):
+                """
+                ### 강화학습 훈련에 사용되는 주요 인자 설정
 
-        def _Step(self, state: Tensor | List[Tensor], output: Tensor | List[Tensor]):
-            raise NotImplementedError
+                -------------------------------------------------------------------------------------------
+                ## Argument
+                - max_step : 강화학습에 사용되는 시나리오의 최대 크기
+                - exploration_rate : actor의 행동 중 탐험 비율
+                - exploration_discont : step 진행에 따른 actor의 행동 중 탐험비율 감소율
+                - exploration_minimum : step 진행에 따라 감소되는 행동 중 탐험비율의 최소치
+                - sequence_depth : 학습에 사용되는 시도 길이
+                - reward_discount : step 진행에 따른 actor의 행동 중 탐험비율 감소율
+                - memory_size : 훈련에서 사용되는 메모리 저장 최대 개수
+                - memory_threshold : 훈련이 시작되기 위한 저장된 메모리의 최소 개수
 
-        def _Get_loss_n_observe_param(
-            self,
-            learning_info: Tuple[int, Learning_Process],  # epoch, learning_mode
-            output: List[Tensor | List[Tensor]],
-            label: Tensor | List[Tensor] | None,
-            is_done: bool,
-            logger: SummaryWriter,
-            save_dir: str | None = None,
-            **data_info
-        ) -> Tuple[Tensor, Dict[str, Tensor]]:
-            raise NotImplementedError
+                ## Returns
+                    None
+
+                -------------------------------------------------------------------------------------------
+                """
+                self._max_step = max_step
+
+                # Parameter for exploration when make the action from actor output
+                self._exploration_rate = exploration_rate
+                self._exploration_discont = exploration_discont
+                self._exploration_minimum = exploration_minimum
+
+                # Parameter for replay
+                self._sequence_depth = sequence_depth
+                self._reward_discount = reward_discount
+                self._reaplay_memory = deque(maxlen=memory_size) if memory_size != -1 else deque(maxlen=1)
+                self._memory_minimum = memory_minimum
+
+                self._reward_model = reward_model
+
+            def _Core_of_Learning(
+                self,
+                learning_info: Tuple[int, Learning.Mode],  # epoch, learning_mode
+                gpu_info: int,
+                dataloader: DataLoader,
+                model: Model | DDP,
+                optim: Optimizer,
+                logger: SummaryWriter,
+                save_dir: str,
+                is_main_rank: bool
+            ):
+                # learning info
+                _epoch, _mode = learning_info
+                # _batch_pool_size = len(dataloader)
+                _max_data_length = self._dataset.__len__()
+                _display_term = int(self.display_term * _max_data_length) if isinstance(self.display_term, float) else self.display_term
+                _this_count = 0
+
+                # initialize parameter for observing
+                _progress_loss = 0
+                _progress_observe_param = {}
+                _display_milestone = 0
+                _start_time = Debuging.Time._Stemp()
+
+                # doing learning
+                for _datas in dataloader:
+                    _this_state, _label_data, _data_size, _data_info = self._Move_to_gpu(_datas, gpu_info)
+                    _this_count += _data_size
+                    _is_done = False
+                    _next_state = None
+
+                    # step
+                    for _ in range(self._max_step):
+                        if _mode == Learning.Mode.TRAIN:  # for Train
+                            _output: Tensor | List[Tensor] = model(*_this_state)
+                        else:  # for validation or test
+                            with no_grad(): _output: Tensor | List[Tensor] = model(*_this_state)
+
+                        _next_state, _is_done = self._Step(_this_state, _output)
+                        with no_grad(): _next_output: Tensor | List[Tensor] = model(*_next_state)
+
+                        _loss, _observe_param = self._Get_loss_n_observe_param(learning_info, [_output, _next_output], _label_data, _is_done, logger, save_dir, **_data_info)
+
+                        if _mode == Learning.Mode.TRAIN:
+                            optim.zero_grad()
+                            _loss.backward()
+                            # self._average_gradients(model)
+                            optim.step()
+
+                        # update learning process observation
+                        _progress_loss += _loss.item() * _data_size
+                        for _param, _value in _observe_param.items():
+                            if _param in _progress_observe_param.keys():
+                                _progress_observe_param[_param] += _value.item()
+                            else:
+                                _progress_observe_param.update({_param: _value.item()})
+
+                        if _is_done:
+                            break
+                        else:
+                            # state update
+                            _this_state = _next_state
+
+                    if _this_count >= _display_milestone and is_main_rank:
+                        _display_milestone += _display_term
+                        self._Progress_dispaly(learning_info, _progress_loss, _progress_observe_param, Debuging.Time._Stemp(_start_time), _this_count, _max_data_length)
+
+                logger.add_scalar(f"Loss/{_mode.value}", _progress_loss, _epoch)
+                for _param, _value in _progress_observe_param.items(): logger.add_scalar(f"{_param}/{_mode.value}", _value, _epoch)
+
+            def _Step(self, state: Tensor | List[Tensor], output: Tensor | List[Tensor]):
+                raise NotImplementedError
+
+            def _Get_loss_n_observe_param(
+                self,
+                learning_info: Tuple[int, Learning.Mode],  # epoch, learning_mode
+                output: List[Tensor | List[Tensor]],
+                label: Tensor | List[Tensor] | None,
+                is_done: bool,
+                logger: SummaryWriter,
+                save_dir: str | None = None,
+                **data_info
+            ) -> Tuple[Tensor, Dict[str, Tensor]]:
+                raise NotImplementedError
 
 
 class Learning_Config():
-    class uitls():
-        ...
+    @dataclass
+    class E2E(Config):
+        # learning information
+        # --- project option --- #
+        project_name: str = Directory._Relative_root(True)[:-len(Directory._Divider)]
+        description: str = ""
 
-    class E2E():
-        def __init__(self, file_name: str, file_dir: str = "./config/"):
-            _, self._file_name = File._Extension_check(file_name, ["json"], True)
-            self.file_dir = Directory._Divider_check(file_dir)
+        # --- e2e option --- #
+        max_epoch: int = 100
+        last_epoch: int = -1
+        result_root: str = "./runs/"
+        display_term: float | int = 0.1
 
-            self._options = self._Load()
+        # --- multi process option --- #
+        multi_method: str = "Auto"
+        world_size: int = 2
+        device_rank: int = 0
+        max_gpu_count: int = 2
+        multi_protocal: str = "tcp://127.0.0.1:10001"  # local
 
-        def _Set_default_option(self):
-            return {
-                # --- basement option --- #
-                "project_name": Directory._Relative_root(True)[:-len(Directory._Divider)],
-                "description": "",
-                "result_root": "./runs/",
-                "learning_plan": {
-                    "train": {
-                        "amplification": 1,
-                        "augmentations": [
-                            {
-                                "apply_method": "Albumentations",
-                                "output_size": [256, 256],
-                                # "rotate_limit": 0,
-                                # "hflip_rate": 0.0,
-                                # "vflip_rate": 0.0,
-                                # "is_norm": True,
-                                # "norm_mean": [0.485, 0.456, 0.406],
-                                # "norm_std": [0.229, 0.224, 0.225],
-                                # "apply_to_tensor": True,
-                                # "group_parmaeter": None
-                            }
-                        ]
-                    },
-                    "val": {
-                        "amplification": 1,
-                        "augmentations": [
-                            {
-                                "apply_method": "Albumentations",
-                                "output_size": [256, 256],
-                                # "rotate_limit": 0,
-                                # "hflip_rate": 0.0,
-                                # "vflip_rate": 0.0,
-                                # "is_norm": True,
-                                # "norm_mean": [0.485, 0.456, 0.406],
-                                # "norm_std": [0.229, 0.224, 0.225],
-                                # "apply_to_tensor": True,
-                                # "group_parmaeter": None
-                            }
-                        ]
-                    }
-                },
-                "max_epoch": 100,
-                "last_epoch": -1,
+        # --- addtional config option --- #
+        data_config_files : Dict[str, str | None] = field(
+            default_factory = lambda: ({
+                "train": "./config/dataset/dataloader.json",
+                "validation": "./config/dataset/dataloader.json",
+                "test": None
+            }
+        ))
+        model_config_file: str = "./config/model/model.json"  # model config file information
 
-                # --- dataloader option --- #
-                # dataset
-                "data_root": "./data/",
-                # "data_name": "",
-
-                # dataloader
-                "batch_size_per_node": 512,
-                "num_worker_per_node": 8,
-                "display_term": 0.01,
-
-                # --- scheduler option --- #
-                "optim_name": "Adam",
-                "scheduler_name": "Cosin_Annealing",
-                "term": 0.1,
-                "term_amp": 1,
-                "maximum": 0.0001,
-                "minimum": 0.00005,
-                "decay": 1,  # -> ?
-
-                # --- multi process option --- #
-                "multi_method": "Auto",
-                "world_size": 2,
-                "device_rank": 0,
-                "max_gpu_count": 2,
-                "multi_protocal": "tcp://127.0.0.1:10001"  # local
+        def _Param_for_laerning_process(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+            _learning_basement_opt = {
+                "project_name": self.project_name,
+            }
+            _learning_multi_opt= {
+                "multi_method": Learning.Multi_Method(self.multi_method),
+                "world_size": self.world_size,
+                "device_rank": self.device_rank,
+                "max_gpu_count": self.max_gpu_count,
+                "multi_protocal": self.multi_protocal
             }
 
-        def _Save(self, config_file: Dict[str, Any]):
-            File._Json(self.file_dir, self._file_name, True, config_file)
+            return _learning_basement_opt, _learning_multi_opt
 
-        def _Load(self):
-            if File._Exist_check(self.file_dir, self._file_name):
-                # load config
-                return File._Json(self.file_dir, self._file_name)
-            else:  # load template
-                print(f"config file {self.file_dir}{self._file_name} not exsit. \nyou must config data initialize before use it")
-                return self._Set_default_option()
+        def _Param_for_data_process(self) -> Dict[Learning.Mode, Learning.Dataloader_Config]:
+            # example
+            _dataloader_configs: Dict[Learning.Mode, Learning.Dataloader_Config] = {}
 
-        def _Make_learning_process(self, Learning_process: Type[Learning_Process.E2E]):
+            for _mode_name, _config_file in self.data_config_files.items():
+                if _config_file is not None:
+                    _mode = Learning.Mode(_mode_name)
+                    _dataset_config = Data_Config()
+                    _dataset_config._Load(*File._Extrect_file_name(_config_file, False))
+
+                    _dataset_name, _dataset_kwarg, _dataloader_kwarg = _dataset_config._Get_parameter()
+
+                    if _dataset_name in Data.Process.__class__.__dict__.keys():
+                        _dataloader_configs[_mode] = Learning.Dataloader_Config(
+                            Data.Process.__class__.__dict__[_dataset_name](mode=_mode, **_dataset_kwarg),
+                            collate_fn=None,
+                            **_dataloader_kwarg
+                        )
+
+            return _dataloader_configs
+
+        def _Get_model_n_optim_config(self) -> Tuple[Model, Optimizer, Scheduler.Basement | None]:
+            # example
+            _model_n_optim_config = Model_and_Optimizer_Config()
+            _model_n_optim_config._Load(*File._Extrect_file_name(self.model_config_file, False))
+
+            return _model_n_optim_config._Get_parameter(self.last_epoch)
+
+        def _Initialize_project(
+            self,
+            learning_process: Type[Learning.Process.E2E]
+        ):
             # Make learning process
-            _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
-            _learning_opt.update({"mode_list": [Learning_Process(_mode) for _mode in self._options["learning_plan"].keys()]})
-            _learning_process = Learning_process(**_learning_opt)
+            # --- make basement and set multi process parameter --- #
+            _learning_basement_opt, _learning_multi_opt = self._Param_for_laerning_process()
+            _learning_process = learning_process(**_learning_basement_opt)
+            _learning_process._Set_GPU_option(**_learning_multi_opt)
+ 
+            # --- set model process --- #
+            _learning_process._Set_model_n_optim(*self._Get_model_n_optim_config())
 
-            # set multi process
-            _processer_opt = dict((_key, self._options[_key]) for _key in ["world_size", "device_rank", "max_gpu_count", "multi_protocal"])
-            _processer_opt.update({"multi_method": Multi_Method(self._options["multi_method"])})
-            _learning_process._Set_processer_option(**_processer_opt)
-            _learning_process._Set_model_n_optim(**self._Make_model_n_optim_option())
-            _learning_process._Set_dataloader_option(**self._Make_dataloader_option())
+            # --- set dataloader process --- #
+            _learning_process._Set_dataloader_option(self._Param_for_data_process())
 
             return _learning_process
 
-        def _Make_model_info(self) -> Tuple[Type[Model], Dict[str, Any]]:
-            raise NotImplementedError
-
-        def _Make_model_n_optim_option(self) -> Dict[str, Any]:
-            _model_structure, _model_option = self._Make_model_info()
-            _scheduler_option = dict((_key, self._options[_key]) for _key in ["term_amp", "maximum", "minimum", "decay"])
-
-            _term = self._options["term"]
-            _scheduler_option.update({"term": round(self._options["max_epoch"] * _term) if isinstance(_term, float) else _term})
-
-            return {
-                "model_structure": _model_structure,
-                "model_option": _model_option,
-                "optim_name": Optim.Supported(self._options["optim_name"]),
-                "initial_lr": self._options["maximum"],
-                "scheduler_name": Optim.Scheduler.Supported.Cosin_Annealing,
-                "scheduler_option": _scheduler_option
-            }
-
-        def _Make_dataset_info(self) -> Custom_Dataset_Process:
-            raise NotImplementedError
-
-        def _Make_dataloader_option(self) -> Dict[str, Any]:
-            _dataloader_option = {"dataset_process": self._Make_dataset_info()}
-            _dataloader_option.update(dict((_key, self._options[_key]) for _key in ["batch_size_per_node", "num_worker_per_node", "display_term"]))
-            return _dataloader_option
-
+    @dataclass
     class Reinforcement(E2E):
-        def _Make_learning_process(self, Learning_process: type[Learning_Process.Reinforcement]):
-            # Make learning process
-            _learning_opt = dict((_key, self._options[_key]) for _key in ["project_name", "description", "result_root", "max_epoch", "last_epoch"])
-            _learning_opt.update({"mode_list": [Learning_Process(_mode) for _mode in self._options["learning_plan"].keys()]})
-            _learning_process = Learning_process(**_learning_opt)
+        # --- exploration option --- #
+        max_step: int = 1
+        exploration_rate: float = 0.0
+        exploration_discont: float = 0.0
+        exploration_minimum: float = 0.0
+        sequence_depth: int = 2
+        reward_discount: float = 0.9
+        memory_size: int = -1
+        memory_minimum: int = -1
 
-            # set multi process
-            _processer_opt = dict((_key, self._options[_key]) for _key in ["world_size", "device_rank", "max_gpu_count", "multi_protocal"])
-            _processer_opt.update({"multi_method": Multi_Method(self._options["multi_method"])})
-            _learning_process._Set_processer_option(**_processer_opt)
-            _learning_process._Set_model_n_optim(**self._Make_model_n_optim_option())
-            _learning_process._Set_dataloader_option(**self._Make_dataloader_option())
-            _learning_process._Set_reinforcement_option(**self._Make_reinforcement_opt())
+        # --- addtional config option --- #
+        reward_config_file: str = "./config/reward.json"  # reward config file information
 
-            return _learning_process
-
-        def _Set_default_option(self):
-            _opt = super()._Set_default_option()
-
-            _opt.update({
-                # --- reinforcement option --- #
-                "max_step": 1,
-                "exploration_rate": 0.0,
-                "exploration_discont": 0.0,
-                "exploration_minimum": 0.0,
-                "sequence_depth": 2,
-                "reward_discount": 0.9,
-                "memory_size": -1,
-                "memory_minimum": -1,
-            })
-
-            return _opt
-
-        def _Make_reward_model(self) -> Callable:
+        def _Get_parameter(self) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
             raise NotImplementedError
 
-        def _Make_reinforcement_opt(self) -> Dict[str, Any]:
-            _dataloader_option = {"reward_model": self._Make_reward_model()}
-            _dataloader_option.update(
-                dict((_key, self._options[_key]) for _key in [
-                    "max_step", "exploration_rate", "exploration_discont", "exploration_minimum", "sequence_depth", "reward_discount", "memory_size", "memory_minimum"]))
-            return _dataloader_option
+        def _Get_Reward_model_config(self, config_process: Type[Config]):
+            _file_dir, _file_name = File._Extrect_file_name(self.reward_config_file, False)
+
+            _reward_model_config = config_process()
+            _reward_model_config._Load(_file_name, _file_dir)
+            return _reward_model_config

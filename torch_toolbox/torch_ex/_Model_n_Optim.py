@@ -1,10 +1,11 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 
 from enum import Enum
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type, Dict, Any, Callable
 
 from python_ex._Base import TYPE_NUMBER
-from python_ex._Numpy import Random_Process
+from python_ex._Numpy import Random_Process, Np_Dtype
 
 from torch import Tensor
 import math
@@ -22,7 +23,7 @@ from torch.nn import LayerNorm
 from torch import optim
 from torch.optim.lr_scheduler import _LRScheduler
 
-from ._Base import Tensor_Process
+from python_ex._Project import Config
 
 
 class Model(Module):
@@ -48,22 +49,18 @@ class Model_Componant():
     def _Make_sequential(componant_list: List) -> Sequential:
         return Sequential(*componant_list)
 
-    @staticmethod
-    def _Make_weight(size: int | List[int], value: TYPE_NUMBER | List[TYPE_NUMBER], rand_opt: Random_Process = Random_Process.UNIFORM, dtype: Type | None = None):
-        return parameter.Parameter(Tensor_Process._Make_tensor(size, value, rand_opt, dtype))
-
-    class Linear(Module):
+    class Linear_Block(Module):
         def __init__(
             self,
             input_size: int,
             output_size: int,
             is_bias: bool = True,
-            normization: Module | None = None,
-            activate: Type | None = None
+            normization: Callable[..., Tensor] | None = None,
+            activate: Callable[..., Tensor] | None = None
         ):
-            super(Model_Componant.Linear, self).__init__()
+            super(Model_Componant.Linear_Block, self).__init__()
 
-            self._linear = Linear(input_size, output_size, is_bias)
+            self._linear: Callable[..., Tensor] = Linear(input_size, output_size, is_bias)
             self._norm = normization
             self._active = activate
 
@@ -73,7 +70,7 @@ class Model_Componant():
             _x = self._active(_x) if self._active is not None else _x
             return _x
 
-    class Conv1d(Module):
+    class Conv1d_Block(Module):
         def __init__(
             self,
             input_size: int,
@@ -85,12 +82,12 @@ class Model_Componant():
             dilation: int = 1,
             groups: int = 1,
             is_bias: bool = True,
-            normization: Module | None = None,
-            activate: Type | None = None
+            normization: Callable[..., Tensor] | None = None,
+            activate: Callable[..., Tensor] | None = None
         ):
-            super(Model_Componant.Conv1d, self).__init__()
+            super(Model_Componant.Conv1d_Block, self).__init__()
 
-            self._conv1D = Conv1d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
+            self._conv1D: Callable[..., Tensor] = Conv1d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
             self._norm = normization
             self._activate = activate
 
@@ -100,7 +97,7 @@ class Model_Componant():
             _x = self._activate(_x) if self._activate is not None else _x
             return _x
 
-    class Conv2d(Module):
+    class Conv2d_Block(Module):
         def __init__(
             self,
             input_size: int,
@@ -112,12 +109,12 @@ class Model_Componant():
             dilation: int | Tuple[int, int] = 1,
             groups: int = 1,
             is_bias: bool = True,
-            normization: Module | None = None,
-            activate: Type | None = None
+            normization: Callable[..., Tensor] | None = None,
+            activate: Callable[..., Tensor] | None = None
         ):
-            super(Model_Componant.Conv2d, self).__init__()
+            super(Model_Componant.Conv2d_Block, self).__init__()
 
-            self._conv2D = Conv2d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
+            self._conv2D: Callable[..., Tensor] = Conv2d(input_size, output_size, kernel, stride, padding, dilation, groups, is_bias, padding_mode)
             self._norm = normization
             self._activate = activate
 
@@ -137,12 +134,12 @@ class Model_Componant():
                 input_size: int,
                 output_size: int,
                 scale_factor: int = 2,
-                normization: Module | None = None,
-                activate: Type | None = None
+                normization: Callable[..., Tensor] | None = None,
+                activate: Callable[..., Tensor] | None = None
             ):
                 super().__init__()
 
-                self._conv_module = Model_Componant.Conv2d(input_size, output_size, 3, 1, 1, normization=normization, activate=activate)
+                self._conv_module = Model_Componant.Conv2d_Block(input_size, output_size, 3, 1, 1, normization=normization, activate=activate)
                 self._sampling = Upsample(scale_factor=scale_factor, mode="bilinear")
 
             def forward(self, x: Tensor) -> Tensor:
@@ -243,9 +240,9 @@ class Model_Componant():
                 self._back_norm = LayerNorm(input_dim)
 
                 self._linear_block = Model_Componant._Make_sequential([
-                    Model_Componant.Linear(input_dim, feadforward_dim, activate=activation),
+                    Model_Componant.Linear_Block(input_dim, feadforward_dim, activate=activation),
                     Dropout(drop_rate),
-                    Model_Componant.Linear(feadforward_dim, input_dim),
+                    Model_Componant.Linear_Block(feadforward_dim, input_dim),
                     Dropout(drop_rate)
                 ])
 
@@ -289,9 +286,9 @@ class Model_Componant():
                 self._back_norm = LayerNorm(input_dim)
 
                 self._linear_block = Model_Componant._Make_sequential([
-                    Model_Componant.Linear(input_dim, feadforward_dim, activate=activation),
+                    Model_Componant.Linear_Block(input_dim, feadforward_dim, activate=activation),
                     Dropout(drop_rate),
-                    Model_Componant.Linear(feadforward_dim, input_dim),
+                    Model_Componant.Linear_Block(feadforward_dim, input_dim),
                     Dropout(drop_rate)
                 ])
 
@@ -543,85 +540,115 @@ class Model_Componant():
 
 
 class Optim():
-    class Supported(Enum):
-        Adam = "Adam"
-
-    class Scheduler():
-        class Supported(Enum):
-            Cosin_Annealing = "Cosin_Annealing"
-
-        class Basement(_LRScheduler):
-            def __init__(
-                    self,
-                    optimizer: optim.Optimizer,
-                    term: int | List[int],
-                    term_amp: float,
-                    maximum: float,
-                    minimum: float,
-                    decay: float,
-                    last_epoch: int = -1) -> None:
-                self._Cycle: int = 0
-                self._Term = term  # int -> fixed term list[int] -> milestone
-                self._Term_amp = term_amp
-
-                self._Maximum = maximum
-                self._Minimum = minimum
-                self._Decay = decay
-
-                self._This_count: int = last_epoch
-                self._This_term: int = self._get_next_term()
-
-                super().__init__(optimizer, last_epoch)
-
-            # Freeze function
-            def _get_next_term(self):
-                if isinstance(self._Term, list):
-                    return self._Term[-1] if self._Cycle >= len(self._Term) else self._Term[self._Cycle]
-                else:
-                    return round(self._Term * (self._Term_amp ** self._Cycle))
-
-            def step(self, epoch: int | None = None):
-                if epoch is None:  # go to next epoch
-                    self.last_epoch += 1
-                    self._This_count += 1
-
-                    if self._This_count >= self._This_term:
-                        self._This_count = 0
-                        self._Cycle += 1
-                        self._This_term = self._get_next_term()
-
-                else:  # restore session
-                    while epoch >= self._This_term:
-                        epoch -= self._This_term
-                        self._Cycle += 1
-                        self._This_term = self._get_next_term()
-
-                    self._This_count = epoch
-
-                for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):  # type: ignore
-                    param_group['lr'] = lr
-
-            # Un-Freeze function
-            def get_lr(self):
-                return [self._Maximum for _ in self.base_lrs]  # type: ignore
-
-        class Cosin_Annealing(Basement):
-            def get_lr(self):
-                _amp = (1 + math.cos(math.pi * (self._This_count) / (self._This_term))) / 2
-                _value = self._Minimum + (self._Maximum - self._Minimum) * _amp
-                return [_value for _ in self.base_lrs]  # type: ignore
-
     @staticmethod
-    def _build(
-        optim_name: Supported,
-        model: Module,
-        initial_lr: float,
-        schedule_name: Scheduler.Supported | None,
-        last_epoch: int = -1,
-        **additional_parameter
-    ) -> Tuple[optim.Optimizer, _LRScheduler | None]:
+    def _Get_optimizer(optim_name:str, model: Model, initial_lr:float) -> optim.Optimizer:
+        if optim_name in optim.__dict__.keys():
+            return optim.__dict__[optim_name](model.parameters(), initial_lr)
+        else:
+            raise ValueError(f"optimizer {optim_name} is not exist in pytorch")
 
-        _optim = optim.__dict__[optim_name.value](model.parameters(), initial_lr)
-        _scheduler = Optim.Scheduler.__dict__[schedule_name.value](_optim, last_epoch=last_epoch, **additional_parameter) if schedule_name is not None else None
 
-        return _optim, _scheduler
+class Scheduler():
+    class Basement(_LRScheduler):
+        def __init__(
+            self,
+            optimizer: optim.Optimizer,
+            term: int | List[int],
+            term_amp: float,
+            maximum: float,
+            minimum: float,
+            decay: float,
+            last_epoch: int = -1
+        ) -> None:
+            self._Cycle: int = 0
+            self._Term = term  # int -> fixed term list[int] -> milestone
+            self._Term_amp = term_amp
+
+            self._Maximum = maximum
+            self._Minimum = minimum
+            self._Decay = decay
+
+            self._This_count: int = last_epoch
+            self._This_term: int = self._get_next_term()
+
+            super().__init__(optimizer, last_epoch)
+
+        # Freeze function
+        def _get_next_term(self):
+            if isinstance(self._Term, list):
+                return self._Term[-1] if self._Cycle >= len(self._Term) else self._Term[self._Cycle]
+            else:
+                return round(self._Term * (self._Term_amp ** self._Cycle))
+
+        def step(self, epoch: int | None = None):
+            if epoch is None:  # go to next epoch
+                self.last_epoch += 1
+                self._This_count += 1
+
+                if self._This_count >= self._This_term:
+                    self._This_count = 0
+                    self._Cycle += 1
+                    self._This_term = self._get_next_term()
+
+            else:  # restore session
+                while epoch >= self._This_term:
+                    epoch -= self._This_term
+                    self._Cycle += 1
+                    self._This_term = self._get_next_term()
+
+                self._This_count = epoch
+
+            for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):  # type: ignore
+                param_group['lr'] = lr
+
+        # Un-Freeze function
+        def get_lr(self):
+            return [self._Maximum for _ in self.base_lrs]  # type: ignore
+
+    class Cosin_Annealing(Basement):
+        def get_lr(self):
+            _amp = (1 + math.cos(math.pi * (self._This_count) / (self._This_term))) / 2
+            _value = self._Minimum + (self._Maximum - self._Minimum) * _amp
+            return [_value for _ in self.base_lrs]  # type: ignore
+
+
+@dataclass
+class Model_and_Optimizer_Config(Config):
+    # about model
+    model_structure: str = ""
+    model_option: Dict[str, Any] = field(
+        default_factory = lambda: ({
+            "train": "./config/dataset/dataloader.json",
+            "validation": "./config/dataset/dataloader.json",
+            "test": None
+        }
+    ))
+
+    # about optim
+    optim_name: str = "Adam"
+    initial_learning_rate: float = 0.0001
+    schedule_structure: str | None = "Cosin_Annealing"
+    schedule_option: Dict[str, Any] = field(
+        default_factory = lambda: ({
+            "train": "./config/dataset/dataloader.json",
+            "validation": "./config/dataset/dataloader.json",
+            "test": None
+        }
+    ))
+
+    def _Make_model_structure(self) -> Type[Model]:
+        raise NotImplementedError
+
+    def _Make_schedule_structure(self) -> Type[Scheduler.Basement]:
+        if self.schedule_structure == "Cosin_Annealing":
+            return Scheduler.Cosin_Annealing
+        else:
+            raise ValueError(f"scheduler {self.schedule_structure} is not supported")
+
+    def _Get_parameter(self, last_epoch: int):
+        _model = self._Make_model_structure()(**self.model_option)
+
+        _optim = Optim._Get_optimizer(self.optim_name, _model, self.initial_learning_rate)
+        _scheduler = None if self.schedule_structure is None else self._Make_schedule_structure()(_optim, last_epoch=last_epoch, **self.schedule_option)
+
+        return _model, _optim, _scheduler

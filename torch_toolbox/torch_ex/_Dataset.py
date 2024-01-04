@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import Tuple, Dict, List, Any, Generator
+from typing import Tuple, Dict, List, Any, Type
+from dataclasses import dataclass, field, asdict
+import operator
+import itertools
+
 from enum import Enum
 from math import pi, cos, sin, ceil
-from dataclasses import dataclass
 from random import randrange, random
 
-from numpy import ndarray
+from numpy import ndarray, array
 
 from torch import Tensor, tensor, zeros, min, all
 from torch.utils.data import Dataset
@@ -16,40 +19,61 @@ from albumentations.pytorch import ToTensorV2
 
 from torchvision.transforms import functional as F
 
-from python_ex._Base import Directory, File
+from python_ex._System import File
+from python_ex._Project import Config
 
-from torch_ex._Base import Learning_Process
+
+class Utils():
+    class Masked_Image_Tensor():
+        def __init__(self, images: List[Tensor]):
+            _shape_array: ndarray = array([image.shape for image in images])
+            _b_size = _shape_array.shape[0]
+            _max_shape: ndarray = _shape_array.max(axis=0)
+
+            # make image tensor
+            _holder = zeros((_b_size,) + tuple(_max_shape))
+            _mask = zeros((_b_size,) + tuple(_max_shape)[:-1])
+
+            for _ct, _img in enumerate(images):
+                _h, _w, _ = _shape_array[_ct]
+                _holder[_ct, : _h, : _w] = _img
+                _mask[_ct, : _h, : _w] = False
+
+            self.t_image = _holder
+            self.t_mask = _mask[:, :, :, None]
+            self.t_shape = tensor(_shape_array)[:, :2, None]
+
+        def to(self, device):
+            self.t_image.to(device)
+            self.t_mask.to(device)
+            self.t_shape.to(device)
+
+        def cuda(self, gpu_id):
+            self.t_image.cuda(gpu_id)
+            self.t_mask.cuda(gpu_id)
+            self.t_shape.cuda(gpu_id)
+            return self
+
+        def decompose(self):
+            return self.t_image, self.t_mask, self.t_shape
+
+        def __repr__(self):
+            return str(self.t_image)
 
 
 class Label():
     '''
-    라벨과 관련데 일련의 처리 과정을 위한 모듈
-
-    - ```Style``` : 처리 가능한 라벨의 스타일과 그에 따른 라벨 데이터 구조를 명시
-    - ```Structure``` : 라벨 데이터 구조를 명시
-    - ```Organization``` : 라벨 정보 파일을 읽고, 라벨 데이터 구조를 생성
-
-
+    라벨과 관련된 일련의 처리 과정을 위한 모듈
     -------------------------------------------------------------------------------------------
     '''
     class Style(Enum):
-        '''
-        라벨의 스타일에 따른 라벨 데이터 구조 맵핑
-
-        각 라벨의 스타일에 따라 매칭되는 라벨 데이터 구조는 아래와 같음
-        - ```Style.CLASSIFICATION``` -> ```Label.Classification```
-        - ```Style.SEMENTIC``` -> ```Label.Mask```
-
-        -------------------------------------------------------------------------------------------
-        '''
-
         CLASSIFICATION = "classification"
         SEMENTIC = "sementic"
         INSTANCES = "instances"
         KEY_POINTS = "key_Points"
 
     class Structure():
-        @dataclass
+        @dataclass(order=True)
         class Label_Base():
             '''
             라벨 데이터 자료 기본 구조
@@ -66,7 +90,7 @@ class Label():
                 평가 인자 계산 과정 중 포함 여부
             name :
                 객체 이름
-            class_info :
+            value :
                 객체 구분 정보
 
             ----------
@@ -76,305 +100,32 @@ class Label():
             cateogry: str
             ignore_in_eval: bool
             name: str
-            class_info: Any
+            value_of_label: Any
 
-        @dataclass
+        @dataclass(order=True)
         class Classification(Label_Base):
-            class_info: str
+            value_of_label: str
 
-        @dataclass
+        @dataclass(order=True)
         class Mask(Label_Base):
-            class_info: List[int]
+            value_of_label: List[int]
 
-    class Organization():
-        '''
+    @staticmethod
+    def _Read_label_data(label_file: str, label_dir: str, label_structure: Type[Label.Structure.Label_Base]) -> List[Label.Structure.Label_Base]:
+        _label_type: str = label_structure.__name__.lower()
+        return [label_structure(**_data) for _data in File.Json._Read(label_file, label_dir)[_label_type]]
 
-        -------------------------------------------------------------------------------------------
-        '''
-        class Basement():
-            '''
-            라벨 처리 기본 구조
+    @staticmethod
+    def _Write_label_data(label_file: str, label_dir: str, label_data: List[Label.Structure.Label_Base]):
+        _label_type: str = label_data[0].__class__.__name__.lower()
 
-            ----------
-            ### Parameters
-            - active_style : 주어진 라벨 정보 파일을 통해 표현하려는 라벨 스타일
-            - label_dir : 라벨 정보 파일의 디렉토리
-            - label_file : 라벨 정보 파일 이름
-
-            ----------
-            ### Attributes
-            _active_label :
-                주어진 라벨 스타일을 바탕으로 구성한 라벨 데이터 구조
-
-            ----------
-            '''
-            def __init__(self, label_dir: str = "", label_file: str = ""):
-                # Get label data
-                self._meta_data = self._Load_from_file(label_dir, label_file)
-
-                self._active_label: Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]] = {}
-
-            def _Save_to_file(self, label_dir: str, label_file: str):
-                raise NotImplementedError
-
-            def _Load_from_file(self, label_dir: str = "", label_file: str = ""):
-                if File._Exist_check(label_dir, label_file):
-                    return File._Json(file_dir=label_dir, file_name=label_file)
-                else:
-                    assert self.__class__.__name__ != "Basement"
-
-                    _default_dir = f"{Directory._Devide(__file__)[0]}data_file{ Directory._Divider}"
-                    _default_file_name = f"{self.__class__.__name__}.json"
-
-                    return File._Json(_default_dir, _default_file_name)
-
-            # Freeze function
-            def _Make_active_label(self, active_style: List[Label.Style]) -> Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]]:
-                '''
-
-
-                ----------
-                ### Parameters
-                active_style :
-                    주어진 라벨 정보 파일을 통해 표현하려는 라벨 스타일
-                label_data :
-                    라벨 구조를 구성하기 위한 정보 데이터
-
-                ----------
-                ### Return
-                active_label :
-                    주어진 라벨 스타일을 바탕으로 구성한 라벨 데이터 구조
-
-                ----------
-                '''
-                _holder: Dict[Label.Style, Dict[int, List[Label.Structure.Label_Base]]] = {}
-
-                for _style in active_style:
-                    _holder.update({_style: {}})
-
-                    if _style in [Label.Style.SEMENTIC]:
-                        _key = "Mask"
-                    else:
-                        _key = "Classification"
-
-                    _labels: Generator[Label.Structure.Label_Base, None, None] = (Label.Structure.__dict__[_key](**data) for data in self._meta_data[_key])
-
-                    for _label in _labels:
-                        _holder[_style].update({
-                            _label.train_num: _holder[_style][_label.train_num] + [_label, ] if _label.train_num in _holder[_style].keys() else [_label, ]
-                        })
-
-                return _holder
-
-            def _Pick_label(self, style: Label.Style, train_num: int | List[int]):
-                if isinstance(train_num, int):
-                    return self._active_label[style][train_num]
-
-                else:
-                    return [self._active_label[style][_ct] for _ct in train_num]
-
-        class Cityscape(Basement):
-            ...
-
-        class BDD_100k(Basement):
-            ...
-
-        class COCO(Basement):
-            ...
-
-
-class Data():
-    class Format(Enum):
-        image = "image"
-        colormaps = "colormaps"
-        polygons = "polygons"
-        annotations = "annotations"
-
-    class Organize():
-        class Basement():
-            """
-            ### 데이터 증폭을 위한 변형 설정
-
-            -------------------------------------------------------------------------------------------
-            ## Parameters
-                root_dir (str)
-                    :
-                mode: (List[Process_Name])
-                    :
-                data_format: (List[Tuple[Label.Style | None, Target.Format]])
-                    :
-                label_meta_file: (str | None)
-                    :
-            -------------------------------------------------------------------------------------------
-            """
-            _active_mode: Learning_Process = Learning_Process.TRAIN
-
-            def __init__(
-                self,
-                root_dir: str,
-                mode_list: List[Learning_Process],
-                data_info: List[Tuple[Label.Style | None, Data.Format]],
-                label_process: Label.Organization.Basement | None
-            ):
-                # set learning info
-                self._apply_mode = mode_list
-                # data root dir
-                self._root_dir = root_dir
-                # called data info
-                self._data_info = data_info
-
-                # make label style in label info
-                self._label = self._Label_update(label_process) if label_process is not None else {}
-
-                # make data_blocks
-                self._all_data = self._Make_data_block(mode_list, data_info)
-
-                self._Set_active_mode_from(mode_list[0])
-
-            def __len__(self):
-                return self._this_data[-1].__len__()
-
-            def _Set_active_mode_from(self, mode: Learning_Process):
-                if mode in self._apply_mode:
-                    self._this_data = self._all_data[mode]
-                else:
-                    pass  # in later, warning coment here!
-
-            def _Label_update(self, label_process: Label.Organization.Basement):
-                return label_process._Make_active_label([_data[0] for _data in self._data_info if _data[0] is not None])
-
-            def _Make_data_block(self, mode_list: List[Learning_Process], data_info: List[Tuple[Label.Style | None, Data.Format]]) -> Dict[Learning_Process, List[List]]:
-                raise NotImplementedError
-
-            def _Pick_up(self, num: int) -> Dict[str, Any]:
-                raise NotImplementedError
-
-        class BDD_100k(Basement):
-            def __init__(
-                self,
-                root_dir: str,
-                mode_list: List[Learning_Process],
-                data_info: List[Tuple[Label.Style | None, Data.Format]],
-                label_process: Label.Organization.Basement | None
-            ):
-                # data root dir
-                _root_dir = Directory._Divider_check(root_dir)
-
-                self._data_keyward = {
-                    Label.Style.SEMENTIC: {
-                        Data.Format.colormaps: "".join([f"{_root_dir}bdd100k/labels/sem_seg/", "{}/{}/*.jpg"])
-                    }
-                }
-
-                super().__init__(root_dir, mode_list, data_info, label_process)
-
-        class COCO(Basement):
-            def __init__(
-                self,
-                root_dir: str,
-                mode_list: List[Learning_Process],
-                data_info: List[Tuple[Label.Style | None, Data.Format]],
-                label_process: Label.Organization.Basement | None
-            ):
-                # data root dir
-                _root_dir = Directory._Divider_check(root_dir)
-
-                self._data_keyward = {
-                    Label.Style.INSTANCES: {
-                        Data.Format.annotations: "".join([f"{_root_dir}COCO/annotations/instances_", "{}2017.json"])
-                    },
-                    Label.Style.KEY_POINTS: {
-                        Data.Format.annotations: "".join([f"{_root_dir}COCO/annotations/person_keypoints_", "{}2017.json"])
-                    }
-                }
-
-                super().__init__(root_dir, mode_list, data_info, label_process)
-
-            def _Make_data_block(self, mode_list: List[Learning_Process], data_info: List[Tuple[Label.Style, Data.Format]]) -> Dict[Learning_Process, List[List]]:
-                _block: Dict[Learning_Process, List[List]] = {}
-
-                for _mode in mode_list:
-                    _block[_mode] = []
-                    _img_dir = "".join([self._root_dir, f"COCO/{_mode.value}2017/"])
-
-                    if _mode is not Learning_Process.TEST:
-                        _block[_mode].append([])  # input image
-                        _id_block: Dict[int, int] = {}
-                        _annotation_block: Dict[int, List[Dict[str, List]]] = {}
-
-                        # make data index
-                        for _info_ct, (_label_style, _data_format) in enumerate(data_info):
-                            assert _data_format is Data.Format.annotations, "Calling an unsupported data foramt"
-                            _block[_mode].append([])  # annotation
-
-                            _dir, _file_name = File._Extrect_file_name(self._data_keyward[_label_style][_data_format].format(_mode.value), False)
-                            _meta_data = File._Json(_dir, _file_name)
-
-                            for _data in _meta_data["annotations"]:
-                                _img_id = _data["image_id"]
-
-                                # check image id
-                                if _img_id in _id_block.keys():
-                                    if (_id_block[_img_id] + 1) < _info_ct:
-                                        _id_block.pop(_img_id)
-                                        _annotation_block.pop(_img_id)
-                                        continue
-
-                                    _id_block[_img_id] = _info_ct
-                                else:
-                                    if _info_ct: continue  # in before data info, this image not use
-                                    _id_block.update({_img_id: 0})
-                                    _annotation_block.update({_img_id: [{} for _ in range(len(data_info))]})
-
-                                # select annotation file
-                                _pick_block = _annotation_block[_img_id][_info_ct]
-
-                                if _label_style is Label.Style.INSTANCES:  # instance
-                                    # make annotation data
-                                    if _data["iscrowd"]:
-                                        ...
-                                    else:
-                                        _bbox_info = _data["bbox"]
-                                        _bbox = (_bbox_info[0], _bbox_info[1], _bbox_info[0] + _bbox_info[2], _bbox_info[1] + _bbox_info[3])
-                                        _seg = _data["segmentation"],
-                                        _class_id = _data["category_id"]
-
-                                    # updata annotation data
-                                    _pick_block["seg"].append(_seg) if "seg" in _pick_block.keys() else _pick_block.update({"seg": [_seg]})
-                                    _pick_block["bbox"].append(_bbox) if "bbox" in _pick_block.keys() else _pick_block.update({"bbox": [_bbox]})
-                                    _pick_block["class_id"].append(_class_id) if "class_id" in _pick_block.keys() else _pick_block.update({"class_id": [_class_id]})
-
-                                elif _label_style is Label.Style.KEY_POINTS:
-                                    ...
-                                else:  # captions
-                                    ...
-
-                        for _id, _annotations in zip(_id_block.keys(), _annotation_block.values()):
-                            _block[_mode][0].append(f"{_img_dir}{_id:0>12d}.jpg")
-                            for _ct, _anno in enumerate(_annotations): _block[_mode][1 + _ct].append(_anno)
-
-                    else:  # for test
-                        _block[_mode].append(Directory._Search(_img_dir, ext_filter=[".jpg", ]))
-
-                return _block
-
-        # @staticmethod
-        # def _Build(
-        #     dataset: str, root_dir: str, mode: List[Process_Name], data_info: List[Tuple[Label.Style, Data.Format]], label_meta_file: str | None = None
-        # ) -> Basement:
-        #     assert dataset in Data_Organization.__dict__.keys()
-        #     return Data_Organization.__dict__[dataset](root_dir, mode, data_info, label_meta_file)
+        File.Json._Write(label_file, label_dir, {_label_type: [asdict(_data) for _data in label_data]})
 
 
 class Augment():
     class Supported(Enum):
         ALBUIMIENTATIONS = "Albumentations"
         TORCHVISION = "Torchvision"
-
-    @dataclass
-    class Plan():
-        amplification: int
-        augmentations: List[Augment.Process.Basement]
 
     class Process():
         class Basement():
@@ -392,6 +143,7 @@ class Augment():
                 **augment_constructer
             ) -> None:
 
+                self.amp: int
                 _componant_list = self._Make_componant_list(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor)
                 self._transform = self._Build_transform(_componant_list, group_parmaeter, **augment_constructer)
 
@@ -438,70 +190,6 @@ class Augment():
 
             def __call__(self, data: Dict[str, Any]) -> Dict[str, Tensor]:
                 return self._transform(**data)
-
-        class Albumentations(Basement):
-            def _Make_componant_list(
-                self,
-                output_size: List[int],
-                rotate_limit: int = 0,
-                hflip_rate: float = 0,
-                vflip_rate: float = 0,
-                is_norm: bool = True,
-                norm_mean: List[float] = [0.485, 0.456, 0.406],
-                norm_std: List[float] = [0.229, 0.224, 0.225],
-                apply_to_tensor: bool = False
-            ) -> List:
-                _transform_list = []
-
-                # about rotate
-                if (rotate_limit if isinstance(rotate_limit, int) else any(rotate_limit)):  # use rotate
-                    _transform_list.append(self._Resize(self._Get_padding_size(output_size, rotate_limit)))
-                    _transform_list.append(self._Rotate_within(rotate_limit))
-                    _transform_list.append(self._Random_Crop(output_size))
-                else:
-                    _transform_list.append(self._Resize(output_size))
-
-                # about flip
-                if hflip_rate or vflip_rate:
-                    _transform_list += self._Random_Flip(hflip_rate, vflip_rate)
-
-                # apply norm
-                if is_norm:
-                    _transform_list.append(self._Normalization(norm_mean, norm_std))
-
-                _transform_list.append(self._To_tensor()) if apply_to_tensor else ...
-
-                return _transform_list
-
-            def _To_tensor(self):
-                return ToTensorV2()
-
-            def _Resize(self, size: List[int]):
-                return A.Resize(height=size[0], width=size[1])
-
-            def _Random_Crop(self, size: List[int]):
-                return A.RandomCrop(height=size[0], width=size[1])
-
-            def _Rotate_within(self, limit_angle: int):
-                return A.Rotate(limit_angle)
-
-            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float):
-                _list = []
-                _list.append(A.HorizontalFlip(p=horizontal_rate)) if horizontal_rate else ...
-                _list.append(A.VerticalFlip(p=vertical_rate)) if vertical_rate else ...
-                return _list
-
-            def _Normalization(self, mean: List[float], std: List[float]):
-                return A.Normalize(mean, std)
-
-            def _Build_transform(
-                self,
-                transform_list,
-                group_parmaeter: Dict[str, str] | None = None,
-                bbox_parameter: Dict[str, str] | None = None,
-                keypoints_parameter: Dict[str, str] | None = None
-            ):
-                return A.Compose(transform_list, bbox_parameter, keypoints_parameter, additional_targets=group_parmaeter)
 
         class Torchvision(Basement):
             class Tr_Comp():
@@ -582,22 +270,22 @@ class Augment():
                         _c, _h, _w = image[0].shape
 
                         for _ct, _img in enumerate(image):
-                            if _horiz: _img = F.hflip(_img)
-                            if _verti: _img = F.vflip(_img)
+                            if _horiz : _img = F.hflip(_img)
+                            if _verti : _img = F.vflip(_img)
 
                             image[_ct] = _img
 
                     else:
                         _c, _h, _w = image.shape
-                        if _horiz: image = F.hflip(image)
-                        if _verti: image = F.vflip(image)
+                        if _horiz : image = F.hflip(image)
+                        if _verti : image = F.vflip(image)
 
                     # target
                     if isinstance(target, dict):
                         for _key, items in target.items():
                             if _key.find("mask") != -1:
-                                if _horiz: items = F.hflip(items)
-                                if _verti: items = F.vflip(items)
+                                if _horiz : items = F.hflip(items)
+                                if _verti : items = F.vflip(items)
                                 target[_key] = items
                             elif _key.find("bbox") != -1:
                                 if _horiz:  # <->
@@ -618,9 +306,8 @@ class Augment():
                     self._std = std
 
                 def __call__(self, image: Tensor | List[Tensor], target: Any):
-                    _norm_img = [F.normalize(_img, mean=self._mean, std=self._std) for _img in image] if isinstance(image, list) \
-                        else F.normalize(image, mean=self._mean, std=self._std)
-                    return _norm_img, target
+                    image = [F.normalize(_img, mean=self._mean, std=self._std) for _img in image] if isinstance(image, list) else F.normalize(image, mean=self._mean, std=self._std)
+                    return image, target
 
             class Compose(Tr_Comp):
                 class Data_Converter():
@@ -637,7 +324,11 @@ class Augment():
                                 if _key.find("mask") != -1:
                                     target[_key] = [F.to_tensor(_mask) for _mask in items]
                                 elif _key.find("bbox") != -1:
-                                    target[_key] = {"class_id": tensor(items["class_id"]), "bbox": tensor(items["bbox"])}
+                                    target[_key] = {
+                                    "class_id": tensor(items["class_id"]),
+                                    "bbox": tensor(items["bbox"])
+                                }
+
                         return _tensor_img, target
 
                 def __init__(self, transforms: List[Augment.Process.Torchvision.Tr_Comp]):
@@ -646,8 +337,13 @@ class Augment():
 
                 def __call__(self, image: ndarray | List[ndarray], target: Dict[str, Any] | None = None, **info):
                     _image, _target = self._data_converter(image, target)
-                    for _t in self._transforms: _image, _target = _t(_image, _target)
-                    info.update({"image": _image} if _target is None else {"image": _image, "target": _target})
+
+                    for _t in self._transforms:
+                        _image, _target = _t(_image, _target)
+
+                    info.update(
+                        {"image": _image} if _target is None else {"image": _image, "target": _target}
+                    )
 
                     return info
 
@@ -682,15 +378,17 @@ class Augment():
                 vflip_rate: float = 0,
                 is_norm: bool = True,
                 norm_mean: List[float] = [0.485, 0.456, 0.406],
-                norm_std: List[float] = [0.229, 0.224, 0.225],
-                apply_to_tensor: bool = False
+                norm_std: List[float] = [0.229, 0.224, 0.225]
             ) -> List:
                 _transform_list = []
+
                 if output_size[0] != -1 and output_size[1] != -1:
                     _transform_list.append(self._Random_Crop((output_size[0], output_size[1])))
+
                 # about flip
                 if hflip_rate or vflip_rate:
                     _transform_list.append(self._Random_Flip(hflip_rate, vflip_rate))
+
                 # apply norm
                 if is_norm:
                     _transform_list.append(self._Normalization(norm_mean, norm_std))
@@ -705,6 +403,70 @@ class Augment():
             ):
                 return self.Compose(transform_list)
 
+        class Albumentations(Basement):
+            def _Make_componant_list(
+                self,
+                output_size: List[int],
+                rotate_limit: int = 0,
+                hflip_rate: float = 0,
+                vflip_rate: float = 0,
+                is_norm: bool = True,
+                norm_mean: List[float] = [0.485, 0.456, 0.406],
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = False
+            ) -> List:
+                _transform_list = []
+
+                # about rotate
+                if (rotate_limit if isinstance(rotate_limit, int) else any(rotate_limit)):  # use rotate
+                    _transform_list.append(self._Resize(self._Get_padding_size(output_size, rotate_limit)))
+                    _transform_list.append(self._Rotate_within(rotate_limit))
+                    _transform_list.append(self._Random_Crop(output_size))
+                else:
+                    _transform_list.append(self._Resize(output_size))
+
+                # about flip
+                if hflip_rate or vflip_rate:
+                    _transform_list += self._Random_Flip(hflip_rate, vflip_rate)
+
+                # apply norm
+                if is_norm:
+                    _transform_list.append(self._Normalization(norm_mean, norm_std))
+
+                _transform_list.append(self._To_tensor()) if apply_to_tensor else ...
+
+                return _transform_list
+
+            def _To_tensor(self):
+                return ToTensorV2()
+
+            def _Resize(self, size: List[int]):
+                return A.Resize(height=size[0], width=size[1])
+
+            def _Random_Crop(self, size: List[int]):
+                return A.RandomCrop(height=size[0], width=size[1])
+
+            def _Rotate_within(self, limit_angle: int):
+                return A.Rotate(limit_angle)
+
+            def _Random_Flip(self, horizontal_rate: float, vertical_rate: float):
+                _list = []
+                _list.append(A.HorizontalFlip(p=horizontal_rate)) if horizontal_rate else ...
+                _list.append(A.VerticalFlip(p=vertical_rate)) if vertical_rate else ...
+                return _list
+
+            def _Normalization(self, mean: List[float], std: List[float]):
+                return A.Normalize(mean, std)
+
+            def _Build_transform(
+                self,
+                transform_list,
+                group_parmaeter: Dict[str, str] | None = None,
+                bbox_parameter: Dict[str, str] | None = None,
+                keypoints_parameter: Dict[str, str] | None = None
+            ):
+                return A.Compose(transform_list, bbox_parameter, keypoints_parameter, additional_targets=group_parmaeter)
+
         @staticmethod
         def _Build(
             apply_method: Augment.Supported,
@@ -715,37 +477,144 @@ class Augment():
             is_norm: bool = True,
             norm_mean: List[float] = [0.485, 0.456, 0.406],
             norm_std: List[float] = [0.229, 0.224, 0.225],
-            apply_to_tensor: bool = True,
             **augment_constructer
         ) -> Basement:
-            _augmnet_process = Augment.Process.__dict__[apply_method.value]
-
-            return _augmnet_process(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor, **augment_constructer)
+            return Augment.Process.__dict__[apply_method.value](output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, **augment_constructer)
 
 
-class Custom_Dataset_Process(Dataset):
-    def __init__(
-        self,
-        data_process: Data.Organize.Basement,
-        plan_for_process: Dict[Learning_Process, Augment.Plan]
-    ):
-        self._organization = data_process
-        self._plan_for_process = plan_for_process
+class Data():
+    class Process():
+        class Basement(Dataset):
+            def __init__(self, root_dir: str, mode: str, aug: Augment.Process.Basement, **data_initialize_arg):
+                # Set dataset parameter
+                self.input_data, self.target_data, _label_data = self._Initialize_data_full(root_dir, mode, **data_initialize_arg)
+                self.label_data = self._Label_process(_label_data)
+                self.augment = aug
 
-    # Freeze function
-    def __len__(self):
-        return len(self._organization) * self._plan_for_process[self._organization._active_mode].amplification
+            def __len__(self):
+                return len(self.input_data) * self.augment.amp
 
-    def __getitem__(self, index) -> Dict[str, Tensor]:
-        _augment = self._plan_for_process[self._organization._active_mode]
-        _source_index = index // _augment.amplification
-        return self._Convert_to_tensor(_source_index, _augment.augmentations)
+            def __getitem__(self, index) -> Dict[str, Tensor]:
+                return self._Convert_to_tensor(index // self.augment.amp)
 
-    def _Set_active_mode_from(self, mode: Learning_Process):
-        self._organization._Set_active_mode_from(mode)
+            def _Initialize_data_full(self, root_dir: str, mode: str, **data_initialize_arg) -> Tuple[List, List, List]:
+                raise NotImplementedError
 
-    # Un-Freeze function
-    def _Convert_to_tensor(self, source_index: int, augment: List[Augment.Process.Basement]) -> Dict[str, Tensor]:
-        _datas = augment[0](self._organization._Pick_up(source_index))
-        _datas.update({"data_info": tensor(source_index)})
-        return _datas
+            def _Label_process(self, meta_label_data: List[Dict]):
+                raise NotImplementedError
+
+            def _Convert_to_tensor(self, source_index: int) -> Dict[str, Tensor]:
+                raise NotImplementedError
+
+        # class COCO(Basement):
+        #     def _Initialize_data_full(self, root_dir: str, mode: str, annotaion: List[str]) -> Tuple[List, List, List]:
+        #         # set data dir
+        #         _data_root = Path._Join("COCO", root_dir)
+        #         _img_dir = Path._Join(f"{mode}2017", _data_root)
+        #         _annotation_dir = Path._Join("annotations", _data_root)
+
+        #         # input img list
+        #         _img_list = Path._Search(_img_dir, Path.Type.FILE, ext_filter="jpg")
+
+        #         # make datalist for test
+        #         if mode == "test":
+        #             return _img_list, [], []
+
+        #         # make datalist for train or validation
+        #         # --- make annotation list --- #
+        #         _label_data = Label._Read_label_data(Path._Join(["data_file", "COCO.json"]), Path._Devide(__file__)[0], Label.Structure.Classification)
+
+        #         # When write this code, I just used instance data. So i make code that just use instance annotation.
+        #         _annotation_data: Dict[str, List[Dict[str, Any]]] = {}   # {img_id: List[ instance -> {key_word: value} ]}
+        #         _meta_data = File.Json._Read(f"instnaces_{mode}2017", _annotation_dir)
+
+        #         for _data in _meta_data["annotations"]:
+        #             _img_id = _data["image_id"]
+        #             _img_file = Path._Join(f"{_img_id}.jpg", _img_dir)
+
+        #             if _img_file not in _img_list:
+        #                 continue  # image that matched this annotation, not exist in image list
+
+        #             if _data["iscrowd"]:
+        #                 #
+        #                 ...
+        #             else:
+        #                 _bbox_info = _data["bbox"]
+        #                 _bbox = (_bbox_info[0], _bbox_info[1], _bbox_info[0] + _bbox_info[2], _bbox_info[1] + _bbox_info[3])
+        #                 _seg = _data["segmentation"],
+        #                 _class_id = _data["category_id"]
+
+        #                 # updata annotation data
+        #                 if _img_id not in _annotation_data.keys():  # The first time, that this image has label data in this process
+        #                     _annotation_data.update({
+        #                         _img_id: [{"seg": _seg, "bbox": _bbox, "class_id": _class_id}]
+        #                     })
+        #                 else:
+        #                     _annotation_data[_img_id].append({"seg": _seg, "bbox": _bbox, "class_id": _class_id})
+
+        #         # --- make input list and target list --- #
+        #         _input_list = []
+        #         _target_list = []
+
+        #         for _img_id, _targets in _annotation_data.items():
+        #             if len(_targets) == len(data_info):
+        #                 _input_list.append(f"{_img_dir}{_img_id}.jpg")
+        #                 for _ct, (_, _data_list) in enumerate(_targets.items()):
+        #                     _target_list[_ct].append(_data_list)
+
+        #         return _input_list, _target_list, ""
+
+
+# @dataclass
+# class Data_Config(Config):
+#     # dataset
+#     dataset_dir: str = "./data"
+#     dataset_name: str = "dataset_name"
+#     target_info: List[Tuple[str, str]] = field(default_factory=lambda: ([("sementic", "image")]))
+
+#     # augmentation option
+#     augmentation_method: str = "Torchvision"
+#     amplification: int = 1
+
+#     output_size: List[int] = field(default_factory=lambda: ([256, 256]))
+#     rotate_limit: int = 0
+#     hflip_rate: float = 0.0
+#     vflip_rate: float = 0.0
+#     is_norm: bool = True
+#     norm_mean: List[float] = field(default_factory=lambda: ([0.485, 0.456, 0.406]))
+#     norm_std: List[float] = field(default_factory=lambda: ([0.229, 0.224, 0.225]))
+
+#     # dataloader
+#     batch_size: int = 64
+#     num_workers: int = 8
+#     drop_last: bool = True
+
+#     def _Get_parameter(self, ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
+#         return (
+#             self.dataset_name,
+#             {
+#                 "dataset_name": self.dataset_name,
+#                 "root_dir": self.dataset_dir,
+#                 "data_info": [(Label.Style(_style), Data.File_Format(_format)) for _style, _format in self.target_info],
+#                 "label_function": self._Get_label_function(),
+#                 "augment_process": Augment.Process._Build(
+#                     Augment.Supported(self.augmentation_method),
+#                     self.output_size,
+#                     self.rotate_limit,
+#                     self.hflip_rate,
+#                     self.vflip_rate,
+#                     self.is_norm,
+#                     self.norm_mean,
+#                     self.norm_std
+#                 ),
+#                 "amplification": self.amplification
+#             },
+#             {
+#                 "batch_size": self.batch_size,
+#                 "num_workers": self.num_workers,
+#                 "drop_last": self.drop_last
+#             }
+#         )
+
+#     def _Get_label_function(self):
+#         return Label.Process.__class__.__dict__[self.dataset_name]
