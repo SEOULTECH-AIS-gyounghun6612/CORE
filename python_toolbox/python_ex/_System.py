@@ -9,14 +9,15 @@ Requirement
 """
 from __future__ import annotations
 from enum import Enum
+from typing import Dict, List, Tuple, Literal
 import json
+import csv
 # import yaml
 import platform
 
 import sys
 from glob import glob
 from os import path, system, getcwd, mkdir, makedirs
-from typing import Dict, List, Tuple
 
 
 # -- DEFINE CONSTNAT -- #
@@ -205,6 +206,30 @@ class File():
                     json.dump(data, _file, indent="\t")
                 except:
                     return False
+            return True
+
+    class CSV(Basement):
+        @staticmethod
+        def _Read(file_name: str, file_dir: str, encoding="UTF-8") -> List[Dict]:
+            # make file path
+            _, _file = File.Json._Path_check(file_name, file_dir, "csv", True)
+
+            # read the file
+            with open(Path._Join(file_name, file_dir), "r", encoding=encoding) as file:
+                _dict_reader = csv.DictReader(file)
+
+            return list(_dict_reader)
+
+        @staticmethod
+        def _Write(file_name: str, file_dir: str, data: List[Dict], feildnames: List[str], mode: Literal['a', 'w'] = 'a', encoding="UTF-8"):
+            # make file path
+            _, _file = File.Json._Path_check(file_name, file_dir, "json")
+
+            # dump to file
+            with open(_file, mode, encoding=encoding) as _file:
+                _dict_writer = csv.DictWriter(_file, fieldnames=feildnames)
+                _dict_writer.writeheader()
+                _dict_writer.writerows(data)
             return True
 
 
