@@ -34,3 +34,10 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 1. pip 사용
    - https 버전 -> pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha
    - ssh 버전   -> pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha
+
+2. 직접 설치
+   - git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git
+
+   - cd AIS_python_ex
+
+   - pip install -e .
