@@ -244,6 +244,8 @@ class File():
                     _dict_writer = csv.DictWriter(_file, fieldnames=feildnames, delimiter=delimiter)
                     _dict_writer.writeheader()
                     _dict_writer.writerows(data)
+                except:
+                    return False
             return True
 
 
