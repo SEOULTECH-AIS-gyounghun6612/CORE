@@ -188,12 +188,16 @@ class File():
         @staticmethod
         def _Read(file_name: str, file_dir: str) -> Dict:
             # make file path
-            _, _file = File.Json._Path_check(file_name, file_dir, "json", True)
+            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "json")
 
             # read the file
-            with open(_file, "r") as _file:
-                _load_data = json.load(_file)
-            return _load_data
+            if _is_exist:
+                with open(_file, "r") as _file:
+                    _load_data = json.load(_file)
+                return _load_data
+            else:
+                print(f"file {file_name} is not exist in {file_dir}")
+                return {}
 
         @staticmethod
         def _Write(file_name: str, file_dir: str, data: WRITEABLE):
@@ -210,28 +214,37 @@ class File():
 
     class CSV(Basement):
         @staticmethod
-        def _Read(file_name: str, file_dir: str, encoding="UTF-8") -> List[Dict]:
+        def _Read(file_name: str, file_dir: str, fotmating: List[Type], delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
             # make file path
-            _, _file = File.Json._Path_check(file_name, file_dir, "csv", True)
+            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
-            # read the file
-            with open(Path._Join(file_name, file_dir), "r", encoding=encoding) as file:
-                _dict_reader = csv.DictReader(file)
+            if _is_exist:
+                # read the file
+                with open(_file, "r", encoding=encoding) as file:
+                    _read_data = [
+                        dict((
+                            _key,
+                            [fotmating[_ct](_comp) for _comp in _item.split(",")]  if "," in _item else fotmating[_ct](_item)
+                        ) for _ct, (_key, _item)in enumerate(_data.items())
+                    ) for _data in csv.DictReader(file, delimiter=delimiter)]
+                return _read_data
+            else:
+                print(f"file {file_name} is not exist in {file_dir}")
+                return []
 
-            return list(_dict_reader)
 
         @staticmethod
-        def _Write(file_name: str, file_dir: str, data: List[Dict], feildnames: List[str], mode: Literal['a', 'w'] = 'a', encoding="UTF-8"):
+        def _Write(file_name: str, file_dir: str, data: List[Dict], feildnames: List[str], delimiter: str = "|", mode: Literal['a', 'w'] = 'w', encoding="UTF-8"):
             # make file path
-            _, _file = File.Json._Path_check(file_name, file_dir, "json")
+            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
             # dump to file
-            with open(_file, mode, encoding=encoding) as _file:
-                _dict_writer = csv.DictWriter(_file, fieldnames=feildnames)
-                _dict_writer.writeheader()
-                _dict_writer.writerows(data)
+            with open(_file, mode if not _is_exist else "w" , encoding=encoding, newline="") as _file:
+                try:
+                    _dict_writer = csv.DictWriter(_file, fieldnames=feildnames, delimiter=delimiter)
+                    _dict_writer.writeheader()
+                    _dict_writer.writerows(data)
             return True
-
 
 class Server():
     IS_WINDOW = OS._Is_it_runing(OS.Style.WINDOW)
