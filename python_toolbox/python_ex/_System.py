@@ -246,6 +246,7 @@ class File():
                     _dict_writer.writerows(data)
             return True
 
+
 class Server():
     IS_WINDOW = OS._Is_it_runing(OS.Style.WINDOW)
 
