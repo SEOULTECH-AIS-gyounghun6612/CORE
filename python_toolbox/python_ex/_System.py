@@ -215,6 +215,14 @@ class File():
     class CSV(Basement):
         @staticmethod
         def _Read(file_name: str, file_dir: str, fotmating: List[Type], delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
+            def __str_to_data__(data: str, formating: type) -> None | int | float | List[int | float]:
+                if formating is str:
+                    return formating
+                elif data == "":
+                    return []
+                else:
+                    return [formating(_comp) for _comp in data.split(",")]  if "," in data else formating(data)
+
             # make file path
             _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
@@ -224,14 +232,13 @@ class File():
                     _read_data = [
                         dict((
                             _key,
-                            [fotmating[_ct](_comp) for _comp in _item.split(",")]  if "," in _item else fotmating[_ct](_item)
+                            __str_to_data__(_item, fotmating[_ct])
                         ) for _ct, (_key, _item)in enumerate(_data.items())
                     ) for _data in csv.DictReader(file, delimiter=delimiter)]
                 return _read_data
             else:
                 print(f"file {file_name} is not exist in {file_dir}")
                 return []
-
 
         @staticmethod
         def _Write(file_name: str, file_dir: str, data: List[Dict], feildnames: List[str], delimiter: str = "|", mode: Literal['a', 'w'] = 'w', encoding="UTF-8"):
