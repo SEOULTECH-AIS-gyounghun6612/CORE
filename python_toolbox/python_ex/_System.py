@@ -217,7 +217,7 @@ class File():
         def _Read(file_name: str, file_dir: str, fotmating: List[Type], delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
             def __str_to_data__(data: str, formating: type) -> None | int | float | List[int | float]:
                 if formating is str:
-                    return formating
+                    return data
                 elif data == "":
                     return []
                 else:
