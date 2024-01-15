@@ -221,7 +221,10 @@ class File():
             if _is_exist:
                 # read the file
                 with open(_file, "r", encoding=encoding) as file:
-                    _read_data = [_data for _data in csv.DictReader(file, delimiter=delimiter)]
+                    _read_data = [
+                        dict((
+                            _key.replace(" ", ""), _value.replace(" ", "")
+                        ) for _key, _value in _line_dict.items()) for _line_dict in csv.DictReader(file, delimiter=delimiter)]
                 return _read_data
             else:
                 print(f"file {file_name} is not exist in {file_dir}")
