@@ -9,7 +9,7 @@ Requirement
 """
 from __future__ import annotations
 from enum import Enum
-from typing import Dict, List, Tuple, Literal, Type, Any
+from typing import Dict, List, Tuple, Literal, Any
 import json
 import csv
 # import yaml
@@ -214,7 +214,7 @@ class File():
 
     class CSV(Basement):
         @staticmethod
-        def _Read(file_name: str, file_dir: str, fotmating: List[Type], delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
+        def _Read(file_name: str, file_dir: str, delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
             # make file path
             _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
