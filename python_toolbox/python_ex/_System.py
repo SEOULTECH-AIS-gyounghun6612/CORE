@@ -215,26 +215,13 @@ class File():
     class CSV(Basement):
         @staticmethod
         def _Read(file_name: str, file_dir: str, fotmating: List[Type], delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
-            def __str_to_data__(data: str, formating: type) -> None | int | float | List[int | float]:
-                if formating is str:
-                    return data
-                elif data == "":
-                    return []
-                else:
-                    return [formating(_comp) for _comp in data.split(",")]  if "," in data else formating(data)
-
             # make file path
             _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
             if _is_exist:
                 # read the file
                 with open(_file, "r", encoding=encoding) as file:
-                    _read_data = [
-                        dict((
-                            _key,
-                            __str_to_data__(_item, fotmating[_ct])
-                        ) for _ct, (_key, _item)in enumerate(_data.items())
-                    ) for _data in csv.DictReader(file, delimiter=delimiter)]
+                    _read_data = [_data for _data in csv.DictReader(file, delimiter=delimiter)]
                 return _read_data
             else:
                 print(f"file {file_name} is not exist in {file_dir}")
@@ -246,7 +233,7 @@ class File():
             _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
 
             # dump to file
-            with open(_file, mode if not _is_exist else "w" , encoding=encoding, newline="") as _file:
+            with open(_file, mode if not _is_exist else "w", encoding=encoding, newline="") as _file:
                 try:
                     _dict_writer = csv.DictWriter(_file, fieldnames=feildnames, delimiter=delimiter)
                     _dict_writer.writeheader()
