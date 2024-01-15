@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 from dataclasses import asdict, dataclass
 
 import time
+import datetime
 from math import log10, floor
 
 from ._System import Path, File
@@ -57,7 +58,7 @@ class Project():
         self.save_root = self._Make_save_root(save_root)
 
     def _Make_save_root(self, save_root: str):
-        _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
+        _working_day = Debuging.Time._Convert_to_text(Debuging.Time._Stemp(), True, "%Y-%m-%d")
 
         return Path._Make_directory(save_root, Path._Join(_working_day, self.project_name))
 
@@ -89,7 +90,7 @@ class Debuging():
             return time.time() if start_time is None else time.time() - start_time
 
         @staticmethod
-        def _Apply_text_form(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+        def _Convert_to_text(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
             """
             시간 정보를 텍스트로 변환하는 함수
 
@@ -103,6 +104,22 @@ class Debuging():
             - time_text : 입력된 조건에 따라 시간 정보로 부터 생성된 텍스트
             """
             return time.strftime(text_format, time.localtime(source) if is_local else time.gmtime(source))
+
+        @staticmethod
+        def _Convert_from_text(source: str, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+            """
+            
+
+            ---------------------------------------------------------------------------------------
+            ### Parameters
+            - 
+            - 
+
+            ### Return
+            - 
+            """
+            _time = time.strptime(source, text_format)
+            return datetime.timedelta(hours=_time.tm_hour,minutes=_time.tm_min,seconds=_time.tm_sec).total_seconds()
 
     class Progress():
         @staticmethod
