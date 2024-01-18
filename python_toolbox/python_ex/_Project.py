@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 from dataclasses import asdict, dataclass
 
+from datetime import datetime
 import time
 from math import log10, floor
 
@@ -75,7 +76,7 @@ class Debuging():
 
     class Time():
         @staticmethod
-        def _Stemp(start_time: float | None = None):
+        def _Stemp(start_time: datetime | None = None):
             """
             현재 시간 정보를 생성하는 함수
 
@@ -86,23 +87,37 @@ class Debuging():
             ### Return
             - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
             """
-            return time.time() if start_time is None else time.time() - start_time
+            return datetime.now() if start_time is None else datetime.now() - start_time
 
         @staticmethod
-        def _Apply_text_form(source: float, is_local: bool = False, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+        def _Time_to_text(source: datetime, text_format: str = "%Y-%m-%d-%H:%M:%S"):
             """
             시간 정보를 텍스트로 변환하는 함수
 
             ---------------------------------------------------------------------------------------
             ### Parameters
             - source : 시간 정보
-            - is_local : 프로그램이 작동하는 단말기의 지역시간 적용 여부
-            - text_format : 생성하고자 하는 텍스트의 포멧. (https://docs.python.org/ko/3/library/time.html#time.strftime 참고)
+            - 
 
             ### Return
-            - time_text : 입력된 조건에 따라 시간 정보로 부터 생성된 텍스트
+            - 
             """
-            return time.strftime(text_format, time.localtime(source) if is_local else time.gmtime(source))
+            return source.strftime(text_format)
+
+        @staticmethod
+        def _Time_from_text(source: str, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+            """
+            시간 정보를 텍스트로 변환하는 함수
+
+            ---------------------------------------------------------------------------------------
+            ### Parameters
+            - 
+            - 
+
+            ### Return
+            - 
+            """
+            return datetime.strptime(source, text_format)
 
     class Progress():
         @staticmethod
