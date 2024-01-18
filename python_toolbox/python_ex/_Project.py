@@ -2,7 +2,6 @@ from typing import Any, Dict, List
 from dataclasses import asdict, dataclass
 
 from datetime import datetime
-import time
 from math import log10, floor
 
 from ._System import Path, File
@@ -58,7 +57,7 @@ class Project():
         self.save_root = self._Make_save_root(save_root)
 
     def _Make_save_root(self, save_root: str):
-        _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
+        _working_day = Debuging.Time._Time_to_text(Debuging.Time._Stemp(), "%Y-%m-%d")
 
         return Path._Make_directory(save_root, Path._Join(_working_day, self.project_name))
 
