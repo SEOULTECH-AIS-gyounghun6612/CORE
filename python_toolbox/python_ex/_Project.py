@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 from dataclasses import asdict, dataclass
 
 from datetime import datetime
@@ -73,6 +73,16 @@ class Debuging():
     - Logging
     """
 
+    def _Str_adjust(text: str, max_length: int, fill:str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
+        for _str in text:
+            max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
+        if mode == "l":
+            return text.ljust(max_length, fill)
+        elif mode == "c":
+            return text.center(max_length, fill)
+        else:
+            return text.rjust(max_length, fill)
+    
     class Time():
         @staticmethod
         def _Stemp(start_time: datetime | None = None):
