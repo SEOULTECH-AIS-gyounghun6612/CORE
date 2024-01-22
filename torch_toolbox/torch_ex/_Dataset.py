@@ -132,6 +132,7 @@ class Augment():
             def __init__(
                 self,
                 output_size: List[int],
+                amplification: int,
                 rotate_limit: int = 0,
                 hflip_rate: float = 0.0,
                 vflip_rate: float = 0.0,
@@ -143,7 +144,7 @@ class Augment():
                 **augment_constructer
             ) -> None:
 
-                self.amp: int
+                self.amp: int = amplification
                 _componant_list = self._Make_componant_list(output_size, rotate_limit, hflip_rate, vflip_rate, is_norm, norm_mean, norm_std, apply_to_tensor)
                 self._transform = self._Build_transform(_componant_list, group_parmaeter, **augment_constructer)
 
@@ -378,7 +379,8 @@ class Augment():
                 vflip_rate: float = 0,
                 is_norm: bool = True,
                 norm_mean: List[float] = [0.485, 0.456, 0.406],
-                norm_std: List[float] = [0.229, 0.224, 0.225]
+                norm_std: List[float] = [0.229, 0.224, 0.225],
+                apply_to_tensor: bool = True
             ) -> List:
                 _transform_list = []
 
@@ -483,86 +485,81 @@ class Augment():
 
 
 class Data():
-    class Process():
-        class Basement(Dataset):
-            def __init__(self, root_dir: str, mode: str, aug: Augment.Process.Basement, **data_initialize_arg):
-                # Set dataset parameter
-                self.input_data, self.target_data, _label_data = self._Initialize_data_full(root_dir, mode, **data_initialize_arg)
-                self.label_data = self._Label_process(_label_data)
-                self.augment = aug
+    class Basement(Dataset):
+        def __init__(self, root_dir: str, mode: str, aug: Augment.Process.Basement, **data_initialize_arg):
+            # Set dataset parameter
+            self.input_list, self.target_list, self.label_list = self._Initialize_data_full(root_dir, mode, **data_initialize_arg)
+            self.augment = aug
 
-            def __len__(self):
-                return len(self.input_data) * self.augment.amp
+        def __len__(self):
+            return len(self.input_list) * self.augment.amp
 
-            def __getitem__(self, index) -> Dict[str, Tensor]:
-                return self._Convert_to_tensor(index // self.augment.amp)
+        def __getitem__(self, index) -> Dict[str, Tensor]:
+            return self._Convert_to_tensor(index // self.augment.amp)
 
-            def _Initialize_data_full(self, root_dir: str, mode: str, **data_initialize_arg) -> Tuple[List, List, List]:
-                raise NotImplementedError
+        def _Initialize_data_full(self, root_dir: str, mode: str, **data_initialize_arg) -> Tuple[List, List, List]:
+            raise NotImplementedError
 
-            def _Label_process(self, meta_label_data: List[Dict]):
-                raise NotImplementedError
+        def _Convert_to_tensor(self, source_index: int) -> Dict[str, Tensor]:
+            raise NotImplementedError
 
-            def _Convert_to_tensor(self, source_index: int) -> Dict[str, Tensor]:
-                raise NotImplementedError
+    # class COCO(Basement):
+    #     def _Initialize_data_full(self, root_dir: str, mode: str, annotaion: List[str]) -> Tuple[List, List, List]:
+    #         # set data dir
+    #         _data_root = Path._Join("COCO", root_dir)
+    #         _img_dir = Path._Join(f"{mode}2017", _data_root)
+    #         _annotation_dir = Path._Join("annotations", _data_root)
 
-        # class COCO(Basement):
-        #     def _Initialize_data_full(self, root_dir: str, mode: str, annotaion: List[str]) -> Tuple[List, List, List]:
-        #         # set data dir
-        #         _data_root = Path._Join("COCO", root_dir)
-        #         _img_dir = Path._Join(f"{mode}2017", _data_root)
-        #         _annotation_dir = Path._Join("annotations", _data_root)
+    #         # input img list
+    #         _img_list = Path._Search(_img_dir, Path.Type.FILE, ext_filter="jpg")
 
-        #         # input img list
-        #         _img_list = Path._Search(_img_dir, Path.Type.FILE, ext_filter="jpg")
+    #         # make datalist for test
+    #         if mode == "test":
+    #             return _img_list, [], []
 
-        #         # make datalist for test
-        #         if mode == "test":
-        #             return _img_list, [], []
+    #         # make datalist for train or validation
+    #         # --- make annotation list --- #
+    #         _label_data = Label._Read_label_data(Path._Join(["data_file", "COCO.json"]), Path._Devide(__file__)[0], Label.Structure.Classification)
 
-        #         # make datalist for train or validation
-        #         # --- make annotation list --- #
-        #         _label_data = Label._Read_label_data(Path._Join(["data_file", "COCO.json"]), Path._Devide(__file__)[0], Label.Structure.Classification)
+    #         # When write this code, I just used instance data. So i make code that just use instance annotation.
+    #         _annotation_data: Dict[str, List[Dict[str, Any]]] = {}   # {img_id: List[ instance -> {key_word: value} ]}
+    #         _meta_data = File.Json._Read(f"instnaces_{mode}2017", _annotation_dir)
 
-        #         # When write this code, I just used instance data. So i make code that just use instance annotation.
-        #         _annotation_data: Dict[str, List[Dict[str, Any]]] = {}   # {img_id: List[ instance -> {key_word: value} ]}
-        #         _meta_data = File.Json._Read(f"instnaces_{mode}2017", _annotation_dir)
+    #         for _data in _meta_data["annotations"]:
+    #             _img_id = _data["image_id"]
+    #             _img_file = Path._Join(f"{_img_id}.jpg", _img_dir)
 
-        #         for _data in _meta_data["annotations"]:
-        #             _img_id = _data["image_id"]
-        #             _img_file = Path._Join(f"{_img_id}.jpg", _img_dir)
+    #             if _img_file not in _img_list:
+    #                 continue  # image that matched this annotation, not exist in image list
 
-        #             if _img_file not in _img_list:
-        #                 continue  # image that matched this annotation, not exist in image list
+    #             if _data["iscrowd"]:
+    #                 #
+    #                 ...
+    #             else:
+    #                 _bbox_info = _data["bbox"]
+    #                 _bbox = (_bbox_info[0], _bbox_info[1], _bbox_info[0] + _bbox_info[2], _bbox_info[1] + _bbox_info[3])
+    #                 _seg = _data["segmentation"],
+    #                 _class_id = _data["category_id"]
 
-        #             if _data["iscrowd"]:
-        #                 #
-        #                 ...
-        #             else:
-        #                 _bbox_info = _data["bbox"]
-        #                 _bbox = (_bbox_info[0], _bbox_info[1], _bbox_info[0] + _bbox_info[2], _bbox_info[1] + _bbox_info[3])
-        #                 _seg = _data["segmentation"],
-        #                 _class_id = _data["category_id"]
+    #                 # updata annotation data
+    #                 if _img_id not in _annotation_data.keys():  # The first time, that this image has label data in this process
+    #                     _annotation_data.update({
+    #                         _img_id: [{"seg": _seg, "bbox": _bbox, "class_id": _class_id}]
+    #                     })
+    #                 else:
+    #                     _annotation_data[_img_id].append({"seg": _seg, "bbox": _bbox, "class_id": _class_id})
 
-        #                 # updata annotation data
-        #                 if _img_id not in _annotation_data.keys():  # The first time, that this image has label data in this process
-        #                     _annotation_data.update({
-        #                         _img_id: [{"seg": _seg, "bbox": _bbox, "class_id": _class_id}]
-        #                     })
-        #                 else:
-        #                     _annotation_data[_img_id].append({"seg": _seg, "bbox": _bbox, "class_id": _class_id})
+    #         # --- make input list and target list --- #
+    #         _input_list = []
+    #         _target_list = []
 
-        #         # --- make input list and target list --- #
-        #         _input_list = []
-        #         _target_list = []
+    #         for _img_id, _targets in _annotation_data.items():
+    #             if len(_targets) == len(data_info):
+    #                 _input_list.append(f"{_img_dir}{_img_id}.jpg")
+    #                 for _ct, (_, _data_list) in enumerate(_targets.items()):
+    #                     _target_list[_ct].append(_data_list)
 
-        #         for _img_id, _targets in _annotation_data.items():
-        #             if len(_targets) == len(data_info):
-        #                 _input_list.append(f"{_img_dir}{_img_id}.jpg")
-        #                 for _ct, (_, _data_list) in enumerate(_targets.items()):
-        #                     _target_list[_ct].append(_data_list)
-
-        #         return _input_list, _target_list, ""
+    #         return _input_list, _target_list, ""
 
 
 # @dataclass
