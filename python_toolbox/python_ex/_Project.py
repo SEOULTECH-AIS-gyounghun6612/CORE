@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 from dataclasses import asdict, dataclass
 
 from datetime import datetime
@@ -73,6 +73,7 @@ class Debuging():
     - Logging
     """
 
+    @staticmethod
     def _Str_adjust(text: str, max_length: int, fill:str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
@@ -85,7 +86,7 @@ class Debuging():
     
     class Time():
         @staticmethod
-        def _Stemp(start_time: datetime | None = None):
+        def _Stemp():
             """
             현재 시간 정보를 생성하는 함수
 
@@ -96,10 +97,14 @@ class Debuging():
             ### Return
             - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
             """
-            return datetime.now() if start_time is None else datetime.now() - start_time
+            return datetime.now()
 
         @staticmethod
-        def _Time_to_text(source: datetime, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+        def _Time_term(source: datetime):
+            return datetime.now() - source
+
+        @staticmethod
+        def _Time_to_text(source: datetime, date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
             """
             시간 정보를 텍스트로 변환하는 함수
 
@@ -111,7 +116,7 @@ class Debuging():
             ### Return
             - 
             """
-            return source.strftime(text_format)
+            return datetime.now().strftime(",".join([date_format, day_format])) if source is None else str(Debuging.Time._Time_term(source))
 
         @staticmethod
         def _Time_from_text(source: str, text_format: str = "%Y-%m-%d-%H:%M:%S"):
@@ -199,7 +204,7 @@ class Debuging():
                         _slot = [save_point[_key], ]
                         save_point[_key] = _slot + _data if isinstance(_data, list) else _slot + [_data, ]
 
-        def _Pick(self, pick: Dict[File.Json.KEYABLE, Dict | List | None], access_point: File.Json.WRITEABLE):
+        def _Pick(self, pick: Dict[File.Json.KEYABLE, Union[Dict, List, None]], access_point: File.Json.WRITEABLE):
             _holder = {}
 
             for _key, _pick_info in pick.items():
