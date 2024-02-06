@@ -9,7 +9,7 @@ Requirement
 """
 from __future__ import annotations
 from enum import Enum
-from typing import Dict, List, Tuple, Literal, Any
+from typing import Dict, List, Tuple, Literal, Any, Union
 import json
 import csv
 # import yaml
@@ -22,7 +22,7 @@ from os import path, system, getcwd, mkdir, makedirs
 
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
-TYPE_NUMBER = int | float
+TYPE_NUMBER = Union[int, float]
 
 # System Constant
 PYTHON_VERSION = sys.version_info
@@ -181,8 +181,8 @@ class File():
             return _file_exist, _file_path
 
     class Json(Basement):
-        KEYABLE = TYPE_NUMBER | bool | str
-        VALUEABLE = KEYABLE | Tuple | List | Dict | None
+        KEYABLE = Union[TYPE_NUMBER, bool, str]
+        VALUEABLE = Union[KEYABLE, Tuple, List, Dict, None]
         WRITEABLE = Dict[KEYABLE, VALUEABLE]
 
         @staticmethod

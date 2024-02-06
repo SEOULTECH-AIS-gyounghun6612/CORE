@@ -12,7 +12,7 @@ Requirement
 # Import module
 from __future__ import annotations
 from enum import Enum
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 from dataclasses import dataclass, field
 import cv2
 import numpy as np
@@ -45,7 +45,7 @@ class Camera():
     intrinsic: ndarray
     rectification: ndarray = np.eye(4)
 
-    def _world_to_img(self, tr_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, int | None] = (0, None)):
+    def _world_to_img(self, tr_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, Optional[int]] = (0, None)):
         """
         """
         _extrict = self.rectification @ tr_to_cam
@@ -91,7 +91,7 @@ class Vision_IO(File.Basement):
 
     class Video():
         class Capture():
-            def __init__(self, source_name: int | str, save_dir: str = ""):
+            def __init__(self, source_name: Union[int, str], save_dir: str = ""):
                 # get capute source
                 if isinstance(source_name, int):
                     _source = source_name
