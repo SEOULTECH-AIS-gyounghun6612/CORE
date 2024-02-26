@@ -1,7 +1,8 @@
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Union, Optional
 from dataclasses import asdict, dataclass
 
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 from math import log10, floor
 
 from ._System import Path, File
@@ -74,7 +75,7 @@ class Debuging():
     """
 
     @staticmethod
-    def _Str_adjust(text: str, max_length: int, fill:str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
+    def _Str_adjust(text: str, max_length: int, fill: str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
         if mode == "l":
@@ -83,7 +84,7 @@ class Debuging():
             return text.center(max_length, fill)
         else:
             return text.rjust(max_length, fill)
-    
+
     class Time():
         @staticmethod
         def _Stemp():
@@ -104,34 +105,39 @@ class Debuging():
             return datetime.now() - source
 
         @staticmethod
-        def _Time_to_text(source: datetime, date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
+        def _Time_to_text(source: Optional[Union[datetime, timedelta]], date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
             """
             시간 정보를 텍스트로 변환하는 함수
 
             ---------------------------------------------------------------------------------------
             ### Parameters
             - source : 시간 정보
-            - 
+            -
 
             ### Return
-            - 
+            -
             """
-            return datetime.now().strftime(",".join([date_format, day_format])) if source is None else str(Debuging.Time._Time_term(source))
+            if source is None:
+                return datetime.now().strftime("-".join([date_format, day_format]))
+            elif isinstance(source, datetime):
+                return source.strftime("-".join([date_format, day_format]))
+            else:
+                return str(Debuging.Time._Time_term(source))
 
         @staticmethod
-        def _Time_from_text(source: str, text_format: str = "%Y-%m-%d-%H:%M:%S"):
+        def _Time_from_text(source: str, date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
             """
             시간 정보를 텍스트로 변환하는 함수
 
             ---------------------------------------------------------------------------------------
             ### Parameters
-            - 
-            - 
+            -
+            -
 
             ### Return
-            - 
+            -
             """
-            return datetime.strptime(source, text_format)
+            return datetime.strptime(source, "-".join([date_format, day_format]))
 
     class Progress():
         @staticmethod
