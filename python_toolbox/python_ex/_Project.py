@@ -58,7 +58,7 @@ class Project():
         self.save_root = self._Make_save_root(save_root)
 
     def _Make_save_root(self, save_root: str):
-        _working_date = Debuging.Time.Conver_to_text_from_(Debuging.Time._Stemp(), "%Y-%m-%d_%H:%M:%S")
+        _working_date = Debuging.Time._Conver_to_text_from_(Debuging.Time._Stemp(), "%Y-%m-%d_%H:%M:%S")
         return Path._Make_directory(save_root, Path._Join(_working_date, self.project_name))
 
 
@@ -105,14 +105,14 @@ class Debuging():
             return str(_term) if to_str else _term
 
         @staticmethod
-        def Conver_to_text_from_(source: Union[datetime, date, time], date_format: Optional[str] = None):
+        def _Conver_to_text_from_(source: Union[datetime, date, time], date_format: Optional[str] = None):
             if date_format is None:
                 return source.isoformat()
             else:
                 return source.strftime(date_format)
 
         @staticmethod
-        def Conver_from_text_to_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
+        def _Conver_from_text_to_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
             if date_format is not None:
                 _datetime = datetime.strptime(source, date_format)
             else:
