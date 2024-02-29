@@ -1,8 +1,8 @@
-from typing import Any, Dict, List, Literal, Union, Optional
+from typing import Any, Dict, List, Literal, Union, Optional, Type
 from dataclasses import asdict, dataclass
 
-from datetime import datetime, date, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import datetime, date, time, timezone
+# from dateutil.relativedelta import relativedelta
 from math import log10, floor
 
 from ._System import Path, File
@@ -58,9 +58,8 @@ class Project():
         self.save_root = self._Make_save_root(save_root)
 
     def _Make_save_root(self, save_root: str):
-        _working_day = Debuging.Time._Time_to_text(Debuging.Time._Stemp(), "%Y-%m-%d")
-
-        return Path._Make_directory(save_root, Path._Join(_working_day, self.project_name))
+        _working_date = Debuging.Time.Conver_to_text_from_(Debuging.Time._Stemp(), "%Y-%m-%d_%H:%M:%S")
+        return Path._Make_directory(save_root, Path._Join(_working_date, self.project_name))
 
 
 class Debuging():
@@ -87,7 +86,7 @@ class Debuging():
 
     class Time():
         @staticmethod
-        def _Stemp():
+        def _Stemp(timezone: Optional[timezone] = None):
             """
             현재 시간 정보를 생성하는 함수
 
@@ -98,46 +97,33 @@ class Debuging():
             ### Return
             - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
             """
-            return datetime.now()
+            return datetime.now(timezone)
 
         @staticmethod
-        def _Time_term(source: datetime):
-            return datetime.now() - source
+        def _Get_term(standard_time: datetime, to_str: bool = True, timezone: Optional[timezone] = None):
+            _term = Debuging.Time._Stemp(timezone) - standard_time
+            return str(_term) if to_str else _term
 
         @staticmethod
-        def _Time_to_text(source: Optional[Union[datetime, timedelta]], date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
-            """
-            시간 정보를 텍스트로 변환하는 함수
-
-            ---------------------------------------------------------------------------------------
-            ### Parameters
-            - source : 시간 정보
-            -
-
-            ### Return
-            -
-            """
-            if source is None:
-                return datetime.now().strftime("-".join([date_format, day_format]))
-            elif isinstance(source, datetime):
-                return source.strftime("-".join([date_format, day_format]))
+        def Conver_to_text_from_(source: Union[datetime, date, time], date_format: Optional[str] = None):
+            if date_format is None:
+                return source.isoformat()
             else:
-                return str(Debuging.Time._Time_term(source))
+                return source.strftime(date_format)
 
         @staticmethod
-        def _Time_from_text(source: str, date_format: str = "%Y-%m-%d", day_format: str = "%H:%M:%S"):
-            """
-            시간 정보를 텍스트로 변환하는 함수
+        def Conver_from_text_from_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
+            if date_format is not None:
+                _datetime = datetime.strptime(source, date_format)
+            else:
+                _datetime = datetime.strptime(source, "%Y-%m-%dT%H:%M:%S%z" if use_timezone else "%Y-%m-%dT%H:%M:%S")
 
-            ---------------------------------------------------------------------------------------
-            ### Parameters
-            -
-            -
-
-            ### Return
-            -
-            """
-            return datetime.strptime(source, "-".join([date_format, day_format]))
+            if time_type is date:
+                return _datetime.date()
+            elif time_type is time:
+                return _datetime.time()
+            else:
+                return _datetime
 
     class Progress():
         @staticmethod
