@@ -112,7 +112,7 @@ class Debuging():
                 return source.strftime(date_format)
 
         @staticmethod
-        def Conver_from_text_from_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
+        def Conver_from_text_to_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
             if date_format is not None:
                 _datetime = datetime.strptime(source, date_format)
             else:
