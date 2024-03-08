@@ -5,29 +5,32 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 ## Update plan
 
 ### 공통 과정
-- 코드내 인자 명명법 수정
-   - [x] _Base.py
-   - [x] _Numpy.py
-   - [x] _Project.py
-   - [ ] _Vision.py
+- 코드내 인자 명명법 통일
+   ~~~
+   module, class   : 모든 단어 블럭의 첫글자를 대문자로 변경
+   변수            : 소문자로 구성
+   임시 변수       : 밑줄("_")을 변수 앞에 달아 구분
+   ~~~
 
-- docstring 작업  
-   작업한 코드를 보다 쉽게 사용하기 위하여 python docstring 작업  
-   아래와 같은 규칙으로 docstring 작업을 진행.
-   
-   - [ ] _Base.py
-   - [ ] _Numpy.py
-   - [ ] _Project.py
-   - [ ] _Vision.py
+   - [ ] System.py
+   - [ ] Project.py
+   - [ ] Vision.py
 
-#### _error.py
-- 자체적인 에러 생성 코드 방법 구성
-   - [ ] 오류 출력 내용 중 발생 지점 정보 포함
+- docstring 작업
+   ~~~
+   ~~~
 
-#### _numpy.py
-- 데이터 입출력 코드 수정
-   - [x] 데이터 저장
-   - [ ] 데이터 읽기
+   - [ ] System.py
+   - [ ] Project.py
+   - [ ] Vision.py
+
+### Vision.py
+- [ ] 카메라 클래스 생성
+   - [ ] 카메라 정보를 생성하고, 해당 정보를 바탕으로 생성 가능한 모듈 구성
+
+- [ ] 이미지 데이터 처리 모듈
+
+
 
 
 ## Install
