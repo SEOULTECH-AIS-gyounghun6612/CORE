@@ -45,6 +45,24 @@ class Camera():
     intrinsic: ndarray
     rectification: ndarray = np.eye(4)
 
+    def _Set_metrix(self):
+        ...
+
+    def _World_to_cam(self):
+        ...
+
+    def _Cam_to_world(self):
+        ...
+
+    def _Cam_to_img(self):
+        ...
+
+    def _Img_to_cam(self):
+        ...
+
+    def _Get_point_filter(self):
+        ...
+
     def _world_to_img(self, tr_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, Optional[int]] = (0, None)):
         """
         """
@@ -71,6 +89,10 @@ class Camera():
 
     def _cam_to_world(self, pixel):
         ...
+
+
+class Image_Process():
+    ...
 
 
 class Vision_IO(File.Basement):
