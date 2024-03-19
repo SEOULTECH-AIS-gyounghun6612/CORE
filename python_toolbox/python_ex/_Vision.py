@@ -32,10 +32,28 @@ class Format_of():
         MP4 = "DIVX"
 
 
-class Segmentation_Style(Enum):
-    CLASS_MAP = 0       # (h, w, class count)
-    COLOR_MAP = 1       # (h, w, 3)
-    CLASSIFICATION = 2  # (h, w)
+@dataclass
+class Scene():
+    data_profile: Dict[str, List] = field(default_factory=dict)
+
+    def _Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
+        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
+        _data_key = "img" if data_key is None else data_key
+        if _data_key in self.data_profile.keys():
+            self.data_profile[_data_key] += _file_list
+        else:
+            self.data_profile[_data_key] = _file_list
+
+    def _Set_pose_file_from(self, data_dir: str, ext: str = ".npy", data_key: Optional[str] = None):
+        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
+        _data_key = "pose" if data_key is None else data_key
+        if _data_key in self.data_profile.keys():
+            self.data_profile[_data_key] += _file_list
+        else:
+            self.data_profile[_data_key] = _file_list
+
+    def _Get_frame(self, frame_num: int):
+        raise NotImplementedError
 
 
 @dataclass
@@ -44,6 +62,8 @@ class Camera():
     image_size: List
     intrinsic: ndarray = field(default_factory=lambda: np.eye(4))
     rectification: ndarray = field(default_factory=lambda: np.eye(4))
+
+    scene_list: Scene = field(default_factory=Scene)
 
     def _Set_metrix(self):
         ...
@@ -91,30 +111,6 @@ class Camera():
     def _cam_to_world(self, pixel):
         ...
 
-
-@dataclass
-class Scene():
-    camera_info: Camera
-    data_profile: Dict[str, List] = field(default_factory=dict)
-
-    def _Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
-        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
-        _data_key = "img" if data_key is None else data_key
-        if _data_key in self.data_profile.keys():
-            self.data_profile[_data_key] += _file_list
-        else:
-            self.data_profile[_data_key] = _file_list
-
-    def _Set_pose_file_from(self, data_dir: str, ext: str = ".npy", data_key: Optional[str] = None):
-        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
-        _data_key = "pose" if data_key is None else data_key
-        if _data_key in self.data_profile.keys():
-            self.data_profile[_data_key] += _file_list
-        else:
-            self.data_profile[_data_key] = _file_list
-
-    def _Get_frame(self, frame_num: int):
-        raise NotImplementedError
 
 
 class Image_Process():
