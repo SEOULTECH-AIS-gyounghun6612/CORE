@@ -69,7 +69,7 @@ class Array_IO(File.Basement):
 
     @staticmethod
     def _Load(file_name: str, directory: str):
-        return np.load(Path._Join(file_name, directory))
+        return np.load(Path.Join(file_name, directory))
 
     # in later fix it
     class RLE():

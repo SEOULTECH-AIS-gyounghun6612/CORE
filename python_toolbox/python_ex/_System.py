@@ -62,7 +62,7 @@ class Path():
         return obj_path.replace(_old_sep, path.sep)
 
     @staticmethod
-    def _Join(obj_path: str | List[str], root_path: str | None = None):
+    def Join(obj_path: str | List[str], root_path: str | None = None):
         """
         #### 경로 문자열 연결
         ---------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ class Path():
         ---------------------------------------------------------------------------------------
         """
         _path_comp = obj_path.split(path.sep)
-        return Path._Join(_path_comp[:level]), Path._Join(_path_comp[level:])
+        return Path.Join(_path_comp[:level]), Path.Join(_path_comp[level:])
 
     @staticmethod
     def _Get_here(just_name: bool = False) -> str:
@@ -117,18 +117,18 @@ class Path():
                 return False
 
     @staticmethod
-    def _Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = True):
+    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = True):
         if root_dir is not None:  # root directory check
             if not Path._Exist_check(root_dir, Path.Type.DIRECTORY) and is_force:
                 _front, _back = Path._Devide(root_dir)
-                Path._Make_directory(_back, _front, is_force)
+                Path.Make_directory(_back, _front, is_force)
             else:
                 raise ValueError(f"The entered path '{root_dir}' does not exist. Check it.")
 
         else:  # use relative root directory (= cwd)
             root_dir = Path.ABSOLUTE_HERE
 
-        _obj_dir = Path._Join(obj_dir, root_dir)
+        _obj_dir = Path.Join(obj_dir, root_dir)
         mkdir(_obj_dir) if isinstance(obj_dir, str) else makedirs(_obj_dir, exist_ok=True)
         return _obj_dir
 
@@ -151,7 +151,7 @@ class Path():
         _searched_list = []
 
         for _ext in _ext_list:
-            _searched_list += sorted(glob(Path._Join(_obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}", obj_path)))
+            _searched_list += sorted(glob(Path.Join(_obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}", obj_path)))
 
         return _searched_list
 
@@ -172,7 +172,7 @@ class File():
                 _file_name = file_name
 
             # make file path
-            _file_path = Path._Join(_file_name, _file_dir)
+            _file_path = Path.Join(_file_name, _file_dir)
             _file_exist = Path._Exist_check(_file_path, Path.Type.FILE)
 
             if raise_error:  # file exist check for read stream
