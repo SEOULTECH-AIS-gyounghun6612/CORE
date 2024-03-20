@@ -186,7 +186,7 @@ class File():
         WRITEABLE = Dict[KEYABLE, VALUEABLE]
 
         @staticmethod
-        def _Read(file_name: str, file_dir: str) -> Dict:
+        def Read(file_name: str, file_dir: str) -> Dict:
             # make file path
             _is_exist, _file = File.Json._Path_check(file_name, file_dir, "json")
 
@@ -200,7 +200,7 @@ class File():
                 return {}
 
         @staticmethod
-        def _Write(file_name: str, file_dir: str, data: WRITEABLE):
+        def Write(file_name: str, file_dir: str, data: WRITEABLE):
             # make file path
             _, _file = File.Json._Path_check(file_name, file_dir, "json")
 
