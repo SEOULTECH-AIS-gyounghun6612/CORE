@@ -51,15 +51,21 @@ class Config():
         return asdict(self)
 
 
-class Project():
-    def __init__(self, project_name: str, description: str, save_root: str):
+class Template():
+    def __init__(self, project_name: str, description: Optional[str] = None, result_root: Optional[str] = None):
         self.project_name = project_name
-        self.description = description
-        self.save_root = self._Make_save_root(save_root)
+        self.Make_save_root(description, result_root)
 
-    def _Make_save_root(self, save_root: str):
-        _working_date = Debuging.Time._Conver_to_text_from_(Debuging.Time._Stemp(), "%Y-%m-%d_%H:%M:%S")
-        return Path._Make_directory(save_root, Path._Join(_working_date, self.project_name))
+    def Make_save_root(self, description: Optional[str] = None, result_root: Optional[str] = None):
+        _result_dir_dirs = Path.Join(
+            [
+                "result" if result_root is None else result_root,
+                "default" if description is None else description,
+                "default" if description is None else description,
+                Debuging.Time.Make_text_from(Debuging.Time.Stemp(), "%Y-%m-%d_%H:%M:%S")
+            ]
+        )
+        self.result_root = Path.Make_directory(_result_dir_dirs)
 
 
 class Debuging():
@@ -74,7 +80,7 @@ class Debuging():
     """
 
     @staticmethod
-    def _Str_adjust(text: str, max_length: int, fill: str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
+    def Str_adjust(text: str, max_length: int, fill: str = " ", mode: Literal["l", "c", "r"] = "r") -> str:
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
         if mode == "l":
@@ -86,7 +92,7 @@ class Debuging():
 
     class Time():
         @staticmethod
-        def _Stemp(timezone: Optional[timezone] = None):
+        def Stemp(timezone: Optional[timezone] = None):
             """
             현재 시간 정보를 생성하는 함수
 
@@ -100,23 +106,23 @@ class Debuging():
             return datetime.now(timezone)
 
         @staticmethod
-        def _Get_term(standard_time: datetime, to_str: bool = True, timezone: Optional[timezone] = None):
-            _term = Debuging.Time._Stemp(timezone) - standard_time
+        def Get_term(standard_time: datetime, to_str: bool = True, timezone: Optional[timezone] = None):
+            _term = Debuging.Time.Stemp(timezone) - standard_time
             return str(_term) if to_str else _term
 
         @staticmethod
-        def _Conver_to_text_from_(source: Union[datetime, date, time], date_format: Optional[str] = None):
+        def Make_text_from(time_source: Union[datetime, date, time], date_format: Optional[str] = None):
             if date_format is None:
-                return source.isoformat()
+                return time_source.isoformat()
             else:
-                return source.strftime(date_format)
+                return time_source.strftime(date_format)
 
         @staticmethod
-        def _Conver_from_text_to_(source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
+        def Make_time_from(text_source: str, time_type: Type[Union[datetime, date, time]], date_format: Optional[str] = None, use_timezone: bool = False):
             if date_format is not None:
-                _datetime = datetime.strptime(source, date_format)
+                _datetime = datetime.strptime(text_source, date_format)
             else:
-                _datetime = datetime.strptime(source, "%Y-%m-%dT%H:%M:%S%z" if use_timezone else "%Y-%m-%dT%H:%M:%S")
+                _datetime = datetime.strptime(text_source, "%Y-%m-%dT%H:%M:%S%z" if use_timezone else "%Y-%m-%dT%H:%M:%S")
 
             if time_type is date:
                 return _datetime.date()
@@ -134,7 +140,7 @@ class Debuging():
             return f"{_this}/{max_count}"
 
         @staticmethod
-        def _Progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
+        def Progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 1, length: int = 100, fill: str = '█'):
             """
             Call in a loop to create terminal progress bar
 
