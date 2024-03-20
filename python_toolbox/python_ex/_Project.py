@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Union, Optional, Type
+from typing import Dict, List, Any, Literal, Union, Optional, Type
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
@@ -19,36 +19,27 @@ class Config():
 
     -----------------------------------------------------------------------------------------------
     """
-
-    def _Get_parameter(self) -> Dict[str, Any]:
+    def Config_to_parameter(self) -> Dict[str, Any]:
         """
-        json 파일에 기록된 정보를 인자값으로 변환하는 과정
+        설정값을 사용가능한 인자값으로 변경하는 함수
 
         -------------------------------------------------------------------------------------------
         ### Parameters
         - None
 
         ### Return
-        - parameter : 프로젝트에서 사용되는 인자값
+        - dictionary : 파라메터로 활용하기 위하여 구성된 인자값
 
         -------------------------------------------------------------------------------------------
         """
         return asdict(self)
 
-    def _Convert_to_dict(self) -> Dict[str, File.Json.VALUEABLE]:
-        """
-        인자값을 json 파일에 기록 가능한 dictionary형 데이터로 변환하는 과정
+    def Write_to(self, file_name: str, file_dir: str):
+        File.Json.Write(file_name, file_dir, asdict(self))  # type: ignore
 
-        -------------------------------------------------------------------------------------------
-        ### Parameters
-        - None
-
-        ### Return
-        - dictionary : json 파일에 기록 하기 위한 dictionary형 데이터
-
-        -------------------------------------------------------------------------------------------
-        """
-        return asdict(self)
+    @staticmethod
+    def Read_from(file_name: str, file_dir: str):
+        return File.Json.Read(file_name, file_dir)
 
 
 class Template():
@@ -226,7 +217,7 @@ class Debuging():
             return _holder
 
         def _Load(self, file_dir: str, file_name: str):
-            _save_pakage: dict[str, File.Json.WRITEABLE] = File.Json._Read(file_name, file_dir)
+            _save_pakage: dict[str, File.Json.WRITEABLE] = File.Json.Read(file_name, file_dir)
 
             if _save_pakage is not None:
                 self._Insert(_save_pakage["annotation"], self._Annotation)
@@ -237,7 +228,7 @@ class Debuging():
                 "annotation": self._Annotation,
                 "data": self._Data}
 
-            File.Json._Write(file_name, file_dir, _save_pakage)
+            File.Json.Write(file_name, file_dir, _save_pakage)
 
     class Visualize():
         ...
