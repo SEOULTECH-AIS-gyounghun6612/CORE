@@ -89,7 +89,7 @@ class Path():
         return Path._Devide(getcwd())[-1] if just_name else getcwd()
 
     @staticmethod
-    def _Exist_check(obj_path: str, target: Path.Type, raise_error: bool = False):
+    def Exist_check(obj_path: str, target: Path.Type, raise_error: bool = False):
         """
         #### 해당 경로의 존재 여부 확인
         ---------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ class Path():
     @staticmethod
     def Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = True):
         if root_dir is not None:  # root directory check
-            if not Path._Exist_check(root_dir, Path.Type.DIRECTORY) and is_force:
+            if not Path.Exist_check(root_dir, Path.Type.DIRECTORY) and is_force:
                 _front, _back = Path._Devide(root_dir)
                 Path.Make_directory(_back, _front, is_force)
             else:
@@ -133,8 +133,8 @@ class Path():
         return _obj_dir
 
     @staticmethod
-    def _Search(obj_path: str, target: Path.Type, keyword: str | None = None, ext_filter: str | List[str] | None = None):
-        assert Path._Exist_check(obj_path, Path.Type.DIRECTORY)
+    def Search(obj_path: str, target: Path.Type, keyword: str | None = None, ext_filter: str | List[str] | None = None):
+        assert Path.Exist_check(obj_path, Path.Type.DIRECTORY)
 
         # make keyword
         _obj_keyword = "*" if keyword is None else f"*{keyword}*"
@@ -162,7 +162,7 @@ class File():
         def _Path_check(cls, file_name: str, file_dir: str, ext: str | None = None, raise_error: bool = False):
             # file root path check
             _file_dir = Path._Seperater_check(file_dir)
-            if not Path._Exist_check(_file_dir, Path.Type.DIRECTORY):
+            if not Path.Exist_check(_file_dir, Path.Type.DIRECTORY):
                 ValueError(f"Data save Directrory : {_file_dir} is NOT EXIST.\n check it")
 
             # make the file name
@@ -173,7 +173,7 @@ class File():
 
             # make file path
             _file_path = Path.Join(_file_name, _file_dir)
-            _file_exist = Path._Exist_check(_file_path, Path.Type.FILE)
+            _file_exist = Path.Exist_check(_file_path, Path.Type.FILE)
 
             if raise_error:  # file exist check for read stream
                 assert _file_exist, f"File '{_file_name}' not exist in {_file_dir}. please check it"

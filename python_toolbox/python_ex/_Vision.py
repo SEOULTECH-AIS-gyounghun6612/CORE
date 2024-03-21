@@ -36,34 +36,37 @@ class Format_of():
 class Scene():
     data_profile: Dict[str, List] = field(default_factory=dict)
 
-    def _Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
-        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
+    def Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
+        _file_list = Path.Search(data_dir, Path.Type.FILE, ext_filter=ext)
         _data_key = "img" if data_key is None else data_key
         if _data_key in self.data_profile.keys():
             self.data_profile[_data_key] += _file_list
         else:
             self.data_profile[_data_key] = _file_list
 
-    def _Set_pose_file_from(self, data_dir: str, ext: str = ".npy", data_key: Optional[str] = None):
-        _file_list = Path._Search(data_dir, Path.Type.FILE, ext_filter=ext)
+    def Set_pose_file_from(self, data_dir: str, ext: str = ".npy", data_key: Optional[str] = None):
+        _file_list = Path.Search(data_dir, Path.Type.FILE, ext_filter=ext)
         _data_key = "pose" if data_key is None else data_key
         if _data_key in self.data_profile.keys():
             self.data_profile[_data_key] += _file_list
         else:
             self.data_profile[_data_key] = _file_list
 
-    def _Get_frame(self, frame_num: int):
+    def Get_frame(self, frame_num: int):
         raise NotImplementedError
 
 
 @dataclass
 class Camera():
     cam_id: int
-    image_size: List
+
+    image_size: List[int]
+    frame: int
+
     intrinsic: ndarray = field(default_factory=lambda: np.eye(4))
     rectification: ndarray = field(default_factory=lambda: np.eye(4))
 
-    scene_list: Scene = field(default_factory=Scene)
+    scene_data: Scene = field(default_factory=Scene)
 
     def _Set_metrix(self):
         ...
@@ -112,7 +115,6 @@ class Camera():
         ...
 
 
-
 class Image_Process():
     ...
 
@@ -124,7 +126,7 @@ class Vision_IO(File.Basement):
             self.save_dir = save_dir
 
         def _Make_image_list(self):
-            _image_file_list = Path._Search(self.save_dir, Path.Type.FILE)
+            _image_file_list = Path.Search(self.save_dir, Path.Type.FILE)
             self.file_stream_list = [open(_file, "rb") for _file in _image_file_list]
             self.image_file_list = _image_file_list
 
