@@ -17,7 +17,7 @@ import platform
 
 import sys
 from glob import glob
-from os import path, system, getcwd, mkdir, makedirs
+from os import path, system, getcwd, makedirs
 
 
 # -- DEFINE CONSTNAT -- #
@@ -117,23 +117,21 @@ class Path():
                 return False
 
     @staticmethod
-    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = True):
+    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None):
         if root_dir is not None:  # root directory check
-            if not Path.Exist_check(root_dir, Path.Type.DIRECTORY) and is_force:
+            if not Path.Exist_check(root_dir, Path.Type.DIRECTORY):
                 _front, _back = Path._Devide(root_dir)
-                Path.Make_directory(_back, _front, is_force)
-            else:
-                raise ValueError(f"The entered path '{root_dir}' does not exist. Check it.")
+                Path.Make_directory(_back, _front)
 
         else:  # use relative root directory (= cwd)
             root_dir = Path.ABSOLUTE_HERE
 
         _obj_dir = Path.Join(obj_dir, root_dir)
-        mkdir(_obj_dir) if isinstance(obj_dir, str) else makedirs(_obj_dir, exist_ok=True)
+        makedirs(_obj_dir, exist_ok=True)
         return _obj_dir
 
     @staticmethod
-    def Search(obj_path: str, target: Path.Type, keyword: str | None = None, ext_filter: str | List[str] | None = None):
+    def Search(obj_path: str, target: Path.Type, keyword: str | None = None, ext_filter: str | List[str] | None = None) -> List[str]:
         assert Path.Exist_check(obj_path, Path.Type.DIRECTORY)
 
         # make keyword
