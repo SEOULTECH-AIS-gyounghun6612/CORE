@@ -47,7 +47,7 @@ class Array_IO(File.Basement):
             When saving multi-array and this value is True, switch to using compressed.
         """
         # if save directory not exist, raise error
-        assert Path._Exist_check(save_dir, Path.Type.DIRECTORY), f"Data save Directrory : {save_dir} is NOT EXIST.\n check it"
+        assert Path.Exist_check(save_dir, Path.Type.DIRECTORY), f"Data save Directrory : {save_dir} is NOT EXIST.\n check it"
 
         _file_ext = "npy" if isinstance(array, ndarray) else "npz"
 

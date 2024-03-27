@@ -117,11 +117,18 @@ class Path():
                 return False
 
     @staticmethod
-    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None):
+    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = False):
         if root_dir is not None:  # root directory check
-            if not Path.Exist_check(root_dir, Path.Type.DIRECTORY):
+            _exist = Path.Exist_check(root_dir, Path.Type.DIRECTORY)
+            if _exist:
+                pass
+            elif is_force:
                 _front, _back = Path._Devide(root_dir)
                 Path.Make_directory(_back, _front)
+            else:
+                _error_txt = f"!!! Root directory {root_dir} is NOT EXIST !!!\n"
+                _error_txt = f"{_error_txt}{obj_dir} can't make in {root_dir}"
+                raise ValueError(_error_txt)
 
         else:  # use relative root directory (= cwd)
             root_dir = Path.ABSOLUTE_HERE
