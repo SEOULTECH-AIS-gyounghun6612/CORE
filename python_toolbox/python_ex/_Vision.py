@@ -37,20 +37,11 @@ class Scene():
     data_profile: Dict[str, List] = field(default_factory=dict)
 
     def Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
-        _file_list = Path.Search(data_dir, Path.Type.FILE, ext_filter=ext)
         _data_key = "img" if data_key is None else data_key
         if _data_key in self.data_profile.keys():
-            self.data_profile[_data_key] += _file_list
+            self.data_profile[_data_key] += Path.Search(Path.Join(_data_key, data_dir), Path.Type.FILE, ext_filter=ext)
         else:
-            self.data_profile[_data_key] = _file_list
-
-    def Set_pose_file_from(self, data_dir: str, ext: str = ".npy", data_key: Optional[str] = None):
-        _file_list = Path.Search(data_dir, Path.Type.FILE, ext_filter=ext)
-        _data_key = "pose" if data_key is None else data_key
-        if _data_key in self.data_profile.keys():
-            self.data_profile[_data_key] += _file_list
-        else:
-            self.data_profile[_data_key] = _file_list
+            self.data_profile[_data_key] = Path.Search(Path.Join(_data_key, data_dir), Path.Type.FILE, ext_filter=ext)
 
     def Get_frame(self, frame_num: int):
         raise NotImplementedError
@@ -59,34 +50,41 @@ class Scene():
 @dataclass
 class Camera():
     cam_id: int
+    frame: int = 0
 
-    image_size: List[int]
-    frame: int
-
+    image_size: List[int] = field(default_factory=list)
     intrinsic: ndarray = field(default_factory=lambda: np.eye(4))
-    rectification: ndarray = field(default_factory=lambda: np.eye(4))
+
+    rectification: ndarray = field(default_factory=lambda: np.eye(4))  # check it in later
 
     scene_data: Scene = field(default_factory=Scene)
 
-    def _Set_metrix(self):
+    def Set_save_root(self, save_root: str):
+        # self.save_root
         ...
 
-    def _World_to_cam(self):
+    def Get_camera_info(self, **kwarg):
+        raise NotImplementedError
+
+    def Get_image(self) -> np.ndarray:
+        raise NotImplementedError
+
+    def Get_depth(self) -> np.ndarray:
+        raise NotImplementedError
+
+    def Get_pose(self) -> np.ndarray:
+        raise NotImplementedError
+
+    def Capture(self, save_root: str | None):
+        raise NotImplementedError
+
+    def Convert_pixel_to_camera_point(self):
         ...
 
-    def _Cam_to_world(self):
+    def Convert_camera_point_to_pixel(self):
         ...
 
-    def _Cam_to_img(self):
-        ...
-
-    def _Img_to_cam(self):
-        ...
-
-    def _Get_point_filter(self):
-        ...
-
-    def _world_to_img(self, transform_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, Optional[int]] = (0, None)):
+    def world_to_img(self, transform_to_cam: ndarray, points: ndarray, limit_z: Tuple[int, Optional[int]] = (0, None)):
         """
 
         """
@@ -110,9 +108,6 @@ class Camera():
         _filter = (_v >= 0) * (_v < self.image_size[1]) * (_u >= 0) * (_u < self.image_size[0])
 
         return _u[_filter], _v[_filter], _depth[_filter]
-
-    def _cam_to_world(self, pixel):
-        ...
 
 
 class Image_Process():
