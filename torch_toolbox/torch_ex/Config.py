@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from python_ex._System import Path
 from python_ex._Project import Config
 
-from .Trainer import Mode
+from .Learning import Mode
 
 
 @dataclass
-class TrainerConfig(Config):
+class LearningConfig(Config):
     # trainer config
     porject_name: str
 
@@ -37,7 +37,7 @@ class TrainerConfig(Config):
     # debug
     eval_parameters: List[str]
 
-    def Get_trainer_config(self) -> Dict[str, Any]:
+    def Get_learning_parameter(self) -> Dict[str, Any]:
         return {
             "project_name": self.porject_name,
             "description": Path.Join(self.category, self.dataset),
@@ -47,39 +47,39 @@ class TrainerConfig(Config):
             "gpus": self.gpus
         }
 
-    def Get_dataset_config(self):
+    def Get_dataset_parameter(self):
         raise NotImplementedError
 
-    def Get_dataloader_config(self, learning_mode: str) -> Dict[str, Any]:
+    def Get_dataloader_parameter(self, learning_mode: str) -> Dict[str, Any]:
         return {
             "batch_size": self.batch_size,
             "shuffle": learning_mode == Mode.TRAIN.value,
             "drop_last": self.drop_last[learning_mode]
         }
 
-    def Get_model_config(self) -> Dict[str, Any]:
+    def Get_model_parameter(self) -> Dict[str, Any]:
         raise NotImplementedError
 
-    def Get_optimmizer_config(self) -> Dict[str, Any]:
+    def Get_optimmizer_parameter(self) -> Dict[str, Any]:
         return {
             "learning_rate": self.learning_rate,
         }
 
-    def Get_loss_config(self) -> Dict[str, Any]:
+    def Get_loss_parameter(self) -> Dict[str, Any]:
         raise NotImplementedError
 
-    def Get_debug_config(self) -> Dict[str, Any]:
+    def Get_debug_parameter(self) -> Dict[str, Any]:
         return {
             "holder_name": self.eval_parameters
         }
 
     def Config_to_parameter(self, ) -> Dict[str, Any]:
         return {
-            "trainer": self.Get_trainer_config(),
-            "dataset": self.Get_dataset_config(),
-            "dataloader": dict((Mode(_name), self.Get_dataloader_config(_name)) for _name in self.apply_mode),
-            "optimizer": self.Get_optimmizer_config(),
-            "model": self.Get_model_config(),
-            "loss": self.Get_loss_config(),
-            "debug": self.Get_debug_config(),
+            "trainer": self.Get_learning_parameter(),
+            "dataset": self.Get_dataset_parameter(),
+            "dataloader": dict((Mode(_name), self.Get_dataloader_parameter(_name)) for _name in self.apply_mode),
+            "optimizer": self.Get_optimmizer_parameter(),
+            "model": self.Get_model_parameter(),
+            "loss": self.Get_loss_parameter(),
+            "debug": self.Get_debug_parameter(),
         }
