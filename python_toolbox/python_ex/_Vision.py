@@ -35,13 +35,15 @@ class Format_of():
 @dataclass
 class Scene():
     data_profile: Dict[str, List] = field(default_factory=dict)
+    data_root: str = Path.ABSOLUTE_HERE
 
-    def Set_file_list_from(self, data_dir: str, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
+    def Get_file_list_from(self, ext: Union[str, List[str]] = [".jpg", ".png"], data_key: Optional[str] = None):
+        _data_dir = self.data_root
         _data_key = "img" if data_key is None else data_key
         if _data_key in self.data_profile.keys():
-            self.data_profile[_data_key] += Path.Search(Path.Join(_data_key, data_dir), Path.Type.FILE, ext_filter=ext)
+            self.data_profile[_data_key] += Path.Search(Path.Join(_data_key, _data_dir), Path.Type.FILE, ext_filter=ext)
         else:
-            self.data_profile[_data_key] = Path.Search(Path.Join(_data_key, data_dir), Path.Type.FILE, ext_filter=ext)
+            self.data_profile[_data_key] = Path.Search(Path.Join(_data_key, _data_dir), Path.Type.FILE, ext_filter=ext)
 
     def Get_frame(self, frame_num: int):
         raise NotImplementedError
