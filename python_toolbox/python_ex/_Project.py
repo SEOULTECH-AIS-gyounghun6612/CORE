@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, date, time, timezone
 # from dateutil.relativedelta import relativedelta
 from math import log10, floor
+from numpy import ndarray
+from cv2 import getTextSize, putText
 
 from ._System import Path, File
 
@@ -231,4 +233,41 @@ class Debuging():
             File.Json.Write(file_name, file_dir, _save_pakage)
 
     class Visualize():
-        ...
+        @staticmethod
+        def Put_text_to_img(draw_img: ndarray, location: List[int], text_list: List[str], padding: int):
+            # draw image check
+            _shape = draw_img.shape
+
+            if len(_shape) > 2:
+                _h, _w = _shape[:2]
+            else:
+                _h, _w = _shape
+
+            # decide text position in image
+            _point_y, _point_x = location
+            _text_h_size = 0
+            _text_w_size = 0
+
+            for _text in text_list:  # get text box size
+                (_size_x, _size_y), _ = getTextSize(_text, 1, 1, 1)
+                _text_h_size += _size_y
+                _text_w_size = _size_x if _size_x > _text_w_size else _text_w_size
+
+            if 2 * (_text_h_size + padding) > _h or 2 * (_text_w_size + padding) > _w:  # can't put text box in image
+                return False, draw_img
+            else:  # default => right under
+                # set text box x position
+                _text_x = _point_x + padding
+                _text_x = _text_x if (_text_x + _text_w_size) < _w else _point_x - (_text_w_size + padding)
+
+                # set text box y position
+                _text_y = _point_y + _text_h_size + padding
+                _text_y = _text_y if _text_y < _h else _point_y - padding
+
+                for _ct, _text in enumerate(reversed(text_list)):
+                    putText(draw_img, _text, [_text_x, _text_y - (_ct * _size_y)], 1, 1, (0, 255, 0))
+                return True, draw_img
+
+        @staticmethod
+        def Image_Labeling():
+            ...
