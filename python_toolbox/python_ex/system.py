@@ -28,20 +28,20 @@ TYPE_NUMBER = Union[int, float]
 PYTHON_VERSION = sys.version_info
 
 
-class OS():
+class OperatingSystem():
     THIS_STYLE = platform.system()
 
-    class Style(Enum):
+    class Name(Enum):
         WINDOW = "Windows"
         LINUX = "Linux"
 
     @staticmethod
-    def _Is_it_runing(like_this_os: OS.Style):
+    def _Is_it_runing(like_this_os: OperatingSystem.Name):
         """
         #### 제시된 OS와 프로그램이 돌아가는 OS를 비교하는 함수
         ---------------------------------------------------------------------------------------
         """
-        return OS.THIS_STYLE == like_this_os
+        return OperatingSystem.THIS_STYLE == like_this_os
 
 
 # -- Mation Function -- #
@@ -53,12 +53,13 @@ class Path():
         FILE = "file"
 
     @staticmethod
-    def _Seperater_check(obj_path: str):
+    def Seperater_check(obj_path: str):
         """
         #### 경로 문자열에 존재하는 구분자 확인
         ---------------------------------------------------------------------------------------
         """
-        _old_sep = "\\" if OS._Is_it_runing(OS.Style.LINUX) else "/"
+        _is_linux = OperatingSystem._Is_it_runing(OperatingSystem.Name.LINUX)
+        _old_sep = "\\" if _is_linux else "/"
         return obj_path.replace(_old_sep, path.sep)
 
     @staticmethod
@@ -81,15 +82,7 @@ class Path():
         return Path.Join(_path_comp[:level]), Path.Join(_path_comp[level:])
 
     @staticmethod
-    def _Get_here(just_name: bool = False) -> str:
-        """
-        #### 현재 작동중인 python script의 경로 문자열 생성
-        ---------------------------------------------------------------------------------------
-        """
-        return Path._Devide(getcwd())[-1] if just_name else getcwd()
-
-    @staticmethod
-    def Exist_check(obj_path: str, target: Path.Type, raise_error: bool = False):
+    def Exist_check(obj_path: str, target: Path.Type):
         """
         #### 해당 경로의 존재 여부 확인
         ---------------------------------------------------------------------------------------
@@ -99,25 +92,22 @@ class Path():
         if path.isdir(obj_path):
             if target is Path.Type.DIRECTORY:
                 return True
-            elif raise_error:
-                raise ValueError("this path is not a file.")
             else:
                 return False
         elif path.isfile(obj_path):
             if target is Path.Type.FILE:
                 return True
-            elif raise_error:
-                raise ValueError("this path is not a directory.")
             else:
                 return False
         else:
-            if raise_error:
-                raise ValueError("this path is not exist.")
-            else:
-                return False
+            return False
 
     @staticmethod
-    def Make_directory(obj_dir: str | List[str], root_dir: str | None = None, is_force: bool = False):
+    def Make_directory(
+        obj_dir: str | List[str],
+        root_dir: str | None = None,
+        is_force: bool = False
+    ):
         if root_dir is not None:  # root directory check
             _exist = Path.Exist_check(root_dir, Path.Type.DIRECTORY)
             if _exist:
@@ -126,9 +116,12 @@ class Path():
                 _front, _back = Path._Devide(root_dir)
                 Path.Make_directory(_back, _front)
             else:
-                _error_txt = f"!!! Root directory {root_dir} is NOT EXIST !!!\n"
-                _error_txt = f"{_error_txt}{obj_dir} can't make in {root_dir}"
-                raise ValueError(_error_txt)
+                raise ValueError(
+                    "\n".join((
+                        f"!!! Root directory {root_dir} is NOT EXIST !!!",
+                        f"{obj_dir} can't make in {root_dir}")
+                    )
+                )
 
         else:  # use relative root directory (= cwd)
             root_dir = Path.ABSOLUTE_HERE
@@ -138,7 +131,12 @@ class Path():
         return _obj_dir
 
     @staticmethod
-    def Search(obj_path: str, target: Path.Type, keyword: str | None = None, ext_filter: str | List[str] | None = None) -> List[str]:
+    def Search(
+        obj_path: str,
+        target: Path.Type,
+        keyword: str | None = None,
+        ext_filter: str | List[str] | None = None
+    ) -> List[str]:
         assert Path.Exist_check(obj_path, Path.Type.DIRECTORY)
 
         # make keyword
@@ -146,46 +144,33 @@ class Path():
 
         # make ext list
         if isinstance(ext_filter, list):
-            _ext_list = [_ext[1:] if _ext[0] == "." else _ext for _ext in ext_filter]
+            _ext_list = [
+                _ext[1:] if _ext[0] == "." else _ext for _ext in ext_filter
+            ]
         elif isinstance(ext_filter, str):
-            _ext_list = [ext_filter[1:] if ext_filter[0] == "." else ext_filter]
+            _ext_list = [
+                ext_filter[1:] if ext_filter[0] == "." else ext_filter
+            ]
         else:
             _ext_list = [""]
 
-        _ext_list = ext_filter if isinstance(ext_filter, list) else [ext_filter]
         _searched_list = []
 
         for _ext in _ext_list:
-            _searched_list += sorted(glob(Path.Join(_obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}", obj_path)))
+            if _ext == "":
+                _searched_list += sorted(
+                    glob(Path.Join(_obj_keyword, obj_path))
+                )
+            else:
+                _searched_list += sorted(
+                    glob(Path.Join(f"{_obj_keyword}.{_ext}", obj_path))
+                )
 
         return _searched_list
 
 
 class File():
-    class Basement():
-        @classmethod
-        def _Path_check(cls, file_name: str, file_dir: str, ext: str | None = None, raise_error: bool = False):
-            # file root path check
-            _file_dir = Path._Seperater_check(file_dir)
-            if not Path.Exist_check(_file_dir, Path.Type.DIRECTORY):
-                ValueError(f"Data save Directrory : {_file_dir} is NOT EXIST.\n check it")
-
-            # make the file name
-            if ext is not None:
-                _file_name = f"{file_name if file_name.find('.') == -1 else file_name.split('.')[0]}.{ext}"
-            else:
-                _file_name = file_name
-
-            # make file path
-            _file_path = Path.Join(_file_name, _file_dir)
-            _file_exist = Path.Exist_check(_file_path, Path.Type.FILE)
-
-            if raise_error:  # file exist check for read stream
-                assert _file_exist, f"File '{_file_name}' not exist in {_file_dir}. please check it"
-
-            return _file_exist, _file_path
-
-    class Json(Basement):
+    class Json():
         KEYABLE = Union[TYPE_NUMBER, bool, str]
         VALUEABLE = Union[KEYABLE, Tuple, List, Dict, None]
         WRITEABLE = Dict[KEYABLE, VALUEABLE]
@@ -193,7 +178,8 @@ class File():
         @staticmethod
         def Read(file_name: str, file_dir: str) -> Dict:
             # make file path
-            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "json")
+            _file = Path.Join([file_name, "json"], file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             # read the file
             if _is_exist:
@@ -207,71 +193,122 @@ class File():
         @staticmethod
         def Write(file_name: str, file_dir: str, data: WRITEABLE):
             # make file path
-            _, _file = File.Json._Path_check(file_name, file_dir, "json")
+            _file = Path.Join([file_name, "json"], file_dir)
 
             # dump to file
             with open(_file, "w") as _file:
                 try:
                     json.dump(data, _file, indent="\t")
-                except:
+                except TypeError:
                     return False
             return True
 
-    class CSV(Basement):
+    class CSV():
         @staticmethod
-        def _Read(file_name: str, file_dir: str, delimiter: str = "|", encoding="UTF-8") -> List[Dict[str, Any]]:
+        def _Read(
+            file_name: str,
+            file_dir: str,
+            delimiter: str = "|",
+            encoding="UTF-8"
+        ) -> List[Dict[str, Any]]:
             # make file path
-            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
+            _file = Path.Join([file_name, "csv"], file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             if _is_exist:
                 # read the file
                 with open(_file, "r", encoding=encoding) as file:
+                    _raw_data = csv.DictReader(file, delimiter=delimiter)
                     _read_data = [
                         dict((
-                            _key.replace(" ", ""), _value.replace(" ", "")
-                        ) for _key, _value in _line_dict.items()) for _line_dict in csv.DictReader(file, delimiter=delimiter)]
+                                _key.replace(" ", ""),
+                                _value.replace(" ", "")
+                            ) for _key, _value in _line_dict.items()
+                        ) for _line_dict in _raw_data
+                    ]
                 return _read_data
             else:
                 print(f"file {file_name} is not exist in {file_dir}")
                 return []
 
         @staticmethod
-        def _Write(file_name: str, file_dir: str, data: List[Dict], feildnames: List[str], delimiter: str = "|", mode: Literal['a', 'w'] = 'w', encoding="UTF-8"):
+        def _Write(
+            file_name: str,
+            file_dir: str,
+            data: List[Dict],
+            feildnames: List[str],
+            delimiter: str = "|",
+            mode: Literal['a', 'w'] = 'w',
+            encoding="UTF-8"
+        ):
             # make file path
-            _is_exist, _file = File.Json._Path_check(file_name, file_dir, "csv")
+            _file = Path.Join([file_name, "csv"], file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             # dump to file
-            with open(_file, mode if not _is_exist else "w", encoding=encoding, newline="") as _file:
+            with open(
+                _file,
+                mode if not _is_exist else "w",
+                encoding=encoding,
+                newline=""
+            ) as _file:
                 try:
-                    _dict_writer = csv.DictWriter(_file, fieldnames=feildnames, delimiter=delimiter)
+                    _dict_writer = csv.DictWriter(
+                        _file, fieldnames=feildnames, delimiter=delimiter)
                     _dict_writer.writeheader()
                     _dict_writer.writerows(data)
-                except:
+                except TypeError:
                     return False
             return True
 
 
 class Server():
-    IS_WINDOW = OS._Is_it_runing(OS.Style.WINDOW)
+    IS_WINDOW = OperatingSystem._Is_it_runing(OperatingSystem.Name.WINDOW)
 
     class Connection_Porcess(Enum):
         CIFS = "cifs"
 
-    def __init__(self, process: Connection_Porcess = Connection_Porcess.CIFS) -> None:
+    def __init__(
+        self,
+        process: Connection_Porcess = Connection_Porcess.CIFS
+    ) -> None:
         self.process = process
 
-    def _connect_to_Linux(self, host_name: str, mount_dir: str, mount_point: str, user_id: int, group_id: int, dir_mode: int, file_mode: int, credent_path: str):
-        _command = f"sudo -S mount -t {self.process.value}"
-        _command += f" -o uid={user_id},gid={group_id},dir_mode={dir_mode%1000:0>4d},dile_mode={file_mode%1000:0>4d},credentials={credent_path}"
-        _command += f" //{host_name}/{mount_dir} {mount_point}"
-
+    def _connect_to_Linux(
+        self,
+        host_name: str,
+        mount_dir: str,
+        mount_point: str,
+        user_id: int,
+        group_id: int,
+        dir_mode: int,
+        file_mode: int,
+        credent_path: str
+    ):
+        _command = path.join(
+            f"sudo -S mount -t {self.process.value}",
+            " -o ",
+            ",".join((
+                f"uid={user_id}",
+                f"gid={group_id}",
+                f"dir_mode={dir_mode%1000:0>4d}",
+                f"dile_mode={file_mode%1000:0>4d}",
+                f"credentials={credent_path}",
+            )),
+            f" //{host_name}/{mount_dir} {mount_point}"
+        )
         system(_command)
 
         return mount_point
 
-    def _connect_to_Window(self, host_name: str, mount_dir: str, mount_point: str, user_name: str):
-        system(f"NET USE {mount_point}: \\\\{host_name}\\{mount_dir} /user:{user_name}")
-        return mount_point + ":"
+    def _connect_to_Window(
+        self,
+        host_name: str,
+        mount_dir: str,
+        mount_point: str,
+        user_name: str
+    ):
+        raise NotImplementedError
 
     def _disconnect(self, mounted_dir: str):
         if self.IS_WINDOW:

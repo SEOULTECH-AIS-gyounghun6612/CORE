@@ -7,7 +7,7 @@ import numpy as np
 
 from numpy import ndarray
 
-from ._System import Path, File
+from .system import Path, File
 
 
 class Binary_Order(Enum):
@@ -58,7 +58,7 @@ class Array_IO(File.Basement):
         else:
             _file_name = file_name.replace(file_name.split(".")[-1], _file_ext)
 
-        _save_file = f"{Path._Seperater_check(save_dir)}{_file_name}"
+        _save_file = f"{Path.Seperater_check(save_dir)}{_file_name}"
 
         if isinstance(array, ndarray):
             np.save(_save_file, array)
