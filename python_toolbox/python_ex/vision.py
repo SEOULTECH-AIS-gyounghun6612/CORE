@@ -97,29 +97,35 @@ class Camera():
         self,
         transform_to_cam: ndarray,
         points: ndarray,
-        limit_z: Tuple[int, Optional[int]] = (0, None)
+        limit_z: Tuple[Optional[int], Optional[int]] = (0, None)
     ):
         """
 
         """
-        _extrict = self.rectification @ transform_to_cam
-        _points_on_cam = np.matmul(_extrict, points)
-        _projection: ndarray = np.matmul(self.intrinsic, _points_on_cam)
+        _ex = self.rectification @ transform_to_cam
+        _point_c = np.matmul(_ex, points)
+        _projection: ndarray = np.matmul(self.intrinsic, _point_c)
 
-        _z_min_limit, _z_max_limit = limit_z
+        _z_min, _z_max = limit_z
+        _z_min = 0 if limit_z[0] is None else limit_z[0]
+        _z_max = np.inf if limit_z[1] is None else limit_z[1]
+        _mask = (_projection[2] >= _z_min) * (_projection[2] < _z_max)
+        _points_n = _projection[:, _mask]
 
-        _points_in_front = _projection[:, _projection[2] >= _z_min_limit]
-        _points_in_front = _points_in_front if _z_max_limit is None else _points_in_front[:, _points_in_front[2] < _z_max_limit]
-
-        _depth = _points_in_front[2]
-        if _z_min_limit == 0:
+        _depth = _points_n[2]
+        if _z_min == 0:
             _depth[_depth == 0] = -1e-6
 
-        _u = np.round(_points_in_front[0, :] / _depth).astype(int)
-        _v = np.round(_points_in_front[1, :] / _depth).astype(int)
+        _u = np.round(_points_n[0, :] / _depth).astype(int)
+        _v = np.round(_points_n[1, :] / _depth).astype(int)
 
         # filtering the point of that over the image size
-        _filter = (_v >= 0) * (_v < self.image_size[1]) * (_u >= 0) * (_u < self.image_size[0])
+        _filter = (
+            (_v >= 0)
+            * (_v < self.image_size[1])
+            * (_u >= 0)
+            * (_u < self.image_size[0])
+        )
 
         return _u[_filter], _v[_filter], _depth[_filter]
 

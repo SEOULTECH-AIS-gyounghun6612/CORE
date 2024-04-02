@@ -22,10 +22,10 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
       - [ ] Project.py
       - [ ] Vision.py
   
-   - [ ] python code 한 줄 최대값(=80) 준수
+   - [x] python code 한 줄 최대값(=80) 준수
       - [x] System.py
       - [x] Project.py
-      - [ ] Vision.py
+      - [x] Vision.py
 
    - [ ] docstring 작업
       - [ ] System.py
