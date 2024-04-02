@@ -18,21 +18,21 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
       | 함수/메서드 매개변수 | `lower_with_under`           |                                            |
       | 지역 변수            | `lower_with_under`           |                                            |
       
-      - [ ] System.py
-      - [ ] Project.py
-      - [ ] Vision.py
+      - [ ] system.py
+      - [ ] project.py
+      - [ ] vision.py
   
    - [x] python code 한 줄 최대값(=80) 준수
-      - [x] System.py
-      - [x] Project.py
-      - [x] Vision.py
+      - [x] system.py
+      - [x] project.py
+      - [x] vision.py
 
    - [ ] docstring 작업
-      - [ ] System.py
-      - [ ] Project.py
-      - [ ] Vision.py
+      - [ ] system.py
+      - [ ] project.py
+      - [ ] vision.py
 
-### System.py
+### system.py
 - [ ] 카메라 클래스 생성
    - [ ] 카메라 정보를 생성하고, 해당 정보를 바탕으로 생성 가능한 모듈 구성
    - [ ] 카메라를 통해 촬영한 각 장면의 정보를 처리할 클래스 구성 (= Scene)
@@ -40,7 +40,7 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
 - [ ] 이미지 데이터 처리 모듈
 
-### Vision.py
+### vision.py
 - [ ] 카메라 클래스 생성
    - [ ] 카메라 정보를 생성하고, 해당 정보를 바탕으로 생성 가능한 모듈 구성
    - [ ] 카메라를 통해 촬영한 각 장면의 정보를 처리할 클래스 구성 (= Scene)
@@ -48,7 +48,7 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
 - [ ] 이미지 데이터 처리 모듈
 
-### Vision.py
+### project.py
 - [ ] log 처리 기능 추가
 
 
