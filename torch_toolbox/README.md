@@ -5,14 +5,35 @@
 ## Update plan
 
 ### 공통 과정
-- 코드내 인자 명명법 수정
-   - [x] _Base.py
-   - [x] _Dataset.py
-   - [x] _Learning.py
-   - [x] _Model_n_Optim.py
+- [ ] python code 표준화
+   - [x] python naming 표준화
+      | 타입                 | Public                       | Internal                                   |
+      | -------------------- | ---------------------------- | ------------------------------------------ |
+      | 모듈                 | `lower_with_under`           | `_lower_with_under`                        |
+      | 클래스               | `CapWords`                   | `_CapWords`                                |
+      | 함수                 | `Upper_in_first_with_under()`| `_Upper_in_first_with_under()`             |
+      | 글로벌/클래스 상수   | `CAPS_WITH_UNDER`            | `_CAPS_WITH_UNDER`                         |
+      | 인스턴스 변수        | `lower_with_under`           | `_lower_with_under` (protected)            |
+      | 메서드 이름          | `Upper_in_first_with_under()`| `_Upper_in_first_with_under()` (protected) |
+      | 함수/메서드 매개변수 | `lower_with_under`           |                                            |
+      | 지역 변수            | `lower_with_under`           |                                            |
+      
+      - [x] learning.py
+      - [x] config.py
+      - [x] Python code in dataset directory
+  
+   - [ ] python code 한 줄 최대값(=80) 준수
+      - [x] learning.py
+      - [x] config.py
+      - [x] Python code in dataset directory
 
-### _Model_n_Optim.py
-   - [ ] Multi GPU 과정 중 Learning_Process.Basement._Process에서 메인 프로세서 구분 방법 변경(인자값 -> DDP 함수)
+   - [ ] docstring 작업
+      - [ ] System.py
+      - [ ] config.py
+      - [ ] Python code in dataset directory
+
+### layer.py
+- [ ] 주요 모듈 추가
 
 
 ## Install

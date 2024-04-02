@@ -1,10 +1,10 @@
 from typing import Dict, List, Any
 from dataclasses import dataclass
 
-from python_ex._System import Path
-from python_ex._Project import Config
+from python_ex.system import Path
+from python_ex.project import Config
 
-from .Learning import Mode
+from .learning import Mode
 
 
 @dataclass
@@ -77,7 +77,9 @@ class LearningConfig(Config):
         return {
             "trainer": self.Get_learning_parameter(),
             "dataset": self.Get_dataset_parameter(),
-            "dataloader": dict((Mode(_name), self.Get_dataloader_parameter(_name)) for _name in self.apply_mode),
+            "dataloader": dict((
+                Mode(_name), self.Get_dataloader_parameter(_name)
+            ) for _name in self.apply_mode),
             "optimizer": self.Get_optimmizer_parameter(),
             "model": self.Get_model_parameter(),
             "loss": self.Get_loss_parameter(),
