@@ -39,7 +39,7 @@ class OperatingSystem():
     def _Is_it_runing(like_this_os: OperatingSystem.Name):
         """
         #### 제시된 OS와 프로그램이 돌아가는 OS를 비교하는 함수
-        ---------------------------------------------------------------------------------------
+        ----------------------------------------------------------------
         """
         return OperatingSystem.THIS_STYLE == like_this_os
 
@@ -56,7 +56,7 @@ class Path():
     def Seperater_check(obj_path: str):
         """
         #### 경로 문자열에 존재하는 구분자 확인
-        ---------------------------------------------------------------------------------------
+        ----------------------------------------------------------------
         """
         _is_linux = OperatingSystem._Is_it_runing(OperatingSystem.Name.LINUX)
         _old_sep = "\\" if _is_linux else "/"
@@ -66,7 +66,7 @@ class Path():
     def Join(obj_path: str | List[str], root_path: str | None = None):
         """
         #### 경로 문자열 연결
-        ---------------------------------------------------------------------------------------
+        ----------------------------------------------------------------
         """
         _path_comp = [] if root_path is None else [root_path]
         _path_comp += obj_path if isinstance(obj_path, list) else [obj_path]
@@ -76,7 +76,7 @@ class Path():
     def _Devide(obj_path: str, level: int = -1):
         """
         #### 주어진 경로 문자열 분할
-        ---------------------------------------------------------------------------------------
+        ----------------------------------------------------------------
         """
         _path_comp = obj_path.split(path.sep)
         return Path.Join(_path_comp[:level]), Path.Join(_path_comp[level:])
@@ -85,7 +85,7 @@ class Path():
     def Exist_check(obj_path: str, target: Path.Type):
         """
         #### 해당 경로의 존재 여부 확인
-        ---------------------------------------------------------------------------------------
+        ----------------------------------------------------------------
         #### Parameter
 
         """
@@ -178,7 +178,16 @@ class File():
         @staticmethod
         def Read(file_name: str, file_dir: str) -> Dict:
             # make file path
-            _file = Path.Join([file_name, "json"], file_dir)
+            if "." in file_name:
+                _ext = file_name.split(".")[-1]
+                if _ext != "json":
+                    _file_name = file_name.replace(_ext, "json")
+                else:
+                    _file_name = file_name
+            else:
+                _file_name = f"{file_name}.json"
+
+            _file = Path.Join(_file_name, file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             # read the file
@@ -193,7 +202,16 @@ class File():
         @staticmethod
         def Write(file_name: str, file_dir: str, data: WRITEABLE):
             # make file path
-            _file = Path.Join([file_name, "json"], file_dir)
+            if "." in file_name:
+                _ext = file_name.split(".")[-1]
+                if _ext != "json":
+                    _file_name = file_name.replace(_ext, "json")
+                else:
+                    _file_name = file_name
+            else:
+                _file_name = f"{file_name}.json"
+
+            _file = Path.Join(_file_name, file_dir)
 
             # dump to file
             with open(_file, "w") as _file:
