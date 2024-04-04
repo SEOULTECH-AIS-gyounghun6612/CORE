@@ -27,16 +27,20 @@ class LearningProcess(Template):
     ):
         super().__init__(project_name, description, result_root)
 
+        # base info
         self.max_epoch = max_epoch
         self.last_epoch = last_epoch + 1
         self.apply_mode = apply_mode
 
         self.gpus = [] if gpus is None else gpus
 
+        # debug info
+        self.max_data_ct: Dict[Mode, int] = {}
+        self.loss: Dict[Mode, Dict[str, List[float]]] = {}
         self.holder: Dict[Mode, Dict[str, List[float]]] = {}
 
     def Set_dataset(
-        self, mode: Mode, dataset_config: Dict[str, Any], **kwarg
+        self, mode: Mode, dataset_config: Dict[str, Any]
     ) -> Dataset:
         raise NotImplementedError
 
@@ -46,16 +50,16 @@ class LearningProcess(Template):
         return DataLoader(dataset, **dataloader_config)
 
     def Set_model(
-        self, device_info: device, model_config: Dict[str, Any], **kwarg
+        self, device_info: device, model_config: Dict[str, Any]
     ) -> Module:
         raise NotImplementedError
 
     def Set_optimizer(
-        self, model: Module, optimizer_config: Dict[str, Any], **kwarg
+        self, model: Module, optimizer_config: Dict[str, Any]
     ) -> Tuple[Optimizer, LRScheduler | None]:
         raise NotImplementedError
 
-    def Set_loss(self, loss_config: Dict[str, Any], **kwarg):
+    def Set_loss(self, loss_config: Dict[str, Any]):
         raise NotImplementedError
 
     def Set_holder(self, debug_config: Dict[str, Any]):
