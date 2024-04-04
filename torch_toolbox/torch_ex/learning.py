@@ -5,7 +5,7 @@ from torch import Tensor, load, save, device
 from torch.autograd.grad_mode import no_grad
 from torch.nn import Module
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import Dataset, DataLoader
 
 from python_ex.system import Path
@@ -22,7 +22,7 @@ class LearningProcess(Template):
     def __init__(
         self,
         project_name: str, apply_mode: List[Mode], max_epoch: int,
-        last_epoch: int = -1, gpus: List[int] = [0],
+        last_epoch: int = -1, gpus: List[int] | None = None,
         description: str | None = None, result_root: str | None = None
     ):
         super().__init__(project_name, description, result_root)
@@ -31,7 +31,9 @@ class LearningProcess(Template):
         self.last_epoch = last_epoch + 1
         self.apply_mode = apply_mode
 
-        self.gpus = gpus
+        self.gpus = [] if gpus is None else gpus
+
+        self.holder: Dict[Mode, Dict[str, List[float]]] = {}
 
     def Set_dataset(
         self, mode: Mode, dataset_config: Dict[str, Any], **kwarg
@@ -39,7 +41,7 @@ class LearningProcess(Template):
         raise NotImplementedError
 
     def Set_dataloader(
-        self, dataset: Dataset, dataloader_config: Dict[str, Any], **kwarg
+        self, dataset: Dataset, dataloader_config: Dict[str, Any]
     ) -> DataLoader:
         return DataLoader(dataset, **dataloader_config)
 
@@ -50,7 +52,7 @@ class LearningProcess(Template):
 
     def Set_optimizer(
         self, model: Module, optimizer_config: Dict[str, Any], **kwarg
-    ) -> Tuple[Optimizer, _LRScheduler | None]:
+    ) -> Tuple[Optimizer, LRScheduler | None]:
         raise NotImplementedError
 
     def Set_loss(self, loss_config: Dict[str, Any], **kwarg):
@@ -75,15 +77,12 @@ class LearningProcess(Template):
         self,
         mode: Mode,
         model: Module,
-        intput_data: Tensor | List[Tensor],
-        **kwarg
+        intput_data: Tensor | List[Tensor]
     ) -> Tensor | List[Tensor]:
         if mode is Mode.TRAIN:
             return model(intput_data)
-
-        else:
-            with no_grad():
-                return model(intput_data)
+        with no_grad():
+            return model(intput_data)
 
     def Core(
         self,
@@ -102,7 +101,7 @@ class LearningProcess(Template):
         self,
         model: Module,
         optim: Optimizer,
-        scheduler: _LRScheduler | None,
+        scheduler: LRScheduler | None,
         file_name: str,
         file_dir: List[str] | None = None
     ):
@@ -123,7 +122,7 @@ class LearningProcess(Template):
         self,
         model: Module,
         optim: Optimizer,
-        scheduler: _LRScheduler | None,
+        scheduler: LRScheduler | None,
         file_name: str,
         file_dir: List[str] | None = None
     ):
@@ -143,7 +142,7 @@ class LearningProcess(Template):
         epoch: int,
         model: Module,
         optim: Optimizer,
-        scheduler: _LRScheduler | None
+        scheduler: LRScheduler | None
     ):
         raise NotImplementedError
 
@@ -188,7 +187,8 @@ class LearningProcess(Template):
                         _epoch, _mode, _model, _out, _target, _optim, _data_ct
                     )
 
-            ... if _scheduler is None else _scheduler.step()
+            if _scheduler is not None:
+                _scheduler.step()
 
             # make decision for learning in each epoch
             self.Decision_for_learning(_epoch, _model, _optim, _scheduler)

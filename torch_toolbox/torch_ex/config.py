@@ -58,7 +58,10 @@ class LearningConfig(Config):
         }
 
     def Get_model_parameter(self) -> Dict[str, Any]:
-        raise NotImplementedError
+        return {
+            "model_parmeter": {
+            }
+        }
 
     def Get_optimmizer_parameter(self) -> Dict[str, Any]:
         return {

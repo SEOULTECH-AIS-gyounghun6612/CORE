@@ -3,11 +3,11 @@ from setuptools import setup
 
 requirments_package = [
     'python_ex',
-    'torch>=1.13',
+    'torch>=2.2',
     'einops',
     'albumentations',
     'torchsummary',
-    'tensorboard',    
+    'tensorboard',
     'torch-tb-profiler']
 
 dependency_links = [
