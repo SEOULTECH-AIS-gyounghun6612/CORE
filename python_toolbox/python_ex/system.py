@@ -36,7 +36,7 @@ class OperatingSystem():
         LINUX = "Linux"
 
     @staticmethod
-    def _Is_it_runing(like_this_os: OperatingSystem.Name):
+    def Is_it_runing(like_this_os: OperatingSystem.Name):
         """
         #### 제시된 OS와 프로그램이 돌아가는 OS를 비교하는 함수
         ----------------------------------------------------------------
@@ -58,7 +58,7 @@ class Path():
         #### 경로 문자열에 존재하는 구분자 확인
         ----------------------------------------------------------------
         """
-        _is_linux = OperatingSystem._Is_it_runing(OperatingSystem.Name.LINUX)
+        _is_linux = OperatingSystem.Is_it_runing(OperatingSystem.Name.LINUX)
         _old_sep = "\\" if _is_linux else "/"
         return obj_path.replace(_old_sep, path.sep)
 
@@ -73,7 +73,7 @@ class Path():
         return path.join(*_path_comp)
 
     @staticmethod
-    def _Devide(obj_path: str, level: int = -1):
+    def Devide(obj_path: str, level: int = -1):
         """
         #### 주어진 경로 문자열 분할
         ----------------------------------------------------------------
@@ -82,25 +82,19 @@ class Path():
         return Path.Join(_path_comp[:level]), Path.Join(_path_comp[level:])
 
     @staticmethod
-    def Exist_check(obj_path: str, target: Path.Type):
+    def Exist_check(obj_path: str, target: Path.Type | None = None):
         """
         #### 해당 경로의 존재 여부 확인
         ----------------------------------------------------------------
         #### Parameter
 
         """
-        if path.isdir(obj_path):
-            if target is Path.Type.DIRECTORY:
-                return True
-            else:
-                return False
-        elif path.isfile(obj_path):
-            if target is Path.Type.FILE:
-                return True
-            else:
-                return False
+        if target is Path.Type.DIRECTORY:
+            return path.isdir(obj_path)
+        elif target is Path.Type.FILE:
+            return path.isfile(obj_path)
         else:
-            return False
+            return path.isdir(obj_path) or path.isfile(obj_path)
 
     @staticmethod
     def Make_directory(
@@ -113,7 +107,7 @@ class Path():
             if _exist:
                 pass
             elif is_force:
-                _front, _back = Path._Devide(root_dir)
+                _front, _back = Path.Devide(root_dir)
                 Path.Make_directory(_back, _front)
             else:
                 raise ValueError(
@@ -133,7 +127,7 @@ class Path():
     @staticmethod
     def Search(
         obj_path: str,
-        target: Path.Type,
+        target: Path.Type | None = None,
         keyword: str | None = None,
         ext_filter: str | List[str] | None = None
     ) -> List[str]:
@@ -157,15 +151,15 @@ class Path():
         _searched_list = []
 
         for _ext in _ext_list:
-            if _ext == "":
-                _searched_list += sorted(
-                    glob(Path.Join(_obj_keyword, obj_path))
-                )
-            else:
-                _searched_list += sorted(
-                    glob(Path.Join(f"{_obj_keyword}.{_ext}", obj_path))
-                )
-
+            _list = sorted(glob(
+                Path.Join(
+                    _obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}",
+                    obj_path
+                ))
+            )
+            _searched_list += [
+                _file for _file in _list if Path.Exist_check(_file, target)
+            ]
         return _searched_list
 
 
@@ -176,7 +170,11 @@ class File():
         WRITEABLE = Dict[KEYABLE, VALUEABLE]
 
         @staticmethod
-        def Read(file_name: str, file_dir: str) -> Dict:
+        def Read(
+            file_name: str,
+            file_dir: str,
+            encoding_type: str = "UTF-8"
+        ) -> Dict:
             # make file path
             if "." in file_name:
                 _ext = file_name.split(".")[-1]
@@ -192,7 +190,7 @@ class File():
 
             # read the file
             if _is_exist:
-                with open(_file, "r") as _file:
+                with open(_file, "r", encoding=encoding_type) as _file:
                     _load_data = json.load(_file)
                 return _load_data
             else:
@@ -200,7 +198,12 @@ class File():
                 return {}
 
         @staticmethod
-        def Write(file_name: str, file_dir: str, data: WRITEABLE):
+        def Write(
+            file_name: str,
+            file_dir: str,
+            data: WRITEABLE,
+            encoding_type: str = "UTF-8"
+        ):
             # make file path
             if "." in file_name:
                 _ext = file_name.split(".")[-1]
@@ -214,7 +217,7 @@ class File():
             _file = Path.Join(_file_name, file_dir)
 
             # dump to file
-            with open(_file, "w") as _file:
+            with open(_file, "w", encoding=encoding_type) as _file:
                 try:
                     json.dump(data, _file, indent="\t")
                 except TypeError:
@@ -227,7 +230,7 @@ class File():
             file_name: str,
             file_dir: str,
             delimiter: str = "|",
-            encoding="UTF-8"
+            encoding_type="UTF-8"
         ) -> List[Dict[str, Any]]:
             # make file path
             _file = Path.Join([file_name, "csv"], file_dir)
@@ -235,7 +238,7 @@ class File():
 
             if _is_exist:
                 # read the file
-                with open(_file, "r", encoding=encoding) as file:
+                with open(_file, "r", encoding=encoding_type) as file:
                     _raw_data = csv.DictReader(file, delimiter=delimiter)
                     _read_data = [
                         dict((
@@ -257,7 +260,7 @@ class File():
             feildnames: List[str],
             delimiter: str = "|",
             mode: Literal['a', 'w'] = 'w',
-            encoding="UTF-8"
+            encoding_type="UTF-8"
         ):
             # make file path
             _file = Path.Join([file_name, "csv"], file_dir)
@@ -267,7 +270,7 @@ class File():
             with open(
                 _file,
                 mode if not _is_exist else "w",
-                encoding=encoding,
+                encoding=encoding_type,
                 newline=""
             ) as _file:
                 try:
@@ -281,7 +284,7 @@ class File():
 
 
 class Server():
-    IS_WINDOW = OperatingSystem._Is_it_runing(OperatingSystem.Name.WINDOW)
+    IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
 
     class Connection_Porcess(Enum):
         CIFS = "cifs"
