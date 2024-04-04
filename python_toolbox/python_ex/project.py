@@ -1,11 +1,12 @@
-from typing import Dict, List, Any, Literal, Union, Optional, Type
+from typing import Dict, List, Any, Literal, Union, Type
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
 # from dateutil.relativedelta import relativedelta
 from math import log10, floor
 from numpy import ndarray
-from cv2 import getTextSize, putText
+
+import cv2
 
 from .system import Path, File
 
@@ -48,16 +49,16 @@ class Template():
     def __init__(
         self,
         project_name: str,
-        description: Optional[str] = None,
-        result_root: Optional[str] = None
+        description: str | None = None,
+        result_root: str | None = None
     ):
         self.project_name = project_name
         self.Make_save_root(description, result_root)
 
     def Make_save_root(
         self,
-        description: Optional[str] = None,
-        result_root: Optional[str] = None
+        description: str | None = None,
+        result_root: str | None = None
     ):
         _this_time = Debuging.Time.Stemp()
         _result_dir_dirs = Path.Join(
@@ -100,7 +101,7 @@ class Debuging():
 
     class Time():
         @staticmethod
-        def Stemp(timezone: Optional[timezone] = None):
+        def Stemp(set_timezone: timezone | None = None):
             """
             현재 시간 정보를 생성하는 함수
 
@@ -111,21 +112,21 @@ class Debuging():
             ### Return
             - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
             """
-            return datetime.now(timezone)
+            return datetime.now(set_timezone)
 
         @staticmethod
         def Get_term(
             standard_time: datetime,
             to_str: bool = True,
-            timezone: Optional[timezone] = None
+            set_timezone: timezone | None = None
         ):
-            _term = Debuging.Time.Stemp(timezone) - standard_time
+            _term = Debuging.Time.Stemp(set_timezone) - standard_time
             return str(_term) if to_str else _term
 
         @staticmethod
         def Make_text_from(
             time_source: Union[datetime, date, time],
-            date_format: Optional[str] = None
+            date_format: str | None = None
         ):
             if date_format is None:
                 return time_source.isoformat()
@@ -136,7 +137,7 @@ class Debuging():
         def Make_time_from(
             text_source: str,
             time_type: Type[Union[datetime, date, time]],
-            date_format: Optional[str] = None,
+            date_format: str | None = None,
             use_timezone: bool = False
         ):
             if date_format is not None:
@@ -155,7 +156,7 @@ class Debuging():
 
     class Progress():
         @staticmethod
-        def _Count_auto_aligning(this_count: int, max_count: int):
+        def Count_auto_aligning(this_count: int, max_count: int):
             _string_ct = floor(log10(max_count)) + 1
             _this = f"{this_count}".rjust(_string_ct, "0")
 
@@ -223,7 +224,7 @@ class Debuging():
             _txt_w = 0
 
             for _text in text_list:  # get text box size
-                (_size_x, _size_y), _ = getTextSize(_text, 1, 1, 1)
+                (_size_x, _size_y), _ = cv2.getTextSize(_text, 1, 1, 1)
                 _txt_h += _size_y
                 _txt_w = _size_x if _size_x > _txt_w else _txt_w
 
@@ -245,7 +246,7 @@ class Debuging():
                     _text_y = _p_y - padding
 
                 for _ct, _text in enumerate(reversed(text_list)):
-                    putText(
+                    cv2.putText(
                         draw_img,
                         _text,
                         [_text_x, _text_y - (_ct * _size_y)],
