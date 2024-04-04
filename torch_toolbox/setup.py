@@ -10,10 +10,7 @@ requirments_package = [
     'tensorboard',
     'torch-tb-profiler']
 
-dependency_links = [
-    "git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@veralpha=python_ex"
-]
-package_opt = {"torch_ex": ["data_file/*.json"]}
+package_opt = {"torch_ex": ["data_file/*.json", "dataset/*", "augmentation/*"]}
 
 setup(
     name="torch_ex",
@@ -25,7 +22,6 @@ setup(
     packages=["torch_ex"],
     package_data=package_opt,
     python_requires=">=3.10.0",
-    dependency_links=dependency_links,
     install_requires=requirments_package,
     zip_safe=False,
 )
