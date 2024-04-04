@@ -10,7 +10,7 @@ requirments_package = [
     'tensorboard',
     'torch-tb-profiler']
 
-package_opt = {"torch_ex": ["data_file/*.json", "dataset/*", "augmentation/*"]}
+package_opt = {}
 
 setup(
     name="torch_ex",
