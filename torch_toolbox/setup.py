@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, f
 
 
 requirments_package = [
@@ -20,7 +20,6 @@ setup(
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=["torch_ex"],
-    package_data=package_opt,
     python_requires=">=3.10.0",
     install_requires=requirments_package,
     zip_safe=False,
