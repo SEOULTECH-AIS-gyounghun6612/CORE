@@ -9,21 +9,21 @@ from .basement import __Basement__
 
 
 class CustomDataset(__Basement__):
-    def Make_datalist(self, root: str, category: str, **kwarg):
+    def Make_datalist(self, root: str, mode: str | None = None, **kwarg):
         # Get camera info
         with open(
-            Path.Join([category, "realsense.yaml"], root), encoding="UTF-8"
+            Path.Join("realsense.yaml", root), encoding="UTF-8"
         ) as f:
             self.camera_info = yaml.load(f, Loader=yaml.FullLoader)
 
         # Get input and target file list
         _input_files = Path.Search(
-            Path.Join([category, "rgb"], root), Path.Type.FILE, "*", "jpg")
+            Path.Join("rgb", root), Path.Type.FILE, "*", "jpg")
 
         _depth_files = Path.Search(
-            Path.Join([category, "depth"], root), Path.Type.FILE, "*", "png")
+            Path.Join("depth", root), Path.Type.FILE, "*", "png")
         _pose_files = Path.Search(
-            Path.Join([category, "poses"], root), Path.Type.FILE, "*", "npy")
+            Path.Join("poses", root), Path.Type.FILE, "*", "npy")
         _targets = [(
             _depth_file, _pose_file
         ) for _depth_file, _pose_file in zip(_depth_files, _pose_files)]

@@ -11,6 +11,8 @@ from torch.utils.data import Dataset, DataLoader
 from python_ex.system import Path
 from python_ex.project import Template
 
+from .dataset import Build as Dataset_build
+
 
 class Mode(Enum):
     TRAIN = "train"
@@ -42,7 +44,11 @@ class LearningProcess(Template):
     def Set_dataset(
         self, mode: Mode, dataset_config: Dict[str, Any]
     ) -> Dataset:
-        raise NotImplementedError
+        dataset_config.update({
+            "mode": mode.value
+        })
+
+        return Dataset_build(dataset_config)
 
     def Set_dataloader(
         self, dataset: Dataset, dataloader_config: Dict[str, Any]

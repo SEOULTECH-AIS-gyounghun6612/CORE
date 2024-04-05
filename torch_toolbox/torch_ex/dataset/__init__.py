@@ -30,6 +30,6 @@ def Build(dataset_config: Dict[str, Any]):
                 _dataset_module = importlib.import_module(_dataset_name)
             except ImportError:
                 pass  # in later raise error in here
-            break
+            return _dataset_module.CustomDataset(**_dataset_name)
 
-    return _dataset_module.CustomDataset(**_dataset_name)
+    raise ValueError(f"dataset {_dataset_name} is not support")
