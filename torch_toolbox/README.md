@@ -25,7 +25,7 @@
    - [ ] python code 한 줄 최대값(=80) 준수
       - [x] learning.py
       - [x] config.py
-      - [x] Python code in dataset directory
+      - [ ] Python code in dataset directory
 
    - [ ] docstring 작업
       - [ ] System.py
@@ -35,6 +35,8 @@
 ### layer.py
 - [ ] 주요 모듈 추가
 
+### dataset
+- [ ] augmentation 기능 추가 구성
 
 ## Install
 1. pip 사용
