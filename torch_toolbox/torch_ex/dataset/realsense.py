@@ -8,7 +8,7 @@ from python_ex.system import Path
 from .basement import __Basement__
 
 
-class Realsense_Dataset(__Basement__):
+class CustomDataset(__Basement__):
     def Make_datalist(self, root: str, category: str, **kwarg):
         # Get camera info
         with open(

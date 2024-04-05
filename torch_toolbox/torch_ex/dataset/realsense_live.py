@@ -1,7 +1,7 @@
 from .basement import __Basement__
 
 
-class Realsense_Dataset(__Basement__):
+class CustomDataset(__Basement__):
     def Make_datalist(self, data_root: str, data_category: str, **kwarg):
         ...
 
