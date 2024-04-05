@@ -125,13 +125,9 @@ class Path():
         return _obj_dir
 
     @staticmethod
-    def Get_file_directory(file_path: str | None = None):
-        if file_path is None:
-            _file_path = path.abspath(__file__)
-            _exist = True
-        else:
-            _file_path = file_path
-            _exist = Path.Exist_check(file_path, Path.Type.FILE)
+    def Get_file_directory(file_path: str):
+        _file_path = file_path
+        _exist = Path.Exist_check(file_path, Path.Type.FILE)
 
         return _exist, *Path.Devide(_file_path)
 
