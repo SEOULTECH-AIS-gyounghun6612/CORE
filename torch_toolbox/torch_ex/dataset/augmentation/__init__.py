@@ -1,9 +1,10 @@
 from typing import Dict, Any
+import importlib
 
 
 def Build(augment_name: str, augment_config: Dict[str, Any], process_config: Dict[str, Dict[str, Any]]):
     if augment_name.lower() == "torchvision":
-        from .From_Torchvision import FromTorchvision
+        from .from_torchvision import FromTorchvision
         return FromTorchvision(**augment_config).Config_to_compose(process_config)
 
     _error_text = f"This augment process, that from {augment_name.lower()}, is not suport in this module version.\n"
