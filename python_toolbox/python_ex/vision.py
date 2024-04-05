@@ -34,7 +34,7 @@ class Format_of():
 @dataclass
 class Scene():
     data_profile: Dict[str, List] = field(default_factory=dict)
-    data_root: str = Path.ABSOLUTE_HERE
+    data_root: str = Path.WORK_SPACE
 
     def Get_file_list_from(
         self,
