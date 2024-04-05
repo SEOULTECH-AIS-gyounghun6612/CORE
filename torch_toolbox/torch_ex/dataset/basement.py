@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Tuple, Dict, List, Any
 
 from torch.utils.data import Dataset
+from .augmentation import Build
 
 
 class __Basement__(Dataset):
@@ -9,12 +10,12 @@ class __Basement__(Dataset):
         self,
         root: str,
         dataset_name: str, category: str,
-        transform: Dict[str, Any],
+        transform_config: Dict[str, Any],
         **kwarg
     ) -> None:
         self.dataset_name = dataset_name
         self.inputs, self.targets = self.Make_datalist(root, category, **kwarg)
-        self.transform = transform
+        self.transform = Build(**transform_config)
 
     def __len__(self):
         return len(self.inputs)
