@@ -2,6 +2,7 @@ from typing import Dict, Any
 import sys
 import importlib
 
+from .basement import __Basement__
 from python_ex.system import Path
 
 
@@ -30,6 +31,11 @@ def Build(dataset_config: Dict[str, Any]):
                 _dataset_module = importlib.import_module(_dataset_name)
             except ImportError:
                 pass  # in later raise error in here
-            return _dataset_module.CustomDataset(**_dataset_name)
+
+            _dataset: __Basement__ = _dataset_module.CustomDataset(
+                **_dataset_name
+            )
+
+            return _dataset
 
     raise ValueError(f"dataset {_dataset_name} is not support")

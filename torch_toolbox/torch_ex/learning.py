@@ -6,12 +6,13 @@ from torch.autograd.grad_mode import no_grad
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 from python_ex.system import Path
 from python_ex.project import Template
 
 from .dataset import Build as Dataset_build
+from .dataset.basement import __Basement__
 
 
 class Mode(Enum):
@@ -37,21 +38,23 @@ class LearningProcess(Template):
         self.gpus = [] if gpus is None else gpus
 
         # debug info
-        self.max_data_ct: Dict[Mode, int] = {}
+        self.holder: Dict[Mode, Dict[str, int]] = {}
         self.loss: Dict[Mode, Dict[str, List[float]]] = {}
-        self.holder: Dict[Mode, Dict[str, List[float]]] = {}
+        self.eval_holder: Dict[Mode, Dict[str, List[float]]] = {}
 
     def Set_dataset(
         self, mode: Mode, dataset_config: Dict[str, Any]
-    ) -> Dataset:
+    ) -> __Basement__:
         dataset_config.update({
             "mode": mode.value
         })
+        _dataset = Dataset_build(dataset_config)
+        self.holder[mode]["max_data_ct"] = len(_dataset)
 
-        return Dataset_build(dataset_config)
+        return _dataset
 
     def Set_dataloader(
-        self, dataset: Dataset, dataloader_config: Dict[str, Any]
+        self, dataset: __Basement__, dataloader_config: Dict[str, Any]
     ) -> DataLoader:
         return DataLoader(dataset, **dataloader_config)
 
@@ -68,9 +71,9 @@ class LearningProcess(Template):
     def Set_loss(self, loss_config: Dict[str, Any]):
         raise NotImplementedError
 
-    def Set_holder(self, debug_config: Dict[str, Any]):
+    def Set_eval_holder(self, debug_config: Dict[str, Any]):
         _holder_name: List[str] = debug_config["holder_name"]
-        self.holder = dict((
+        self.eval_holder = dict((
             _mode,
             dict((
                 _name,
@@ -162,7 +165,7 @@ class LearningProcess(Template):
         )
 
         # set holder for debug and decision
-        self.Set_holder(config["debug"])
+        self.Set_eval_holder(config["debug"])
 
         # dataset and dataloader
         _dataloader_config: Dict[Mode, Dict[str, Any]] = config["dataloader"]
