@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader
 from python_ex.system import Path
 from python_ex.project import Template
 
-from .dataset import Build as Dataset_build
 from .dataset.basement import __Basement__
 
 
@@ -45,13 +44,7 @@ class LearningProcess(Template):
     def Set_dataset(
         self, mode: Mode, dataset_config: Dict[str, Any]
     ) -> __Basement__:
-        dataset_config.update({
-            "mode": mode.value
-        })
-        _dataset = Dataset_build(dataset_config)
-        self.holder[mode]["max_data_ct"] = len(_dataset)
-
-        return _dataset
+        raise NotImplementedError
 
     def Set_dataloader(
         self, dataset: __Basement__, dataloader_config: Dict[str, Any]
