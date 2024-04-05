@@ -6,10 +6,15 @@ from torch.utils.data import Dataset
 
 class __Basement__(Dataset):
     def __init__(
-        self, root: str, category: str, trans_config: Dict[str, Any], **kwarg
+        self,
+        root: str,
+        dataset_name: str, category: str,
+        transform: Dict[str, Any],
+        **kwarg
     ) -> None:
+        self.dataset_name = dataset_name
         self.inputs, self.targets = self.Make_datalist(root, category, **kwarg)
-        self.transform = self.Make_transform(trans_config)
+        self.transform = transform
 
     def __len__(self):
         return len(self.inputs)
@@ -17,7 +22,4 @@ class __Basement__(Dataset):
     def Make_datalist(
         self, root: str, category: str, **kwarg
     ) -> Tuple[List, List]:
-        raise NotImplementedError
-
-    def Make_transform(self, trans_config: Dict[str, Any]):
         raise NotImplementedError

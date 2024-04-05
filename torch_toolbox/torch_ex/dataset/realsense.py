@@ -1,4 +1,3 @@
-from typing import Dict, Any
 import yaml
 
 import numpy as np
@@ -10,14 +9,11 @@ from .basement import __Basement__
 
 
 class Realsense_Dataset(__Basement__):
-    def __init__(
-        self, root: str, category: str, trans_config: Dict[str, Any], **kwarg
-    ) -> None:
-        super().__init__(root, category, trans_config, **kwarg)
-
     def Make_datalist(self, root: str, category: str, **kwarg):
         # Get camera info
-        with open(Path.Join([category, "realsense.yaml"], root)) as f:
+        with open(
+            Path.Join([category, "realsense.yaml"], root), encoding="UTF-8"
+        ) as f:
             self.camera_info = yaml.load(f, Loader=yaml.FullLoader)
 
         # Get input and target file list
@@ -33,9 +29,6 @@ class Realsense_Dataset(__Basement__):
         ) for _depth_file, _pose_file in zip(_depth_files, _pose_files)]
 
         return _input_files, _targets
-
-    def Make_transform(self, data_transform_config: Dict[str, Any]):
-        ...
 
     def __len__(self):
         return len(self.inputs)
