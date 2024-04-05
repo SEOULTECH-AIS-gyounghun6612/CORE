@@ -46,7 +46,7 @@ class OperatingSystem():
 
 # -- Mation Function -- #
 class Path():
-    ABSOLUTE_HERE = getcwd()
+    WORK_SPACE = getcwd()
 
     class Type(Enum):
         DIRECTORY = "dir"
@@ -118,11 +118,22 @@ class Path():
                 )
 
         else:  # use relative root directory (= cwd)
-            root_dir = Path.ABSOLUTE_HERE
+            root_dir = Path.WORK_SPACE
 
         _obj_dir = Path.Join(obj_dir, root_dir)
         makedirs(_obj_dir, exist_ok=True)
         return _obj_dir
+
+    @staticmethod
+    def Get_file_directory(file_path: str | None):
+        if file_path is None:
+            _file_path = path.abspath(__file__)
+            _exist = True
+        else:
+            _file_path = file_path
+            _exist = Path.Exist_check(file_path, Path.Type.FILE)
+
+        return _exist, Path.Devide(_file_path)
 
     @staticmethod
     def Search(
