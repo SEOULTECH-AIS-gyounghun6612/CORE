@@ -6,7 +6,7 @@ from python_ex.system import Path
 
 
 def Get_support_dataset():
-    _, _this_path, this_file_name = Path.Get_file_directory()
+    _, _this_path, this_file_name = Path.Get_file_directory(__file__)
     sys.path.append(_this_path)  # add this path for import
     _not_dataset = [this_file_name, "basement.py"]
 
@@ -26,7 +26,10 @@ def Build(dataset_config: Dict[str, Any]):
 
     for _support_name in _support_datasets:
         if _dataset_name in _support_name:
-            _dataset_module = importlib.import_module(_dataset_name)
+            try:
+                _dataset_module = importlib.import_module(_dataset_name)
+            except ImportError:
+                pass  # in later raise error in here
             break
 
     return _dataset_module.CustomDataset(**_dataset_name)
