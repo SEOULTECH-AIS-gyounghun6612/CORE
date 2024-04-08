@@ -37,7 +37,7 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
          None ( = Not exist)
 
       ### Structure
-         ClassName or Function_name: Description of each object
+         `ClassName` or `Function_name`: Description of each object
 
       """
 
@@ -52,13 +52,16 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
          ---------------------------------------------------------------------
          ### Args
-            arg_name: Description of the input argument
+         - Super
+            - `arg_name`: Description of the input argument
+         - This
+            - `arg_name`: Description of the input argument
 
          ### Attributes
-            attribute_name: Description of the class attribute name
+         - `attribute_name`: Description of the class attribute name
 
          ### Structure
-            SubClassName or Function_name: Description of each object
+         - `SubClassName` or `Function_name`: Description of each object
 
          """
          def Function_name(self, ...):
@@ -67,13 +70,13 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
             ------------------------------------------------------------------
             ### Args
-               arg_name: Description of the input argument
+            - `arg_name`: Description of the input argument
 
             ### Returns or Yields
-               data_format: Description of the output argument
+            - `data_format`: Description of the output argument
 
             ### Raises
-               error_type: Method of handling according to error issues
+            - `error_type`: Method of handling according to error issues
 
             """
             ...
