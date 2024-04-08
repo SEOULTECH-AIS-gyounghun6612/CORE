@@ -28,6 +28,59 @@
       - [ ] Python code in dataset directory
 
    - [ ] docstring 작업
+      ```python
+      """ ### Module feature description
+      Note
+
+      ------------------------------------------------------------------------
+      ### Requirement
+         None ( = Not exist)
+
+      ### Structure
+         `ClassName` or `Function_name`: Description of each object
+
+      """
+
+      # --- import area --- #
+
+      # --- import area --- #
+
+
+      class ClassName():
+         """ ### Description of class functionality
+         Note
+
+         ---------------------------------------------------------------------
+         ### Args
+         - Super
+            - `arg_name`: Description of the input argument
+         - This
+            - `arg_name`: Description of the input argument
+
+         ### Attributes
+         - `attribute_name`: Description of the class attribute name
+
+         ### Structure
+         - `SubClassName` or `Function_name`: Description of each object
+
+         """
+         def Function_name(self, ...):
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+            - `arg_name`: Description of the input argument
+
+            ### Returns or Yields
+            - `data_format`: Description of the output argument
+
+            ### Raises
+            - `error_type`: Method of handling according to error issues
+
+            """
+            ...
+      ```
       - [ ] System.py
       - [ ] config.py
       - [ ] Python code in dataset directory
