@@ -28,6 +28,57 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
       - [x] vision.py
 
    - [ ] docstring 작업
+      ```python
+      """ ### Module feature description
+      Note
+
+      ------------------------------------------------------------------------
+      ### Requirement
+         None ( = Not exist)
+
+      ### Structure
+         ClassName or Function_name: Description of each object
+
+      """
+
+      # --- import area --- #
+
+      # --- import area --- #
+
+
+      class ClassName():
+         """ ### Description of class functionality
+         Note
+
+         ---------------------------------------------------------------------
+         ### Args
+            arg_name: Description of the input argument
+
+         ### Attributes
+            attribute_name: Description of the class attribute name
+
+         ### Structure
+            SubClassName or Function_name: Description of each object
+
+         """
+         def Function_name(self, ...):
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+               arg_name: Description of the input argument
+
+            ### Returns or Yields
+               data_format: Description of the output argument
+
+            ### Raises
+               error_type: Method of handling according to error issues
+
+            """
+            ...
+      ```
+      
       - [ ] system.py
       - [ ] project.py
       - [ ] vision.py
