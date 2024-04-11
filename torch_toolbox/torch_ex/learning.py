@@ -25,6 +25,9 @@ from python_ex.system import Path
 from python_ex.project import Template
 
 
+PARAMS = Dict[str, Any]
+
+
 class Mode(Enum):
     """ ### 학습 과정을 표현하기 위한 열거형
 
@@ -114,14 +117,14 @@ class LearningProcess(Template):
         self.eval_holder: Dict[Mode, Dict[str, List[float]]] = {}
 
     def Set_dataset(
-        self, mode: Mode, dataset_config: Dict[str, Any]
+        self, mode: Mode, dataset_prams: PARAMS
     ) -> Dataset:
         """ ### 학습 과정에 사용하기 위한 데이터셋 구성 함수
 
         ------------------------------------------------------------------
         ### Args
         - `mode`: 해당 데이터셋을 사용하는 학습 과정
-        - `dataset_config`: 데이터셋 구성을 위한 설정 값
+        - `dataset_prams`: 데이터셋 구성을 위한 설정 값
 
         ### Returns
         - `Dataset`: 학습에 사용하고자 하는 데이터 셋
@@ -133,14 +136,14 @@ class LearningProcess(Template):
         raise NotImplementedError
 
     def Set_dataloader(
-        self, dataset: Dataset, dataloader_config: Dict[str, Any]
+        self, dataset: Dataset, dataloader_prams: PARAMS
     ) -> DataLoader:
         """ ### 학습 과정에 사용할 데이터를 처리하는 Dataloader 생성 함수
 
         ------------------------------------------------------------------
         ### Args
         - `dataset`: 학습 과정에 사용되는 데이터 셋
-        - `dataloader_config`: Dataloader 구성을 위한 설정 값
+        - `dataloader_prams`: Dataloader 구성을 위한 설정 값
 
         ### Returns
         - `DataLoader`: 학습에 사용되는 데이터를 구성하는 Dataloader
@@ -149,17 +152,17 @@ class LearningProcess(Template):
         - None
 
         """
-        return DataLoader(dataset, **dataloader_config)
+        return DataLoader(dataset, **dataloader_prams)
 
     def Set_model(
-        self, device_info: device, model_config: Dict[str, Any]
+        self, device_info: device, model_prams: PARAMS
     ) -> Module:
         """ ### 학습 대상 모델을 구성하는 함수
 
         ------------------------------------------------------------------
         ### Args
         - `device_info`: 학습 모델에 사용될 장치
-        - `model_config`: 모델 구성을 위한 설정 값
+        - `model_prams`: 모델 구성을 위한 설정 값
 
         ### Returns
         - `Module`: 학습 대상 모델
@@ -171,14 +174,14 @@ class LearningProcess(Template):
         raise NotImplementedError
 
     def Set_optimizer(
-        self, model: Module, optimizer_config: Dict[str, Any]
+        self, model: Module, optimizer_prams: PARAMS
     ) -> Tuple[Optimizer, LRScheduler | None]:
         """ ### 학습 대상 모델에 할당되는 optimizer와 scheduler을 구성하는 함수
 
         ------------------------------------------------------------------
         ### Args
         - `model`: 학습 대상 모델
-        - `optimizer_config`: optimizer와 scheduler을 구성을 위해 사용되는 설정 값
+        - `optimizer_prams`: optimizer와 scheduler을 구성을 위해 사용되는 설정 값
 
         ### Returns
         - `Optimizer`: 학습에 사용되는 optimizer
@@ -190,14 +193,14 @@ class LearningProcess(Template):
         """
         raise NotImplementedError
 
-    def Set_loss(self, loss_config: Dict[str, Any]):
+    def Set_loss(self, loss_prams: PARAMS):
         """ ### 학습 과정 중 사용하고자 하는 loss 구조와 값 보관 자료형 구성 함수
         해당 함수에서 학습이 진행되는 과정에서 발생된 loss를 기록하는 Attributes
         `self.loss`의 초기화도 같이 진행할 필요가 있음.
 
         ------------------------------------------------------------------
         ### Args
-        - `loss_config`: loss를 구성하기 위해 사용되는 설정 값
+        - `loss_prams`: loss를 구성하기 위해 사용되는 설정 값
 
         ### Returns
         - None
@@ -208,12 +211,12 @@ class LearningProcess(Template):
         """
         raise NotImplementedError
 
-    def Set_eval_holder(self, debug_config: Dict[str, Any]):
+    def Set_eval_holder(self, debug_prams: PARAMS):
         """ ### 학습 과정 중 생성되는 평가 인자 보관 자료형 구성 함수
 
         ------------------------------------------------------------------
         ### Args
-        - `debug_config`: 평가 인자 설정 값
+        - `debug_prams`: 평가 인자 설정 값
 
         ### Returns
         - None
@@ -222,7 +225,7 @@ class LearningProcess(Template):
         - None
 
         """
-        _holder_name: List[str] = debug_config["holder_name"]
+        _holder_name: List[str] = debug_prams["holder_name"]
         self.eval_holder = dict((
             _mode,
             dict((
@@ -414,13 +417,13 @@ class LearningProcess(Template):
         """
         raise NotImplementedError
 
-    def Main_work(self, thred_num: int, config: Dict[str, Any]):
+    def Main_work(self, thred_num: int, prams: PARAMS):
         """ ### 전체 학습을 진행하는 함수
 
         ------------------------------------------------------------------
         ### Args
         - `thred_num`: 해당 학습 과정 구분 번호
-        - `config`: 학습에 사용되는 인자값
+        - `prams`: 학습에 사용되는 인자값
 
         ### Returns
         - None
@@ -434,18 +437,20 @@ class LearningProcess(Template):
         )
 
         # set holder for debug and decision
-        self.Set_eval_holder(config["debug"])
+        self.Set_eval_holder(prams["debug"])
 
         # dataset and dataloader
-        _dataloader_config: Dict[Mode, Dict[str, Any]] = config["dataloader"]
+        _data_proc_prams: Dict[Mode, Dict[str, PARAMS]] = prams["data_proc"]
         _loaders = dict((
-            _mode, self.Set_dataloader(
-                self.Set_dataset(_mode, config["dataset"]), _config
-            )) for _mode, _config in _dataloader_config.items()
+            _mode,
+            self.Set_dataloader(
+                self.Set_dataset(_mode, _prams["dataset_prams"]),
+                _prams["dataloader_prams"]
+            )) for _mode, _prams in _data_proc_prams.items()
         )
         # model and optimizer (with scheduler)
-        _model = self.Set_model(_device, config["model"])
-        _optim, _scheduler = self.Set_optimizer(_model, config["optimizer"])
+        _model = self.Set_model(_device, prams["model"])
+        _optim, _scheduler = self.Set_optimizer(_model, prams["optimizer"])
 
         # load pretrained weight
         if self.last_epoch:
@@ -454,7 +459,7 @@ class LearningProcess(Template):
             )
 
         # set loss
-        self.Set_loss(config["loss"])
+        self.Set_loss(prams["loss"])
 
         for _epoch in range(self.last_epoch, self.max_epoch):
             for _mode in self.apply_mode:
@@ -475,12 +480,12 @@ class LearningProcess(Template):
             # make decision for learning in each epoch
             self.Decision_for_learning(_epoch, _model, _optim, _scheduler)
 
-    def Run(self, config: Dict[str, Any]):
+    def Run(self, prams: PARAMS):
         """ ### 학습 실행 함수
 
         ------------------------------------------------------------------
         ### Args
-        - `config`: 학습에 사용되는 인자값
+        - `prams`: 학습에 사용되는 인자값
 
         ### Returns
         - None
@@ -491,4 +496,4 @@ class LearningProcess(Template):
         """
         # not use distribute
         # in later add code, that use distribute option
-        self.Main_work(0, config)
+        self.Main_work(0, prams)

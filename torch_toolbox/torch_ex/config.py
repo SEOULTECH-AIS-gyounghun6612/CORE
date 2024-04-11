@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any
+from typing import Dict, List, Any
 from dataclasses import dataclass
 
 from python_ex.system import Path
@@ -47,14 +47,6 @@ class LearningConfig(Config):
             "gpus": self.gpus
         }
 
-    def Get_data_process_parameter(
-        self, learning_mode: str
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        return (
-            self.Get_dataset_parameter(),
-            self.Get_dataloader_parameter(learning_mode)
-        )
-
     def Get_dataset_parameter(self) -> Dict[str, Any]:
         raise NotImplementedError
 
@@ -63,6 +55,14 @@ class LearningConfig(Config):
             "batch_size": self.batch_size,
             "shuffle": learning_mode == Mode.TRAIN.value,
             "drop_last": self.drop_last[learning_mode]
+        }
+
+    def Get_data_process_parameter(
+        self, learning_mode: str
+    ) -> Dict[str, Dict[str, Any]]:
+        return {
+            "dataset_config": self.Get_dataset_parameter(),
+            "dataloader_config": self.Get_dataloader_parameter(learning_mode)
         }
 
     def Get_model_parameter(self) -> Dict[str, Any]:
@@ -87,7 +87,7 @@ class LearningConfig(Config):
     def Config_to_parameter(self, ) -> Dict[str, Any]:
         return {
             "trainer": self.Get_learning_parameter(),
-            "data_process": dict((
+            "data_proc": dict((
                 Mode(_name), self.Get_data_process_parameter(_name)
             ) for _name in self.apply_mode),
             "optimizer": self.Get_optimmizer_parameter(),
