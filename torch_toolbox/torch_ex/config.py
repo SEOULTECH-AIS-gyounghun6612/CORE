@@ -40,7 +40,7 @@ class LearningConfig(Config):
     def Get_learning_parameter(self) -> Dict[str, Any]:
         return {
             "project_name": self.porject_name,
-            "description": Path.Join(self.category, self.dataset),
+            "category": Path.Join(self.category, self.dataset),
             "max_epoch": self.max_epoch,
             "last_epoch": self.last_epoch,
             "apply_mode": [Mode(_name) for _name in self.apply_mode],
@@ -61,8 +61,8 @@ class LearningConfig(Config):
         self, learning_mode: str
     ) -> Dict[str, Dict[str, Any]]:
         return {
-            "dataset_config": self.Get_dataset_parameter(),
-            "dataloader_config": self.Get_dataloader_parameter(learning_mode)
+            "dataset_parmas": self.Get_dataset_parameter(),
+            "dataloader_parmas": self.Get_dataloader_parameter(learning_mode)
         }
 
     def Get_model_parameter(self) -> Dict[str, Any]:
