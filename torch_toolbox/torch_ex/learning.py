@@ -112,7 +112,9 @@ class LearningProcess(Template):
         self.gpus = [] if gpus is None else gpus
 
         # debug info
-        self.holder: Dict[Mode, Dict[str, int]] = {}
+        self.holder: Dict[Mode, Dict[str, int]] = dict(
+            (mode, {}) for mode in apply_mode
+        )
         self.loss: Dict[Mode, Dict[str, List[float]]] = {}
         self.eval_holder: Dict[Mode, Dict[str, List[float]]] = {}
 
