@@ -1,11 +1,14 @@
-"""
-File object
------
-    When write down python program, be used custom function.
+""" ### Frequently used features for handling system-related tasks
 
-Requirement
------
+------------------------------------------------------------------------
+### Requirement
     None
+
+### Structure
+    OperatingSystem: ...
+    Path: ...
+    File: ...
+
 """
 from __future__ import annotations
 from enum import Enum
@@ -29,9 +32,23 @@ PYTHON_VERSION = sys.version_info
 
 
 class OperatingSystem():
+    """### Frequently used features for handling OS-related tasks
+    --------------------------------------------------------------------
+    ### Requirement
+        None
+
+    ### Structure
+        ...
+
+    """
+
     THIS_STYLE = platform.system()
 
     class Name(Enum):
+        """
+        각 OS 별 처리 문자열
+        ----------------------------------------------------------------
+        """
         WINDOW = "Windows"
         LINUX = "Linux"
 
@@ -46,6 +63,10 @@ class OperatingSystem():
 
 # -- Mation Function -- #
 class Path():
+    """
+    경로와 관련하여 자주 사용하는 기능 모음
+    --------------------------------------------------------------------
+    """
     WORK_SPACE = getcwd()
 
     class Type(Enum):
@@ -169,6 +190,61 @@ class Path():
             ]
         return _searched_list
 
+    class Server():
+        IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
+
+        class Connection_Porcess(Enum):
+            CIFS = "cifs"
+
+        def __init__(
+            self,
+            process: Connection_Porcess = Connection_Porcess.CIFS
+        ) -> None:
+            self.process = process
+
+        def _connect_to_Linux(
+            self,
+            host_name: str,
+            mount_dir: str,
+            mount_point: str,
+            user_id: int,
+            group_id: int,
+            dir_mode: int,
+            file_mode: int,
+            credent_path: str
+        ):
+            _command = path.join(
+                f"sudo -S mount -t {self.process.value}",
+                " -o ",
+                ",".join((
+                    f"uid={user_id}",
+                    f"gid={group_id}",
+                    f"dir_mode={dir_mode%1000:0>4d}",
+                    f"dile_mode={file_mode%1000:0>4d}",
+                    f"credentials={credent_path}",
+                )),
+                f" //{host_name}/{mount_dir} {mount_point}"
+            )
+            system(_command)
+
+            return mount_point
+
+        def _connect_to_Window(
+            self,
+            host_name: str,
+            mount_dir: str,
+            mount_point: str,
+            user_name: str
+        ):
+            raise NotImplementedError
+
+        def _disconnect(self, mounted_dir: str):
+            if self.IS_WINDOW:
+                system(f"NET USE {mounted_dir}: /DELETE")
+            else:
+                system(f"fuser -ck {mounted_dir}")
+                system(f"sudo umount {mounted_dir}")
+
 
 class File():
     class Json():
@@ -288,59 +364,3 @@ class File():
                 except TypeError:
                     return False
             return True
-
-
-class Server():
-    IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
-
-    class Connection_Porcess(Enum):
-        CIFS = "cifs"
-
-    def __init__(
-        self,
-        process: Connection_Porcess = Connection_Porcess.CIFS
-    ) -> None:
-        self.process = process
-
-    def _connect_to_Linux(
-        self,
-        host_name: str,
-        mount_dir: str,
-        mount_point: str,
-        user_id: int,
-        group_id: int,
-        dir_mode: int,
-        file_mode: int,
-        credent_path: str
-    ):
-        _command = path.join(
-            f"sudo -S mount -t {self.process.value}",
-            " -o ",
-            ",".join((
-                f"uid={user_id}",
-                f"gid={group_id}",
-                f"dir_mode={dir_mode%1000:0>4d}",
-                f"dile_mode={file_mode%1000:0>4d}",
-                f"credentials={credent_path}",
-            )),
-            f" //{host_name}/{mount_dir} {mount_point}"
-        )
-        system(_command)
-
-        return mount_point
-
-    def _connect_to_Window(
-        self,
-        host_name: str,
-        mount_dir: str,
-        mount_point: str,
-        user_name: str
-    ):
-        raise NotImplementedError
-
-    def _disconnect(self, mounted_dir: str):
-        if self.IS_WINDOW:
-            system(f"NET USE {mounted_dir}: /DELETE")
-        else:
-            system(f"fuser -ck {mounted_dir}")
-            system(f"sudo umount {mounted_dir}")

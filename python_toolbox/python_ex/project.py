@@ -46,20 +46,52 @@ class Config():
 
 
 class Template():
+    """ ### 프로젝트 구성을 위한 기본 구조
+
+    ---------------------------------------------------------------------
+    ### Args
+    - Super
+        - None
+    - This
+        - `project_name`: 프로젝트 이름
+        - `category`: 프로젝트 구분
+        - `result_dir`: 프로젝트 결과 저장 최상위 경로를 생성하기 위한 경로
+
+    ### Attributes
+    - `project_name`: 프로젝트 이름
+    - `result_root`: 프로젝트 결과 저장 최상위 경로
+
+    ### Structure
+    - Make_save_root: 프로젝트 결과 저장 최상위 경로 생성 함수
+
+    """
     def __init__(
         self,
         project_name: str,
-        description: str | None = None,
-        result_root: str | None = None
+        category: str | None = None,
+        result_dir: str | None = None
     ):
         self.project_name = project_name
-        self.Make_save_root(description, result_root)
+        self.Make_save_root(category, result_dir)
 
     def Make_save_root(
         self,
         description: str | None = None,
         result_root: str | None = None
     ):
+        """ ### 프로젝트 결과 저장 최상위 경로 생성 함수
+
+        ------------------------------------------------------------------
+        ### Args
+            - arg_name: Description of the input argument
+
+        ### Returns or Yields
+            - data_format: Description of the output argument
+
+        ### Raises
+            - None
+
+        """
         _this_time = Debuging.Time.Stemp()
         _result_dir_dirs = Path.Join(
             [
