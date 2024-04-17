@@ -24,9 +24,7 @@ class CustomDataset(__Basement__):
             Path.Join("depth", root), Path.Type.FILE, "*", "png")
         _pose_files = Path.Search(
             Path.Join("poses", root), Path.Type.FILE, "*", "npy")
-        _targets = [(
-            _depth_file, _pose_file
-        ) for _depth_file, _pose_file in zip(_depth_files, _pose_files)]
+        _targets = list(zip(_depth_files, _pose_files))
 
         return _input_files, _targets
 
