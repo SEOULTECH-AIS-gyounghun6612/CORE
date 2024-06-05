@@ -1,12 +1,9 @@
-from typing import Dict, List, Any, Literal, Union, Type
+from typing import Dict, Any, Literal, Union, Type
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
 # from dateutil.relativedelta import relativedelta
 from math import log10, floor
-from numpy import ndarray
-
-import cv2
 
 from .system import Path, File
 
@@ -233,61 +230,3 @@ class Debuging():
             # Print New Line on Complete
             if iteration == total:
                 print()
-
-    class Visualize():
-        @staticmethod
-        def Put_text_to_img(
-            draw_img: ndarray,
-            location: List[int],
-            text_list: List[str],
-            padding: int
-        ):
-            # draw image check
-            _shape = draw_img.shape
-
-            if len(_shape) > 2:
-                _h, _w = _shape[:2]
-            else:
-                _h, _w = _shape
-
-            # decide text position in image
-            _p_y, _p_x = location
-            _txt_h = 0
-            _txt_w = 0
-
-            for _text in text_list:  # get text box size
-                (_size_x, _size_y), _ = cv2.getTextSize(_text, 1, 1, 1)
-                _txt_h += _size_y
-                _txt_w = _size_x if _size_x > _txt_w else _txt_w
-
-            _is_over_h = 2 * (_txt_h + padding) > _h
-            _is_over_w = 2 * (_txt_w + padding) > _w
-
-            if _is_over_h or _is_over_w:  # can't put text box in image
-                return False, draw_img
-            else:  # default => right under
-                # set text box x position
-                if (_p_x + padding + _txt_w) < _w:
-                    _text_x = _p_x + padding
-                else:
-                    _text_x = _p_x - (_txt_w + padding)
-                # set text box y position
-                if (_p_y + _txt_h + padding) < _h:
-                    _text_y = _p_y + _txt_h + padding
-                else:
-                    _text_y = _p_y - padding
-
-                for _ct, _text in enumerate(reversed(text_list)):
-                    cv2.putText(
-                        draw_img,
-                        _text,
-                        [_text_x, _text_y - (_ct * _size_y)],
-                        1,
-                        fontScale=1,
-                        color=(0, 255, 0)
-                    )
-                return True, draw_img
-
-        @staticmethod
-        def Image_Labeling():
-            ...
