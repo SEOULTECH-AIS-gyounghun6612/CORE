@@ -14,6 +14,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Dict, Tuple, Type
 from dataclasses import dataclass, field
+
+import math
 import cv2
 import numpy as np
 from numpy import ndarray
@@ -68,6 +70,12 @@ class Camera_Model():
 
         fov_x: float
         fov_y: float
+
+        fx: float
+        fy: float
+
+        cx: float
+        cy: float
 
         fps: int
 
@@ -128,7 +136,7 @@ class Camera_Model():
             """
             raise NotImplementedError
 
-        def Get_prjection(self):
+        def Get_projection_from_f_length(self):
             """ ### Function feature description
             Note
 
@@ -143,6 +151,56 @@ class Camera_Model():
             - `error_type`: Method of handling according to error issues
 
             """
+            _projection = np.zeros((3, 3))
+            _projection[0, 0] = self.fx
+            _projection[1, 1] = self.fy
+            _projection[0, 2] = self.cx
+            _projection[1, 2] = self.cy
+
+            return _projection
+
+        def Get_projection_from_fov(self):
+            raise NotImplementedError
+
+        def Get_perspective_projection_from_f_length(
+            self,
+            znear: int,
+            zfar: int
+        ):
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+            - `arg_name`: Description of the input argument
+
+            ### Returns or Yields
+            - `data_format`: Description of the output argument
+
+            ### Raises
+            - `error_type`: Method of handling according to error issues
+
+            """
+            # _tan_half_FoV_y = math.tan((self.fov_y / 2))
+            # _tan_half_FoV_x = math.tan((self.fov_x / 2))
+
+            # _projection = np.zeros((4, 4))
+
+            # top = _tan_half_FoV_y * znear
+            # bottom = -top
+            # right = _tan_half_FoV_x * znear
+            # left = -right
+
+            # z_sign = 1.0
+
+            # _projection[0, 0] = 2.0 * znear / (right - left)
+            # _projection[1, 1] = 2.0 * znear / (top - bottom)
+            # _projection[0, 2] = (right + left) / (right - left)
+            # _projection[1, 2] = (top + bottom) / (top - bottom)
+            # _projection[3, 2] = z_sign
+            # _projection[2, 2] = z_sign * zfar / (zfar - znear)
+            # _projection[2, 3] = -(zfar * znear) / (zfar - znear)
+
             raise NotImplementedError
 
     @dataclass
@@ -226,7 +284,7 @@ class Camera_Model():
                 ) for _key, _img in frame_images.items() if _key in self.image)
             )
 
-        def Rotate_to_angle(self):
+        def Get_W2C(self, shift: ndarray = np.array([.0, .0, .0]), scale=1.0):
             """ ### Function feature description
             Note
 
@@ -241,7 +299,31 @@ class Camera_Model():
             - `error_type`: Method of handling according to error issues
 
             """
-            raise NotImplementedError
+            _rt = np.eye(4)
+            _rt[:3, :3] = self.rotate.transpose()
+            _rt[:3, 3] = self.transfer
+
+            _c2w = np.linalg.inv(_rt)
+            _c2w[:3, 3] = (_c2w[:3, 3] + shift.transpose()) * scale
+
+            return np.float32(np.linalg.inv(_c2w))
+
+        # def Rotate_to_angle(self):
+        #     """ ### Function feature description
+        #     Note
+
+        #     ------------------------------------------------------------------
+        #     ### Args
+        #     - `arg_name`: Description of the input argument
+
+        #     ### Returns or Yields
+        #     - `data_format`: Description of the output argument
+
+        #     ### Raises
+        #     - `error_type`: Method of handling according to error issues
+
+        #     """
+        #     raise NotImplementedError
 
 
 class Codex_For(Enum):
@@ -308,7 +390,7 @@ class File_IO():
     @staticmethod
     def File_to_img(
         file_name: str,
-        data_type: Data_Format | None = None
+        data_format: Data_Format | None = None
     ):
         """ ### Function feature description
         Note
@@ -324,9 +406,10 @@ class File_IO():
         - `error_type`: Method of handling according to error issues
 
         """
-        _flag = -1 if data_type is None else data_type.value
-
-        return cv2.imread(file_name, _flag)
+        return cv2.imread(
+            file_name,
+            cv2.IMREAD_UNCHANGED if data_format is None else data_format.value
+        )
 
     @staticmethod
     def Img_to_file(file_name: str, image: ndarray):
