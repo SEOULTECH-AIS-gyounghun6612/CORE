@@ -67,22 +67,20 @@ class Camera_Model():
 
         """
         cam_id: int
-
-        fov_x: float
-        fov_y: float
-
-        fx: float
-        fy: float
-
-        cx: float
-        cy: float
-
         fps: int
 
-        data_root: str
+        fov_x: float = -1.
+        fov_y: float = -1.
 
-        width: int
-        hight: int
+        fx: float = -1.
+        fy: float = -1.
+
+        width: int = 0
+        hight: int = 0
+
+        cx: float = 0
+        cy: float = 0
+
         intrinsic: ndarray = field(default_factory=lambda: np.eye(4))
 
         def Set_camera_info(self, **kwarg):
@@ -283,6 +281,24 @@ class Camera_Model():
                     _img
                 ) for _key, _img in frame_images.items() if _key in self.image)
             )
+
+        def Set_rotate_from_list(self, rotate: List[float]):
+            if len(rotate) >= 9:
+                _array = np.array(rotate[:9])
+                self.rotate = _array.reshape((3, 3))
+            else:
+                raise ValueError(
+                    "Rotate array's entry size must be bigger then 9"
+                )
+
+        def Set_transfer_from_list(self, tansfer: List[float]):
+            if len(tansfer) >= 3:
+                _array = np.array(tansfer[:3])
+                self.transfer = _array.reshape((3, 1))
+            else:
+                raise ValueError(
+                    "Rotate array's entry size must be bigger then 3"
+                )
 
         def Get_W2C(self, shift: ndarray = np.array([.0, .0, .0]), scale=1.0):
             """ ### Function feature description
