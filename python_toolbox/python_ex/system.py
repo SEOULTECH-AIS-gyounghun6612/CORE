@@ -70,7 +70,7 @@ class Path():
     WORK_SPACE = getcwd()
 
     class Type(Enum):
-        DIRECTORY = "dir"
+        DIR = "dir"
         FILE = "file"
 
     @staticmethod
@@ -110,7 +110,7 @@ class Path():
         #### Parameter
 
         """
-        if target is Path.Type.DIRECTORY:
+        if target is Path.Type.DIR:
             return path.isdir(obj_path)
         elif target is Path.Type.FILE:
             return path.isfile(obj_path)
@@ -124,7 +124,7 @@ class Path():
         is_force: bool = False
     ):
         if root_dir is not None:  # root directory check
-            _exist = Path.Exist_check(root_dir, Path.Type.DIRECTORY)
+            _exist = Path.Exist_check(root_dir, Path.Type.DIR)
             if _exist:
                 pass
             elif is_force:
@@ -159,7 +159,7 @@ class Path():
         keyword: str | None = None,
         ext_filter: str | List[str] | None = None
     ) -> List[str]:
-        assert Path.Exist_check(obj_path, Path.Type.DIRECTORY)
+        assert Path.Exist_check(obj_path, Path.Type.DIR)
 
         # make keyword
         _obj_keyword = "*" if keyword is None else f"*{keyword}*"
