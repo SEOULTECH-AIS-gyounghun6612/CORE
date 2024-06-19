@@ -15,7 +15,7 @@ from enum import Enum
 from typing import List, Dict, Tuple, Type
 from dataclasses import dataclass, field
 
-import math
+# import math
 import cv2
 import numpy as np
 from numpy import ndarray
@@ -223,7 +223,7 @@ class Camera_Model():
         - `SubClassName` or `Function_name`: Description of each object
 
         """
-        cam: Camera_Model
+        cam: Camera_Model.Camera
         frame_id: int
 
         rotate: ndarray = field(
@@ -354,11 +354,12 @@ class Data_Format(Enum):
     GRAY = cv2.IMREAD_GRAYSCALE
 
 
-# class Convert_Flag(Enum):
-#     """ ### Data type for each data"""
-#     BGR = cv2.IMREAD_COLOR
-#     BGRA = cv2.IMREAD_UNCHANGED
-#     GRAY = cv2.IMREAD_GRAYSCALE
+class Convert_Flag(Enum):
+    """ ### Data type for each data"""
+    BGR2RGB = cv2.COLOR_BGR2RGB
+    BGR2GRAY = cv2.COLOR_BGR2GRAY
+    RGB2BGR = cv2.COLOR_RGB2BGR
+
 
 class File_IO():
     """ ### Description of class functionality
@@ -468,7 +469,10 @@ class Vision_Toolbox():
 
     """
     @staticmethod
-    def Format_converter(image: ndarray):
+    def Format_converter(
+        image: ndarray,
+        convert_flag: Convert_Flag = Convert_Flag.BGR2RGB
+    ):
         """ ### Function feature description
         Note
 
@@ -483,7 +487,7 @@ class Vision_Toolbox():
         - `error_type`: Method of handling according to error issues
 
         """
-        return image
+        return cv2.cvtColor(image, convert_flag.value)
 
 
 class Aligan(Enum):
