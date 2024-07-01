@@ -309,12 +309,14 @@ class File():
 
     class CSV():
         @staticmethod
-        def _Read(
+        def Read_from_file(
             file_name: str,
             file_dir: str,
             delimiter: str = "|",
             encoding_type="UTF-8"
         ) -> List[Dict[str, Any]]:
+            """
+            """
             # make file path
             _file = Path.Join([file_name, "csv"], file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
@@ -324,9 +326,9 @@ class File():
                 with open(_file, "r", encoding=encoding_type) as file:
                     _raw_data = csv.DictReader(file, delimiter=delimiter)
                     _read_data = [
-                        dict((
-                                _key.replace(" ", ""),
-                                _value.replace(" ", "")
+                        dict(
+                            (
+                                _key.replace(" ", ""), _value.replace(" ", "")
                             ) for _key, _value in _line_dict.items()
                         ) for _line_dict in _raw_data
                     ]
@@ -336,7 +338,7 @@ class File():
                 return []
 
         @staticmethod
-        def _Write(
+        def Writeto_file(
             file_name: str,
             file_dir: str,
             data: List[Dict],
