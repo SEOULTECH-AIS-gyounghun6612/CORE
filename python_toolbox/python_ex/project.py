@@ -1,8 +1,7 @@
-from typing import Dict, Any, Literal, Union, Type
+from typing import Dict, Any, Literal, Union, Tuple
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
-# from dateutil.relativedelta import relativedelta
 from math import log10, floor
 
 from .system import Path, File
@@ -118,15 +117,17 @@ class Debuging():
         max_length: int,
         fill: str = " ",
         mode: Literal["l", "c", "r"] = "r"
-    ) -> str:
+    ) -> Tuple[int, str]:
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
+
+        if max_length < 0:
+            return -max_length, text
         if mode == "l":
-            return text.ljust(max_length, fill)
-        elif mode == "c":
-            return text.center(max_length, fill)
-        else:
-            return text.rjust(max_length, fill)
+            return 0, text.ljust(max_length, fill)
+        if mode == "c":
+            return 0, text.center(max_length, fill)
+        return 0, text.rjust(max_length, fill)
 
     class Time():
         @staticmethod
@@ -165,7 +166,6 @@ class Debuging():
         @staticmethod
         def Make_time_from(
             text_source: str,
-            time_type: Type[Union[datetime, date, time]],
             date_format: str | None = None,
             use_timezone: bool = False
         ):
@@ -176,12 +176,7 @@ class Debuging():
                 _date_format += "%z" if use_timezone else ""
 
             _datetime = datetime.strptime(text_source, _date_format)
-            if time_type is date:
-                return _datetime.date()
-            elif time_type is time:
-                return _datetime.time()
-            else:
-                return _datetime
+            return _datetime
 
     class Progress():
         @staticmethod
