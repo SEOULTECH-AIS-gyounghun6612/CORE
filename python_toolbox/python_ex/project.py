@@ -1,4 +1,4 @@
-from typing import Dict, Any, Literal, Union, Tuple
+from typing import Dict, Any, Literal, Tuple
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
@@ -155,7 +155,7 @@ class Debuging():
 
         @staticmethod
         def Make_text_from(
-            time_source: Union[datetime, date, time],
+            time_source: datetime | date | time,
             date_format: str | None = None
         ):
             if date_format is None:
