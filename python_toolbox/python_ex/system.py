@@ -338,7 +338,7 @@ class File():
                 return []
 
         @staticmethod
-        def Writeto_file(
+        def Write_to_file(
             file_name: str,
             file_dir: str,
             data: List[Dict],
