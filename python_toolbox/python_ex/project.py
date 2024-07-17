@@ -90,7 +90,7 @@ class Template():
             - None
 
         """
-        _this_time = Debuging.Time.Stemp()
+        _this_time = Debuging.Time.Stamp()
         _result_dir_dirs = Path.Join(
             [
                 "result" if result_root is None else result_root,
@@ -133,7 +133,7 @@ class Debuging():
 
     class Time():
         @staticmethod
-        def Stemp(set_timezone: timezone | None = None):
+        def Stamp(set_timezone: timezone | None = None):
             """
             현재 시간 정보를 생성하는 함수
 
@@ -152,7 +152,7 @@ class Debuging():
             to_str: bool = True,
             set_timezone: timezone | None = None
         ):
-            _term = Debuging.Time.Stemp(set_timezone) - standard_time
+            _term = Debuging.Time.Stamp(set_timezone) - standard_time
             return str(_term) if to_str else _term
 
         @staticmethod
