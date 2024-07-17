@@ -328,7 +328,7 @@ class Debuging():
             return _datetime
 
         @dataclass
-        class Relative_Time_Delta():
+        class Relative_Delta():
             years: int = 0
             months: int = 0
             weeks: int = 0
