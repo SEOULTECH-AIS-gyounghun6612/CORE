@@ -46,7 +46,7 @@ class Config():
 class Data_n_Block():
     @dataclass
     class Numbered_Data():
-        ...
+        id_num: int
 
         def __eq__(self, other):
             if isinstance(other, self.__class__):
@@ -213,7 +213,7 @@ class Debuging():
                     self.__dict__[_key] = time_delta.__dict__[_key]
 
             def Order_dict_to_delta(self):
-                return relativedelta(**asdict(self))
+                return relativedelta(**self.__dict__)
 
             def __iter__(self):
                 self._position = 0
