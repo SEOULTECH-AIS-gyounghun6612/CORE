@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Dict, Any, Literal, Tuple
+from typing import (
+    Any, Tuple, Literal, Type, TypeVar, Generic
+)
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
@@ -20,7 +22,7 @@ class Config():
 
     --------------------------------------------------------------------
     """
-    def Config_to_parameter(self) -> Dict[str, Any]:
+    def Config_to_parameter(self) -> dict[str, Any]:
         """
         설정값을 사용가능한 인자값으로 변경하는 함수
 
@@ -48,9 +50,43 @@ class Data_n_Block():
     class Numbered_Data():
         id_num: int
 
+        def _Str_adjust(
+            self,
+            key: str,
+            value: str,
+            data_size: dict[str, int] | None = None,
+            align: Literal["l", "c", "r"] = "r",
+        ):
+            if data_size is not None and key in data_size:
+                return (
+                    Debuging.Str_adjust(key, data_size[key], mode=align)[-1],
+                    Debuging.Str_adjust(value, data_size[key], mode=align)[-1]
+                )
+            return (key, value)
+
+        def Convert_from_str(self, **kwarg: str):
+            raise NotImplementedError
+
+        def Convert_to_str(
+            self,
+            additional: dict[str, str] | None = None,
+            data_size: dict[str, int] | None = None
+        ) -> dict[str, str]:
+            _data: dict[str, str] = dict((
+                self._Str_adjust("id_num", str(self.id_num), data_size),
+            ))
+
+            if additional is not None:
+                _data.update(additional)
+
+            return _data
+
         def __eq__(self, other):
             if isinstance(other, self.__class__):
                 for _key, _value in self.__dict__.items():
+                    if _key == "id_num":
+                        continue
+
                     if _value == other.__dict__[_key]:
                         return False
                     return True
@@ -58,6 +94,100 @@ class Data_n_Block():
 
         def __ne__(self, other: Data_n_Block.Numbered_Data):
             return not self.__eq__(other)
+
+    NUMBERED_DATA = TypeVar("NUMBERED_DATA", bound=Numbered_Data)
+
+    class Block(Generic[NUMBERED_DATA]):
+        def __init__(
+            self,
+            data_format: Type[Data_n_Block.NUMBERED_DATA],
+            file_name: str = "data",
+            file_dir: str = Path.WORK_SPACE,
+        ) -> None:
+            _file_path = Path.Join(file_name, file_dir)
+
+            self.data_format = data_format
+
+            if Path.Exist_check(_file_path):
+                self.data_dict = self.Read_from_csv(
+                    data_format, file_name, file_dir
+                )
+                self.next_id = max(self.data_dict) + 1
+            else:
+                self.data_dict: dict[int, Data_n_Block.NUMBERED_DATA] = {}
+                self.next_id = 0
+
+        def Read_from_csv(
+            self,
+            data_format: Type[Data_n_Block.NUMBERED_DATA],
+            file_name: str,
+            file_dir: str
+        ) -> dict[int, Data_n_Block.NUMBERED_DATA]:
+            _holder: dict[int, data_format] = {}
+
+            for _data in File.CSV.Read_from_file(file_name, file_dir):
+                _id_num = int(_data["id_num"])
+
+                _comp: Data_n_Block.NUMBERED_DATA = data_format(
+                    int(_data["id_num"]),)
+                _comp.Convert_from_str(**_data)
+                _holder[_id_num] = _comp
+
+            return _holder
+
+        def Write_to_csv(
+            self,
+            file_name: str,
+            file_dir: str,
+            data_socket_size: dict[str, int] | None = None
+        ):
+            _data_dict = self.data_dict
+
+            if not _data_dict:
+                return False
+
+            return File.CSV.Write_to_file(
+                file_name,
+                file_dir,
+                [
+                    _data.Convert_to_str(
+                        data_size=data_socket_size
+                    ) for _data in _data_dict.values()
+                ],
+                list(self.data_format.__annotations__.__dict__)
+            )
+
+        def Set_data(
+            self,
+            new_data: Data_n_Block.NUMBERED_DATA,
+            is_override: bool = False
+        ) -> bool:
+
+            if isinstance(new_data, self.data_format):
+                _data_id = new_data.id_num
+                if is_override:
+                    if _data_id in self.data_dict:  # override
+                        self.data_dict.update({_data_id: new_data})
+                        return True
+                elif new_data not in self.data_dict.values():  # add
+                    _this_id = self.next_id
+                    new_data.id_num = self.next_id
+                    self.data_dict[_this_id] = new_data
+                    self.next_id += 1
+                    return True
+            return False
+
+        def Get_data_from(self, id_num: int, is_pop: bool = False):
+            if id_num in self.data_dict:
+                if is_pop:
+                    return True, self.data_dict.pop(id_num)
+                else:
+                    return True, self.data_dict[id_num]
+            return False, None
+
+        def Clear_data(self):
+            self.data_dict = {}
+            self.next_id = 0
 
 
 class Template():
