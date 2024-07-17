@@ -65,7 +65,7 @@ class Data_n_Block():
             return (key, value)
 
         def Convert_from_str(self, **kwarg: str):
-            raise NotImplementedError
+            self.id_num = int(kwarg["id_num"])
 
         def Convert_to_str(
             self,
