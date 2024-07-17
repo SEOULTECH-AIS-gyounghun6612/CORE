@@ -43,6 +43,23 @@ class Config():
         return File.Json.Read(file_name, file_dir)
 
 
+class Data_n_Block():
+    @dataclass
+    class Numbered_Data():
+        ...
+
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                for _key, _value in self.__dict__.items():
+                    if _value == other.__dict__[_key]:
+                        return False
+                    return True
+            return False
+
+        def __ne__(self, other: Data_n_Block.Numbered_Data):
+            return not self.__eq__(other)
+
+
 class Template():
     """ ### 프로젝트 구성을 위한 기본 구조
 
