@@ -1,7 +1,9 @@
+from __future__ import annotations
 from typing import Dict, Any, Literal, Tuple
 from dataclasses import asdict, dataclass
 
 from datetime import datetime, date, time, timezone
+from dateutil.relativedelta import relativedelta
 from math import log10, floor
 
 from .system import Path, File
@@ -177,6 +179,51 @@ class Debuging():
 
             _datetime = datetime.strptime(text_source, _date_format)
             return _datetime
+
+        @dataclass
+        class Relative_Time_Delta():
+            years: int = 0
+            months: int = 0
+            weeks: int = 0
+            days: int = 0
+            hours: int = 0
+            minutes: int = 0
+            seconds: int = 0
+            microsecond: int = 0
+
+            def Delta_to_order_dict(self, time_delta: relativedelta):
+                for _key in self.__dict__:
+                    self.__dict__[_key] = time_delta.__dict__[_key]
+
+            def Order_dict_to_delta(self):
+                return relativedelta(**asdict(self))
+
+            def __iter__(self):
+                self._position = 0
+                return self
+
+            def __next__(self):
+                _p = self._position
+                if _p >= 8:
+                    raise StopIteration
+                elif _p == 1:
+                    _v = self.months
+                elif _p == 2:
+                    _v = self.weeks
+                elif _p == 3:
+                    _v = self.days
+                elif _p == 4:
+                    _v = self.hours
+                elif _p == 5:
+                    _v = self.minutes
+                elif _p == 6:
+                    _v = self.seconds
+                elif _p == 7:
+                    _v = self.microsecond
+                else:
+                    _v = self.years
+                self._position += 1
+                return str(_v)
 
     class Progress():
         @staticmethod
