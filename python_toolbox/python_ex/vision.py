@@ -12,7 +12,10 @@ Requirement
 # Import module
 from __future__ import annotations
 from enum import Enum
-from typing import List, Dict, Any, Tuple, Type
+from typing import (
+    Tuple, Type,
+    # Literal
+)
 from dataclasses import dataclass, field
 
 # import math
@@ -231,7 +234,7 @@ class Camera_Model():
         transfer: NDArray = field(
             default_factory=lambda: np.empty((3, 1)))
 
-        image: Dict[str, NDArray] = field(
+        image: dict[str, NDArray] = field(
             default_factory=lambda: {
                 "image": np.empty(0),
                 "depth": np.empty(0)
@@ -282,7 +285,7 @@ class Camera_Model():
                 ) for _key, _img in frame_images.items() if _key in self.image)
             )
 
-        def Set_rotate_from_list(self, rotate: List[float]):
+        def Set_rotate_from_list(self, rotate: list[float]):
             if len(rotate) >= 9:
                 _array = np.array(rotate[:9])
                 self.rotate = _array.reshape((3, 3))
@@ -291,7 +294,7 @@ class Camera_Model():
                     "Rotate array's entry size must be bigger then 9"
                 )
 
-        def Set_transfer_from_list(self, tansfer: List[float]):
+        def Set_transfer_from_list(self, tansfer: list[float]):
             if len(tansfer) >= 3:
                 _array = np.array(tansfer[:3])
                 self.transfer = _array.reshape((3, 1))
@@ -386,7 +389,7 @@ class File_IO():
     def Get_img_file_list_from_dir(
         data_dir: str,
         keyword: str,
-        ext: str | List[str]
+        ext: str | list[str]
     ):
         """ ### Function feature description
         Note
@@ -446,6 +449,70 @@ class File_IO():
         """
         return cv2.imwrite(file_name, image)
 
+    # in later fix it
+    # class RLE():
+    #     @staticmethod
+    #    def _from_nparray(
+    #        data: NDArray,
+    #        order: Literal['A', 'C', 'F'] = 'F'
+    #    ):
+    #         if data is not None:
+    #             _size = data.shape
+    #             _size = (int(_size[0]), int(_size[1]))
+
+    #             return_RLE = []
+    #             # zeros
+    #             if (data == np.zeros_like(data)).all():
+    #                 return_RLE.append(_size[0] * _size[1])
+    #             # ones
+    #             elif (data == np.ones_like(data)).all():
+    #                 return_RLE.append(0)
+    #                 return_RLE.append(_size[0] * _size[1])
+    #             # else
+    #             else:
+    #                 _line = data.reshape(_size[0] * _size[1], order=order)
+    #                 _count_list = []
+
+    #                 # in later add annotation
+    #                 for _type in range(2):
+    #                     _points = np.where(_line == _type)[0]
+    #                     _filter = _points[1:] - _points[:-1]
+    #                     _filter = _filter[np.where(_filter != 1)[0]]
+    #                     _count = _filter[np.where(_filter != 1)[0]] - 1
+
+    #                     if _points[0]:
+    #                         _count = np.append((_points[0], ), _count)
+    #                     _count_list.append(_count)
+
+    #                 _one_count, _zero_count = _count_list
+
+    #                 if _line[0]:
+    #                     _zero_count = np.append((0, ), _zero_count)
+
+    #                 for _ct in range(len(_one_count)):
+    #                     return_RLE.append(int(_zero_count[_ct]))
+    #                     return_RLE.append(int(_one_count[_ct]))
+
+    #                 _last_count = int(len(_line) - sum(return_RLE))
+    #                 return_RLE.append(_last_count)
+
+    #             return {"size": _size, "counts": return_RLE}
+
+    #         else:
+    #             return None
+
+    #     @staticmethod
+    #     def _to_nparray(data, order: Literal['A', 'C', 'F'] = "F"):
+    #         if data is not None:
+    #             _rle_data = data["counts"]
+    #             _list = []
+    #             for _type, _count in enumerate(_rle_data):
+    #                 [_list.append(_type % 2) for _ct in range(_count)]
+    #             _list = np.reshape(_list, data["size"], order)
+    #             return _list
+    #         else:
+    #             return None
+
 
 class Border_Flag(Enum):
     """ ### Data type for each data"""
@@ -500,7 +567,7 @@ class Vision_Toolbox():
     @staticmethod
     def Set_filter(
         src: NDArray[np.uint8],
-        kennel: NDArray[Any],
+        kennel: NDArray[np.int_ | np.float_],
         border_type: Border_Flag = Border_Flag.REFLECT_101
     ) -> NDArray:
         return cv2.filter2D(
@@ -542,8 +609,8 @@ class Debugging():
     @staticmethod
     def Put_text_to_img(
         draw_img: NDArray,
-        location: List[int],
-        text_list: List[str],
+        location: list[int],
+        text_list: list[str],
         padding: int
     ):
         """ ### Function feature description
@@ -662,7 +729,7 @@ class Debugging():
 
     @staticmethod
     def Organize_the_image_array(
-        img_list: List[NDArray | None],
+        img_list: list[NDArray | None],
         img_h: int, img_w: int,
         row: int | None, col: int | None = None,
         padding: int | Tuple[int, int] | Tuple[int, int, int, int] = 10,
