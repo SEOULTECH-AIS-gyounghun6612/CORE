@@ -12,13 +12,13 @@ Requirement
 # Import module
 from __future__ import annotations
 from enum import Enum
-from typing import List, Dict, Tuple, Type
+from typing import List, Dict, Any, Tuple, Type
 from dataclasses import dataclass, field
 
 # import math
 import cv2
 import numpy as np
-from numpy import ndarray
+from numpy.typing import NDArray
 
 from .system import Path  # , File
 
@@ -81,7 +81,7 @@ class Camera_Model():
         cx: float = 0
         cy: float = 0
 
-        intrinsic: ndarray = field(default_factory=lambda: np.eye(4))
+        intrinsic: NDArray = field(default_factory=lambda: np.eye(4))
 
         def Set_camera_info(self, **kwarg):
             """ ### Function feature description
@@ -226,12 +226,12 @@ class Camera_Model():
         cam: Camera_Model.Camera
         frame_id: int
 
-        rotate: ndarray = field(
+        rotate: NDArray = field(
             default_factory=lambda: np.empty((3, 3)))
-        transfer: ndarray = field(
+        transfer: NDArray = field(
             default_factory=lambda: np.empty((3, 1)))
 
-        image: Dict[str, ndarray] = field(
+        image: Dict[str, NDArray] = field(
             default_factory=lambda: {
                 "image": np.empty(0),
                 "depth": np.empty(0)
@@ -300,7 +300,7 @@ class Camera_Model():
                     "Rotate array's entry size must be bigger then 3"
                 )
 
-        def Get_W2C(self, shift: ndarray = np.array([.0, .0, .0]), scale=1.0):
+        def Get_W2C(self, shift: NDArray = np.array([.0, .0, .0]), scale=1.0):
             """ ### Function feature description
             Note
 
@@ -349,8 +349,8 @@ class Codex_For(Enum):
 
 class Data_Format(Enum):
     """ ### Data type for each data"""
+    UNCHANGE = cv2.IMREAD_UNCHANGED
     BGR = cv2.IMREAD_COLOR
-    BGRA = cv2.IMREAD_UNCHANGED
     GRAY = cv2.IMREAD_GRAYSCALE
 
 
@@ -429,7 +429,7 @@ class File_IO():
         )
 
     @staticmethod
-    def Img_to_file(file_name: str, image: ndarray):
+    def Img_to_file(file_name: str, image: NDArray):
         """ ### Function feature description
         Note
 
@@ -445,6 +445,14 @@ class File_IO():
 
         """
         return cv2.imwrite(file_name, image)
+
+
+class Border_Flag(Enum):
+    """ ### Data type for each data"""
+    ZERO = cv2.BORDER_CONSTANT
+    OUTLINE = cv2.BORDER_REPLICATE
+    REFLECT = cv2.BORDER_REFLECT
+    REFLECT_101 = cv2.BORDER_REFLECT101
 
 
 class Vision_Toolbox():
@@ -470,7 +478,7 @@ class Vision_Toolbox():
     """
     @staticmethod
     def Format_converter(
-        image: ndarray,
+        image: NDArray,
         convert_flag: Convert_Flag = Convert_Flag.BGR2RGB
     ):
         """ ### Function feature description
@@ -488,6 +496,19 @@ class Vision_Toolbox():
 
         """
         return cv2.cvtColor(image, convert_flag.value)
+
+    @staticmethod
+    def Set_filter(
+        src: NDArray[np.uint8],
+        kennel: NDArray[Any],
+        border_type: Border_Flag = Border_Flag.REFLECT_101
+    ) -> NDArray:
+        return cv2.filter2D(
+            src,
+            ddepth=-1,
+            kernel=kennel,
+            borderType=border_type.value
+        )
 
 
 class Aligan(Enum):
@@ -520,7 +541,7 @@ class Debugging():
     """
     @staticmethod
     def Put_text_to_img(
-        draw_img: ndarray,
+        draw_img: NDArray,
         location: List[int],
         text_list: List[str],
         padding: int
@@ -583,7 +604,7 @@ class Debugging():
 
     @staticmethod
     def Image_caption(
-        image: np.ndarray,
+        image: NDArray,
         caption: str,
         font: int = cv2.FONT_HERSHEY_SIMPLEX,
         aligan: Aligan = Aligan.Center
@@ -615,7 +636,7 @@ class Debugging():
 
         if _t_w > (_i_w - 2 * _p):
             _t_h, _t_w = round((_i_w - 2 * _p) / _t_w * _t_h), _i_w - (2 * _p)
-            _t_holder: np.ndarray = cv2.resize(
+            _t_holder: NDArray = cv2.resize(
                 _t_holder,
                 (_t_w, _t_h),
                 interpolation=cv2.INTER_CUBIC
@@ -641,12 +662,12 @@ class Debugging():
 
     @staticmethod
     def Organize_the_image_array(
-        img_list: List[ndarray | None],
+        img_list: List[NDArray | None],
         img_h: int, img_w: int,
         row: int | None, col: int | None = None,
         padding: int | Tuple[int, int] | Tuple[int, int, int, int] = 10,
-        is_row_by_row: bool = True,
-        background: ndarray = 255 * np.ones(3),
+        is_fill_row_first: bool = True,
+        background: NDArray = 255 * np.ones(3),
         canvas_format: Type = np.uint8
     ):
         """ ### Function feature description
@@ -696,7 +717,8 @@ class Debugging():
 
         _canvas_shape = (
             (img_h + _hm_pad) * _row + _hm_pad,
-            (img_w + _vm_pad) * _col + _vm_pad
+            (img_w + _vm_pad) * _col + _vm_pad,
+            3
         )
         _canvas = (np.ones(_canvas_shape) * background).astype(canvas_format)
 
@@ -704,17 +726,24 @@ class Debugging():
         for _ct_r in range(_row):
             _lt_h = _ct_r * (_hm_pad + img_h) + _up_pad
             _rb_h = _lt_h + img_h
-            _num_r = _row * _ct_r if is_row_by_row else _ct_r
+            _num_r = _col if is_fill_row_first else _col * _ct_r
 
             for _ct_c in range(_col):
                 _lt_w = _ct_c * (_vm_pad + img_w) + _lf_pad
                 _rb_w = _lt_w + img_w
-                _num_c = _ct_c if is_row_by_row else _col * _ct_c
+                _num_c = _ct_c * _row if is_fill_row_first else _ct_c
 
-                _img = img_list[_num_r + _num_c]
-
-                if _img is not None:
-                    _canvas[_lt_h: _rb_h, _lt_w: _rb_w] = _img
+                try:
+                    _img = img_list[_num_r + _num_c]
+                    if _img is not None and len(_img.shape) == 3:  # color img
+                        _canvas[_lt_h: _rb_h, _lt_w: _rb_w] = _img
+                    elif _img is not None:  # gray scale img
+                        _canvas[_lt_h: _rb_h, _lt_w: _rb_w] = np.stack(
+                            [_img, _img, _img],
+                            axis=-1
+                        )
+                except IndexError:
+                    continue
 
         return _canvas
 
