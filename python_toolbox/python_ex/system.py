@@ -247,6 +247,10 @@ class Path():
 
 
 class File():
+    class Support_Format(Enum):
+        JSON = "json"
+        CSV = "csv"
+
     class Json():
         KEYABLE = Union[TYPE_NUMBER, bool, str]
         VALUEABLE = Union[KEYABLE, Tuple, List, Dict, None]
