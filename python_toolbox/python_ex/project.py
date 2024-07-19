@@ -11,10 +11,6 @@ from math import log10, floor
 from .system import Path, File
 
 
-# -- DEFINE CONSTNAT -- #
-
-
-# -- Mation Function -- #
 @dataclass
 class Config():
     """
@@ -46,6 +42,57 @@ class Config():
 
 
 class Data_n_Block():
+    @staticmethod
+    def Convert_from_str(str_data: str):
+        if "[" in str_data:
+            return [
+                Data_n_Block.Convert_from_str(
+                    _d
+                ) for _d in str_data[1:].split("[")
+            ]
+        elif "," in str_data:
+            return [
+                Data_n_Block.Convert_from_str(
+                    _d
+                ) for _d in str_data.split(",")
+            ]
+        elif "-" in str_data or ":" in str_data:
+            is_timezone = "+" in str_data or "-" in str_data
+            return Debuging.Time.Make_time_from(
+                str_data,
+                use_timezone=is_timezone
+            )
+        elif ";" in str_data:
+            return Debuging.Time.Relative(
+                *[int(_v) for _v in str_data.split(";")]
+            )
+        else:
+            try:
+                if "." in str_data:
+                    return float(str_data)
+                else:
+                    return int(str_data)
+            except ValueError:
+                return str_data
+
+    @staticmethod
+    def Convert_to_str(
+        data: list | datetime | Debuging.Time.Relative | float | int | str
+    ) -> str:
+        if isinstance(data, list):
+            _list_format_str = "[{}"
+            return _list_format_str.format(
+                ",".join(
+                    [Data_n_Block.Convert_to_str(_data) for _data in data]
+                )
+            )
+        elif isinstance(data, datetime) or isinstance(data, date):
+            return Debuging.Time.Make_text_from(data)
+        elif isinstance(data, Debuging.Time.Relative):
+            return ";".join(list(data))
+        else:
+            return str(data)
+
     @dataclass
     class Numbered_Data():
         id_num: int
@@ -64,10 +111,10 @@ class Data_n_Block():
                 )
             return (key, value)
 
-        def Convert_from_str(self, **kwarg: str):
+        def Convert_data_from_csv(self, **kwarg: str):
             self.id_num = int(kwarg["id_num"])
 
-        def Convert_to_str(
+        def Convert_data_to_csv(
             self,
             additional: dict[str, str] | None = None,
             data_size: dict[str, int] | None = None
@@ -100,37 +147,37 @@ class Data_n_Block():
     class Block(Generic[NUMBERED_DATA]):
         def __init__(
             self,
-            data_format: Type[Data_n_Block.NUMBERED_DATA],
+            data_type: Type[Data_n_Block.NUMBERED_DATA],
             file_name: str = "data",
             file_dir: str = Path.WORK_SPACE,
         ) -> None:
             _file_path = Path.Join(file_name, file_dir)
 
-            self.data_format = data_format
+            self.data_type = data_type
 
             if Path.Exist_check(_file_path):
-                self.data_dict = self.Read_from_csv(
-                    data_format, file_name, file_dir
+                self.data_dict: dict[int, data_type] = self.Read_from_csv(
+                    file_name, file_dir
                 )
                 self.next_id = max(self.data_dict) + 1
             else:
-                self.data_dict: dict[int, Data_n_Block.NUMBERED_DATA] = {}
+                self.data_dict: dict[int, data_type] = {}
                 self.next_id = 0
 
         def Read_from_csv(
             self,
-            data_format: Type[Data_n_Block.NUMBERED_DATA],
             file_name: str,
             file_dir: str
-        ) -> dict[int, Data_n_Block.NUMBERED_DATA]:
-            _holder: dict[int, data_format] = {}
+        ):
+            _data_type = self.data_type
+            _holder: dict[int, _data_type] = {}
 
             for _data in File.CSV.Read_from_file(file_name, file_dir):
                 _id_num = int(_data["id_num"])
 
-                _comp: Data_n_Block.NUMBERED_DATA = data_format(
+                _comp: Data_n_Block.NUMBERED_DATA = _data_type(
                     int(_data["id_num"]),)
-                _comp.Convert_from_str(**_data)
+                _comp.Convert_data_from_csv(**_data)
                 _holder[_id_num] = _comp
 
             return _holder
@@ -150,11 +197,11 @@ class Data_n_Block():
                 file_name,
                 file_dir,
                 [
-                    _data.Convert_to_str(
+                    _data.Convert_data_to_csv(
                         data_size=data_socket_size
                     ) for _data in _data_dict.values()
                 ],
-                list(self.data_format.__annotations__.__dict__)
+                list(self.data_type.__annotations__.__dict__)
             )
 
         def Set_data(
@@ -163,7 +210,7 @@ class Data_n_Block():
             is_override: bool = False
         ) -> bool:
 
-            if isinstance(new_data, self.data_format):
+            if isinstance(new_data, self.data_type):
                 _data_id = new_data.id_num
                 if is_override:
                     if _data_id in self.data_dict:  # override
@@ -328,7 +375,7 @@ class Debuging():
             return _datetime
 
         @dataclass
-        class Relative_Delta():
+        class Relative():
             years: int = 0
             months: int = 0
             weeks: int = 0
