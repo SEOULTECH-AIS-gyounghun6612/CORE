@@ -44,58 +44,47 @@ class Config():
 class Data_n_Block():
     @staticmethod
     def Convert_from_str(str_data: str):
-        if "[" in str_data:
+        if "," in str_data:
             return [
                 Data_n_Block.Convert_from_str(
                     _d
-                ) for _d in str_data[1:].split("[")
+                ) for _d in str_data[1:-1].split(",")
             ]
-        elif "," in str_data:
-            return [
-                Data_n_Block.Convert_from_str(
-                    _d
-                ) for _d in str_data.split(",")
-            ]
-        elif "-" in str_data or ":" in str_data:
+        if "-" in str_data or ":" in str_data:
             is_timezone = "+" in str_data or "-" in str_data
             return Debuging.Time.Make_time_from(
                 str_data,
                 use_timezone=is_timezone
             )
-        elif ";" in str_data:
+        if ";" in str_data:
             return Debuging.Time.Relative(
                 *[int(_v) for _v in str_data.split(";")]
             )
-        else:
-            try:
-                if "." in str_data:
-                    return float(str_data)
-                else:
-                    return int(str_data)
-            except ValueError:
-                return str_data
+        try:
+            if "." in str_data:
+                return float(str_data)
+            return int(str_data)
+        except ValueError:
+            return str_data
 
     @staticmethod
     def Convert_to_str(
         data: list | datetime | Debuging.Time.Relative | float | int | str
     ) -> str:
         if isinstance(data, list):
-            _list_format_str = "[{}"
-            return _list_format_str.format(
-                ",".join(
-                    [Data_n_Block.Convert_to_str(_data) for _data in data]
-                )
+            return ",".join(
+                [Data_n_Block.Convert_to_str(_data) for _data in data]
             )
-        elif isinstance(data, datetime) or isinstance(data, date):
+        if isinstance(data, (datetime, date)):
             return Debuging.Time.Make_text_from(data)
-        elif isinstance(data, Debuging.Time.Relative):
+        if isinstance(data, Debuging.Time.Relative):
             return ";".join(list(data))
-        else:
-            return str(data)
+        return data if isinstance(data, str) else str(data)
 
     @dataclass
     class Numbered_Data():
         id_num: int
+        tag: list[str]
 
         def _Str_adjust(
             self,
@@ -112,7 +101,17 @@ class Data_n_Block():
             return (key, value)
 
         def Convert_data_from_csv(self, **kwarg: str):
-            self.id_num = int(kwarg["id_num"])
+            try:
+                self.id_num = int(kwarg["id_num"])
+                for _key in ["tag"]:
+                    _data = Data_n_Block.Convert_from_str(kwarg[_key])
+                    assert isinstance(_data, type(self.__dict__[_key]))
+                    self.__dict__[_key] = _data
+                return 0
+            except ValueError:
+                return 1
+            except KeyError:
+                return 2
 
         def Convert_data_to_csv(
             self,
@@ -121,6 +120,8 @@ class Data_n_Block():
         ) -> dict[str, str]:
             _data: dict[str, str] = dict((
                 self._Str_adjust("id_num", str(self.id_num), data_size),
+                self._Str_adjust(
+                    "tag", Data_n_Block.Convert_to_str(self.tag), data_size)
             ))
 
             if additional is not None:
@@ -176,7 +177,7 @@ class Data_n_Block():
                 _id_num = int(_data["id_num"])
 
                 _comp: Data_n_Block.NUMBERED_DATA = _data_type(
-                    int(_data["id_num"]),)
+                    int(_data["id_num"]), [])
                 _comp.Convert_data_from_csv(**_data)
                 _holder[_id_num] = _comp
 
@@ -385,22 +386,34 @@ class Debuging():
             seconds: int = 0
             microsecond: int = 0
 
+            def __post_init__(self):
+                self.__position__ = 0
+
             def Delta_to_order_dict(self, time_delta: relativedelta):
                 for _key in self.__dict__:
                     self.__dict__[_key] = time_delta.__dict__[_key]
 
             def Order_dict_to_delta(self):
-                return relativedelta(**self.__dict__)
+                return relativedelta(
+                    years=self.years,
+                    months=self.months,
+                    weeks=self.weeks,
+                    days=self.days,
+                    hours=self.hours,
+                    minutes=self.minutes,
+                    seconds=self.seconds,
+                    microsecond=self.microsecond
+                )
 
             def __iter__(self):
-                self._position = 0
+                self.__position__ = 0
                 return self
 
             def __next__(self):
-                _p = self._position
+                _p = self.__position__
                 if _p >= 8:
                     raise StopIteration
-                elif _p == 1:
+                if _p == 1:
                     _v = self.months
                 elif _p == 2:
                     _v = self.weeks
@@ -416,7 +429,7 @@ class Debuging():
                     _v = self.microsecond
                 else:
                     _v = self.years
-                self._position += 1
+                self.__position__ += 1
                 return str(_v)
 
     class Progress():
