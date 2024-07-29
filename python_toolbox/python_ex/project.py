@@ -247,7 +247,6 @@ class Template():
             [
                 "result" if result_root is None else result_root,
                 "default" if description is None else description,
-                "default" if description is None else description,
                 Time.Make_text_from(_this_time, "%Y-%m-%d_%H:%M:%S")
             ]
         )
