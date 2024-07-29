@@ -520,7 +520,7 @@ class File():
                         _d
                     ) for _d in str_data[1:-1].split(",")
                 ]
-            if "-" in str_data or ":" in str_data:
+            if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
                 is_timezone = "+" in str_data or "-" in str_data
                 return Time.Make_time_from(
                     str_data,
