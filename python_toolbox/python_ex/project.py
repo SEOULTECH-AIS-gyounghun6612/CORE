@@ -41,7 +41,6 @@ class Data_n_Block():
     @dataclass
     class Numbered_Data():
         id_num: int
-        tag: list[str]
 
         def _Str_adjust(
             self,
@@ -51,19 +50,16 @@ class Data_n_Block():
             align: Literal["l", "c", "r"] = "r",
         ):
             if data_size is not None and key in data_size:
+                _size = data_size[key]
                 return (
-                    String.Str_adjust(key, data_size[key], mode=align)[-1],
-                    String.Str_adjust(value, data_size[key], mode=align)[-1]
+                    String.Str_adjust(key, _size, mode=align)[-1],
+                    String.Str_adjust(value, _size, mode=align)[-1]
                 )
             return (key, value)
 
         def Convert_data_from_csv(self, **kwarg: str):
             try:
                 self.id_num = int(kwarg["id_num"])
-                for _key in ["tag"]:
-                    _data = File.CSV.Convert_from_str(kwarg[_key])
-                    assert isinstance(_data, type(self.__dict__[_key]))
-                    self.__dict__[_key] = _data
                 return 0
             except ValueError:
                 return 1
@@ -77,8 +73,6 @@ class Data_n_Block():
         ) -> dict[str, str]:
             _data: dict[str, str] = dict((
                 self._Str_adjust("id_num", str(self.id_num), data_size),
-                self._Str_adjust(
-                    "tag", File.CSV.Convert_to_str(self.tag), data_size)
             ))
 
             if additional is not None:
@@ -92,7 +86,7 @@ class Data_n_Block():
                     if _key == "id_num":
                         continue
 
-                    if _value == other.__dict__[_key]:
+                    if _value != other.__dict__[_key]:
                         return False
                     return True
             return False
@@ -113,14 +107,13 @@ class Data_n_Block():
 
             self.data_type = data_type
 
+            self.data_dict: dict[int, data_type] = {}
+            self.last_id = 0
+
             if Path.Exist_check(_file_path):
-                self.data_dict: dict[int, data_type] = self.Read_from_csv(
-                    file_name, file_dir
-                )
-                self.next_id = max(self.data_dict) + 1
-            else:
-                self.data_dict: dict[int, data_type] = {}
-                self.next_id = 0
+                self.Read_from_csv(file_name, file_dir)
+
+            self.last_id = max(self.data_dict) if len(self.data_dict) else -1
 
         def Read_from_csv(
             self,
@@ -128,17 +121,15 @@ class Data_n_Block():
             file_dir: str
         ):
             _data_type = self.data_type
-            _holder: dict[int, _data_type] = {}
+            _data_holder = self.data_dict
 
             for _data in File.CSV.Read_from_file(file_name, file_dir):
                 _id_num = int(_data["id_num"])
 
                 _comp: Data_n_Block.NUMBERED_DATA = _data_type(
-                    int(_data["id_num"]), [])
+                    int(_data["id_num"]))
                 _comp.Convert_data_from_csv(**_data)
-                _holder[_id_num] = _comp
-
-            return _holder
+                _data_holder[_id_num] = _comp
 
         def Write_to_csv(
             self,
@@ -162,7 +153,7 @@ class Data_n_Block():
                 list(self.data_type.__annotations__.__dict__)
             )
 
-        def Set_data(
+        def Update_data(
             self,
             new_data: Data_n_Block.NUMBERED_DATA,
             is_override: bool = False
@@ -175,24 +166,26 @@ class Data_n_Block():
                         self.data_dict.update({_data_id: new_data})
                         return True
                 elif new_data not in self.data_dict.values():  # add
-                    _this_id = self.next_id
-                    new_data.id_num = self.next_id
+                    _this_id = self.last_id + 1
+                    new_data.id_num = _this_id
                     self.data_dict[_this_id] = new_data
-                    self.next_id += 1
+                    self.last_id += 1
                     return True
+                else:
+                    raise ValueError(
+                        f"This is already in {self.__class__.__name__} block")
             return False
 
         def Get_data_from(self, id_num: int, is_pop: bool = False):
             if id_num in self.data_dict:
                 if is_pop:
                     return True, self.data_dict.pop(id_num)
-                else:
-                    return True, self.data_dict[id_num]
+                return True, self.data_dict[id_num]
             return False, None
 
         def Clear_data(self):
             self.data_dict = {}
-            self.next_id = 0
+            self.last_id = 0
 
 
 class Template():
