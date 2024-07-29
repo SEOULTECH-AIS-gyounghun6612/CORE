@@ -386,6 +386,17 @@ class Time():
             self.__position__ += 1
             return str(_v)
 
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                for _key, _value in self.__dict__.items():
+                    if _value != other.__dict__[_key]:
+                        return False
+                    return True
+            return False
+
+        def __ne__(self, other: Time.Relative):
+            return not self.__eq__(other)
+
 
 class File():
     class Support_Format(Enum):
