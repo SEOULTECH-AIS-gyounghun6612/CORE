@@ -42,38 +42,23 @@ class Data_n_Block():
     class Numbered_Data():
         id_num: int
 
-        def _Str_adjust(
-            self,
-            key: str,
-            value: str,
-            data_size: dict[str, int] | None = None,
-            align: Literal["l", "c", "r"] = "r",
-        ):
-            if data_size is not None and key in data_size:
-                _size = data_size[key]
-                return (
-                    String.Str_adjust(key, _size, mode=align)[-1],
-                    String.Str_adjust(value, _size, mode=align)[-1]
-                )
-            return (key, value)
-
-        def Convert_data_from_csv(self, **kwarg: str):
-            try:
-                self.id_num = int(kwarg["id_num"])
-                return 0
-            except ValueError:
-                return 1
-            except KeyError:
-                return 2
-
-        def Convert_data_to_csv(
+        def Convert_save_format(
             self,
             additional: dict[str, str] | None = None,
-            data_size: dict[str, int] | None = None
+            slot_length: dict[str, int] | None = None
         ) -> dict[str, str]:
-            _data: dict[str, str] = dict((
-                self._Str_adjust("id_num", str(self.id_num), data_size),
-            ))
+            _data: dict[str, str] = {}
+
+            if slot_length is None or "id_num" not in slot_length:
+                _key = "id_num"
+                _value = str(self.id_num)
+            else:
+                _key, _value = String.Str_adjust_with_key(
+                    "id_num",
+                    str(self.id_num),
+                    slot_length["id_num"]
+                )
+            _data.update({_key: _value})
 
             if additional is not None:
                 _data.update(additional)
@@ -82,24 +67,98 @@ class Data_n_Block():
 
         def __eq__(self, other):
             if isinstance(other, self.__class__):
-                for _key, _value in self.__dict__.items():
-                    if _key == "id_num":
-                        continue
+                _t_dict = self.__dict__
+                _o_dict = other.__dict__
+                if len(_t_dict) != len(_o_dict):
+                    # option for "other come from child class"
+                    # when is okay, change to "pass" or "..."
+                    return False
 
-                    if _value != other.__dict__[_key]:
-                        return False
-                    return True
+                _t_hash = sum([
+                    hash(_v) for _k, _v in _t_dict.items() if _k != "id_num"
+                ])
+                _o_hash = sum([
+                    hash(_v) for _k, _v in _o_dict.items() if _k != "id_num"
+                ])
+
+                return _t_hash == _o_hash
             return False
 
-        def __ne__(self, other: Data_n_Block.Numbered_Data):
+        def __ne__(self, other):
             return not self.__eq__(other)
 
-    NUMBERED_DATA = TypeVar("NUMBERED_DATA", bound=Numbered_Data)
 
-    class Block(Generic[NUMBERED_DATA]):
+    NUMED_DATA = TypeVar(
+        "NUMED_DATA",
+        bound=Numbered_Data
+    )
+
+    @dataclass
+    class Numbered_String_Data():
+        _id_num: str
+
+        def Convert_save_format(
+            self,
+            additional: dict[str, str] | None = None,
+            slot_length: dict[str, int] | None = None
+        ) -> dict[str, str]:
+            _data: dict[str, str] = {}
+
+            if slot_length is None or "_id_num" not in slot_length:
+                _key = "_id_num"
+                _value = self._id_num
+            else:
+                _key, _value = String.Str_adjust_with_key(
+                    "_id_num",
+                    self._id_num,
+                    slot_length["_id_num"]
+                )
+            _data.update({_key: _value})
+
+            if additional is not None:
+                _data.update(additional)
+
+            return _data
+
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                _t_dict = self.__dict__
+                _o_dict = other.__dict__
+                if len(_t_dict) != len(_o_dict):
+                    # option for "other come from child class"
+                    # when is okay, change to "pass" or "..."
+                    return False
+
+                _t_hash = sum([
+                    hash(_v) for _k, _v in _t_dict.items() if _k != "_id_num"
+                ])
+                _o_hash = sum([
+                    hash(_v) for _k, _v in _o_dict.items() if _k != "_id_num"
+                ])
+
+                return _t_hash == _o_hash
+            return False
+
+        def __ne__(self, other):
+            return not self.__eq__(other)
+
+        @property
+        def id_num(self):
+            return int(self._id_num)
+
+        @id_num.setter
+        def id_num(self, id_num: int):
+            self._id_num = str(id_num)
+
+    NUMED_STRING_DATA = TypeVar(
+        "NUMED_STRING_DATA",
+        bound=Numbered_String_Data
+    )
+
+    class Block_Of_Numbered_String(Generic[NUMED_STRING_DATA]):
         def __init__(
             self,
-            data_type: Type[Data_n_Block.NUMBERED_DATA],
+            data_type: Type[Data_n_Block.NUMED_STRING_DATA],
             file_name: str = "data",
             file_dir: str = Path.WORK_SPACE,
         ) -> None:
@@ -124,12 +183,8 @@ class Data_n_Block():
             _data_holder = self.data_dict
 
             for _data in File.CSV.Read_from_file(file_name, file_dir):
-                _id_num = int(_data["id_num"])
-
-                _comp: Data_n_Block.NUMBERED_DATA = _data_type(
-                    int(_data["id_num"]))
-                _comp.Convert_data_from_csv(**_data)
-                _data_holder[_id_num] = _comp
+                _comp: Data_n_Block.NUMED_STRING_DATA = _data_type(**_data)
+                _data_holder[int(_data["id_num"])] = _comp
 
         def Write_to_csv(
             self,
@@ -146,8 +201,8 @@ class Data_n_Block():
                 file_name,
                 file_dir,
                 [
-                    _data.Convert_data_to_csv(
-                        data_size=data_socket_size
+                    _data.Convert_save_format(
+                        slot_length=data_socket_size
                     ) for _data in _data_dict.values()
                 ],
                 list(self.data_type.__annotations__.__dict__)
@@ -155,16 +210,14 @@ class Data_n_Block():
 
         def Update_data(
             self,
-            new_data: Data_n_Block.NUMBERED_DATA,
+            new_data: Data_n_Block.NUMED_STRING_DATA,
             is_override: bool = False
         ) -> bool:
-
             if isinstance(new_data, self.data_type):
                 _data_id = new_data.id_num
                 if is_override:
-                    if _data_id in self.data_dict:  # override
-                        self.data_dict.update({_data_id: new_data})
-                        return True
+                    self.data_dict[int(_data_id)] = new_data
+                    return True
                 elif new_data not in self.data_dict.values():  # add
                     _this_id = self.last_id + 1
                     new_data.id_num = _this_id

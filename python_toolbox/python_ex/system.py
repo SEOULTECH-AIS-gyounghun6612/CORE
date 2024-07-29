@@ -266,18 +266,78 @@ class String():
         text: str,
         max_length: int,
         fill: str = " ",
-        mode: Literal["l", "c", "r"] = "r"
+        align: Literal["l", "c", "r"] = "r"
     ) -> Tuple[int, str]:
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
 
         if max_length < 0:
             return -max_length, text
-        if mode == "l":
+        if align == "l":
             return 0, text.ljust(max_length, fill)
-        if mode == "c":
+        if align == "c":
             return 0, text.center(max_length, fill)
         return 0, text.rjust(max_length, fill)
+
+    @staticmethod
+    def Str_adjust_with_key(
+        key: str,
+        value: str,
+        max_length: int,
+        fill: str = " ",
+        align: Literal["l", "c", "r"] = "r"
+    ):
+        _k_l, _k = String.Str_adjust(key, max_length, fill, align)
+        _v_l, _v = String.Str_adjust(value, max_length, fill, align)
+
+        if not (_k_l or _v_l):
+            return (_k, _v)
+
+        _max_length = max_length - min(_k_l, _v_l)
+
+        return (
+            String.Str_adjust(key, _max_length, fill, align)[-1],
+            String.Str_adjust(value, _max_length, fill, align)[-1]
+        )
+
+    @staticmethod
+    def Convert_from_str(str_data: str):
+        if "," in str_data:
+            return [
+                String.Convert_from_str(
+                    _d
+                ) for _d in str_data[1:-1].split(",")
+            ]
+        if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
+            is_timezone = "+" in str_data or "-" in str_data
+            return Time.Make_time_from(
+                str_data,
+                use_timezone=is_timezone
+            )
+        if ";" in str_data:
+            return Time.Relative(
+                *[int(_v) for _v in str_data.split(";")]
+            )
+        try:
+            if "." in str_data:
+                return float(str_data)
+            return int(str_data)
+        except ValueError:
+            return str_data
+
+    @staticmethod
+    def Convert_to_str(
+        data: list | datetime | Time.Relative | float | int | str
+    ) -> str:
+        if isinstance(data, list):
+            return ",".join(
+                [String.Convert_to_str(_data) for _data in data]
+            )
+        if isinstance(data, (datetime, date)):
+            return Time.Make_text_from(data)
+        if isinstance(data, Time.Relative):
+            return ";".join(list(data))
+        return data if isinstance(data, str) else str(data)
 
 
 class Time():
@@ -511,42 +571,3 @@ class File():
                 except TypeError:
                     return False
             return True
-
-        @staticmethod
-        def Convert_from_str(str_data: str):
-            if "," in str_data:
-                return [
-                    File.CSV.Convert_from_str(
-                        _d
-                    ) for _d in str_data[1:-1].split(",")
-                ]
-            if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
-                is_timezone = "+" in str_data or "-" in str_data
-                return Time.Make_time_from(
-                    str_data,
-                    use_timezone=is_timezone
-                )
-            if ";" in str_data:
-                return Time.Relative(
-                    *[int(_v) for _v in str_data.split(";")]
-                )
-            try:
-                if "." in str_data:
-                    return float(str_data)
-                return int(str_data)
-            except ValueError:
-                return str_data
-
-        @staticmethod
-        def Convert_to_str(
-            data: list | datetime | Time.Relative | float | int | str
-        ) -> str:
-            if isinstance(data, list):
-                return ",".join(
-                    [File.CSV.Convert_to_str(_data) for _data in data]
-                )
-            if isinstance(data, (datetime, date)):
-                return Time.Make_text_from(data)
-            if isinstance(data, Time.Relative):
-                return ";".join(list(data))
-            return data if isinstance(data, str) else str(data)
