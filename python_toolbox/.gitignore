@@ -6,7 +6,7 @@ data/
 *.npy
 
 # tmeporary or test file and directory
-temp.*
+temp*.*
 test.*
 test*/
 
