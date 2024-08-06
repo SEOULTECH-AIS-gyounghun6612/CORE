@@ -449,8 +449,44 @@ class Time():
 
 class File():
     class Support_Format(Enum):
+        TXT = "txt"
         JSON = "json"
         CSV = "csv"
+
+    @staticmethod
+    def Extention_checker(file_name: str, file_format: File.Support_Format):
+        _this_ext = file_format.value
+        if "." in file_name:
+            _ext = file_name.split(".")[-1]
+            if _ext != _this_ext:
+                _file_name = file_name.replace(_ext, _this_ext)
+            else:
+                _file_name = file_name
+        else:
+            _file_name = f"{file_name}.{_this_ext}"
+
+        return _file_name
+
+    class Text():
+        @staticmethod
+        def Read(
+            file_name: str,
+            file_dir: str
+        ):
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
+
+            with open(_file, "r") as f:
+                lines = f.readlines()
+            return lines
+
+        @staticmethod
+        def Write(
+            file_name: str,
+            file_dir: str
+        ):
+            raise NotImplementedError
 
     class Json():
         KEYABLE = TYPE_NUMBER | bool | str
@@ -464,16 +500,9 @@ class File():
             encoding_type: str = "UTF-8"
         ) -> dict:
             # make file path
-            if "." in file_name:
-                _ext = file_name.split(".")[-1]
-                if _ext != "json":
-                    _file_name = file_name.replace(_ext, "json")
-                else:
-                    _file_name = file_name
-            else:
-                _file_name = f"{file_name}.json"
-
-            _file = Path.Join(_file_name, file_dir)
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             # read the file
@@ -493,16 +522,9 @@ class File():
             encoding_type: str = "UTF-8"
         ):
             # make file path
-            if "." in file_name:
-                _ext = file_name.split(".")[-1]
-                if _ext != "json":
-                    _file_name = file_name.replace(_ext, "json")
-                else:
-                    _file_name = file_name
-            else:
-                _file_name = f"{file_name}.json"
-
-            _file = Path.Join(_file_name, file_dir)
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
 
             # dump to file
             with open(_file, "w", encoding=encoding_type) as _file:
