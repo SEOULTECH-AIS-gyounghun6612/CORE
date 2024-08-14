@@ -13,16 +13,17 @@
 from __future__ import annotations
 from enum import Enum
 from typing import Tuple, Literal, Any
-import json
-import csv
-# import yaml
-import platform
+
+from dataclasses import dataclass
 
 import sys
 from glob import glob
 from os import path, system, getcwd, makedirs
+import platform
 
-from dataclasses import dataclass
+import json
+import csv
+import yaml
 
 from math import log10, floor
 
@@ -70,13 +71,19 @@ class OperatingSystem():
 
 # -- Mation Function -- #
 class Path():
-    """
-    경로와 관련하여 자주 사용하는 기능 모음
-    --------------------------------------------------------------------
+    """ ### 파일 및 디렉토리 경로 관련 기능 모음
+
+    ---------------------------------------------------------------------------
     """
     WORK_SPACE = getcwd()
 
     class Type(Enum):
+        """ ### 작업 대상 구분 상수
+        -----------------------------------------------------------------------
+        ### Attributes
+        - `DIR`: 디렉토리 -> (value = "dir")
+        - `FILE`: 파일 -> (value = "file")
+        """
         DIR = "dir"
         FILE = "file"
 
@@ -119,10 +126,9 @@ class Path():
         """
         if target is Path.Type.DIR:
             return path.isdir(obj_path)
-        elif target is Path.Type.FILE:
+        if target is Path.Type.FILE:
             return path.isfile(obj_path)
-        else:
-            return path.isdir(obj_path) or path.isfile(obj_path)
+        return path.isdir(obj_path) or path.isfile(obj_path)
 
     @staticmethod
     def Make_directory(
@@ -130,6 +136,20 @@ class Path():
         root_dir: str | None = None,
         is_force: bool = False
     ):
+        """ ### Function feature description
+        Note
+
+        ------------------------------------------------------------------
+        ### Args
+        - `arg_name`: Description of the input argument
+
+        ### Returns or Yields
+        - `data_format`: Description of the output argument
+
+        ### Raises
+        - `error_type`: Method of handling according to error issues
+
+        """
         if root_dir is not None:  # root directory check
             _exist = Path.Exist_check(root_dir, Path.Type.DIR)
             if _exist:
@@ -154,6 +174,20 @@ class Path():
 
     @staticmethod
     def Get_file_directory(file_path: str):
+        """ ### Function feature description
+        Note
+
+        ------------------------------------------------------------------
+        ### Args
+        - `arg_name`: Description of the input argument
+
+        ### Returns or Yields
+        - `data_format`: Description of the output argument
+
+        ### Raises
+        - `error_type`: Method of handling according to error issues
+
+        """
         _file_path = file_path
         _exist = Path.Exist_check(file_path, Path.Type.FILE)
 
@@ -166,10 +200,24 @@ class Path():
         keyword: str | None = None,
         ext_filter: str | list[str] | None = None
     ) -> list[str]:
+        """ ### Function feature description
+        Note
+
+        ------------------------------------------------------------------
+        ### Args
+        - `arg_name`: Description of the input argument
+
+        ### Returns or Yields
+        - `data_format`: Description of the output argument
+
+        ### Raises
+        - `error_type`: Method of handling according to error issues
+
+        """
         assert Path.Exist_check(obj_path, Path.Type.DIR)
 
         # make keyword
-        _obj_keyword = "*" if keyword is None else f"*{keyword}*"
+        _obj_keyword = "*" if keyword is None else keyword
 
         # make ext list
         if isinstance(ext_filter, list):
@@ -198,6 +246,10 @@ class Path():
         return _searched_list
 
     class Server():
+        """ ### 네트워크 내 데이터 서버 관련 기능 모음
+
+        -----------------------------------------------------------------------
+        """
         IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
 
         class Connection_Porcess(Enum):
@@ -253,7 +305,190 @@ class Path():
                 system(f"sudo umount {mounted_dir}")
 
 
+class File():
+    class Support_Format(Enum):
+        TXT = "txt"
+        JSON = "json"
+        CSV = "csv"
+        YAML = "yaml"
+
+    @staticmethod
+    def Extention_checker(file_name: str, file_format: File.Support_Format):
+        _this_ext = file_format.value
+        if "." in file_name:
+            _ext = file_name.split(".")[-1]
+            if _ext != _this_ext:
+                _file_name = file_name.replace(_ext, _this_ext)
+            else:
+                _file_name = file_name
+        else:
+            _file_name = f"{file_name}.{_this_ext}"
+
+        return _file_name
+
+    class Text():
+        @staticmethod
+        def Read(
+            file_name: str,
+            file_dir: str,
+            encoding_type: str = "UTF-8"
+        ):
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
+
+            with open(_file, "r", encoding=encoding_type) as f:
+                lines = f.readlines()
+            return lines
+
+        @staticmethod
+        def Write(
+            file_name: str,
+            file_dir: str
+        ):
+            raise NotImplementedError
+
+    class Json():
+        KEYABLE = TYPE_NUMBER | bool | str
+        VALUEABLE = KEYABLE | Tuple | list | dict | None
+        WRITEABLE = dict[KEYABLE, VALUEABLE]
+
+        @staticmethod
+        def Read(
+            file_name: str,
+            file_dir: str,
+            encoding_type: str = "UTF-8"
+        ) -> dict:
+            # make file path
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+
+            # read the file
+            if _is_exist:
+                with open(_file, "r", encoding=encoding_type) as _file:
+                    _load_data = json.load(_file)
+                return _load_data
+            print(f"file {file_name} is not exist in {file_dir}")
+            return {}
+
+        @staticmethod
+        def Write(
+            file_name: str,
+            file_dir: str,
+            data: WRITEABLE,
+            encoding_type: str = "UTF-8"
+        ):
+            # make file path
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
+
+            # dump to file
+            with open(_file, "w", encoding=encoding_type) as _file:
+                try:
+                    json.dump(data, _file, indent="\t")
+                except TypeError:
+                    return False
+            return True
+
+    class CSV():
+        @staticmethod
+        def Read_from_file(
+            file_name: str,
+            file_dir: str,
+            delimiter: str = "|",
+            encoding_type="UTF-8"
+        ) -> list[dict[str, Any]]:
+            """
+            """
+            # make file path
+            _file = Path.Join([file_name, "csv"], file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+
+            if _is_exist:
+                # read the file
+                with open(_file, "r", encoding=encoding_type) as file:
+                    _raw_data = csv.DictReader(file, delimiter=delimiter)
+                    _read_data = [
+                        dict(
+                            (
+                                _key.replace(" ", ""), _value.replace(" ", "")
+                            ) for _key, _value in _line_dict.items()
+                        ) for _line_dict in _raw_data
+                    ]
+                return _read_data
+            else:
+                print(f"file {file_name} is not exist in {file_dir}")
+                return []
+
+        @staticmethod
+        def Write_to_file(
+            file_name: str,
+            file_dir: str,
+            data: list[dict],
+            feildnames: list[str],
+            delimiter: str = "|",
+            mode: Literal['a', 'w'] = 'w',
+            encoding_type="UTF-8"
+        ):
+            # make file path
+            _file = Path.Join([file_name, "csv"], file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+
+            # dump to file
+            with open(
+                _file,
+                mode if not _is_exist else "w",
+                encoding=encoding_type,
+                newline=""
+            ) as _file:
+                try:
+                    _dict_writer = csv.DictWriter(
+                        _file, fieldnames=feildnames, delimiter=delimiter)
+                    _dict_writer.writeheader()
+                    _dict_writer.writerows(data)
+                except TypeError:
+                    return False
+            return True
+
+    class YAML():
+        @staticmethod
+        def Read(
+            file_name: str,
+            file_dir: str,
+            encoding_type: str = "UTF-8"
+        ) -> dict:
+            # make file path
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.JSON),
+                file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+
+            # read the file
+            if _is_exist:
+                with open(_file, "r", encoding=encoding_type) as _file:
+                    _load_data = yaml.load(_file, Loader=yaml.FullLoader)
+                return _load_data
+            print(f"file {file_name} is not exist in {file_dir}")
+            return {}
+
+        @staticmethod
+        def Write(
+            file_name: str,
+            file_dir: str,
+            data,
+            encoding_type: str = "UTF-8"
+        ):
+            raise NotImplementedError
+
+
 class String():
+    """ ### 네트워크 내 데이터 서버 관련 기능 모음
+
+    ---------------------------------------------------------------------------
+    """
     @staticmethod
     def Count_auto_aligning(this_count: int, max_count: int):
         _string_ct = floor(log10(max_count)) + 1
@@ -445,151 +680,3 @@ class Time():
                 _v = self.years
             self.__position__ += 1
             return str(_v)
-
-
-class File():
-    class Support_Format(Enum):
-        TXT = "txt"
-        JSON = "json"
-        CSV = "csv"
-
-    @staticmethod
-    def Extention_checker(file_name: str, file_format: File.Support_Format):
-        _this_ext = file_format.value
-        if "." in file_name:
-            _ext = file_name.split(".")[-1]
-            if _ext != _this_ext:
-                _file_name = file_name.replace(_ext, _this_ext)
-            else:
-                _file_name = file_name
-        else:
-            _file_name = f"{file_name}.{_this_ext}"
-
-        return _file_name
-
-    class Text():
-        @staticmethod
-        def Read(
-            file_name: str,
-            file_dir: str
-        ):
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
-                file_dir)
-
-            with open(_file, "r") as f:
-                lines = f.readlines()
-            return lines
-
-        @staticmethod
-        def Write(
-            file_name: str,
-            file_dir: str
-        ):
-            raise NotImplementedError
-
-    class Json():
-        KEYABLE = TYPE_NUMBER | bool | str
-        VALUEABLE = KEYABLE | Tuple | list | dict | None
-        WRITEABLE = dict[KEYABLE, VALUEABLE]
-
-        @staticmethod
-        def Read(
-            file_name: str,
-            file_dir: str,
-            encoding_type: str = "UTF-8"
-        ) -> dict:
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            # read the file
-            if _is_exist:
-                with open(_file, "r", encoding=encoding_type) as _file:
-                    _load_data = json.load(_file)
-                return _load_data
-            else:
-                print(f"file {file_name} is not exist in {file_dir}")
-                return {}
-
-        @staticmethod
-        def Write(
-            file_name: str,
-            file_dir: str,
-            data: WRITEABLE,
-            encoding_type: str = "UTF-8"
-        ):
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
-                file_dir)
-
-            # dump to file
-            with open(_file, "w", encoding=encoding_type) as _file:
-                try:
-                    json.dump(data, _file, indent="\t")
-                except TypeError:
-                    return False
-            return True
-
-    class CSV():
-        @staticmethod
-        def Read_from_file(
-            file_name: str,
-            file_dir: str,
-            delimiter: str = "|",
-            encoding_type="UTF-8"
-        ) -> list[dict[str, Any]]:
-            """
-            """
-            # make file path
-            _file = Path.Join([file_name, "csv"], file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            if _is_exist:
-                # read the file
-                with open(_file, "r", encoding=encoding_type) as file:
-                    _raw_data = csv.DictReader(file, delimiter=delimiter)
-                    _read_data = [
-                        dict(
-                            (
-                                _key.replace(" ", ""), _value.replace(" ", "")
-                            ) for _key, _value in _line_dict.items()
-                        ) for _line_dict in _raw_data
-                    ]
-                return _read_data
-            else:
-                print(f"file {file_name} is not exist in {file_dir}")
-                return []
-
-        @staticmethod
-        def Write_to_file(
-            file_name: str,
-            file_dir: str,
-            data: list[dict],
-            feildnames: list[str],
-            delimiter: str = "|",
-            mode: Literal['a', 'w'] = 'w',
-            encoding_type="UTF-8"
-        ):
-            # make file path
-            _file = Path.Join([file_name, "csv"], file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            # dump to file
-            with open(
-                _file,
-                mode if not _is_exist else "w",
-                encoding=encoding_type,
-                newline=""
-            ) as _file:
-                try:
-                    _dict_writer = csv.DictWriter(
-                        _file, fieldnames=feildnames, delimiter=delimiter)
-                    _dict_writer.writeheader()
-                    _dict_writer.writerows(data)
-                except TypeError:
-                    return False
-            return True
