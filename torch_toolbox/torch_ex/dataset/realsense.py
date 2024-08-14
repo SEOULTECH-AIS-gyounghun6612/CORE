@@ -1,51 +1,92 @@
-import yaml
+from typing import Type
 
+from numpy.typing import NDArray
 import numpy as np
 import cv2
 
-from python_ex.system import Path
+from python_ex.system import Path, File
 
-from .basement import __Basement__
+from .basement import Parser, PARSER, Dataset_Basement
+
+try:
+    import pyrealsense2 as rs
+except Exception:
+    pass
 
 
-class CustomDataset(__Basement__):
-    def Make_datalist(self, root: str, mode: str | None = None, **kwarg):
-        # Get camera info
-        with open(
-            Path.Join("realsense.yaml", root), encoding="UTF-8"
-        ) as f:
-            self.camera_info = yaml.load(f, Loader=yaml.FullLoader)
+def _Read_pose_file(file: str) -> NDArray:
+    _raw_data: np.ndarray = np.load(file)
+    _h, _w = _raw_data.shape[:2]
 
-        # Get input and target file list
-        _input_files = Path.Search(
-            Path.Join("rgb", root), Path.Type.FILE, "*", "jpg")
+    _sp_h = (_h - 4) if (_h - 4) else None
+    _sp_w = (_w - 4) if (_w - 4) else None
 
-        _depth_files = Path.Search(
-            Path.Join("depth", root), Path.Type.FILE, "*", "png")
-        _pose_files = Path.Search(
-            Path.Join("poses", root), Path.Type.FILE, "*", "npy")
-        _targets = list(zip(_depth_files, _pose_files))
+    _pose = np.eye(4, 4)
+    _pose[:_sp_h, :_sp_w] = _raw_data
 
-        return _input_files, _targets
+    return _pose
+
+
+class Realsense_Parser(Parser):
+    def Get_data_from(self, data_dir: str, is_live: bool = False, **kwarg):
+        if is_live:
+            ...
+        else:
+            self.data_block = {
+                "rgb": Path.Search(
+                    Path.Join("rgb", data_dir),
+                    Path.Type.FILE,
+                    ext_filter="jpg"
+                ),
+                "depth": Path.Search(
+                    Path.Join("depth", data_dir),
+                    Path.Type.FILE,
+                    ext_filter="png"
+                ),
+                "pose": [
+                    _Read_pose_file(_file) for _file in Path.Search(
+                        Path.Join("poses", data_dir),
+                        Path.Type.FILE,
+                        ext_filter="npy"
+                    )
+                ]
+            }
+
+            self.data_info = {
+                "cam_info": File.YAML.Read("realsense.yaml", data_dir)
+            }
+
+
+class Realsense(Dataset_Basement):
+    def __init__(
+        self,
+        data_dir: str,
+        is_live: bool = False,
+        use_depth: bool = True,
+        data_parser: Type[PARSER] = Realsense_Parser
+    ) -> None:
+        if is_live:
+            raise NotImplementedError  # live dataset is not suport yet
+        super().__init__(data_dir, data_parser, is_live=is_live)
+        self.is_live = is_live
+        self.use_depth = use_depth
+
+        # in later, make disorted matrix from self.data_info
 
     def __len__(self):
-        return len(self.inputs)
+        return len(self.data_block["rgb"])
 
-    def __getitem__(self, index: int):
-        # rgb
-        _input_file: str = self.inputs[index]
-        _input_img: np.ndarray = cv2.imread(_input_file, -1)
-        _input_img = cv2.cvtColor(_input_img, cv2.COLOR_BGR2RGB)
-        _input_img = _input_img / 255.0
+    def __getitem__(self, index):
+        _rgb_file = self.data_block["rgb"][index]
+        _rgb = cv2.imread(_rgb_file, cv2.IMREAD_UNCHANGED)
+        # in later add apply disorted
+        # ex) cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
 
-        # depth and pose (target)
-        _depth_file, _pose_file = self.targets[index]
-        _depth_scale = self.camera_info["camera_params"]["png_depth_scale"]
-        _depth_img: np.ndarray = cv2.imread(_depth_file, -1)  # uint16
-        _depth_img = _depth_img / _depth_scale
+        _depth = None
+        if self.use_depth:
+            _depth_file = self.data_block["depth"][index]
+            _depth = cv2.imread(_depth_file, cv2.IMREAD_UNCHANGED)
 
-        _pose_data: np.ndarray = np.load(_pose_file)
+        _pose = self.data_block["pose"][index]
 
-        _file_name: str = _input_file.split("/")[-1].split(".")[0]
-
-        return _input_img, _depth_img, _pose_data, _file_name
+        return _rgb, _depth, _pose
