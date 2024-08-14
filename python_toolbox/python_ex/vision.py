@@ -13,7 +13,7 @@ Requirement
 from __future__ import annotations
 from enum import Enum
 from typing import (
-    Tuple, Type,
+    Type, Any
     # Literal
 )
 from dataclasses import dataclass, field
@@ -69,24 +69,20 @@ class Camera_Model():
         - `SubClassName` or `Function_name`: Description of each object
 
         """
-        cam_id: int
-        fps: int
+        cam_id: int = 0
+        fps: int = 30
+        intrinsic: NDArray = field(default_factory=lambda: np.eye(3))
 
-        fov_x: float = -1.
-        fov_y: float = -1.
+        scene_list: list[Camera_Model.Scene] = field(default_factory=list)
 
-        fx: float = -1.
-        fy: float = -1.
+        def Set_intrinsic(self, intrinsic_array: NDArray):
+            _h, _w = intrinsic_array.shape
 
-        width: int = 0
-        hight: int = 0
+            _sp_h = (_h - 3) if (_h - 3) else None
+            _sp_w = (_w - 3) if (_w - 3) else None
+            self.intrinsic[:_sp_h, :_sp_w] = intrinsic_array
 
-        cx: float = 0
-        cy: float = 0
-
-        intrinsic: NDArray = field(default_factory=lambda: np.eye(4))
-
-        def Set_camera_info(self, **kwarg):
+        def Get_camera_params(self, **kwarg) -> dict[str, Any]:
             """ ### Function feature description
             Note
 
@@ -101,24 +97,18 @@ class Camera_Model():
             - `error_type`: Method of handling according to error issues
 
             """
-            raise NotImplementedError
+            _hoder = {}
+            for _key in kwarg:
+                if _key == "fx":
+                    ...
+                elif _key == "fy":
+                    ...
+                elif _key == "cx":
+                    ...
+                elif _key == "cy":
+                    ...
 
-        def Get_camera_info(self, **kwarg):
-            """ ### Function feature description
-            Note
-
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
-            raise NotImplementedError
+            return _hoder
 
         def Capture(self) -> Camera_Model.Scene:
             """ ### Function feature description
@@ -137,72 +127,72 @@ class Camera_Model():
             """
             raise NotImplementedError
 
-        def Get_projection_from_f_length(self):
-            """ ### Function feature description
-            Note
+        # def Get_projection_from_f_length(self):
+        #     """ ### Function feature description
+        #     Note
 
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
+        #     ------------------------------------------------------------------
+        #     ### Args
+        #     - `arg_name`: Description of the input argument
 
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
+        #     ### Returns or Yields
+        #     - `data_format`: Description of the output argument
 
-            ### Raises
-            - `error_type`: Method of handling according to error issues
+        #     ### Raises
+        #     - `error_type`: Method of handling according to error issues
 
-            """
-            _projection = np.zeros((3, 3))
-            _projection[0, 0] = self.fx
-            _projection[1, 1] = self.fy
-            _projection[0, 2] = self.cx
-            _projection[1, 2] = self.cy
+        #     """
+        #     _projection = np.zeros((3, 3))
+        #     _projection[0, 0] = self.fx
+        #     _projection[1, 1] = self.fy
+        #     _projection[0, 2] = self.cx
+        #     _projection[1, 2] = self.cy
 
-            return _projection
+        #     return _projection
 
-        def Get_projection_from_fov(self):
-            raise NotImplementedError
+        # def Get_projection_from_fov(self):
+        #     raise NotImplementedError
 
-        def Get_perspective_projection_from_f_length(
-            self,
-            znear: int,
-            zfar: int
-        ):
-            """ ### Function feature description
-            Note
+        # def Get_perspective_projection_from_f_length(
+        #     self,
+        #     znear: int,
+        #     zfar: int
+        # ):
+        #     """ ### Function feature description
+        #     Note
 
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
+        #     ------------------------------------------------------------------
+        #     ### Args
+        #     - `arg_name`: Description of the input argument
 
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
+        #     ### Returns or Yields
+        #     - `data_format`: Description of the output argument
 
-            ### Raises
-            - `error_type`: Method of handling according to error issues
+        #     ### Raises
+        #     - `error_type`: Method of handling according to error issues
 
-            """
-            # _tan_half_FoV_y = math.tan((self.fov_y / 2))
-            # _tan_half_FoV_x = math.tan((self.fov_x / 2))
+        #     """
+        #     # _tan_half_FoV_y = math.tan((self.fov_y / 2))
+        #     # _tan_half_FoV_x = math.tan((self.fov_x / 2))
 
-            # _projection = np.zeros((4, 4))
+        #     # _projection = np.zeros((4, 4))
 
-            # top = _tan_half_FoV_y * znear
-            # bottom = -top
-            # right = _tan_half_FoV_x * znear
-            # left = -right
+        #     # top = _tan_half_FoV_y * znear
+        #     # bottom = -top
+        #     # right = _tan_half_FoV_x * znear
+        #     # left = -right
 
-            # z_sign = 1.0
+        #     # z_sign = 1.0
 
-            # _projection[0, 0] = 2.0 * znear / (right - left)
-            # _projection[1, 1] = 2.0 * znear / (top - bottom)
-            # _projection[0, 2] = (right + left) / (right - left)
-            # _projection[1, 2] = (top + bottom) / (top - bottom)
-            # _projection[3, 2] = z_sign
-            # _projection[2, 2] = z_sign * zfar / (zfar - znear)
-            # _projection[2, 3] = -(zfar * znear) / (zfar - znear)
+        #     # _projection[0, 0] = 2.0 * znear / (right - left)
+        #     # _projection[1, 1] = 2.0 * znear / (top - bottom)
+        #     # _projection[0, 2] = (right + left) / (right - left)
+        #     # _projection[1, 2] = (top + bottom) / (top - bottom)
+        #     # _projection[3, 2] = z_sign
+        #     # _projection[2, 2] = z_sign * zfar / (zfar - znear)
+        #     # _projection[2, 3] = -(zfar * znear) / (zfar - znear)
 
-            raise NotImplementedError
+        #     raise NotImplementedError
 
     @dataclass
     class Scene():
@@ -229,39 +219,40 @@ class Camera_Model():
         cam: Camera_Model.Camera
         frame_id: int
 
-        rotate: NDArray = field(
-            default_factory=lambda: np.empty((3, 3)))
-        transfer: NDArray = field(
-            default_factory=lambda: np.empty((3, 1)))
-
-        image: dict[str, NDArray] = field(
+        extrinsic: NDArray = field(default_factory=lambda: np.eye(4))
+        rotate_order: str = ""
+        size: tuple[int, int] = (0, 0)
+        images: dict[str, NDArray] = field(
             default_factory=lambda: {
-                "image": np.empty(0),
+                "rgb": np.empty(0),
                 "depth": np.empty(0)
             })
 
-        def _Set_frame_id(self, frame_id: int):
-            """ ### Function feature description
-            Note
+        # rotate: NDArray = field(
+        #     default_factory=lambda: np.empty((3, 3)))
+        # transfer: NDArray = field(
+        #     default_factory=lambda: np.empty((3, 1)))
 
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
+        def Set_frame_id(self, frame_id: int):
             if frame_id < 0:
-                raise ValueError(
-                    f"frame is must over 0. this frame: {frame_id} is not"
-                )
+                raise ValueError("Frame id MUST 0 or higher")
+
             self.frame_id = frame_id
 
-        def Set_frame_data(self, frame_id: int, **frame_images):
+        def Set_extrinsic(self, extrinsic_array: NDArray):
+            _h, _w = extrinsic_array.shape
+
+            _sp_h = (_h - 4) if (_h - 4) else None
+            _sp_w = (_w - 4) if (_w - 4) else None
+            self.extrinsic[:_sp_h, :_sp_w] = extrinsic_array
+
+        def Set_size(self, height: int, width: int):
+            if height <= 0 or width <= 0:
+                raise ValueError("Image size MUST BIGGER THAN 0")
+
+            self.size = (height, width)
+
+        def Set_images(self, is_update: bool = False, **frame_images: NDArray):
             """ ### Function feature description
             Note
 
@@ -276,14 +267,64 @@ class Camera_Model():
             - `error_type`: Method of handling according to error issues
 
             """
-            self._Set_frame_id(frame_id)
+            _size = self.size
 
-            self.image.update(
-                dict((
-                    _key,
-                    _img
-                ) for _key, _img in frame_images.items() if _key in self.image)
-            )
+            if is_update:
+                # update
+                _images_key = self.images.keys()
+                _holder = dict(
+                    (_k, _img) for _k, _img in frame_images.items() if (
+                        _img.shape == _size and _k in _images_key
+                    )
+                )
+                self.images.update(_holder)
+
+            else:
+                # override
+                self.images = dict(
+                    (_k, _img) for _k, _img in frame_images.items() if (
+                        _img.shape == _size
+                    )
+                )
+
+        def Get_scene_params(self, **kwarg) -> dict[str, Any]:
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+            - `arg_name`: Description of the input argument
+
+            ### Returns or Yields
+            - `data_format`: Description of the output argument
+
+            ### Raises
+            - `error_type`: Method of handling according to error issues
+
+            """
+            _hoder = {}
+            for _k, _v in kwarg.items():
+                if _k == "rotate_matrix":
+                    _hoder[_k] = self.extrinsic[:3, :3]
+                if _k == "rotate_angle":
+                    _angle = Vision_Toolbox.Get_angle_from_rotate_matrix(
+                        self.extrinsic[:3, :3]
+                    )[0]
+                    _hoder[_k] = [
+                        _angle[0] * 180 / np.pi,
+                        _angle[1] * 180 / np.pi,
+                        _angle[2] * 180 / np.pi,
+                    ]
+                elif _k == "transfer":
+                    _hoder[_k] = self.extrinsic[:3, 3]
+                elif _k == "size":
+                    ...
+                elif _k == "height":
+                    ...
+                elif _k == "width":
+                    ...
+
+            return _hoder
 
         def Set_rotate_from_list(self, rotate: list[float]):
             if len(rotate) >= 9:
@@ -343,6 +384,26 @@ class Camera_Model():
 
         #     """
         #     raise NotImplementedError
+
+
+class Flag():
+    class Aligan(Enum):
+        """ ### Flag for img or text in visualize process"""
+        Left = 0
+        Center = 1
+        Right = 2
+
+    class Axis(Enum):
+        X = "x"
+        Y = "y"
+        Z = "z"
+
+    class Padding(Enum):
+        """ ### Data type for each data"""
+        ZERO = cv2.BORDER_CONSTANT
+        OUTLINE = cv2.BORDER_REPLICATE
+        REFLECT = cv2.BORDER_REFLECT
+        REFLECT_101 = cv2.BORDER_REFLECT101
 
 
 class Codex_For(Enum):
@@ -514,14 +575,6 @@ class File_IO():
     #             return None
 
 
-class Border_Flag(Enum):
-    """ ### Data type for each data"""
-    ZERO = cv2.BORDER_CONSTANT
-    OUTLINE = cv2.BORDER_REPLICATE
-    REFLECT = cv2.BORDER_REFLECT
-    REFLECT_101 = cv2.BORDER_REFLECT101
-
-
 class Vision_Toolbox():
     """ ### Description of class functionality
     Note
@@ -568,7 +621,7 @@ class Vision_Toolbox():
     def Set_filter(
         src: NDArray[np.uint8],
         kennel: NDArray[np.int_ | np.float_],
-        border_type: Border_Flag = Border_Flag.REFLECT_101
+        border_type: Flag.Padding = Flag.Padding.REFLECT_101
     ) -> NDArray:
         return cv2.filter2D(
             src,
@@ -577,12 +630,71 @@ class Vision_Toolbox():
             borderType=border_type.value
         )
 
+    @staticmethod
+    def Get_axis_rotate(delta: float, aixs: Flag.Axis, is_rad: bool = False):
+        """ ### 축 회전 변환 행렬
+        Note
 
-class Aligan(Enum):
-    """ ### Flag for img or text in visualize process"""
-    Left = 0
-    Center = 1
-    Right = 2
+        ------------------------------------------------------------------
+        ### Args
+        - `delta`: 회전한 각도
+        - `is_rad`: 입력된 값의 성격 (true = radian, false = angle)
+
+        ### Returns or Yields
+        - `rotate_matrix`: 변환 행렬
+        """
+        _delta = delta if is_rad else np.pi * (delta / 180)
+        _s, _c = np.sin(_delta), np.cos(_delta)
+
+        if aixs == Flag.Axis.X:
+            return np.array([[1, 0, 0], [0, _c, -_s], [0, _s, _c]])
+        if aixs == Flag.Axis.Y:
+            return np.array([[_c, 0, _s], [0, 1, 0], [-_s, 0, _c]])
+        return np.array([[_c, -_s, 0], [_s, _c, 0], [0, 0, 1]])
+
+    @staticmethod
+    def Get_roate_matrix(
+        delta: dict[Flag.Axis, float],
+        is_rad: bool = False
+    ):
+        _matrix = np.eye(3, 3)
+        for _order, _value in delta.items():
+            _matrix = _matrix @ Vision_Toolbox.Get_axis_rotate(
+                _value, _order, is_rad
+            )
+
+        return _matrix
+
+    @staticmethod
+    def Get_angle_from_rotate_matrix(rotate: NDArray):
+        if rotate[2, 0] != 1 and rotate[2, 0] != -1:
+            _holder: list[tuple[float, float, float]] = []
+
+            _th_1 = -np.arcsin(rotate[2, 0])
+            _th_2 = np.pi - _th_1
+
+            for _th in [_th_1, _th_2]:
+                _tan_ps_1 = rotate[2, 1] / np.cos(_th)
+                _tan_ps_2 = rotate[2, 2] / np.cos(_th)
+                _ps = np.arctan2(_tan_ps_1, _tan_ps_2)
+
+                _tan_ph_1 = rotate[1, 0] / np.cos(_th)
+                _tan_ph_2 = rotate[0, 0] / np.cos(_th)
+                _ph = np.arctan2(_tan_ph_1, _tan_ph_2)
+
+                _holder.append((_ps, _th, _ph))
+
+            return _holder[0], _holder[1]
+
+        _ph = 0  # can set to anything, it's the gimbal lock case
+        if rotate[2, 0] == -1:
+            _th = np.pi / 2
+            _ps = _ph + np.arctan2(rotate[0, 1], rotate[0, 2])
+        else:
+            _th = -np.pi / 2
+            _ps = -_ph + np.arctan2(-rotate[0, 1], -rotate[0, 2])
+
+        return (_ps, _th, _ph), (None, None, None)
 
 
 class Debugging():
@@ -674,7 +786,7 @@ class Debugging():
         image: NDArray,
         caption: str,
         font: int = cv2.FONT_HERSHEY_SIMPLEX,
-        aligan: Aligan = Aligan.Center
+        aligan: Flag.Aligan = Flag.Aligan.Center
     ):
         """ ### Function feature description
         Note
@@ -716,9 +828,9 @@ class Debugging():
         ) * 255
         _draw[:_i_h] = image
 
-        if aligan is Aligan.Center:
+        if aligan is Flag.Aligan.Center:
             _l_x = (_i_w - _t_w) // 2
-        elif aligan is Aligan.Left:
+        elif aligan is Flag.Aligan.Left:
             _l_x = _p
         else:  # Right
             _l_x = _i_w - _p - _t_w
@@ -732,7 +844,7 @@ class Debugging():
         img_list: list[NDArray | None],
         img_h: int, img_w: int,
         row: int | None, col: int | None = None,
-        padding: int | Tuple[int, int] | Tuple[int, int, int, int] = 10,
+        padding: int | tuple[int, int] | tuple[int, int, int, int] = 10,
         is_fill_row_first: bool = True,
         background: NDArray = 255 * np.ones(3),
         canvas_format: Type = np.uint8
