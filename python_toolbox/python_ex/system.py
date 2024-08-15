@@ -11,7 +11,7 @@
 
 """
 from __future__ import annotations
-from enum import Enum
+from enum import Enum, auto
 from typing import Tuple, Literal, Any
 
 from dataclasses import dataclass
@@ -39,6 +39,104 @@ TYPE_NUMBER = int | float
 PYTHON_VERSION = sys.version_info
 
 
+class String():
+    """ ### 문자열 처리 함수
+    ---------------------------------------------------------------------------
+    """
+    @staticmethod
+    def Count_auto_aligning(this_count: int, max_count: int):
+        _string_ct = floor(log10(max_count)) + 1
+        _this = f"{this_count}".rjust(_string_ct, "0")
+
+        return f"{_this}/{max_count}"
+
+    @staticmethod
+    def Str_adjust(
+        text: str,
+        max_length: int,
+        fill: str = " ",
+        align: Literal["l", "c", "r"] = "r"
+    ) -> Tuple[int, str]:
+        for _str in text:
+            max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
+
+        if max_length < 0:
+            return -max_length, text
+        if align == "l":
+            return 0, text.ljust(max_length, fill)
+        if align == "c":
+            return 0, text.center(max_length, fill)
+        return 0, text.rjust(max_length, fill)
+
+    @staticmethod
+    def Str_adjust_with_key(
+        key: str,
+        value: str,
+        max_length: int,
+        fill: str = " ",
+        align: Literal["l", "c", "r"] = "r"
+    ):
+        _k_l, _k = String.Str_adjust(key, max_length, fill, align)
+        _v_l, _v = String.Str_adjust(value, max_length, fill, align)
+
+        if not (_k_l or _v_l):
+            return (_k, _v)
+
+        _max_length = max_length - min(_k_l, _v_l)
+
+        return (
+            String.Str_adjust(key, _max_length, fill, align)[-1],
+            String.Str_adjust(value, _max_length, fill, align)[-1]
+        )
+
+    @staticmethod
+    def Convert_from_str(str_data: str):
+        if "," in str_data:
+            return [
+                String.Convert_from_str(
+                    _d
+                ) for _d in str_data[1:-1].split(",")
+            ]
+        if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
+            is_timezone = "+" in str_data or "-" in str_data
+            return Time.Make_time_from(
+                str_data,
+                use_timezone=is_timezone
+            )
+        if ";" in str_data:
+            return Time.Relative(
+                *[int(_v) for _v in str_data.split(";")]
+            )
+        try:
+            if "." in str_data:
+                return float(str_data)
+            return int(str_data)
+        except ValueError:
+            return str_data
+
+    @staticmethod
+    def Convert_to_str(
+        data: list | datetime | Time.Relative | float | int | str
+    ) -> str:
+        if isinstance(data, list):
+            return ",".join(
+                [String.Convert_to_str(_data) for _data in data]
+            )
+        if isinstance(data, (datetime, date)):
+            return Time.Make_text_from(data)
+        if isinstance(data, Time.Relative):
+            return ";".join(list(data))
+        return data if isinstance(data, str) else str(data)
+
+    class String_Enum(str, Enum):
+        @staticmethod
+        def _generate_next_value_(name, start, count, last_values):
+            return name
+
+        def __repr__(self):
+            return self.name.lower()
+
+
 class OperatingSystem():
     """### Frequently used features for handling OS-related tasks
     --------------------------------------------------------------------
@@ -50,15 +148,15 @@ class OperatingSystem():
 
     """
 
-    THIS_STYLE = platform.system()
+    THIS_STYLE = platform.system().lower()
 
-    class Name(Enum):
+    class Name(String.String_Enum):
         """
         각 OS 별 처리 문자열
         ----------------------------------------------------------------
         """
-        WINDOW = "Windows"
-        LINUX = "Linux"
+        WINDOW = auto()
+        LINUX = auto()
 
     @staticmethod
     def Is_it_runing(like_this_os: OperatingSystem.Name):
@@ -77,15 +175,15 @@ class Path():
     """
     WORK_SPACE = getcwd()
 
-    class Type(Enum):
+    class Type(String.String_Enum):
         """ ### 작업 대상 구분 상수
         -----------------------------------------------------------------------
         ### Attributes
         - `DIR`: 디렉토리 -> (value = "dir")
         - `FILE`: 파일 -> (value = "file")
         """
-        DIR = "dir"
-        FILE = "file"
+        DIR = auto()
+        FILE = auto()
 
     @staticmethod
     def Seperater_check(obj_path: str):
@@ -252,8 +350,8 @@ class Path():
         """
         IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
 
-        class Connection_Porcess(Enum):
-            CIFS = "cifs"
+        class Connection_Porcess(String.String_Enum):
+            CIFS = auto()
 
         def __init__(
             self,
@@ -273,7 +371,7 @@ class Path():
             credent_path: str
         ):
             _command = path.join(
-                f"sudo -S mount -t {self.process.value}",
+                f"sudo -S mount -t {self.process}",
                 " -o ",
                 ",".join((
                     f"uid={user_id}",
@@ -306,23 +404,22 @@ class Path():
 
 
 class File():
-    class Support_Format(Enum):
-        TXT = "txt"
-        JSON = "json"
-        CSV = "csv"
-        YAML = "yaml"
+    class Support_Format(String.String_Enum):
+        TXT = auto()
+        JSON = auto()
+        CSV = auto()
+        YAML = auto()
 
     @staticmethod
     def Extention_checker(file_name: str, file_format: File.Support_Format):
-        _this_ext = file_format.value
         if "." in file_name:
             _ext = file_name.split(".")[-1]
-            if _ext != _this_ext:
-                _file_name = file_name.replace(_ext, _this_ext)
+            if _ext != file_format:
+                _file_name = file_name.replace(_ext, file_format)
             else:
                 _file_name = file_name
         else:
-            _file_name = f"{file_name}.{_this_ext}"
+            _file_name = f"{file_name}.{file_format}"
 
         return _file_name
 
@@ -334,7 +431,7 @@ class File():
             encoding_type: str = "UTF-8"
         ):
             _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
+                File.Extention_checker(file_name, File.Support_Format.TXT),
                 file_dir)
 
             with open(_file, "r", encoding=encoding_type) as f:
@@ -462,7 +559,7 @@ class File():
         ) -> dict:
             # make file path
             _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
+                File.Extention_checker(file_name, File.Support_Format.YAML),
                 file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
@@ -482,97 +579,6 @@ class File():
             encoding_type: str = "UTF-8"
         ):
             raise NotImplementedError
-
-
-class String():
-    """ ### 네트워크 내 데이터 서버 관련 기능 모음
-
-    ---------------------------------------------------------------------------
-    """
-    @staticmethod
-    def Count_auto_aligning(this_count: int, max_count: int):
-        _string_ct = floor(log10(max_count)) + 1
-        _this = f"{this_count}".rjust(_string_ct, "0")
-
-        return f"{_this}/{max_count}"
-
-    @staticmethod
-    def Str_adjust(
-        text: str,
-        max_length: int,
-        fill: str = " ",
-        align: Literal["l", "c", "r"] = "r"
-    ) -> Tuple[int, str]:
-        for _str in text:
-            max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
-
-        if max_length < 0:
-            return -max_length, text
-        if align == "l":
-            return 0, text.ljust(max_length, fill)
-        if align == "c":
-            return 0, text.center(max_length, fill)
-        return 0, text.rjust(max_length, fill)
-
-    @staticmethod
-    def Str_adjust_with_key(
-        key: str,
-        value: str,
-        max_length: int,
-        fill: str = " ",
-        align: Literal["l", "c", "r"] = "r"
-    ):
-        _k_l, _k = String.Str_adjust(key, max_length, fill, align)
-        _v_l, _v = String.Str_adjust(value, max_length, fill, align)
-
-        if not (_k_l or _v_l):
-            return (_k, _v)
-
-        _max_length = max_length - min(_k_l, _v_l)
-
-        return (
-            String.Str_adjust(key, _max_length, fill, align)[-1],
-            String.Str_adjust(value, _max_length, fill, align)[-1]
-        )
-
-    @staticmethod
-    def Convert_from_str(str_data: str):
-        if "," in str_data:
-            return [
-                String.Convert_from_str(
-                    _d
-                ) for _d in str_data[1:-1].split(",")
-            ]
-        if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
-            is_timezone = "+" in str_data or "-" in str_data
-            return Time.Make_time_from(
-                str_data,
-                use_timezone=is_timezone
-            )
-        if ";" in str_data:
-            return Time.Relative(
-                *[int(_v) for _v in str_data.split(";")]
-            )
-        try:
-            if "." in str_data:
-                return float(str_data)
-            return int(str_data)
-        except ValueError:
-            return str_data
-
-    @staticmethod
-    def Convert_to_str(
-        data: list | datetime | Time.Relative | float | int | str
-    ) -> str:
-        if isinstance(data, list):
-            return ",".join(
-                [String.Convert_to_str(_data) for _data in data]
-            )
-        if isinstance(data, (datetime, date)):
-            return Time.Make_text_from(data)
-        if isinstance(data, Time.Relative):
-            return ";".join(list(data))
-        return data if isinstance(data, str) else str(data)
 
 
 class Time():
