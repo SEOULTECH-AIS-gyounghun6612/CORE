@@ -59,12 +59,10 @@ class Template():
     """
     def __init__(
         self,
-        project_name: str,
-        category: str | None = None,
-        result_dir: str | None = None
+        project_name: str
     ):
         self.project_name = project_name
-        self.Make_save_root(category, result_dir)
+        self.result_root = Path.WORK_SPACE
 
     def Make_save_root(
         self,
