@@ -27,7 +27,19 @@
 ### dataset
 - [ ] augmentation 기능 추가 구성
 
+## requirments
+- 공통 사항
+   - python_ex [링크]()
+
+- layer/3d_gaussian
+   - open3d
+   - plyfile
+   - diff-gaussian-rasterization [링크](https://github.com/graphdeco-inria/diff-gaussian-rasterization)
+   - simple-knn [링크](https://gitlab.inria.fr/bkerbl/simple-knn.git)
+
 ## Install
 1. pip 사용
    - https 버전 -> pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
    - ssh 버전   -> pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+
+
