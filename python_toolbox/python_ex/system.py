@@ -505,7 +505,9 @@ class File():
             """
             """
             # make file path
-            _file = Path.Join([file_name, "csv"], file_dir)
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.CSV),
+                file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             if _is_exist:
@@ -535,7 +537,9 @@ class File():
             encoding_type="UTF-8"
         ):
             # make file path
-            _file = Path.Join([file_name, "csv"], file_dir)
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.CSV),
+                file_dir)
             _is_exist = Path.Exist_check(_file, Path.Type.FILE)
 
             # dump to file
