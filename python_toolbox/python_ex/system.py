@@ -98,7 +98,9 @@ class String():
                 ) for _d in str_data[1:-1].split(",")
             ]
         if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
-            is_timezone = "+" in str_data or "-" in str_data
+            is_timezone = "T" in str_data and (
+                any(_txt in str_data.split("T")[-1] for _txt in "+-")
+            )
             return Time.Make_time_from(
                 str_data,
                 use_timezone=is_timezone
@@ -135,7 +137,7 @@ class String():
 
         def __repr__(self):
             return self.name.lower()
-        
+
         def __str__(self):
             return self.name.lower()
 
@@ -631,8 +633,8 @@ class Time():
     ):
         if date_format is not None:
             _date_format = date_format
-        else:
-            _date_format = "%Y-%m-%dT%H:%M:%S"
+        else:  # iso
+            _date_format = "%Y-%m-%dT%H:%M:%S.%f"
             _date_format += "%z" if use_timezone else ""
 
         _datetime = datetime.strptime(text_source, _date_format)
