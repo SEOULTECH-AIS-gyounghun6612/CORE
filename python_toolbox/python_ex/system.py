@@ -135,6 +135,9 @@ class String():
 
         def __repr__(self):
             return self.name.lower()
+        
+        def __str__(self):
+            return self.name.lower()
 
 
 class OperatingSystem():
@@ -412,14 +415,15 @@ class File():
 
     @staticmethod
     def Extention_checker(file_name: str, file_format: File.Support_Format):
+        _format = str(file_format)
         if "." in file_name:
             _ext = file_name.split(".")[-1]
-            if _ext != file_format:
-                _file_name = file_name.replace(_ext, file_format)
+            if _ext != _format:
+                _file_name = file_name.replace(_ext, _format)
             else:
                 _file_name = file_name
         else:
-            _file_name = f"{file_name}.{file_format}"
+            _file_name = f"{file_name}.{_format}"
 
         return _file_name
 
