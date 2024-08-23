@@ -90,31 +90,37 @@ class String():
         )
 
     @staticmethod
-    def Convert_from_str(str_data: str):
-        if "," in str_data:
-            return [
-                String.Convert_from_str(
-                    _d
-                ) for _d in str_data[1:-1].split(",")
-            ]
-        if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
-            is_timezone = "T" in str_data and (
-                any(_txt in str_data.split("T")[-1] for _txt in "+-")
-            )
-            return Time.Make_time_from(
-                str_data,
-                use_timezone=is_timezone
-            )
-        if ";" in str_data:
-            return Time.Relative(
-                *[int(_v) for _v in str_data.split(";")]
-            )
+    def Convert_from_str(str_data: str, empty_is_None: bool = False):
         try:
+            if "," in str_data:
+                return [
+                    String.Convert_from_str(
+                        _d
+                    ) for _d in str_data[1:-1].split(",")
+                ]
+            if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
+                _use_timezone = "T" in str_data and (
+                    any(_txt in str_data.split("T")[-1] for _txt in "+-")
+                )
+                _use_microsec = "." in str_data
+                return Time.Make_time_from(
+                    str_data,
+                    use_timezone=_use_timezone,
+                    use_microsec=_use_microsec
+                )
+            if ";" in str_data:
+                return Time.Relative(
+                    *[int(_v) for _v in str_data.split(";")]
+                )
             if "." in str_data:
                 return float(str_data)
             return int(str_data)
         except ValueError:
+            if str_data in ("True", "False"):
+                return str_data == "True"
             return str_data
+        except IndexError:
+            return None if empty_is_None else ""
 
     @staticmethod
     def Convert_to_str(
@@ -629,12 +635,14 @@ class Time():
     def Make_time_from(
         text_source: str,
         date_format: str | None = None,
+        use_microsec: bool = False,
         use_timezone: bool = False
     ):
         if date_format is not None:
             _date_format = date_format
         else:  # iso
-            _date_format = "%Y-%m-%dT%H:%M:%S.%f"
+            _date_format = "%Y-%m-%dT%H:%M:%S"
+            _date_format += ".%f" if use_microsec else ""
             _date_format += "%z" if use_timezone else ""
 
         _datetime = datetime.strptime(text_source, _date_format)
