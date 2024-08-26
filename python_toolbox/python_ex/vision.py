@@ -11,12 +11,10 @@ Requirement
 
 # Import module
 from __future__ import annotations
+from typing import (Type, TypeVar, Generic)
+
 from enum import Enum
-from typing import (
-    Type, Any
-    # Literal
-)
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # import math
 import cv2
@@ -26,7 +24,7 @@ from numpy.typing import NDArray
 from .system import Path  # , File
 
 
-class Camera_Model():
+class Viewpoints():
     """ ### Description of class functionality
     Note
 
@@ -48,154 +46,19 @@ class Camera_Model():
 
     """
     @dataclass
-    class Camera():
-        """ ### Description of class functionality
-        Note
-
-        ---------------------------------------------------------------------
-        ### Args
-        - Super
-            - `arg_name`: Description of the input argument from parents
-        - This
-            - `arg_name`: Description of the input argument
-
-        ### Attributes
-        - `attribute_name`: Description of the class attribute name
-
-        ### Structure
-        - `SubClassName` or `Function_name`: Description of each object
-
-        ### Todo
-        - `SubClassName` or `Function_name`: Description of each object
-
-        """
-        cam_id: int = 0
-        fps: int = 30
-        intrinsic: NDArray = field(default_factory=lambda: np.eye(3))
-
-        scene_list: list[Camera_Model.Scene] = field(default_factory=list)
-
-        def Set_intrinsic(self, intrinsic_array: NDArray):
-            _h, _w = intrinsic_array.shape
-
-            _sp_h = (_h - 3) if (_h - 3) else None
-            _sp_w = (_w - 3) if (_w - 3) else None
-            self.intrinsic[:_sp_h, :_sp_w] = intrinsic_array
-
-        def Get_camera_params(self, **kwarg) -> dict[str, Any]:
-            """ ### Function feature description
-            Note
-
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
-            _hoder = {}
-            for _key in kwarg:
-                if _key == "fx":
-                    ...
-                elif _key == "fy":
-                    ...
-                elif _key == "cx":
-                    ...
-                elif _key == "cy":
-                    ...
-
-            return _hoder
-
-        def Capture(self) -> Camera_Model.Scene:
-            """ ### Function feature description
-            Note
-
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
+    class Img_Group():
+        def Set_image(self, **frame_images: NDArray):
             raise NotImplementedError
 
-        # def Get_projection_from_f_length(self):
-        #     """ ### Function feature description
-        #     Note
+        def Get_image(self):
+            raise NotImplementedError
 
-        #     ------------------------------------------------------------------
-        #     ### Args
-        #     - `arg_name`: Description of the input argument
+    IMG_GROUP = TypeVar(
+        "IMG_GROUP",
+        bound=Img_Group
+    )
 
-        #     ### Returns or Yields
-        #     - `data_format`: Description of the output argument
-
-        #     ### Raises
-        #     - `error_type`: Method of handling according to error issues
-
-        #     """
-        #     _projection = np.zeros((3, 3))
-        #     _projection[0, 0] = self.fx
-        #     _projection[1, 1] = self.fy
-        #     _projection[0, 2] = self.cx
-        #     _projection[1, 2] = self.cy
-
-        #     return _projection
-
-        # def Get_projection_from_fov(self):
-        #     raise NotImplementedError
-
-        # def Get_perspective_projection_from_f_length(
-        #     self,
-        #     znear: int,
-        #     zfar: int
-        # ):
-        #     """ ### Function feature description
-        #     Note
-
-        #     ------------------------------------------------------------------
-        #     ### Args
-        #     - `arg_name`: Description of the input argument
-
-        #     ### Returns or Yields
-        #     - `data_format`: Description of the output argument
-
-        #     ### Raises
-        #     - `error_type`: Method of handling according to error issues
-
-        #     """
-        #     # _tan_half_FoV_y = math.tan((self.fov_y / 2))
-        #     # _tan_half_FoV_x = math.tan((self.fov_x / 2))
-
-        #     # _projection = np.zeros((4, 4))
-
-        #     # top = _tan_half_FoV_y * znear
-        #     # bottom = -top
-        #     # right = _tan_half_FoV_x * znear
-        #     # left = -right
-
-        #     # z_sign = 1.0
-
-        #     # _projection[0, 0] = 2.0 * znear / (right - left)
-        #     # _projection[1, 1] = 2.0 * znear / (top - bottom)
-        #     # _projection[0, 2] = (right + left) / (right - left)
-        #     # _projection[1, 2] = (top + bottom) / (top - bottom)
-        #     # _projection[3, 2] = z_sign
-        #     # _projection[2, 2] = z_sign * zfar / (zfar - znear)
-        #     # _projection[2, 3] = -(zfar * znear) / (zfar - znear)
-
-        #     raise NotImplementedError
-
-    @dataclass
-    class Scene():
+    class Scene(Generic[IMG_GROUP]):
         """ ### Description of class functionality
         Note
 
@@ -216,78 +79,72 @@ class Camera_Model():
         - `SubClassName` or `Function_name`: Description of each object
 
         """
-        cam: Camera_Model.Camera
-        frame_id: int
+        def __init__(
+            self,
+            frame_id: int = 0
+        ):
+            self._frame_id: int = frame_id
 
-        extrinsic: NDArray = field(default_factory=lambda: np.eye(4))
-        rotate_order: str = ""
-        size: tuple[int, int] = (0, 0)
-        images: dict[str, NDArray] = field(
-            default_factory=lambda: {
-                "rgb": np.empty(0),
-                "depth": np.empty(0)
-            })
+            self._extrinsic: NDArray = np.eye(4)
+            self._rotate_order: str = "xyz"
 
-        # rotate: NDArray = field(
-        #     default_factory=lambda: np.empty((3, 3)))
-        # transfer: NDArray = field(
-        #     default_factory=lambda: np.empty((3, 1)))
+            self.image_block: Viewpoints.IMG_GROUP = Viewpoints.Img_Group()
 
-        def Set_frame_id(self, frame_id: int):
+        @property
+        def Frame_id(self):
+            """ ### 연속된 장면에서 현재 프레임의 번호를 반환하는 함수"""
+            return self._frame_id
+
+        @Frame_id.setter
+        def Frame_id(self, frame_id: int):
             if frame_id < 0:
                 raise ValueError("Frame id MUST 0 or higher")
 
-            self.frame_id = frame_id
+            self._frame_id = frame_id
 
-        def Set_extrinsic(self, extrinsic_array: NDArray):
-            _h, _w = extrinsic_array.shape
+        @property
+        def Extrinsic(self):
+            """ ### 장면의 위치 정보를 반환하는 함수"""
+            return self._extrinsic
 
-            _sp_h = (_h - 4) if (_h - 4) else None
-            _sp_w = (_w - 4) if (_w - 4) else None
-            self.extrinsic[:_sp_h, :_sp_w] = extrinsic_array
+        @Extrinsic.setter
+        def Extrinsic(self, extrinsic_array: NDArray):
+            assert len(extrinsic_array.shape) in (1, 2)
 
-        def Set_size(self, height: int, width: int):
-            if height <= 0 or width <= 0:
-                raise ValueError("Image size MUST BIGGER THAN 0")
-
-            self.size = (height, width)
-
-        def Set_images(self, is_update: bool = False, **frame_images: NDArray):
-            """ ### Function feature description
-            Note
-
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
-            _size = self.size
-
-            if is_update:
-                # update
-                _images_key = self.images.keys()
-                _holder = dict(
-                    (_k, _img) for _k, _img in frame_images.items() if (
-                        _img.shape == _size and _k in _images_key
-                    )
-                )
-                self.images.update(_holder)
-
+            if len(extrinsic_array.shape) == 1:
+                _array = extrinsic_array.reshape(-1, 4)
             else:
-                # override
-                self.images = dict(
-                    (_k, _img) for _k, _img in frame_images.items() if (
-                        _img.shape == _size
-                    )
-                )
+                _array = extrinsic_array
 
-        def Get_scene_params(self, **kwarg) -> dict[str, Any]:
+            _h, _w = _array.shape[:2]
+
+            _sp_h = (_h - 4) if _h < 4 else 4
+            _sp_w = (_w - 4) if _w < 4 else 4
+
+            self.Extrinsic[:_sp_h, :_sp_w] = _array
+
+        @property
+        def Cam_to_world(self):
+            return np.linalg.inv(self._extrinsic)
+
+        @property
+        def World_to_Cam(
+            self,
+            translate: NDArray = np.zeros(3),
+            scale: float = 1.0
+        ):
+            _c2w = np.linalg.inv(self.Extrinsic)
+            cam_center = _c2w[:3, 3]
+            cam_center = (cam_center + translate) * scale
+            _c2w[:3, 3] = cam_center
+            return np.linalg.inv(self.Extrinsic)
+
+        @property
+        def Images(self):
+            return self.image_block.Get_image()
+
+        @Images.setter
+        def Images(self, **frame_images: NDArray):
             """ ### Function feature description
             Note
 
@@ -302,73 +159,107 @@ class Camera_Model():
             - `error_type`: Method of handling according to error issues
 
             """
-            _hoder = {}
-            for _k, _v in kwarg.items():
-                if _k == "rotate_matrix":
-                    _hoder[_k] = self.extrinsic[:3, :3]
-                if _k == "rotate_angle":
-                    _angle = Vision_Toolbox.Get_angle_from_rotate_matrix(
-                        self.extrinsic[:3, :3]
-                    )[0]
-                    _hoder[_k] = [
-                        _angle[0] * 180 / np.pi,
-                        _angle[1] * 180 / np.pi,
-                        _angle[2] * 180 / np.pi,
-                    ]
-                elif _k == "transfer":
-                    _hoder[_k] = self.extrinsic[:3, 3]
-                elif _k == "size":
-                    ...
-                elif _k == "height":
-                    ...
-                elif _k == "width":
-                    ...
+            self.image_block.Set_image(**frame_images)
 
-            return _hoder
+        def Set_rotate_from_angle(
+            self, is_override: bool = False, **delta: tuple[float, bool]
+        ):
+            _rotate_order = self._rotate_order
+            _rotate_metrix = np.eye(
+                3
+            ) if is_override else self.Extrinsic[:3, :3]
+
+            for _k in _rotate_order:
+                if _rotate_order in delta:
+                    _rotate_metrix @= Vision_Toolbox.Get_axis_rotate(
+                        delta[_k][0], Flag.Axis(_k), delta[_k][1]
+                    )
+
+            self.Extrinsic[:3, :3] = _rotate_metrix
 
         def Set_rotate_from_list(self, rotate: list[float]):
-            if len(rotate) >= 9:
+            if len(rotate) == 9:
                 _array = np.array(rotate[:9])
-                self.rotate = _array.reshape((3, 3))
+                self.Extrinsic[:3, :3] = _array.reshape((3, 3))
             else:
                 raise ValueError(
-                    "Rotate array's entry size must be bigger then 9"
+                    "Rotate array's entry size must be 9"
                 )
 
         def Set_transfer_from_list(self, tansfer: list[float]):
             if len(tansfer) >= 3:
                 _array = np.array(tansfer[:3])
-                self.transfer = _array.reshape((3, 1))
+                self.Extrinsic[3, :3] = _array.reshape((3, 1))
             else:
                 raise ValueError(
-                    "Rotate array's entry size must be bigger then 3"
+                    "Rotate array's entry size must be 3"
                 )
 
-        def Get_W2C(self, shift: NDArray = np.array([.0, .0, .0]), scale=1.0):
-            """ ### Function feature description
-            Note
+    class Camera(Generic[IMG_GROUP]):
+        """ ### Description of class functionality
+        Note
 
-            ------------------------------------------------------------------
-            ### Args
+        ---------------------------------------------------------------------
+        ### Args
+        - Super
+            - `arg_name`: Description of the input argument from parents
+        - This
             - `arg_name`: Description of the input argument
 
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
+        ### Attributes
+        - `attribute_name`: Description of the class attribute name
 
-            ### Raises
-            - `error_type`: Method of handling according to error issues
+        ### Structure
+        - `SubClassName` or `Function_name`: Description of each object
 
-            """
-            _rt = np.eye(4)
-            _rt[:3, :3] = self.rotate.transpose()
-            _rt[:3, 3] = self.transfer
+        ### Todo
+        - `SubClassName` or `Function_name`: Description of each object
 
-            _c2w = np.linalg.inv(_rt)
-            _c2w[:3, 3] = (_c2w[:3, 3] + shift.transpose()) * scale
+        """
+        def __init__(
+            self,
+            cam_id: int,
+            fps: float,
+            shape: tuple[int, int, int],
+        ) -> None:
+            self.cam_id: int = cam_id
 
-            return np.float32(np.linalg.inv(_c2w))
+            self.fps: float = fps
+            self.shape: tuple[int, int, int] = shape
 
-        # def Rotate_to_angle(self):
+            self._intrinsic: NDArray = np.eye(3)
+
+            self._vp_s: dict[int, Viewpoints.Scene[Viewpoints.IMG_GROUP]] = {}
+
+        @property
+        def Intrinsic(self):
+            return self._intrinsic
+
+        @Intrinsic.setter
+        def Intrinsic(self, extrinsic_array: NDArray):
+            assert len(extrinsic_array.shape) in (1, 2)
+
+            if len(extrinsic_array.shape) == 1:
+                _array = extrinsic_array.reshape(3, 3)
+            else:
+                _array = extrinsic_array
+
+            _h, _w = _array.shape[:2]
+
+            _sp_h = (_h - 3) if _h < 3 else 3
+            _sp_w = (_w - 3) if _w < 3 else 3
+
+            self.Intrinsic[:_sp_h, :_sp_w] = _array
+
+        @property
+        def Cams_parameters(self):
+            ...
+
+        @Cams_parameters.setter
+        def Cams_parameters(self):
+            ...
+
+        # def Get_camera_params(self, **kwarg) -> dict[str, Any]:
         #     """ ### Function feature description
         #     Note
 
@@ -383,7 +274,39 @@ class Camera_Model():
         #     - `error_type`: Method of handling according to error issues
 
         #     """
-        #     raise NotImplementedError
+        #     _hoder = {}
+        #     for _key in kwarg:
+        #         if _key == "fx":
+        #             ...
+        #         elif _key == "fy":
+        #             ...
+        #         elif _key == "cx":
+        #             ...
+        #         elif _key == "cy":
+        #             ...
+
+        #     return _hoder
+
+        def Get_viewpoint(self, frame_id: int):
+            return self._vp_s[frame_id]
+
+        def Capture(self):
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+            - `arg_name`: Description of the input argument
+
+            ### Returns or Yields
+            - `data_format`: Description of the output argument
+
+            ### Raises
+            - `error_type`: Method of handling according to error issues
+
+            """
+            # get images
+            raise NotImplementedError
 
 
 class Flag():
@@ -423,6 +346,7 @@ class Convert_Flag(Enum):
     BGR2RGB = cv2.COLOR_BGR2RGB
     BGR2GRAY = cv2.COLOR_BGR2GRAY
     RGB2BGR = cv2.COLOR_RGB2BGR
+    BGRA2RGBA = cv2.COLOR_BGRA2RGBA
 
 
 class File_IO():
