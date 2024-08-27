@@ -13,7 +13,7 @@ Requirement
 from __future__ import annotations
 from typing import (Type, TypeVar, Generic)
 
-from enum import Enum
+from enum import Enum, auto, IntEnum
 from dataclasses import dataclass
 
 # import math
@@ -21,7 +21,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from .system import Path  # , File
+from .system import Path, String
 
 
 class Viewpoints():
@@ -290,7 +290,7 @@ class Viewpoints():
         def Get_viewpoint(self, frame_id: int):
             return self._vp_s[frame_id]
 
-        def Capture(self):
+        def Get_data(self):
             """ ### Function feature description
             Note
 
@@ -310,16 +310,16 @@ class Viewpoints():
 
 
 class Flag():
-    class Aligan(Enum):
+    class Aligan(IntEnum):
         """ ### Flag for img or text in visualize process"""
-        Left = 0
-        Center = 1
-        Right = 2
+        Left = auto()
+        Center = auto()
+        Right = auto()
 
-    class Axis(Enum):
-        X = "x"
-        Y = "y"
-        Z = "z"
+    class Axis(String.String_Enum):
+        X = auto()
+        Y = auto()
+        Z = auto()
 
     class Padding(Enum):
         """ ### Data type for each data"""
@@ -328,25 +328,22 @@ class Flag():
         REFLECT = cv2.BORDER_REFLECT
         REFLECT_101 = cv2.BORDER_REFLECT101
 
+    class Convert(Enum):
+        """ ### Data type for each data"""
+        BGR2RGB = cv2.COLOR_BGR2RGB
+        BGR2GRAY = cv2.COLOR_BGR2GRAY
+        RGB2BGR = cv2.COLOR_RGB2BGR
+        BGRA2RGBA = cv2.COLOR_BGRA2RGBA
 
-class Codex_For(Enum):
-    """ ### Video codex for each video extention"""
-    MP4 = "DIVX"
+    class Codex(Enum):
+        """ ### Video codex for each video extention"""
+        MP4 = "DIVX"
 
-
-class Data_Format(Enum):
-    """ ### Data type for each data"""
-    UNCHANGE = cv2.IMREAD_UNCHANGED
-    BGR = cv2.IMREAD_COLOR
-    GRAY = cv2.IMREAD_GRAYSCALE
-
-
-class Convert_Flag(Enum):
-    """ ### Data type for each data"""
-    BGR2RGB = cv2.COLOR_BGR2RGB
-    BGR2GRAY = cv2.COLOR_BGR2GRAY
-    RGB2BGR = cv2.COLOR_RGB2BGR
-    BGRA2RGBA = cv2.COLOR_BGRA2RGBA
+    class Format(Enum):
+        """ ### Data type for each data"""
+        UNCHANGE = cv2.IMREAD_UNCHANGED
+        BGR = cv2.IMREAD_COLOR
+        GRAY = cv2.IMREAD_GRAYSCALE
 
 
 class File_IO():
@@ -395,7 +392,7 @@ class File_IO():
     @staticmethod
     def File_to_img(
         file_name: str,
-        data_format: Data_Format | None = None
+        data_format: Flag.Format | None = None
     ):
         """ ### Function feature description
         Note
@@ -523,7 +520,7 @@ class Vision_Toolbox():
     @staticmethod
     def Format_converter(
         image: NDArray,
-        convert_flag: Convert_Flag = Convert_Flag.BGR2RGB
+        convert_flag: Flag.Convert = Flag.Convert.BGR2RGB
     ):
         """ ### Function feature description
         Note
@@ -769,7 +766,7 @@ class Debugging():
         img_h: int, img_w: int,
         row: int | None, col: int | None = None,
         padding: int | tuple[int, int] | tuple[int, int, int, int] = 10,
-        is_fill_row_first: bool = True,
+        is_row_first: bool = True,
         background: NDArray = 255 * np.ones(3),
         canvas_format: Type = np.uint8
     ):
@@ -788,24 +785,22 @@ class Debugging():
 
         """
         # set the row, col size
-        if row is None:
-            if col is None:
-                raise ValueError(
-                    "Must set value of the image array's row or col"
-                )
-            _col = col
-            _row = len(img_list) // col + int(len(img_list) % col != 0)
-        else:
-            if col is None:
-                _col = len(img_list) // row + int(len(img_list) % row != 0)
-                _row = row
-            else:
-                _col = col
-                _row = row
 
-        if _col * _row < len(img_list):
+        _img_ct = len(img_list)
+
+        if not row:
+            if not col:
+                _e_massage = "Must set value of the image array's row or col"
+                raise ValueError(_e_massage)
+            _col = col
+            _row = _img_ct // col + int(_img_ct % col)
+        else:
+            _row = row
+            _col = _img_ct // row + int(_img_ct % row) if col is None else col
+
+        if _col * _row < _img_ct:
             _size_error = "{} images can't set in {}x{} array"
-            raise ValueError(_size_error.format(len(img_list), _row, _col))
+            raise ValueError(_size_error.format(_img_ct, _row, _col))
 
         # set the canvas
         if isinstance(padding, int):
@@ -829,15 +824,16 @@ class Debugging():
         for _ct_r in range(_row):
             _lt_h = _ct_r * (_hm_pad + img_h) + _up_pad
             _rb_h = _lt_h + img_h
-            _num_r = _col if is_fill_row_first else _col * _ct_r
+            _num_r = _col if is_row_first else _col * _ct_r
 
             for _ct_c in range(_col):
                 _lt_w = _ct_c * (_vm_pad + img_w) + _lf_pad
                 _rb_w = _lt_w + img_w
-                _num_c = _ct_c * _row if is_fill_row_first else _ct_c
+                _num_c = _ct_c * _row if is_row_first else _ct_c
+
+                _img = img_list[_num_r + _num_c]
 
                 try:
-                    _img = img_list[_num_r + _num_c]
                     if _img is not None and len(_img.shape) == 3:  # color img
                         _canvas[_lt_h: _rb_h, _lt_w: _rb_w] = _img
                     elif _img is not None:  # gray scale img
