@@ -1,0 +1,28 @@
+# import numpy as np
+from torch import load, save, device
+
+from python_ex.vision import Viewpoints
+
+from . import Model_Basement
+
+
+class Tensor_Viewpoint():
+    class Scene(Viewpoints.Scene):
+        def __init__(self, frame_id: int = 0):
+            super().__init__(frame_id)
+
+            self._extrinsic = 1
+
+
+class Splatting_Render():
+    @staticmethod
+    def Render(gaussian, veiwpoint: Tensor_Viewpoint.Scene):
+        ...
+
+
+class Gaussian_Splatting(Model_Basement): 
+    def __init__(self) -> None:
+        super().__init__()
+
+    def _Get_gaussia(self):
+        ...

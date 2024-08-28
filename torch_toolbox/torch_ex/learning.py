@@ -29,7 +29,7 @@ from python_ex.system import Path, String
 from python_ex.project import Template
 
 from .dataset import Config as Dataset_Config
-from .layer import Config as Model_Config
+from .layer_n_weight import Config as Model_Config
 
 
 class Mode(String.String_Enum):

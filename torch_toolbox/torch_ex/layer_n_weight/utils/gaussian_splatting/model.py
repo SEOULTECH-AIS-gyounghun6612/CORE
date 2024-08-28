@@ -32,16 +32,6 @@ from utils.graphics_utils import BasicPointCloud, getWorld2View2
 from utils.sh_utils import RGB2SH
 from utils.system_utils import mkdir_p
 
-
-class Viewpoint(Module):
-    def __init__(self,) -> None:
-        super().__init__()
-
-class Gaussian(Module):
-    def __inint__(self):
-        ...
-
-
 class Gaussian_Model:
     def __init__(self, sh_degree: int, config=None):
         self.active_sh_degree = 0
