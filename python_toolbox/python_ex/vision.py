@@ -58,6 +58,114 @@ class Viewpoints():
         bound=Img_Group
     )
 
+    class Camera(Generic[IMG_GROUP]):
+        """ ### Description of class functionality
+        Note
+
+        ---------------------------------------------------------------------
+        ### Args
+        - Super
+            - `arg_name`: Description of the input argument from parents
+        - This
+            - `arg_name`: Description of the input argument
+
+        ### Attributes
+        - `attribute_name`: Description of the class attribute name
+
+        ### Structure
+        - `SubClassName` or `Function_name`: Description of each object
+
+        ### Todo
+        - `SubClassName` or `Function_name`: Description of each object
+
+        """
+        def __init__(
+            self,
+            cam_id: int,
+            fps: float,
+            shape: tuple[int, int, int],
+        ) -> None:
+            self.cam_id: int = cam_id
+
+            self.fps: float = fps
+            self.shape: tuple[int, int, int] = shape
+
+            self._intrinsic: NDArray = np.eye(3)
+
+        @property
+        def Intrinsic(self):
+            return self._intrinsic
+
+        @Intrinsic.setter
+        def Intrinsic(self, extrinsic_array: NDArray):
+            assert len(extrinsic_array.shape) in (1, 2)
+
+            if len(extrinsic_array.shape) == 1:
+                _array = extrinsic_array.reshape(3, 3)
+            else:
+                _array = extrinsic_array
+
+            _h, _w = _array.shape[:2]
+
+            _sp_h = (_h - 3) if _h < 3 else 3
+            _sp_w = (_w - 3) if _w < 3 else 3
+
+            self.Intrinsic[:_sp_h, :_sp_w] = _array
+
+        @property
+        def Cams_parameters(self):
+            ...
+
+        @Cams_parameters.setter
+        def Cams_parameters(self):
+            ...
+
+        # def Get_camera_params(self, **kwarg) -> dict[str, Any]:
+        #     """ ### Function feature description
+        #     Note
+
+        #     ------------------------------------------------------------------
+        #     ### Args
+        #     - `arg_name`: Description of the input argument
+
+        #     ### Returns or Yields
+        #     - `data_format`: Description of the output argument
+
+        #     ### Raises
+        #     - `error_type`: Method of handling according to error issues
+
+        #     """
+        #     _hoder = {}
+        #     for _key in kwarg:
+        #         if _key == "fx":
+        #             ...
+        #         elif _key == "fy":
+        #             ...
+        #         elif _key == "cx":
+        #             ...
+        #         elif _key == "cy":
+        #             ...
+
+        #     return _hoder
+
+        def Get_data(self):
+            """ ### Function feature description
+            Note
+
+            ------------------------------------------------------------------
+            ### Args
+            - `arg_name`: Description of the input argument
+
+            ### Returns or Yields
+            - `data_format`: Description of the output argument
+
+            ### Raises
+            - `error_type`: Method of handling according to error issues
+
+            """
+            # get images
+            raise NotImplementedError
+
     class Scene(Generic[IMG_GROUP]):
         """ ### Description of class functionality
         Note
@@ -81,8 +189,10 @@ class Viewpoints():
         """
         def __init__(
             self,
+            cam_info: Viewpoints.Camera,
             frame_id: int = 0
         ):
+            self.cams_info = cam_info
             self._frame_id: int = frame_id
 
             self._extrinsic: NDArray = np.eye(4)
@@ -195,118 +305,8 @@ class Viewpoints():
                     "Rotate array's entry size must be 3"
                 )
 
-    class Camera(Generic[IMG_GROUP]):
-        """ ### Description of class functionality
-        Note
-
-        ---------------------------------------------------------------------
-        ### Args
-        - Super
-            - `arg_name`: Description of the input argument from parents
-        - This
-            - `arg_name`: Description of the input argument
-
-        ### Attributes
-        - `attribute_name`: Description of the class attribute name
-
-        ### Structure
-        - `SubClassName` or `Function_name`: Description of each object
-
-        ### Todo
-        - `SubClassName` or `Function_name`: Description of each object
-
-        """
-        def __init__(
-            self,
-            cam_id: int,
-            fps: float,
-            shape: tuple[int, int, int],
-        ) -> None:
-            self.cam_id: int = cam_id
-
-            self.fps: float = fps
-            self.shape: tuple[int, int, int] = shape
-
-            self._intrinsic: NDArray = np.eye(3)
-
-            self._vp_s: dict[int, Viewpoints.Scene[Viewpoints.IMG_GROUP]] = {}
-
-        @property
-        def Intrinsic(self):
-            return self._intrinsic
-
-        @Intrinsic.setter
-        def Intrinsic(self, extrinsic_array: NDArray):
-            assert len(extrinsic_array.shape) in (1, 2)
-
-            if len(extrinsic_array.shape) == 1:
-                _array = extrinsic_array.reshape(3, 3)
-            else:
-                _array = extrinsic_array
-
-            _h, _w = _array.shape[:2]
-
-            _sp_h = (_h - 3) if _h < 3 else 3
-            _sp_w = (_w - 3) if _w < 3 else 3
-
-            self.Intrinsic[:_sp_h, :_sp_w] = _array
-
-        @property
-        def Cams_parameters(self):
-            ...
-
-        @Cams_parameters.setter
-        def Cams_parameters(self):
-            ...
-
-        # def Get_camera_params(self, **kwarg) -> dict[str, Any]:
-        #     """ ### Function feature description
-        #     Note
-
-        #     ------------------------------------------------------------------
-        #     ### Args
-        #     - `arg_name`: Description of the input argument
-
-        #     ### Returns or Yields
-        #     - `data_format`: Description of the output argument
-
-        #     ### Raises
-        #     - `error_type`: Method of handling according to error issues
-
-        #     """
-        #     _hoder = {}
-        #     for _key in kwarg:
-        #         if _key == "fx":
-        #             ...
-        #         elif _key == "fy":
-        #             ...
-        #         elif _key == "cx":
-        #             ...
-        #         elif _key == "cy":
-        #             ...
-
-        #     return _hoder
-
-        def Get_viewpoint(self, frame_id: int):
-            return self._vp_s[frame_id]
-
-        def Get_data(self):
-            """ ### Function feature description
-            Note
-
-            ------------------------------------------------------------------
-            ### Args
-            - `arg_name`: Description of the input argument
-
-            ### Returns or Yields
-            - `data_format`: Description of the output argument
-
-            ### Raises
-            - `error_type`: Method of handling according to error issues
-
-            """
-            # get images
-            raise NotImplementedError
+        def Get_cams_info(self):
+            return self.cams_info.Cams_parameters
 
 
 class Flag():
