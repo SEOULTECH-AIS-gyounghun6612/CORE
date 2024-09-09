@@ -8,7 +8,9 @@ requirments_package = [
     'albumentations',
     'torchsummary',
     'tensorboard',
-    'torch-tb-profiler']
+    'torch-tb-profiler',
+    # 'torchtyping'
+]
 
 package_opt = {}
 
