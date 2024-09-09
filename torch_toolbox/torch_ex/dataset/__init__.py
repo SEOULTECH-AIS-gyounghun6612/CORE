@@ -10,9 +10,9 @@
 """
 from __future__ import annotations
 from typing import (
-    Any, TypeVar, Callable
+    Any, TypeVar, Callable, Generic
 )
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from torch.utils.data import Dataset
 
@@ -48,23 +48,26 @@ class Dataset_Basement(Dataset):
         raise NotImplementedError
 
 
+DATASET = TypeVar("DATASET", bound=Dataset_Basement)
+
+
 class Config():
     @dataclass
-    class Dataset():
+    class Custom_Dataset(Generic[DATASET]):
         name: str = "no_data"
         data_dir: str = "./datasets"
 
-        def Build_dataset(self, mode: str) -> Dataset:
+        def Build_dataset(self, mode: str, **kwarg) -> DATASET:
             raise NotImplementedError
 
     CONFIG_DATASET = TypeVar(
         "CONFIG_DATASET",
-        bound=Dataset
+        bound=Custom_Dataset
     )
 
     @dataclass
-    class Dataloader():
-        dataset_config: Config.CONFIG_DATASET = field(default_factory=dict)
+    class Dataloader(Generic[CONFIG_DATASET]):
+        dataset_config: Config.CONFIG_DATASET
 
         batch_size: int = 1
         shuffle: bool = True
@@ -76,8 +79,10 @@ class Config():
             raise NotImplementedError
 
         def Get_Dataloader_params(self) -> dict[str, Any]:
-            _collate_fn = self._Build_collate_fn(
-            ) if self.collate_fn is not None else None
+            try:
+                _collate_fn = self._Build_collate_fn()
+            except NotImplementedError:
+                _collate_fn = None
 
             return {
                 "batch_size": self.batch_size,
@@ -85,7 +90,6 @@ class Config():
                 "num_workers": self.num_workers,
                 "collate_fn": _collate_fn,
                 "drop_last": self.drop_last
-
             }
 
     CONFIG_DATALOADER = TypeVar(

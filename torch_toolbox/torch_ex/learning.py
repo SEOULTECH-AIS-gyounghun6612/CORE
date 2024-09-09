@@ -13,9 +13,10 @@
 """
 from __future__ import annotations
 from enum import auto
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
-    Tuple, Any, TypeVar, Generic, Callable
+    Any, TypeVar, Callable, Generic
 )
 
 from torch import load, save, device
@@ -28,8 +29,8 @@ from torch.utils.data import DataLoader
 from python_ex.system import Path, String
 from python_ex.project import Template
 
-from .dataset import Config as Dataset_Config
-from .layer_n_weight import Config as Model_Config
+from torch_ex.dataset import (DATASET, Config as Dataset_Config)
+from torch_ex.neural_network import (MODEL, Config as Neural_Network_Config)
 
 
 class Mode(String.String_Enum):
@@ -54,7 +55,7 @@ class Mode(String.String_Enum):
     TEST = auto()
 
 
-class Learning_Config():
+class Process_Config():
     @dataclass
     class Observer():
         data_ct: int = 0
@@ -67,31 +68,39 @@ class Learning_Config():
 
     @dataclass
     class Optim():
-        def Build_optim(
-            self, model: Module
-        ) -> tuple[Optimizer, LRScheduler | None]:
+        def Get_optimizer_params(self) -> dict[str, Any]:
             raise NotImplementedError
 
-    OPTIM = TypeVar(
-        "OPTIM",
+    CONFIG_OPTIM = TypeVar(
+        "CONFIG_OPTIM",
         bound=Optim
     )
 
     @dataclass
-    class Learning(Generic[OBSERVER]):
+    class End_to_End(
+        Generic[
+            Dataset_Config.CONFIG_DATALOADER,
+            Neural_Network_Config.CONFIG_NEURAL_NETWORK,
+            CONFIG_OPTIM
+        ]
+    ):
         project_name: str
         max_epoch: int
         this_epoch: int
         gpus: list[int]
-        holder: type[Learning_Config.OBSERVER]
+        holder: Process_Config.OBSERVER
 
-    LEARNING = TypeVar(
-        "LEARNING",
-        bound=Learning
+        dataloader_cfg: dict[str, Dataset_Config.CONFIG_DATALOADER]
+        neural_network_cfg: Neural_Network_Config.CONFIG_NEURAL_NETWORK
+        optimizer_cfg: Process_Config.CONFIG_OPTIM
+
+    CONFIG_END2END = TypeVar(
+        "CONFIG_END2END",
+        bound=End_to_End
     )
 
 
-class Process(Template, Generic[Learning_Config.OBSERVER]):
+class End_to_End(Template, ABC, Generic[DATASET, MODEL]):
     """ ### End to End 학습을 구현한 기본 구조
     각 프로젝트에서 요구되는 End to End 학습 구조를 구성하기 위하여
     기본적인 구조를 구성한 모듈.\n
@@ -144,7 +153,7 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         self,
         project_name: str,
         max_epoch: int, last_epoch: int = -1,
-        observer: Learning_Config.OBSERVER = Learning_Config.Observer()
+        observer: Process_Config.OBSERVER = Process_Config.Observer()
     ):
         super().__init__(project_name)
 
@@ -155,55 +164,12 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         self.gpus: list[int] = []
 
         # debug info
-        self.observer: Learning_Config.OBSERVER = observer
+        self.observer: Process_Config.OBSERVER = observer
 
-    def Set_dataloader(
-        self, **loader_config: Dataset_Config.CONFIG_DATALOADER
-    ) -> dict[Mode, DataLoader]:
-        """ ### 학습 과정에 사용할 데이터를 처리하는 Dataloader 생성 함수
-
-        ------------------------------------------------------------------
-        ### Args
-        - `dataset`: 학습 과정에 사용되는 데이터 셋
-        - `dataloader_prams`: Dataloader 구성을 위한 설정 값
-
-        ### Returns
-        - `DataLoader`: 학습에 사용되는 데이터를 구성하는 Dataloader
-
-        ### Raises
-        - None
-
-        """
-        return dict(
-            (
-                Mode(_k),
-                DataLoader(
-                    _v.dataset_config,
-                    **_v.Get_Dataloader_params()
-                )
-            ) for _k, _v in loader_config.items() if _k in list(Mode)
-        )
-
-    def Set_model_n_loss(self, model_config: Model_Config.Model_n_Loss):
-        """ ### 학습 대상 모델을 구성하는 함수
-
-        ------------------------------------------------------------------
-        ### Args
-        - `device_info`: 학습 모델에 사용될 장치
-        - `model_prams`: 모델 구성을 위한 설정 값
-
-        ### Returns
-        - `Module`: 학습 대상 모델
-
-        ### Raises
-        - `NotImplementedError`: 해당 함수는 구성이 필요함
-
-        """
-        return model_config.Build_model_n_loss()
-
+    @abstractmethod
     def Set_optimizer(
-        self, model: Module, optim_config: Learning_Config.Optim
-    ):
+        self, model: MODEL, **kwarg
+    ) -> tuple[Optimizer, LRScheduler | None]:
         """ ### 학습 대상 모델에 할당되는 optimizer와 scheduler을 구성하는 함수
 
         ------------------------------------------------------------------
@@ -219,9 +185,10 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         - `NotImplementedError`: 해당 함수는 구성이 필요함
 
         """
-        return optim_config.Build_optim(model)
+        raise NotImplementedError
 
-    def Jump_to_cuda(self, data: Any, device_info: device):
+    @abstractmethod
+    def Jump_to_cuda(self, data: Any, device_info: device) -> Any:
         """ ### Dataloader를 통해 처리된 데이터의 후처리 과정 함수
 
         ------------------------------------------------------------------
@@ -240,12 +207,13 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def Core(
         self,
         epoch: int,
         mode: Mode,
         model: Module,
-        loss_fn: Callable,
+        loss_fn: list[Callable],
         optim: Optimizer,
         **data
     ) -> int:
@@ -316,7 +284,7 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         scheduler: LRScheduler | None,
         file_name: str,
         file_dir: list[str] | None = None
-    ) -> Tuple[Module, Optimizer, LRScheduler | None]:
+    ) -> tuple[Module, Optimizer, LRScheduler | None]:
         """ ### 이전 학습 과정에서 생성된 주요 인자값을 불러오는 함수
 
         ------------------------------------------------------------------
@@ -347,9 +315,8 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
 
         return model, optim, scheduler
 
-    def Decision_to_learning_stop(
-        self,
-    ) -> bool:
+    @abstractmethod
+    def Decision_to_learning_stop(self, **kwarg) -> bool:
         """ ### 반복 학습 결과를 확인하고, 그에 따른 결정을 내리는 함수
         해당 반복학습 결과의 경우 Attributes `self.loss`, `self.holder`,
         `self.eval_holder` 정보를 바탕으로 처리하게 됨.\n
@@ -370,7 +337,11 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         """
         raise NotImplementedError
 
-    def Main_work(self, thred_num: int, config):
+    def Main_work(
+        self,
+        thred_num: int,
+        cfg: Process_Config.End_to_End
+    ):
         """ ### 전체 학습을 진행하는 함수
 
         ------------------------------------------------------------------
@@ -387,11 +358,22 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
         """
         # preprocess for learning
         # set dataloader
-        _dataloader = self.Set_dataloader(**config.dataloader)
-        # set model
-        _model, _loss_fn = self.Set_model_n_loss(config.model_n_loss)
+        _dataloader = dict(
+            (
+                Mode(_k),
+                DataLoader(
+                    _v.dataset_config.Build_dataset(_k),
+                    **_v.Get_Dataloader_params()
+                )
+            ) for _k, _v in cfg.dataloader_cfg.items() if _k in list(Mode)
+        )
+
+        # set model and loss function
+        _model, _loss_fns = cfg.neural_network_cfg.Build_model_n_loss()
+
         # set optim and scheduler
-        _optim, _scheduler = self.Set_optimizer(_model, config.optim)
+        _optim, _scheduler = self.Set_optimizer(
+            _model, **cfg.optimizer_cfg.Get_optimizer_params())
 
         _gpu_list = self.gpus
         _gpu_id = _gpu_list[thred_num] if _gpu_list else -1
@@ -407,11 +389,8 @@ class Process(Template, Generic[Learning_Config.OBSERVER]):
             for _mode, _loader in _dataloader.items():
                 for _data in _loader:
                     self.Core(
-                        _epoch,
-                        _mode,
-                        _model,
-                        _loss_fn,
-                        _optim,
+                        _epoch, _mode,
+                        _model, _loss_fns, _optim,
                         **self.Jump_to_cuda(_data, _device)
                     )
             # make decision for learning in each epoch
