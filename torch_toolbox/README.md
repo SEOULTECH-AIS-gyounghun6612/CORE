@@ -44,14 +44,12 @@
   - using https
 
     ``` bash
-    # using pip with https
     pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
     ```
 
   - using ssh
 
     ```bash
-    # using pip with ssh
     pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
     ```
 
