@@ -41,13 +41,19 @@
 
 - pip 사용
 
-  ```bash
-  # using pip with https
-  pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
-  
-  # using pip with ssh
-  pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
-  ```
+  - using https
+
+    ``` bash
+    # using pip with https
+    pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+    ```
+
+  - using ssh
+
+    ```bash
+    # using pip with ssh
+    pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+    ```
 
 - 직접 설치
 
