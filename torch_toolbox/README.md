@@ -55,13 +55,14 @@
 
 - 직접 설치
 
-  ```bash
-  # clone this repository
-  git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git
+  - clone this repository
 
-  cd AIS_torch_ex
+    ```bash
+    git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git
+    ```
 
-  # install 
-  pip install -e .
+  - install
 
-  ```
+    ```bash
+    cd AIS_torch_ex && pip install -e .
+    ```
