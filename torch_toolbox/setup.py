@@ -9,6 +9,7 @@ requirments_package = [
     'torchsummary',
     'tensorboard',
     'torch-tb-profiler',
+    'torchvision'
     # 'torchtyping'
 ]
 
