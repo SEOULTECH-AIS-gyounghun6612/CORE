@@ -277,8 +277,8 @@ class End_to_End(Template, ABC):
         log_str: str,
     ):
         data_ct += this_data_ct
-        _prefix = f"epoch: [{String.Count_auto_aligning(epoch, max_epoch)}]"
-        _prefix += f"data: [{String.Count_auto_aligning(data_ct, total_ct)}]"
+        _prefix = f"[epoch]: {String.Count_auto_aligning(epoch, max_epoch)} "
+        _prefix += f"[data]: {String.Count_auto_aligning(data_ct, total_ct)}"
 
         _each = (Time.Get_term(st_time, False) / this_data_ct)
         _remain_str = Time.Make_text_from(
