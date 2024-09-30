@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 from enum import Enum, auto
-from typing import Tuple, Literal, Any
+from typing import Tuple, Literal, Any, Callable
 
 from dataclasses import dataclass
 
@@ -23,6 +23,7 @@ import platform
 
 import json
 import csv
+import xml.etree.ElementTree as ET
 import yaml
 
 from math import log10, floor
@@ -146,6 +147,10 @@ class String():
 
         def __str__(self):
             return self.name.lower()
+
+        @classmethod
+        def list(cls):
+            return [str(c) for c in cls]
 
 
 class OperatingSystem():
@@ -420,6 +425,7 @@ class File():
         JSON = auto()
         CSV = auto()
         YAML = auto()
+        XML = auto()
 
     @staticmethod
     def Extention_checker(file_name: str, file_format: File.Support_Format):
@@ -447,7 +453,7 @@ class File():
                 file_dir)
 
             with open(_file, "r", encoding=encoding_type) as f:
-                lines = f.readlines()
+                lines = f.read().splitlines()
             return lines
 
         @staticmethod
@@ -502,7 +508,7 @@ class File():
                     return False
             return True
 
-    class CSV():
+    class Csv():
         @staticmethod
         def Read_from_file(
             file_name: str,
@@ -530,9 +536,8 @@ class File():
                         ) for _line_dict in _raw_data
                     ]
                 return _read_data
-            else:
-                print(f"file {file_name} is not exist in {file_dir}")
-                return []
+            print(f"file {file_name} is not exist in {file_dir}")
+            return []
 
         @staticmethod
         def Write_to_file(
@@ -566,7 +571,7 @@ class File():
                     return False
             return True
 
-    class YAML():
+    class Yaml():
         @staticmethod
         def Read(
             file_name: str,
@@ -594,7 +599,62 @@ class File():
             data,
             encoding_type: str = "UTF-8"
         ):
-            raise NotImplementedError
+            # make file path
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.YAML),
+                file_dir)
+            # dump to file
+            with open(_file, "w", encoding=encoding_type) as _file:
+                try:
+                    yaml.dump(data, _file, indent=4)
+                except TypeError:
+                    return False
+            return True
+
+    class Xml():
+        @classmethod
+        def Xml_to_dict(cls, root_element: ET.Element):
+            _holder: dict[str, str | dict | None] = dict(
+                (f"@{_att}", _v)for _att, _v in root_element.attrib.items()
+            )
+
+            for _child in root_element:
+                _tag = _child.tag
+
+                _data = cls.Xml_to_dict(_child) if (
+                    list(_child)
+                ) else _child.text
+
+                if _tag in _holder:
+                    _exist = _holder[_tag]
+                    if isinstance(_exist, list):
+                        _exist.append(_data)
+                    else:
+                        _exist = [_exist, _data]
+                else:
+                    _holder[_tag] = _data
+
+            return _holder
+
+        @classmethod
+        def Read(
+            cls,
+            file_name: str,
+            file_dir: str,
+            cvt_func: Callable[[ET.Element], dict] | None = None
+        ) -> dict:
+            # make file path
+            _file = Path.Join(
+                File.Extention_checker(file_name, File.Support_Format.XML),
+                file_dir)
+            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+
+            # read the file
+            if _is_exist:
+                _cvt = cvt_func if cvt_func else cls.Xml_to_dict
+                return _cvt(ET.parse(_file).getroot())
+            print(f"file {file_name} is not exist in {file_dir}")
+            return {}
 
 
 class Time():
