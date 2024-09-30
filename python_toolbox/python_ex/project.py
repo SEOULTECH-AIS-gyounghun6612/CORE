@@ -14,7 +14,7 @@ class Config():
 
     --------------------------------------------------------------------
     """
-    def Config_to_parameter(self) -> dict[str, Any]:
+    def Config_to_dict(self) -> dict[str, Any]:
         """
         설정값을 사용가능한 인자값으로 변경하는 함수
 
@@ -29,12 +29,45 @@ class Config():
         """
         return asdict(self)
 
-    def Write_to(self, file_name: str, file_dir: str):
-        File.Json.Write(file_name, file_dir, asdict(self))  # type: ignore
+    def Write_to(
+        self,
+        file_name: str,
+        file_dir: str
+    ):
+        _ext = file_name.split(".")[-1].lower()
+        _write_data = self.Config_to_dict()
 
-    @staticmethod
-    def Read_from(file_name: str, file_dir: str):
-        return File.Json.Read(file_name, file_dir)
+        if _ext == "yaml":
+            File.Yaml.Write(file_name, file_dir, _write_data)
+
+        elif _ext == "json":
+            File.Json.Write(file_name, file_dir, _write_data)
+
+        else:
+            _msg = f"Config {self.__class__.__name__} is not support"
+            _msg += f" {_ext} file foramt for write to file.\n"
+            _msg += "If you want do this, overide the function 'Write_to'."
+            raise ValueError(_msg)
+
+    def Read_from(self, file_name: str, file_dir: str):
+        _ext = file_name.split(".")[-1].lower()
+
+        if _ext == "yaml":
+            _data = File.Yaml.Read(file_name, file_dir)
+        elif _ext == "json":
+            _data =  File.Json.Read(file_name, file_dir)
+        else:
+            _msg = f"Config {self.__class__.__name__} is not support"
+            _msg += f" {_ext} file foramt for read from file.\n"
+            _msg += "If you want do this, overide the function 'Read_from'."
+            raise ValueError(_msg)
+
+        self.Set_from(_data)
+
+    def Set_from(self, source: dict[str, Any]):
+        for _k, _v in source.items():
+            if _k in self.__dict__:
+                self.__dict__[_k] = _v
 
 
 class Template():
@@ -62,11 +95,11 @@ class Template():
         project_name: str
     ):
         self.project_name = project_name
-        self.result_root = Path.WORK_SPACE
+        self.result_root = self.Make_save_root()
 
     def Make_save_root(
         self,
-        description: str | None = None,
+        obj_dir: str | list[str] | None = None,
         result_root: str | None = None
     ):
         """ ### 프로젝트 결과 저장 최상위 경로 생성 함수
@@ -82,15 +115,17 @@ class Template():
             - None
 
         """
-        _this_time = Time.Stamp()
-        _result_dir_dirs = Path.Join(
-            [
-                "result" if result_root is None else result_root,
-                "default" if description is None else description,
-                Time.Make_text_from(_this_time, "%Y-%m-%d_%H:%M:%S")
+
+        if obj_dir is None:
+            _obj_dir = [
+                "result",
+                Time.Make_text_from(Time.Stamp(), "%Y-%m-%d_%H:%M:%S")
             ]
-        )
-        self.result_root = Path.Make_directory(_result_dir_dirs)
+        else:
+            _obj_dir = obj_dir
+
+        return Path.Make_directory(
+            _obj_dir, Path.WORK_SPACE if result_root else result_root)
 
 
 class Debuging():
