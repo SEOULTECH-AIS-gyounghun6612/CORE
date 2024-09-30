@@ -9,17 +9,24 @@
 
 """
 from __future__ import annotations
-from typing import (
-    Any, TypeVar, Callable, Generic
-)
-from dataclasses import dataclass
+from typing import Any, Callable
+from dataclasses import dataclass, field
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+
+from python_ex.project import Config
 
 
 class Parser():
-    def __init__(self, data_dir: str, **kwarg) -> None:
-        self.data_info: dict[str, Any]
+    def __init__(
+        self,
+        data_dir: str,
+        learning_mode: str,
+        **kwarg
+    ) -> None:
+        self.data_info: dict[str, Any] = {
+            "learning_mode": learning_mode
+        }
         self.data_block: dict[str, list] = {}
 
         self.Get_data_from(data_dir, **kwarg)
@@ -28,16 +35,15 @@ class Parser():
         raise NotImplementedError
 
 
-PARSER = TypeVar("PARSER", bound=Parser)
-
-
 class Dataset_Basement(Dataset):
     def __init__(
         self,
-        data_dir: str, data_parser: type[PARSER] = Parser,
+        data_dir: str,
+        learning_mode: str,
+        data_parser: type[Parser] = Parser,
         **parser_kwarg
     ) -> None:
-        _parser = data_parser(data_dir, **parser_kwarg)
+        _parser = data_parser(data_dir, learning_mode, **parser_kwarg)
         self.data_info = _parser.data_info
         self.data_block = _parser.data_block
 
@@ -48,51 +54,52 @@ class Dataset_Basement(Dataset):
         raise NotImplementedError
 
 
-DATASET = TypeVar("DATASET", bound=Dataset_Basement)
+@dataclass
+class Dataset_Config(Config):
+    name: str = "no_data"
+    data_dir: str = "./datasets"
+    additional: dict = field(default_factory=dict)
+
+    def Build_dataset(
+        self, learning_type: str
+    ) -> Dataset_Basement:
+        raise NotImplementedError
 
 
-class Config():
-    @dataclass
-    class Custom_Dataset(Generic[DATASET]):
-        name: str = "no_data"
-        data_dir: str = "./datasets"
+@dataclass
+class Dataloader_Config(Config):
+    dataset_config: Dataset_Config
 
-        def Build_dataset(self, mode: str, **kwarg) -> DATASET:
-            raise NotImplementedError
+    batch_size: int = 1
+    shuffle: bool = True
+    num_workers: int = 0
+    collate_fn: str | None = None
+    drop_last: bool = False
 
-    CONFIG_DATASET = TypeVar(
-        "CONFIG_DATASET",
-        bound=Custom_Dataset
-    )
+    def _Build_collate_fn(self) -> Callable | None:
+        raise NotImplementedError
 
-    @dataclass
-    class Dataloader(Generic[CONFIG_DATASET]):
-        dataset_config: Config.CONFIG_DATASET
+    def Builde_dataloder(
+        self, learning_type: str
+    ):
+        _dataset = self.dataset_config.Build_dataset(learning_type)
+        try:
+            _collate_fn = self._Build_collate_fn()
+        except NotImplementedError:
+            _collate_fn = None
 
-        batch_size: int = 1
-        shuffle: bool = True
-        num_workers: int = 0
-        collate_fn: str | None = None
-        drop_last: bool = False
+        return DataLoader(
+            _dataset,
+            batch_size=self.batch_size,
+            shuffle=self.shuffle,
+            num_workers=self.num_workers,
+            collate_fn=_collate_fn,
+            drop_last=self.drop_last)
 
-        def _Build_collate_fn(self) -> Callable:
-            raise NotImplementedError
-
-        def Get_Dataloader_params(self) -> dict[str, Any]:
-            try:
-                _collate_fn = self._Build_collate_fn()
-            except NotImplementedError:
-                _collate_fn = None
-
-            return {
-                "batch_size": self.batch_size,
-                "shuffle": self.shuffle,
-                "num_workers": self.num_workers,
-                "collate_fn": _collate_fn,
-                "drop_last": self.drop_last
-            }
-
-    CONFIG_DATALOADER = TypeVar(
-        "CONFIG_DATALOADER",
-        bound=Dataloader
-    )
+    def Set_from(self, source: dict[str, Any]):
+        for _k, _v in source.items():
+            if _k in self.__dict__:
+                if _k == "dataset_config":
+                    self.dataset_config.Set_from(_v)
+                else:
+                    self.__dict__[_k] = _v

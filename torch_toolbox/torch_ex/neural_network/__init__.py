@@ -6,9 +6,10 @@ from dataclasses import dataclass
 
 from abc import ABC, abstractmethod
 from torch.nn import Module
-from torch import load, save
+from torch import load, save, device
 
 from python_ex.system import Path
+from python_ex.project import Config
 
 
 class Model_Basement(Module, ABC):
@@ -69,14 +70,12 @@ class Model_Basement(Module, ABC):
 MODEL = TypeVar("MODEL", bound=Model_Basement)
 
 
-class Config():
-    @dataclass
-    class Neural_Network(ABC, Generic[MODEL]):
-        @abstractmethod
-        def Build_model_n_loss(self) -> tuple[MODEL, list[Callable]]:
-            raise NotImplementedError
+@dataclass
+class Neural_Network_Config(ABC, Config):
+    model_name: str = "default_name"
 
-    CONFIG_NEURAL_NETWORK = TypeVar(
-        "CONFIG_NEURAL_NETWORK",
-        bound=Neural_Network
-    )
+    @abstractmethod
+    def Build_model_n_loss(
+        self, device_info: device
+    ) -> tuple[Model_Basement, list[Callable]]:
+        raise NotImplementedError

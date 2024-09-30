@@ -1,25 +1,8 @@
-from enum import Enum
-
 from torch import Tensor
 from torch.nn import Module
 
 
 class Backbone():
-    class Supported(Enum):
-        VGG_11 = ("VGG", 11)
-        VGG_13 = ("VGG", 13)
-        VGG_16 = ("VGG", 16)
-        ResNet_50 = ("ResNet", 50)
-        ResNet_101 = ("ResNet", 101)
-        # ConvNext_tiny = ("ConvNext", "tiny")
-        # ConvNext_small = ("ConvNext", "small")
-        # ConvNext_base = ("ConvNext", "base")
-        # ConvNext_large = ("ConvNext", "large")
-
-        # segmentation
-        FCN_50 = ("FCN", 50)
-        FCN_101 = ("FCN", 101)
-
     class Backbone_Module(Module):
         def __init__(self, is_pretrained: bool, is_trainable: bool):
             super().__init__()
@@ -111,4 +94,20 @@ class Backbone():
             return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
         def Average_pooling(self, ouput: Tensor):
-            return self.avgpool(ouput).flatten()
+            return self.avgpool(ouput)
+
+    @staticmethod
+    def Build_backbone(
+        model_name: str,
+        model_type: int,
+        is_pretrained: bool,
+        is_trainable: bool
+    ):
+        _backbone_dict = Backbone.__dict__
+
+        if model_name in _backbone_dict:
+            return _backbone_dict[model_name](
+                model_type, is_pretrained, is_trainable
+            )
+
+        raise ValueError(f"{model_name} is not supported. Please check it")
