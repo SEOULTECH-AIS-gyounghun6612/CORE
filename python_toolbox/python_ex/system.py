@@ -675,11 +675,9 @@ class Time():
     @staticmethod
     def Get_term(
         standard_time: datetime,
-        to_str: bool = True,
         set_timezone: timezone | None = None
     ):
-        _term = Time.Stamp(set_timezone) - standard_time
-        return str(_term) if to_str else _term
+        return Time.Stamp(set_timezone) - standard_time
 
     @staticmethod
     def Make_text_from(
