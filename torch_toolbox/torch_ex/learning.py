@@ -283,13 +283,15 @@ class End_to_End(Template, ABC):
 
     def _log_display(
         self,
+        mode: Mode,
         epoch: int, max_epoch: int,
         this_data_ct: int, data_ct: int, total_ct: int,
         st_time: datetime,
         log_str: str,
     ):
         data_ct += this_data_ct
-        _prefix = f"[epoch]: {String.Count_auto_aligning(epoch, max_epoch)} "
+        _prefix = f"[{str(mode)}] "
+        _prefix += f"[epoch]: {String.Count_auto_aligning(epoch, max_epoch)} "
         _prefix += f"[data]: {String.Count_auto_aligning(data_ct, total_ct)}"
 
         _each = (Time.Get_term(st_time) / this_data_ct)
@@ -299,7 +301,7 @@ class End_to_End(Template, ABC):
         )
         _suffix = f"finish at {_remain_str} {log_str}"
 
-        Debuging.Progress_bar(data_ct, total_ct, _prefix, _suffix, length=30)
+        Debuging.Progress_bar(data_ct, total_ct, _prefix, _suffix, length=10)
 
         return data_ct
 
@@ -473,6 +475,7 @@ class End_to_End(Template, ABC):
                     )
                     _log_txt = observer.Set_log(**_mini_result)
                     _data_ct = self._log_display(
+                        _mode,
                         _epoch, _max_e,
                         _this_data_ct, _data_ct, _max_data_ct,
                         _st,
