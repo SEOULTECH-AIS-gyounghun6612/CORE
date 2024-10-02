@@ -78,23 +78,25 @@ class Observer():
             ) for _mode in mode_list)
         ) for _ep in range(max_epoch))
 
-    def Set_log(self, data_ct: int, **kwarg: float | list[float]):
+    def Set_log(self, **kwarg: tuple[int, float | list[float]]):
         _param_list = self.observe_param
         _this_holder = self.holder[self.this_epoch][self.this_mode]
 
         _log_text = ""
 
-        for _p_name, _v in kwarg.items():
+        for _p_name, _logging_data in kwarg.items():
             if _p_name in _param_list:
                 _data_ct, _log = _this_holder[_p_name]
-                if isinstance(_v, list):
-                    _log += _v
+                _this_ct, _this_value = _logging_data
+                _data_total = _data_ct + _this_ct
+
+                if isinstance(_this_value, list):
+                    _log += _this_value
                 else:
-                    _log.append(_v)
+                    _log.append(_this_value)
 
-                _this_holder[_p_name] = (_data_ct + data_ct, _log)
-
-                _value = sum(_log) / (_data_ct + data_ct)
+                _this_holder[_p_name] = (_data_total, _log)
+                _value = sum(_log) / _data_total
                 _log_text += f"{_p_name}: {_value:0>6.3f} "
 
         return _log_text[:-1]
@@ -256,7 +258,7 @@ class End_to_End(Template, ABC):
         loss_fn: list[Callable],
         optim: Optimizer,
         **data
-    ) -> tuple[int, dict[str, float]]:
+    ) -> tuple[int, dict[str, tuple[int, float | list[float]]]]:
         """ ### 실질적인 학습을 진행하는 함수
         학습 과정에 따라 학습에 필요한 과정(ex, backpropagation, 평가값 갱신 등)수행
 
@@ -469,7 +471,7 @@ class End_to_End(Template, ABC):
                         _model, _loss_fns, _optim,
                         **self.Jump_to_cuda(_data, _device)
                     )
-                    _log_txt = observer.Set_log(_this_data_ct, **_mini_result)
+                    _log_txt = observer.Set_log(**_mini_result)
                     _data_ct = self._log_display(
                         _epoch, _max_e,
                         _this_data_ct, _data_ct, _max_data_ct,
