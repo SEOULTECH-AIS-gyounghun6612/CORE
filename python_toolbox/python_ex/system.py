@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 from enum import Enum, auto
-from typing import Tuple, Literal, Any, Callable
+from typing import (Tuple, Literal, Any, Callable, TypeVar)
 
 from dataclasses import dataclass
 
@@ -34,7 +34,7 @@ from dateutil.relativedelta import relativedelta
 
 # -- DEFINE CONSTNAT -- #
 # Data type for hint
-TYPE_NUMBER = int | float
+NUMBER = TypeVar("NUMBER", bound=int | float)
 
 # System Constant
 PYTHON_VERSION = sys.version_info
@@ -464,7 +464,7 @@ class File():
             raise NotImplementedError
 
     class Json():
-        KEYABLE = TYPE_NUMBER | bool | str
+        KEYABLE = NUMBER | bool | str
         VALUEABLE = KEYABLE | Tuple | list | dict | None
         WRITEABLE = dict[KEYABLE, VALUEABLE]
 
