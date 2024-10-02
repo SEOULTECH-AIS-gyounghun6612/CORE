@@ -79,3 +79,6 @@ class Neural_Network_Config(ABC, Config):
         self, device_info: device
     ) -> tuple[Model_Basement, list[Callable]]:
         raise NotImplementedError
+
+    def Get_summation(self):
+        return [self.model_name]

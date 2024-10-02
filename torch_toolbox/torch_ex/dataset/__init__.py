@@ -65,10 +65,13 @@ class Dataset_Config(Config):
     ) -> Dataset_Basement:
         raise NotImplementedError
 
+    def Get_summation(self):
+        return [self.name]
+
 
 @dataclass
 class Dataloader_Config(Config):
-    dataset_config: Dataset_Config
+    dataset_config: Dataset_Config = field(default_factory=Dataset_Config)
 
     batch_size: int = 1
     shuffle: bool = True
@@ -79,9 +82,7 @@ class Dataloader_Config(Config):
     def _Build_collate_fn(self) -> Callable | None:
         raise NotImplementedError
 
-    def Builde_dataloder(
-        self, learning_type: str
-    ):
+    def Builde_dataloder(self, learning_type: str) -> DataLoader:
         _dataset = self.dataset_config.Build_dataset(learning_type)
         try:
             _collate_fn = self._Build_collate_fn()
@@ -103,3 +104,6 @@ class Dataloader_Config(Config):
                     self.dataset_config.Set_from(_v)
                 else:
                     self.__dict__[_k] = _v
+
+    def Get_summation(self):
+        return self.dataset_config.Get_summation()
