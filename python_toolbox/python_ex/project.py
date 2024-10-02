@@ -69,6 +69,9 @@ class Config():
             if _k in self.__dict__:
                 self.__dict__[_k] = _v
 
+    def Get_summation(self) -> list[str]:
+        raise NotImplementedError
+
 
 class Template():
     """ ### 프로젝트 구성을 위한 기본 구조
