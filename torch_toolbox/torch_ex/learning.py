@@ -75,10 +75,10 @@ class Observer():
             dict((
                 _mode,
                 dict((_name, (0, [])) for _name in self.observe_param)
-            ) for _mode in mode_list) 
+            ) for _mode in mode_list)
         ) for _ep in range(max_epoch))
 
-    def Set_log(self, **kwarg: tuple[int, float | list[float]]):
+    def Set_log(self, data_ct: int, **kwarg: float | list[float]):
         _param_list = self.observe_param
         _this_holder = self.holder[self.this_epoch][self.this_mode]
 
@@ -87,14 +87,14 @@ class Observer():
         for _p_name, _v in kwarg.items():
             if _p_name in _param_list:
                 _data_ct, _log = _this_holder[_p_name]
-                if isinstance(_v[1], list):
-                    _log += _v[1]
+                if isinstance(_v, list):
+                    _log += _v
                 else:
-                    _log.append(_v[1])
-                   
-                _this_holder[_p_name] = (_data_ct + _v[0], _log)
+                    _log.append(_v)
 
-                _value = sum(_log) / (_data_ct + _v[0])
+                _this_holder[_p_name] = (_data_ct + data_ct, _log)
+
+                _value = sum(_log) / (_data_ct + data_ct)
                 _log_text += f"{_p_name}: {_value:0>6.3f} "
 
         return _log_text[:-1]
@@ -105,7 +105,6 @@ class Observer():
         if parameter_name in _this_holder:
             return _this_holder[parameter_name]
         return (0, [])
-
 
 
 class Process_Config():
@@ -133,9 +132,6 @@ class Process_Config():
         gpus: list[int] = field(default_factory=lambda: [0])
         observe_param: list[str] = field(default_factory=lambda: ["loss"])
 
-        def Get_project_name(self):
-            return ""
-
         def Build_observe(self):
             _mode_list = list(self.dataloader.keys())
             _observer = Observer(
@@ -146,6 +142,20 @@ class Process_Config():
 
         def Build_learning(self) -> End_to_End:
             raise NotImplementedError
+
+        def Get_summation(self):
+            _data_str_info = ""
+            for _k, _v in self.dataloader.items():
+                _data_str_info += "_".join([_k, ] + _v.Get_summation())
+
+            _model_info_str = "_".join(self.neural_network.Get_summation())
+
+            return [
+                self.project_name,
+                _model_info_str,
+                f"lr_{self.learning_rate}",
+                _data_str_info
+            ]
 
 
 class End_to_End(Template, ABC):
@@ -280,7 +290,7 @@ class End_to_End(Template, ABC):
         _prefix = f"[epoch]: {String.Count_auto_aligning(epoch, max_epoch)} "
         _prefix += f"[data]: {String.Count_auto_aligning(data_ct, total_ct)}"
 
-        _each = (Time.Get_term(st_time, False) / this_data_ct)
+        _each = (Time.Get_term(st_time) / this_data_ct)
         _remain_str = Time.Make_text_from(
             st_time + (_each * ((max_epoch - epoch - 2) * total_ct - data_ct)),
             '%Y-%m-%d %H:%M:%S'
@@ -336,23 +346,21 @@ class End_to_End(Template, ABC):
         - None
 
         """
-        _file_dir = [] if file_dir is None else file_dir
-
         save(
-            {"model": model.state_dict(),},
-            Path.Join(f"{model.model_name}.h5", _file_dir)
+            {"model": model.state_dict(), },
+            Path.Join(f"{model.model_name}.h5", file_dir)
         )
 
         if optim is not None:
             save(
-                {"optim": optim.state_dict(),},
-                Path.Join(f"{model.model_name}_optim.h5", _file_dir)
+                {"optim": optim.state_dict(), },
+                Path.Join(f"{model.model_name}_optim.h5", file_dir)
             )
 
         if scheduler is not None:
             save(
-                {"scheduler": scheduler.state_dict(),},
-                Path.Join(f"{model.model_name}_scheduler.h5", _file_dir)
+                {"scheduler": scheduler.state_dict(), },
+                Path.Join(f"{model.model_name}_scheduler.h5", file_dir)
             )
 
     def Load_weight(
@@ -461,7 +469,7 @@ class End_to_End(Template, ABC):
                         _model, _loss_fns, _optim,
                         **self.Jump_to_cuda(_data, _device)
                     )
-                    _log_txt = observer.Set_log(**_mini_result)
+                    _log_txt = observer.Set_log(_this_data_ct, **_mini_result)
                     _data_ct = self._log_display(
                         _epoch, _max_e,
                         _this_data_ct, _data_ct, _max_data_ct,
@@ -487,10 +495,10 @@ class End_to_End(Template, ABC):
             if _scheduler is not None:
                 _scheduler.step()
 
-    def Set_result_dir(self, dir):
-        ...
+    def _Set_result_dir(self, config: Process_Config.End_to_End):
+        self.result_root = Path.Join(config.Get_summation(), self.result_root)
 
-    def Run(self, config: Config, observer: Observer):
+    def Run(self, config: Process_Config.End_to_End, observer: Observer):
         """ ### 학습 실행 함수
 
         ------------------------------------------------------------------
