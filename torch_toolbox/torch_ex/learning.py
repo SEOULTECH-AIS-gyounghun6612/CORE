@@ -146,9 +146,11 @@ class Process_Config():
             raise NotImplementedError
 
         def Get_summation(self):
-            _data_str_info = ""
-            for _k, _v in self.dataloader.items():
-                _data_str_info += "_".join([_k, ] + _v.Get_summation())
+            _data_str_info = "_".join([
+                "_".join(
+                    [_k, ] + _v.Get_summation()
+                ) for _k, _v in self.dataloader.items()
+            ])
 
             _model_info_str = "_".join(self.neural_network.Get_summation())
 
