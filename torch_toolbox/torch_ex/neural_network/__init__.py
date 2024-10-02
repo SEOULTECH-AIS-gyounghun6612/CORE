@@ -1,7 +1,4 @@
 from __future__ import annotations
-from typing import (
-    Generic, TypeVar, Callable
-)
 from dataclasses import dataclass
 
 from abc import ABC, abstractmethod
@@ -39,11 +36,8 @@ class Model_Basement(Module, ABC):
 
         """
         save(
-            {
-                "model": self.state_dict()
-            },
-            Path.Join(f"{self.model_name}.h5", file_dir)
-        )
+            {"model": self.state_dict()},
+            Path.Join(f"{self.model_name}.h5", file_dir))
 
     def Load_weight(
         self,
@@ -67,9 +61,6 @@ class Model_Basement(Module, ABC):
         self.load_state_dict(_state_dict["model"])
 
 
-MODEL = TypeVar("MODEL", bound=Model_Basement)
-
-
 @dataclass
 class Neural_Network_Config(ABC, Config):
     model_name: str = "default_name"
@@ -77,7 +68,7 @@ class Neural_Network_Config(ABC, Config):
     @abstractmethod
     def Build_model_n_loss(
         self, device_info: device
-    ) -> tuple[Model_Basement, list[Callable]]:
+    ) -> tuple[Model_Basement, list[Module]]:
         raise NotImplementedError
 
     def Get_summation(self):
