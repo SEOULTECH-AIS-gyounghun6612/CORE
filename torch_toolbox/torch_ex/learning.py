@@ -554,9 +554,9 @@ class End_to_End(Template, ABC):
         # not use distribute
         # in later add code, that use distribute option
         self._Set_result_dir(config)
-        self._Main_work(0, config, observer)
-
         config.Write_to("config.json", self.result_root)
+
+        self._Main_work(0, config, observer)
 
 
 class Reinforcement():
