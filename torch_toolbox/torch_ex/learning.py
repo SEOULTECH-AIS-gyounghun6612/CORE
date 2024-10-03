@@ -25,7 +25,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from python_ex.system import Path, String, File, Time
 from python_ex.project import Template, Config, Debuging
 
-from torch_ex.dataset import (Dataloader_Config)
+from torch_ex.dataset import (Dataloader_Config, DataLoader)
 from torch_ex.neural_network import (
     Model_Basement, Neural_Network_Config, Module)
 
@@ -146,20 +146,29 @@ class End_to_End_Config(Config):
         raise NotImplementedError
 
     def Get_summation(self):
-        _data_str_info = "_".join([
-            "_".join(
-                [_k, ] + _v.Get_summation()
-            ) for _k, _v in self.dataloader.items()
-        ])
-
-        _model_info_str = "_".join(self.neural_network.Get_summation())
-
         return [
             self.project_name,
-            _model_info_str,
             f"lr_{self.learning_rate}",
-            _data_str_info
+            "_".join([
+                "_".join(
+                    [_k, ] + _v.Get_summation()
+                ) for _k, _v in self.dataloader.items()
+            ]),
+            "_".join(self.neural_network.Get_summation())
         ]
+
+
+@dataclass
+class Reinforcement_Based_on_Policy_Config(End_to_End_Config):
+    policy_network: Neural_Network_Config = field(
+        default_factory=Neural_Network_Config)
+
+    def Build_learning(self) -> End_to_End:
+        raise NotImplementedError
+
+    def Get_summation(self):
+        return super().Get_summation().append(
+            "_".join(self.policy_network.Get_summation()))
 
 
 class End_to_End(Template, ABC):
@@ -213,7 +222,7 @@ class End_to_End(Template, ABC):
 
     # build program obj in learning preprocee
     @abstractmethod
-    def __Biuild_optimizer(
+    def _Biuild_optimizer(
         self, model: Model_Basement, learning_rate: float, **kwarg
     ) -> tuple[Optimizer, LRScheduler | None]:
         """ ### 학습 대상 모델에 할당되는 optimizer와 scheduler을 구성하는 함수
@@ -233,11 +242,18 @@ class End_to_End(Template, ABC):
         """
         raise NotImplementedError
 
-    def __preprocess(
+    def _preprocess(
         self,
         cfg: End_to_End_Config,
         device_info: device
-    ):
+    ) -> tuple[
+        dict[Mode, DataLoader],
+        Model_Basement,
+        list[Module],
+        Optimizer,
+        LRScheduler | None,
+        dict[str, Any]
+    ]:
         _dataloader = dict(
             (
                 Mode(_k.upper()),
@@ -247,24 +263,18 @@ class End_to_End(Template, ABC):
         _model, _loss_fns = cfg.neural_network.Build_model_n_loss(device_info)
 
         # set optim and scheduler
-        _optim, _scheduler = self.__Biuild_optimizer(_model, cfg.learning_rate)
-
-        # load pretrained weight
-        if cfg.this_epoch:
-            _file_dir = Path.Join(str(cfg.this_epoch), self.result_root)
-            _model, _optim, _scheduler = self.Load_weight(
-                _model, _optim, _scheduler, _file_dir
-            )
+        _optim, _scheduler = self._Biuild_optimizer(_model, cfg.learning_rate)
 
         return (
             _dataloader,
-            {"model": _model, },
+            _model,
             _loss_fns,
             _optim,
-            _scheduler)
+            _scheduler,
+            {})
 
     @abstractmethod
-    def __Jump_to_cuda(self, data: Any, device_info: device) -> Any:
+    def _Jump_to_cuda(self, data: Any, device_info: device) -> Any:
         """ ### Dataloader를 통해 처리된 데이터의 후처리 과정 함수
 
         ------------------------------------------------------------------
@@ -284,14 +294,15 @@ class End_to_End(Template, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def __Core(
+    def _Core(
         self,
         epoch: int,
         mode: Mode,
         model: Model_Basement,
-        loss_fn: list[Callable],
+        loss_fn: list[Module],
         optim: Optimizer,
-        **data
+        data: dict[str, Tensor],
+        **additional_data
     ) -> tuple[int, dict[str, tuple[int, float | list[float]]]]:
         """ ### 실질적인 학습을 진행하는 함수
         학습 과정에 따라 학습에 필요한 과정(ex, backpropagation, 평가값 갱신 등)수행
@@ -315,7 +326,7 @@ class End_to_End(Template, ABC):
         """
         raise NotImplementedError
 
-    def __log_display(
+    def _log_display(
         self,
         mode: Mode,
         epoch: int, max_epoch: int,
@@ -340,7 +351,7 @@ class End_to_End(Template, ABC):
         return data_ct
 
     @abstractmethod
-    def __Decision_to_learning_stop(self, observer: Observer, **kwarg) -> bool:
+    def _Decision_to_learning_stop(self, observer: Observer, **kwarg) -> bool:
         """ ### 반복 학습 결과를 확인하고, 그에 따른 결정을 내리는 함수
         해당 반복학습 결과의 경우 Attributes `self.loss`, `self.holder`,
         `self.eval_holder` 정보를 바탕으로 처리하게 됨.\n
@@ -361,7 +372,7 @@ class End_to_End(Template, ABC):
         """
         raise NotImplementedError
 
-    def Save_weight(
+    def _Save_weight(
         self,
         model: Model_Basement,
         optim: Optimizer | None = None,
@@ -401,7 +412,7 @@ class End_to_End(Template, ABC):
                 Path.Join(f"{model.model_name}_scheduler.h5", file_dir)
             )
 
-    def Load_weight(
+    def _Load_weight(
         self,
         model: Model_Basement,
         optim: Optimizer,
@@ -441,7 +452,7 @@ class End_to_End(Template, ABC):
 
         return model, optim, scheduler
 
-    def __Main_work(
+    def _Main_work(
         self,
         thred_num: int,
         cfg: End_to_End_Config,
@@ -466,12 +477,21 @@ class End_to_End(Template, ABC):
         _device = device(f"cuda:{_gpu_id}" if _gpu_list else "cpu")
 
         (
-            _dataloader, _models, _loss_fns, _optim, _scheduler
-        ) = self.__preprocess(cfg, _device)
+            _dataloader, _model, _loss_fns, _optim, _scheduler, addtional
+        ) = self._preprocess(cfg, _device)
 
+        _this_e = cfg.this_epoch
         _max_e = cfg.max_epoch
+
+        # load pretrained weight
+        if _this_e:
+            _file_dir = Path.Join(str(_this_e), self.result_root)
+            _model, _optim, _scheduler = self._Load_weight(
+                _model, _optim, _scheduler, _file_dir
+            )
+
         # learning
-        for _epoch in range(cfg.this_epoch, _max_e):
+        for _epoch in range(_this_e, _max_e):
             observer.this_epoch = _epoch
 
             for _mode, _loader in _dataloader.items():
@@ -479,29 +499,26 @@ class End_to_End(Template, ABC):
 
                 _data_ct = 0
                 _max_data_ct = len(_loader.dataset)
-                _st = Time.Stamp()
+                _time_stamp = Time.Stamp()
                 for _data in _loader:
-                    _this_data_ct, _mini_result = self.__Core(
-                        epoch=_epoch,
-                        mode=_mode,
-                        optim=_optim,
-                        loss_fn=_loss_fns,
-                        **_models,
-                        **self.__Jump_to_cuda(_data, _device)
+                    _this_data_ct, _mini_result = self._Core(
+                        _epoch, _mode,
+                        _model, _loss_fns, _optim,
+                        self._Jump_to_cuda(_data, _device),
+                        **addtional
                     )
                     _log_txt = observer.Set_log(**_mini_result)
-                    _data_ct = self.__log_display(
-                        _mode,
-                        _epoch, _max_e,
+                    _data_ct = self._log_display(
+                        _mode, _epoch, _max_e,
                         _this_data_ct, _data_ct, _max_data_ct,
-                        _st,
+                        _time_stamp,
                         _log_txt
                     )
-                    _st = Time.Stamp()
+                    _time_stamp = Time.Stamp()
 
             # save the each epoch result
-            self.Save_weight(
-                **_models,
+            self._Save_weight(
+                model=_model,
                 optim=_optim,
                 scheduler=_scheduler,
                 file_dir=Path.Make_directory(str(_epoch), self.result_root)
@@ -509,14 +526,14 @@ class End_to_End(Template, ABC):
             observer.Save_observe("log.json", self.result_root)
 
             # make decision for learning in each epoch
-            if self.__Decision_to_learning_stop(observer):
+            if self._Decision_to_learning_stop(observer):
                 break
 
             # !!! learning is continue !!!
             if _scheduler is not None:
                 _scheduler.step()
 
-    def __Set_result_dir(self, config: End_to_End_Config):
+    def _Set_result_dir(self, config: End_to_End_Config):
         self.result_root = Path.Make_directory(
             config.Get_summation(), self.result_root)
 
@@ -536,7 +553,147 @@ class End_to_End(Template, ABC):
         """
         # not use distribute
         # in later add code, that use distribute option
-        self.__Set_result_dir(config)
-        self.__Main_work(0, config, observer)
+        self._Set_result_dir(config)
+        self._Main_work(0, config, observer)
 
         config.Write_to("config.json", self.result_root)
+
+
+class Reinforcement():
+    class Base_on_Model(End_to_End):
+        @abstractmethod
+        def _Biuild_optimizer(
+            self,
+            model: tuple[Model_Basement, Model_Basement],
+            learning_rate: float,
+            **kwarg
+        ) -> tuple[Optimizer, LRScheduler | None]:
+            """ ###
+
+            ------------------------------------------------------------------
+            ### Args
+            - `model`:
+            - `optimizer_prams`:
+
+            ### Returns
+            - `Optimizer`:
+            - `LRScheduler` or `None`:
+
+            ### Raises
+            - `NotImplementedError`:
+
+            """
+            raise NotImplementedError
+
+        @abstractmethod
+        def __Build_reward_function(
+            self,
+            cfg: Reinforcement_Based_on_Policy_Config,
+            device_info: device
+        ) -> Callable[[tuple[Any, ...]], Tensor]:
+            raise NotImplementedError
+
+        def _preprocess(
+            self,
+            cfg: Reinforcement_Based_on_Policy_Config,
+            device_info: device
+        ) -> tuple[
+            dict[Mode, DataLoader],
+            tuple[Model_Basement, Model_Basement],
+            list[Module],
+            Optimizer,
+            LRScheduler | None,
+            dict[str, Any]
+        ]:
+            _dataloader = dict(
+                (
+                    Mode(_k.upper()),
+                    _v.Builde_dataloder(_k)
+                ) for _k, _v in cfg.dataloader.items() if _k in Mode.list()
+            )
+            _model, _loss_fns = cfg.neural_network.Build_model_n_loss(
+                device_info)
+            _policy, _policy_loss_fns = cfg.policy_network.Build_model_n_loss(
+                device_info)
+            _reward_func = self.__Build_reward_function(cfg, device_info)
+
+            # set optim and scheduler
+            _optim, _scheduler = self._Biuild_optimizer(
+                (_model, _policy), cfg.learning_rate)
+
+            return (
+                _dataloader,
+                (_model, _policy),
+                _loss_fns + _policy_loss_fns,
+                _optim,
+                _scheduler,
+                {"reward_func": _reward_func}
+            )
+
+        @abstractmethod
+        def _Core(
+            self,
+            epoch: int,
+            mode: Mode,
+            model: tuple[Model_Basement, Model_Basement],
+            loss_fn: list[Module],
+            optim: Optimizer,
+            data: dict[str, Tensor],
+            **additional_data
+        ) -> tuple[int, dict[str, tuple[int, float | list[float]]]]:
+            """ ### 실질적인 학습을 진행하는 함수
+            학습 과정에 따라 학습에 필요한 과정(ex, backpropagation, 평가값 갱신 등)수행
+
+            ------------------------------------------------------------------
+            ### Args
+            - `epoch`: 현재 학습 반복 횟수
+            - `mode`: 현재 학습 과정
+            - `model`: 학습 모델
+            - `output`: 입력 데이터에 따른 출력 데이터
+            - `target`: 입력 데이터에 따른 정답 데이터
+            - `optim`: 학습에 사용되는 optimizer
+            - `data_count`: 지금까지 사용된 데이터 갯수
+
+            ### Returns or Yields
+            - `this_data_count`: 현재까지 사용된 데이터 갯수
+
+            ### Raises
+            - `NotImplementedError`: 해당 함수는 구성이 필요함
+
+            """
+            raise NotImplementedError
+
+        def _Save_weight(
+            self,
+            model: tuple[Model_Basement, Model_Basement],
+            optim: Optimizer | None = None,
+            scheduler: LRScheduler | None = None,
+            file_dir: str | None = None
+        ):
+            _model, _policy = model
+            save(
+                {"model": _policy.state_dict(), },
+                Path.Join(f"{_policy.model_name}.h5", file_dir)
+            )
+
+            super()._Save_weight(_model, optim, scheduler, file_dir)
+
+        def _Load_weight(
+            self,
+            model: tuple[Model_Basement, Model_Basement],
+            optim: Optimizer,
+            scheduler: LRScheduler | None,
+            file_dir: str | None = None
+        ):
+            _model, _policy = model
+            _policy_state_dict = load(
+                Path.Join(f"{_policy.model_name}.h5", file_dir))
+            _policy.load_state_dict(_policy_state_dict["model"])
+
+            _model, optim, scheduler = super()._Load_weight(
+                _model, optim, scheduler, file_dir)
+
+            return (_model, _policy), optim, scheduler
+
+    class Base_on_Value(End_to_End):
+        ...
