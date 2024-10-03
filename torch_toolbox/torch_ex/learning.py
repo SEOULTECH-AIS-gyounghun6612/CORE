@@ -65,12 +65,27 @@ class Observer():
                                  list[float]    # log
                                  ]]]] = field(default_factory=dict)
 
-    def Save_observe(self, file_name: str, file_dir: str):
-        _this_epoch = self.this_epoch
-        _save_dir = Path.Join(str(_this_epoch), file_dir)
-        File.Json.Write(file_name, _save_dir, self.holder[_this_epoch])
+    def __post_init__(self):
+        self.max_epoch: int = 0
+        self.max_data_ct_in_epoch: int = 0
+
+    def Save_observer(
+        self,
+        file_name: str,
+        file_dir: str,
+        save_at_each_epoch: bool = True
+    ):
+        if save_at_each_epoch:
+            _this_e = self.this_epoch
+            _save_dir = Path.Join(str(_this_e), file_dir)
+            _save_data = self.holder[_this_e]
+        else:
+            _save_dir = file_dir
+            _save_data = self.holder
+        File.Json.Write(file_name, _save_dir, _save_data)
 
     def Holder_init(self, max_epoch: int, mode_list: list[str]):
+        self.max_epoch = max_epoch
         self.holder = dict((
             _ep,
             dict((
@@ -79,12 +94,35 @@ class Observer():
             ) for _mode in mode_list)
         ) for _ep in range(max_epoch))
 
-    def Set_log(self, **kwarg: tuple[int, float | list[float]]):
+    def Set_log(
+        self,
+        standard_time: datetime,
+        data_ct: int,
+        **kwarg: tuple[int, float | list[float]]
+    ):
+        _mode = self.this_mode
+
+        _max_ct = self.max_data_ct_in_epoch
+        _max_e = self.max_epoch
+        _this_e = self.this_epoch
+
+        _str_e = String.Count_auto_aligning(
+            _this_e, _max_e)
+        _str_d = String.Count_auto_aligning(
+            data_ct, _max_ct)
+
+        _prefix = f"[{_mode[:5]}] [epoch]: {_str_e} [data]: {_str_d}"
+
+        _sp_t = Time.Get_term(standard_time)
+        _e_t = _sp_t / data_ct * _max_ct * (_max_e - _this_e)
+        _finish_time = Time.Make_text_from(
+            standard_time + _e_t - _sp_t,
+            "%Y-%m-%d %H:%M:%S"
+        )
+
         _param_list = self.observe_param
-        _this_holder = self.holder[self.this_epoch][self.this_mode]
-
+        _this_holder = self.holder[_this_e][_mode]
         _log_text = ""
-
         for _p_name, _logging_data in kwarg.items():
             if _p_name in _param_list:
                 _data_ct, _log = _this_holder[_p_name]
@@ -100,7 +138,10 @@ class Observer():
                 _value = sum(_log) / _data_total
                 _log_text += f"{_p_name}: {_value:0>6.3f} "
 
-        return _log_text[:-1]
+        _suffix = f"end to {_finish_time} {_log_text[:-1]}"
+
+        Debuging.Progress_bar(
+            data_ct, _max_ct, _prefix, _suffix, length=10)
 
     def Get_log(self, parameter_name: str):
         _this_holder = self.holder[self.this_epoch][self.this_mode]
@@ -247,7 +288,7 @@ class End_to_End(Template, ABC):
         cfg: End_to_End_Config,
         device_info: device
     ) -> tuple[
-        dict[Mode, DataLoader],
+        dict[Mode, tuple[int, DataLoader]],
         Model_Basement,
         list[Module],
         Optimizer,
@@ -296,7 +337,7 @@ class End_to_End(Template, ABC):
     @abstractmethod
     def _Core(
         self,
-        epoch: int,
+        data_ct: int,
         mode: Mode,
         model: Model_Basement,
         loss_fn: list[Module],
@@ -325,30 +366,6 @@ class End_to_End(Template, ABC):
 
         """
         raise NotImplementedError
-
-    def _log_display(
-        self,
-        mode: Mode,
-        epoch: int, max_epoch: int,
-        this_data_ct: int, data_ct: int, total_ct: int,
-        st_time: datetime,
-        log_str: str,
-    ):
-        data_ct += this_data_ct
-        _prefix = f"[{str(mode)}] "
-        _prefix += f"[epoch]: {String.Count_auto_aligning(epoch, max_epoch)} "
-        _prefix += f"[data]: {String.Count_auto_aligning(data_ct, total_ct)}"
-
-        _each = (Time.Get_term(st_time) / this_data_ct)
-        _remain_str = Time.Make_text_from(
-            st_time + (_each * ((max_epoch - epoch - 2) * total_ct - data_ct)),
-            '%Y-%m-%d %H:%M:%S'
-        )
-        _suffix = f"finish at {_remain_str} {log_str}"
-
-        Debuging.Progress_bar(data_ct, total_ct, _prefix, _suffix, length=10)
-
-        return data_ct
 
     @abstractmethod
     def _Decision_to_learning_stop(self, observer: Observer, **kwarg) -> bool:
@@ -479,6 +496,8 @@ class End_to_End(Template, ABC):
         (
             _dataloader, _model, _loss_fns, _optim, _scheduler, addtional
         ) = self._preprocess(cfg, _device)
+        observer.max_data_ct_in_epoch = sum(
+            _v[0] for _v in _dataloader.values())
 
         _this_e = cfg.this_epoch
         _max_e = cfg.max_epoch
@@ -493,28 +512,26 @@ class End_to_End(Template, ABC):
         # learning
         for _epoch in range(_this_e, _max_e):
             observer.this_epoch = _epoch
+            _time_stamp = Time.Stamp()
 
-            for _mode, _loader in _dataloader.items():
+            _data_ct = 0
+            for _mode, (_, _loader) in _dataloader.items():
                 observer.this_mode = str(_mode)
 
-                _data_ct = 0
-                _max_data_ct = len(_loader.dataset)
-                _time_stamp = Time.Stamp()
+                _data_ct_in_mode = 0
                 for _data in _loader:
-                    _this_data_ct, _mini_result = self._Core(
-                        _epoch, _mode,
+                    _data_ct_in_mode, _mini_result = self._Core(
+                        _data_ct_in_mode, _mode,
                         _model, _loss_fns, _optim,
                         self._Jump_to_cuda(_data, _device),
                         **addtional
                     )
-                    _log_txt = observer.Set_log(**_mini_result)
-                    _data_ct = self._log_display(
-                        _mode, _epoch, _max_e,
-                        _this_data_ct, _data_ct, _max_data_ct,
+                    observer.Set_log(
                         _time_stamp,
-                        _log_txt
+                        _data_ct + _data_ct_in_mode,
+                        **_mini_result
                     )
-                    _time_stamp = Time.Stamp()
+                _data_ct += _data_ct_in_mode
 
             # save the each epoch result
             self._Save_weight(
@@ -523,7 +540,10 @@ class End_to_End(Template, ABC):
                 scheduler=_scheduler,
                 file_dir=Path.Make_directory(str(_epoch), self.result_root)
             )
-            observer.Save_observe("log.json", self.result_root)
+            observer.Save_observer(
+                "log.json",
+                self.result_root,
+                cfg.is_save_each_epoch)
 
             # make decision for learning in each epoch
             if self._Decision_to_learning_stop(observer):
@@ -598,7 +618,7 @@ class Reinforcement():
             cfg: Reinforcement_Based_on_Policy_Config,
             device_info: device
         ) -> tuple[
-            dict[Mode, DataLoader],
+            dict[Mode, tuple[int, DataLoader]],
             tuple[Model_Basement, Model_Basement],
             list[Module],
             Optimizer,
@@ -633,7 +653,7 @@ class Reinforcement():
         @abstractmethod
         def _Core(
             self,
-            epoch: int,
+            data_ct: int,
             mode: Mode,
             model: tuple[Model_Basement, Model_Basement],
             loss_fn: list[Module],

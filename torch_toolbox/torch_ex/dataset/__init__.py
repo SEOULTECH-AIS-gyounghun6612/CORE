@@ -82,14 +82,14 @@ class Dataloader_Config(Config):
     def _Build_collate_fn(self) -> Callable | None:
         raise NotImplementedError
 
-    def Builde_dataloder(self, learning_type: str) -> DataLoader:
+    def Builde_dataloder(self, learning_type: str) -> tuple[int, DataLoader]:
         _dataset = self.dataset_config.Build_dataset(learning_type)
         try:
             _collate_fn = self._Build_collate_fn()
         except NotImplementedError:
             _collate_fn = None
 
-        return DataLoader(
+        return len(_dataset), DataLoader(
             _dataset,
             batch_size=self.batch_size,
             shuffle=self.shuffle,
