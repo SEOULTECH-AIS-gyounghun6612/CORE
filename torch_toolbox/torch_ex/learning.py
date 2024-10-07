@@ -337,8 +337,9 @@ class End_to_End(Template, ABC):
     @abstractmethod
     def _Core(
         self,
-        data_ct: int,
+        epoch: int,
         mode: Mode,
+        data_ct: int,
         model: Model_Basement,
         loss_fn: list[Module],
         optim: Optimizer,
@@ -511,6 +512,7 @@ class End_to_End(Template, ABC):
 
         # learning
         for _epoch in range(_this_e, _max_e):
+            _save_dir = Path.Make_directory(str(_epoch), self.result_root)
             observer.this_epoch = _epoch
             _time_stamp = Time.Stamp()
 
@@ -521,7 +523,7 @@ class End_to_End(Template, ABC):
                 _data_ct_in_mode = 0
                 for _data in _loader:
                     _data_ct_in_mode, _mini_result = self._Core(
-                        _data_ct_in_mode, _mode,
+                        _epoch, _mode, _data_ct_in_mode,
                         _model, _loss_fns, _optim,
                         self._Jump_to_cuda(_data, _device),
                         **addtional
@@ -538,7 +540,7 @@ class End_to_End(Template, ABC):
                 model=_model,
                 optim=_optim,
                 scheduler=_scheduler,
-                file_dir=Path.Make_directory(str(_epoch), self.result_root)
+                file_dir=_save_dir
             )
             observer.Save_observer(
                 "log.json",
@@ -653,8 +655,9 @@ class Reinforcement():
         @abstractmethod
         def _Core(
             self,
-            data_ct: int,
+            epoch: int,
             mode: Mode,
+            data_ct: int,
             model: tuple[Model_Basement, Model_Basement],
             loss_fn: list[Module],
             optim: Optimizer,

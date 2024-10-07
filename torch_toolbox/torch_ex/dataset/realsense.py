@@ -5,12 +5,13 @@ import numpy as np
 import cv2
 
 from python_ex.system import Path, File
+from torch_ex.learning import Mode
 
-from . import Parser, PARSER, Dataset_Basement
+from . import Parser, Dataset_Basement
 
 try:
     import pyrealsense2 as rs
-except Exception:
+except ImportError:
     pass
 
 
@@ -52,22 +53,22 @@ class Realsense_Parser(Parser):
                 ]
             }
 
-            self.data_info = {
-                "cam_info": File.YAML.Read("realsense.yaml", data_dir)
-            }
+            self.data_info["cam_info"] = File.Yaml.Read(
+                "realsense.yaml", data_dir)
 
 
 class Realsense(Dataset_Basement):
     def __init__(
         self,
         data_dir: str,
+        learning_mode: Mode,
         is_live: bool = False,
         use_depth: bool = True,
-        data_parser: Type[PARSER] = Realsense_Parser
+        data_parser: Type[Parser] = Realsense_Parser
     ) -> None:
         if is_live:
             raise NotImplementedError  # live dataset is not suport yet
-        super().__init__(data_dir, data_parser, is_live=is_live)
+        super().__init__(data_dir, learning_mode, data_parser, is_live=is_live)
         self.is_live = is_live
         self.use_depth = use_depth
 
