@@ -11,7 +11,7 @@ class Backbone():
 
             self.output_channel = []
 
-        def Average_pooling(self, ouput: Tensor):
+        def Average_pooling(self, ouput: Tensor) -> Tensor:
             raise NotImplementedError
 
     class VGG(Backbone_Module):
@@ -42,7 +42,7 @@ class Backbone():
         def forward(self, x: Tensor):
             return self.conv(x)  # retrun shape : batch_size, 512, h/32, w/32
 
-        def Average_pooling(self, ouput: Tensor):
+        def Average_pooling(self, ouput: Tensor) -> Tensor:
             return self.avgpool(ouput)
 
     class ResNet(Backbone_Module):
@@ -93,7 +93,7 @@ class Backbone():
 
             return [_out_conv1, _out_conv2, _out_conv3, _out_conv4, _out_conv5]
 
-        def Average_pooling(self, ouput: Tensor):
+        def Average_pooling(self, ouput: Tensor) -> Tensor:
             return self.avgpool(ouput)
 
     @staticmethod
