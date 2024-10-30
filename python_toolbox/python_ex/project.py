@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import (
-    Any
+    Any, TypeVar, Generic
 )
 from dataclasses import asdict, dataclass
 
@@ -75,7 +75,15 @@ class Config():
         raise NotImplementedError
 
 
-class Project_Template():
+@dataclass
+class Project_Args():
+    name: str
+
+
+project_args = TypeVar("project_args", bound=Project_Args)
+
+
+class Project_Template(Generic[project_args]):
     """ ### 프로젝트 구성을 위한 기본 구조
 
     ---------------------------------------------------------------------
@@ -95,17 +103,20 @@ class Project_Template():
     - Make_save_root: 프로젝트 결과 저장 최상위 경로 생성 함수
 
     """
-    def __init__(
-        self,
-        project_name: str
-    ):
-        self.project_name = project_name
-        self.project_args = self.Get_args_by_argparser().parse_args()
+    project_args: project_args
 
+    def __init__(self):
+        self.project_args = self.project_args.__class__(
+            **vars(self.Get_args_by_argparser().parse_args())
+        )
         self.result_root = self.Make_save_root()
 
     def Get_args_by_argparser(self) -> argparse.ArgumentParser:
-        raise NotImplementedError
+        _parser = argparse.ArgumentParser()
+        _parser.add_argument(
+            "-n", "--name", dest="name", type=str, help="name for this project"
+        )
+        return _parser
 
     def Make_save_root(
         self,
@@ -129,6 +140,7 @@ class Project_Template():
         if obj_dir is None:
             _obj_dir = [
                 "result",
+                self.project_args.name,
                 Time.Make_text_from(Time.Stamp(), "%Y-%m-%d_%H:%M:%S")
             ]
         else:
