@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import (
-    Any, TypeVar, Generic
+    Any
 )
 from dataclasses import asdict, dataclass
 
@@ -80,10 +80,7 @@ class Project_Args():
     name: str
 
 
-project_args = TypeVar("project_args", bound=Project_Args)
-
-
-class Project_Template(Generic[project_args]):
+class Project_Template():
     """ ### 프로젝트 구성을 위한 기본 구조
 
     ---------------------------------------------------------------------
@@ -103,7 +100,7 @@ class Project_Template(Generic[project_args]):
     - Make_save_root: 프로젝트 결과 저장 최상위 경로 생성 함수
 
     """
-    project_args: project_args
+    project_args: Project_Args
 
     def __init__(self):
         self.project_args = self.project_args.__class__(
