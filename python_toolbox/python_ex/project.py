@@ -4,6 +4,8 @@ from typing import (
 )
 from dataclasses import asdict, dataclass
 
+import argparse
+
 from .system import Path, File, Time
 
 
@@ -73,7 +75,7 @@ class Config():
         raise NotImplementedError
 
 
-class Template():
+class Project_Template():
     """ ### 프로젝트 구성을 위한 기본 구조
 
     ---------------------------------------------------------------------
@@ -98,7 +100,12 @@ class Template():
         project_name: str
     ):
         self.project_name = project_name
+        self.project_args = self.Get_args_by_argparser().parse_args()
+
         self.result_root = self.Make_save_root()
+
+    def Get_args_by_argparser(self) -> argparse.ArgumentParser:
+        raise NotImplementedError
 
     def Make_save_root(
         self,
