@@ -1,7 +1,7 @@
 from typing import List, Any, Tuple
 from subprocess import check_output
 
-from python_ex._System import Path
+from python_ex.system import Path
 
 
 class System_Utils():
@@ -13,9 +13,9 @@ class System_Utils():
         @staticmethod
         def _Make_dir(obj_dir: str, root_dir: str, this_rank: int = 0):
             if not this_rank:
-                return Path._Make_directory(obj_dir, root_dir)
+                return Path.Make_directory(obj_dir, root_dir)
             else:
-                return Path._Join(obj_dir, root_dir)
+                return Path.Join(obj_dir, root_dir)
 
     class Cuda():
         @staticmethod

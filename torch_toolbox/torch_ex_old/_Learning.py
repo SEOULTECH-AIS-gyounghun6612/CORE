@@ -14,9 +14,9 @@ from torch.multiprocessing.spawn import spawn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 
-from python_ex._System import Path, File
-from python_ex._Project import Debuging, Config
-from python_ex._Vision import cv2
+from python_ex.system import Path, File, Time
+from python_ex.project import Debuging, Config
+from python_ex.vision import cv2
 
 from ._Utils import System_Utils
 from ._Dataset import Data, Data_Config
@@ -128,16 +128,16 @@ class Learning():
                 self.dataloader_param = dataloader_opt_block
 
                 # set the save dir
-                _working_day = Debuging.Time._Apply_text_form(Debuging.Time._Stemp(), True, "%Y-%m-%d")
+                _working_day = Time.Make_text_from(Time.Stamp(), True, "%Y-%m-%d")
                 _trial_num = 0
                 while True:
-                    _result_dir = Path._Join([self.project_name, _working_day, f"trial_{_trial_num:0>3d}"], self.result_root)
-                    if not Path._Exist_check(_result_dir, Path.Type.DIRECTORY):
+                    _result_dir = Path.Join([self.project_name, _working_day, f"trial_{_trial_num:0>3d}"], self.result_root)
+                    if not Path.Exist_check(_result_dir, Path.Type.DIRECTORY):
                         break
                     else:
                         _trial_num += 1
 
-                self.result_root = Path._Make_directory(_result_dir, self.result_root)
+                self.result_root = Path.Make_directory(_result_dir, self.result_root)
 
                 # debug the progress mode list in this learning
                 _debug_process_text = "This learning process, that consist of "
@@ -272,7 +272,7 @@ class Learning():
                 _gpu_info: int = self._gpu_info[num_of_p_d]
 
                 # set logger in learning
-                _logger_dir = Path._Make_directory(f"process_{_num_of_p_l}", self.result_root)
+                _logger_dir = Path.Make_directory(f"process_{_num_of_p_l}", self.result_root)
                 _logger = SummaryWriter(_logger_dir)
 
                 # initialize model, optimizer
@@ -708,7 +708,7 @@ class Learning_Config():
             raise NotImplementedError
 
         def _Get_Reward_model_config(self, config_process: Type[Config]):
-            _file_dir, _file_name = File._Extrect_file_name(self.reward_config_file, False)
+            _file_dir, _file_name = File.Extrect_file_name(self.reward_config_file, False)
 
             _reward_model_config = config_process()
             _reward_model_config._Load(_file_name, _file_dir)
