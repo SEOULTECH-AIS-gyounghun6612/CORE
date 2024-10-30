@@ -23,7 +23,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 from python_ex.system import Path, String, File, Time
-from python_ex.project import Template, Config, Debuging
+from python_ex.project import Project_Template, Config, Debuging
 
 from torch_ex.dataset import (Dataloader_Config, DataLoader)
 from torch_ex.neural_network import (
@@ -212,7 +212,7 @@ class Reinforcement_Based_on_Policy_Config(End_to_End_Config):
             "_".join(self.policy_network.Get_summation()))
 
 
-class End_to_End(Template, ABC):
+class End_to_End(Project_Template, ABC):
     """ ### End to End 학습을 구현한 기본 구조
     각 프로젝트에서 요구되는 End to End 학습 구조를 구성하기 위하여
     기본적인 구조를 구성한 모듈.\n
