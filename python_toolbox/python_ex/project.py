@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import (
-    Any
+    Any, TypeVar, Generic
 )
 from dataclasses import asdict, dataclass
 
@@ -9,78 +9,77 @@ import argparse
 from .system import Path, File, Time
 
 
-@dataclass
 class Config():
-    """
-    프로젝트에 사용되는 인자값을 관리하기 위한 객체(dataclass) 기본 구조
-
-    --------------------------------------------------------------------
-    """
-    def Config_to_dict(self) -> dict[str, Any]:
+    @dataclass
+    class Basement():
         """
-        설정값을 사용가능한 인자값으로 변경하는 함수
+        프로젝트에 사용되는 인자값을 관리하기 위한 객체(dataclass) 기본 구조
 
-        ----------------------------------------------------------------
-        ### Parameters
-        - None
-
-        ### Return
-        - dictionary : 파라메터로 활용하기 위하여 구성된 인자값
-
-        ----------------------------------------------------------------
+        --------------------------------------------------------------------
         """
-        return asdict(self)
+        def Config_to_dict(self) -> dict[str, Any]:
+            """
+            설정값을 사용가능한 인자값으로 변경하는 함수
 
-    def Write_to(
-        self,
-        file_name: str,
-        file_dir: str
-    ):
+            ----------------------------------------------------------------
+            ### Parameters
+            - None
+
+            ### Return
+            - dictionary : 파라메터로 활용하기 위하여 구성된 인자값
+
+            ----------------------------------------------------------------
+            """
+            return asdict(self)
+
+        def Write_to(
+            self,
+            file_name: str,
+            file_dir: str
+        ):
+            _ext = file_name.split(".")[-1].lower()
+            _write_data = self.Config_to_dict()
+
+            if _ext == "yaml":
+                File.Yaml.Write(file_name, file_dir, _write_data)
+
+            elif _ext == "json":
+                File.Json.Write(file_name, file_dir, _write_data)
+
+            else:
+                _msg = f"Config {self.__class__.__name__} is not support"
+                _msg += f" {_ext} file foramt for write to file.\n"
+                _msg += "If you want do this, overide the function 'Write_to'."
+                raise ValueError(_msg)
+
+        def Set_from(self, source: dict[str, Any]):
+            for _k, _v in source.items():
+                if _k in self.__dict__:
+                    self.__dict__[_k] = _v
+
+        def Get_summation(self) -> list[str]:
+            raise NotImplementedError
+
+    @staticmethod
+    def Read_from_file(file_name: str, file_dir: str):
         _ext = file_name.split(".")[-1].lower()
-        _write_data = self.Config_to_dict()
 
         if _ext == "yaml":
-            File.Yaml.Write(file_name, file_dir, _write_data)
+            return File.Yaml.Read(file_name, file_dir)
+        if _ext == "json":
+            return File.Json.Read(file_name, file_dir)
 
-        elif _ext == "json":
-            File.Json.Write(file_name, file_dir, _write_data)
-
-        else:
-            _msg = f"Config {self.__class__.__name__} is not support"
-            _msg += f" {_ext} file foramt for write to file.\n"
-            _msg += "If you want do this, overide the function 'Write_to'."
-            raise ValueError(_msg)
-
-    def Read_from(self, file_name: str, file_dir: str):
-        _ext = file_name.split(".")[-1].lower()
-
-        if _ext == "yaml":
-            _data = File.Yaml.Read(file_name, file_dir)
-        elif _ext == "json":
-            _data =  File.Json.Read(file_name, file_dir)
-        else:
-            _msg = f"Config {self.__class__.__name__} is not support"
-            _msg += f" {_ext} file foramt for read from file.\n"
-            _msg += "If you want do this, overide the function 'Read_from'."
-            raise ValueError(_msg)
-
-        self.Set_from(_data)
-
-    def Set_from(self, source: dict[str, Any]):
-        for _k, _v in source.items():
-            if _k in self.__dict__:
-                self.__dict__[_k] = _v
-
-    def Get_summation(self) -> list[str]:
-        raise NotImplementedError
+        _msg = f"file foramt '{_ext}' is not support for build config "
+        _msg += "by using this code.\n"
+        _msg += "If you want use do file foramt '{_ext}', "
+        _msg += "overide the function 'Config.Read_from'."
+        raise ValueError(_msg)
 
 
-@dataclass
-class Project_Args():
-    name: str
+CFG = TypeVar("CFG", bound=Config.Basement)
 
 
-class Project_Template():
+class Project_Template(Generic[CFG]):
     """ ### 프로젝트 구성을 위한 기본 구조
 
     ---------------------------------------------------------------------
@@ -100,20 +99,29 @@ class Project_Template():
     - Make_save_root: 프로젝트 결과 저장 최상위 경로 생성 함수
 
     """
-    project_args: Project_Args
-
-    def __init__(self):
-        self.project_args = self.project_args.__class__(
-            **vars(self.Get_args_by_argparser().parse_args())
-        )
+    def __init__(self, config_template: type[CFG]):
+        self.project_cfg: CFG = self.Get_config(config_template)
         self.result_root = self.Make_save_root()
 
     def Get_args_by_argparser(self) -> argparse.ArgumentParser:
         _parser = argparse.ArgumentParser()
         _parser.add_argument(
-            "-n", "--name", dest="name", type=str, help="name for this project"
-        )
+            "--file_path", "-f",
+            dest="file_path",
+            type=str)
         return _parser
+
+    def Get_config(self, config_template: type[CFG]) -> CFG:
+        _arg_dict = vars(
+            self.Get_args_by_argparser().parse_args())
+
+        _file_path = _arg_dict["file_path"]
+        if _file_path is not None:
+            _f_dir, f_name = Path.Devide(_file_path)
+            _arg_dict.update(Config.Read_from_file(f_name, _f_dir))
+
+        _arg_dict.pop("file_path")
+        return config_template(**_arg_dict)
 
     def Make_save_root(
         self,
@@ -137,7 +145,6 @@ class Project_Template():
         if obj_dir is None:
             _obj_dir = [
                 "result",
-                self.project_args.name,
                 Time.Make_text_from(Time.Stamp(), "%Y-%m-%d_%H:%M:%S")
             ]
         else:
