@@ -101,7 +101,7 @@ class Project_Template(Generic[CFG]):
     """
     def __init__(self, config_template: type[CFG]):
         self.project_cfg: CFG = self.Get_config(config_template)
-        self.result_root = self.Make_save_root()
+        self.save_root = self.Make_save_root()
 
     def Get_args_by_argparser(self) -> argparse.ArgumentParser:
         _parser = argparse.ArgumentParser()
