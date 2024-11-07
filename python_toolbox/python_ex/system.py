@@ -219,6 +219,10 @@ class Path():
         """
         _path_comp = [] if root_path is None else [root_path]
         _path_comp += obj_path if isinstance(obj_path, list) else [obj_path]
+
+        if _path_comp[0] == "":
+            _path_comp[0] = " "
+            return path.join(*_path_comp)[1:]
         return path.join(*_path_comp)
 
     @staticmethod
