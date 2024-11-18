@@ -26,8 +26,6 @@ import csv
 import xml.etree.ElementTree as ET
 import yaml
 
-from math import log10, floor
-
 from datetime import datetime, date, time, timezone
 from dateutil.relativedelta import relativedelta
 
@@ -45,11 +43,16 @@ class String():
     ---------------------------------------------------------------------------
     """
     @staticmethod
-    def Count_auto_aligning(this_count: int, max_count: int):
-        _string_ct = floor(log10(max_count)) + 1
-        _this = f"{this_count}".rjust(_string_ct, "0")
+    def Count_auto_align(
+        value: int, max_count: int,
+        is_right: bool = False, filler: str = "0"
+    ):
+        _str_len = len(str(max_count))
+        _v = str(value).rjust(_str_len, filler) if (
+            is_right
+        ) else str(value).ljust(_str_len, filler)
 
-        return f"{_this}/{max_count}"
+        return f"{_v}/{max_count}"
 
     @staticmethod
     def Str_adjust(
