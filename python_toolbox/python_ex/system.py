@@ -94,7 +94,7 @@ class String():
         )
 
     @staticmethod
-    def Convert_from_str(str_data: str, empty_is_None: bool = False):
+    def Convert_from_str(str_data: str, empty_is_None: bool = False) -> Any:
         try:
             if "," in str_data:
                 return [
