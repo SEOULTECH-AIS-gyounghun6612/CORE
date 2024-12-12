@@ -100,10 +100,10 @@ class Project_Template(Generic[CFG]):
 
     """
     def __init__(self, config_template: type[CFG]):
-        self.project_cfg: CFG = self.Get_config(config_template)
+        self.project_CFG: CFG = self.Get_config(config_template)
         self.save_root = self.Make_save_root()
 
-    def Get_args_by_argparser(self) -> argparse.ArgumentParser:
+    def Get_args_by_arg_parser(self) -> argparse.ArgumentParser:
         _parser = argparse.ArgumentParser()
         _parser.add_argument(
             "--file_path", "-f",
@@ -113,7 +113,7 @@ class Project_Template(Generic[CFG]):
 
     def Get_config(self, config_template: type[CFG]) -> CFG:
         _arg_dict = vars(
-            self.Get_args_by_argparser().parse_args())
+            self.Get_args_by_arg_parser().parse_args())
 
         _file_path = _arg_dict["file_path"]
         if _file_path is not None:
