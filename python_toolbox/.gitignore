@@ -1,6 +1,5 @@
 # ignore option
 # data file and directory
-data/
 *.png
 *.jpg
 *.npy
