@@ -6,7 +6,8 @@ from dataclasses import asdict, dataclass
 
 import argparse
 
-from .system import Path, File, Time
+from .system import Path_utils, Time
+from .file import Read_from_file, Write_to_file
 
 
 class Config():
@@ -37,20 +38,10 @@ class Config():
             file_name: str,
             file_dir: str
         ):
-            _ext = file_name.split(".")[-1].lower()
-            _write_data = self.Config_to_dict()
-
-            if _ext == "yaml":
-                File.Yaml.Write(file_name, file_dir, _write_data)
-
-            elif _ext == "json":
-                File.Json.Write(file_name, file_dir, _write_data)
-
-            else:
-                _msg = f"Config {self.__class__.__name__} is not support"
-                _msg += f" {_ext} file foramt for write to file.\n"
-                _msg += "If you want do this, overide the function 'Write_to'."
-                raise ValueError(_msg)
+            try:
+                Write_to_file(file_name, self.Config_to_dict(), file_dir)
+            except ValueError:
+                print("If you want do this, override the function 'Write_to'.")
 
         def Set_from(self, source: dict[str, Any]):
             for _k, _v in source.items():
@@ -62,18 +53,12 @@ class Config():
 
     @staticmethod
     def Read_from_file(file_name: str, file_dir: str):
-        _ext = file_name.split(".")[-1].lower()
+        try:
+            return Read_from_file(file_name, file_dir)
 
-        if _ext == "yaml":
-            return File.Yaml.Read(file_name, file_dir)
-        if _ext == "json":
-            return File.Json.Read(file_name, file_dir)
-
-        _msg = f"file foramt '{_ext}' is not support for build config "
-        _msg += "by using this code.\n"
-        _msg += "If you want use do file foramt '{_ext}', "
-        _msg += "overide the function 'Config.Read_from'."
-        raise ValueError(_msg)
+        except ValueError as _value_e:
+            print("If you want do this, override the function 'Read_from'.")
+            raise ValueError from _value_e
 
 
 CFG = TypeVar("CFG", bound=Config.Basement)
@@ -117,8 +102,12 @@ class Project_Template(Generic[CFG]):
 
         _file_path = _arg_dict["file_path"]
         if _file_path is not None:
-            _f_dir, f_name = Path.Devide(_file_path)
-            _arg_dict.update(Config.Read_from_file(f_name, _f_dir))
+            _f_dir, f_name = Path_utils.Get_file_name(_file_path)
+
+            try:
+                _arg_dict.update(Config.Read_from_file(f_name, _f_dir))
+            except ValueError:
+                ...
 
         _arg_dict.pop("file_path")
         return config_template(**_arg_dict)
@@ -150,8 +139,7 @@ class Project_Template(Generic[CFG]):
         else:
             _obj_dir = obj_dir
 
-        return Path.Make_directory(
-            _obj_dir, Path.WORK_SPACE if result_root else result_root)
+        return Path_utils.Make_directory(_obj_dir, result_root)
 
 
 class Debuging():
