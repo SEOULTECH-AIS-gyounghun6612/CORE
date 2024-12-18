@@ -12,12 +12,12 @@ from python_ex.file import Read_from_file, Write_to_file
 
 class Data():
     @staticmethod
-    def Flag_to_type(flag: str):
-        if flag == "INTEGER":
+    def Convert_to_type_from(string: str):
+        if string == "INTEGER":
             return int
-        if flag == "REAL":
+        if string == "REAL":
             return float
-        if flag == "TEXT":
+        if string == "TEXT":
             return str
         return None  # BLOB
 
@@ -33,7 +33,7 @@ class Config():
 
     @dataclass
     class Column(CFG.Basement):
-        data_sqlite_type: Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+        data_type: Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 
         # option for this column
         empty_able: bool = True
@@ -54,7 +54,7 @@ class Config():
             self.skip_able = any([
                 self.default_value is not None,
                 self.empty_able,
-                (self.primary and self.data_sqlite_type == "INTEGER"),
+                (self.primary and self.data_type == "INTEGER"),
                 self.is_time
             ])
 
@@ -62,8 +62,8 @@ class Config():
             return value
 
         def Set_default_value(self, value: Any):
-            _c_type = self.data_sqlite_type
-            _type = Data.Flag_to_type(_c_type)
+            _c_type = self.data_type
+            _type = Data.Convert_to_type_from(_c_type)
 
             if self.is_time:
                 if value == "now":
@@ -73,7 +73,6 @@ class Config():
 
                 if isinstance(value, str):
                     ...
-                ...
 
             if _type is None or isinstance(value, _type):
                 self.default_value = value
@@ -89,7 +88,7 @@ class Config():
             return ""
 
         def Create_command(self, name: str):
-            _opt = [f"\t{name}", self.data_sqlite_type]
+            _opt = [f"\t{name}", self.data_type]
 
             if self.is_unique:
                 _opt.append("UNIQUE")
@@ -99,7 +98,8 @@ class Config():
             if self.default_value is not None:
                 _opt.append(f"DEFAULT {self.default_value}")
             elif self.is_time:
-                _opt.append("DEFAULT (datetime('now'))")
+                _now_cmd = "strftime('%Y-%m-%d %H:%M:%f')"
+                _opt.append(f"DEFAULT ({_now_cmd})")
             elif not self.empty_able:
                 _opt.append("NOT NULL")
 
