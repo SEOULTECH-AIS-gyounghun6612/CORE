@@ -6,7 +6,7 @@
 
 # tmeporary or test file and directory
 temp*.*
-test.*
+test*.*
 test*/
 
 # build file and directory
