@@ -41,7 +41,6 @@ def Write_to_file(
         raise ValueError(f"File extension '{_suffix}' is not supported")
 
 
-
 # class File():
 #     class Support_Format(String.String_Enum):
 #         TXT = auto()
@@ -154,7 +153,8 @@ def Write_to_file(
 #                     _read_data = [
 #                         dict(
 #                             (
-#                                 _key.replace(" ", ""), _value.replace(" ", "")
+#                                 _key.replace(" ", ""),
+#                                 _value.replace(" ", "")
 #                             ) for _key, _value in _line_dict.items()
 #                         ) for _line_dict in _raw_data
 #                     ]
@@ -278,4 +278,3 @@ def Write_to_file(
 #                 return _cvt(ET.parse(_file).getroot())
 #             print(f"file {file_name} is not exist in {file_dir}")
 #             return {}
-

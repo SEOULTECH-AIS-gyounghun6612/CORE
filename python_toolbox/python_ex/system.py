@@ -102,13 +102,13 @@ class String():
                     any(_txt in str_data.split("T")[-1] for _txt in "+-")
                 )
                 _use_microsec = "." in str_data
-                return Time.Make_time_from(
+                return Time_Utils.Make_time_from(
                     str_data,
                     use_timezone=_use_timezone,
                     use_microsec=_use_microsec
                 )
             if ";" in str_data:
-                return Time.Relative(
+                return Time_Utils.Relative(
                     *[int(_v) for _v in str_data.split(";")]
                 )
             if "." in str_data:
@@ -123,15 +123,15 @@ class String():
 
     @staticmethod
     def Convert_to_str(
-        data: list | datetime | Time.Relative | float | int | str
+        data: list | datetime | Time_Utils.Relative | float | int | str
     ) -> str:
         if isinstance(data, list):
             return ",".join(
                 [String.Convert_to_str(_data) for _data in data]
             )
         if isinstance(data, (datetime, date)):
-            return Time.Make_text_from(data)
-        if isinstance(data, Time.Relative):
+            return Time_Utils.Make_text_from(data)
+        if isinstance(data, Time_Utils.Relative):
             return ";".join(list(data))
         return data if isinstance(data, str) else str(data)
 
@@ -185,8 +185,7 @@ class Path_utils():
     """ ### Pathlib을 사용하여 구현한 자주 사용되는 경로 관련 기능 구현
 
     ---------------------------------------------------------------------------
-
-    ### Attributes
+    ### Structure
     - `Join`: 경로 생성 함수
     - `Path_split`: 경로 분할 함수
     - `Get_file_name`: 파일 이름 추출 함수
@@ -353,24 +352,17 @@ class Path_utils():
     #             system(f"sudo umount {mounted_dir}")
 
 
-class Time_utils():
-    @staticmethod
-    def Time_stamp():
-        ...
-
-
-class Time():
+class Time_Utils():
     @staticmethod
     def Stamp(set_timezone: timezone | None = None):
-        """
-        현재 시간 정보를 생성하는 함수
+        """ ### 현재 시간 정보를 생성하는 함수
 
         ---------------------------------------------------------------------------------------
         ### Parameters
-        - start_time : 시간 측정을 위한 시작점
+        - `set_timezone` : 타임존 정보
 
         ### Return
-        - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
+        - `this_time` : 현재 시간 정보
         """
         return datetime.now(set_timezone)
 
@@ -379,17 +371,17 @@ class Time():
         standard_time: datetime,
         set_timezone: timezone | None = None
     ):
-        return Time.Stamp(set_timezone) - standard_time
+        return Time_Utils.Stamp(set_timezone) - standard_time
 
     @staticmethod
     def Make_text_from(
-        time_source: datetime | date | time,
+        time_source: datetime | date | time | None = None,
         date_format: str | None = None
     ):
+        _time = Time_Utils.Stamp() if time_source is None else time_source
         if date_format is None:
-            return time_source.isoformat()
-        else:
-            return time_source.strftime(date_format)
+            return _time.isoformat()
+        return _time.strftime(date_format)
 
     @staticmethod
     def Make_time_from(
