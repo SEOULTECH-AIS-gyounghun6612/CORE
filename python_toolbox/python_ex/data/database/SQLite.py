@@ -246,7 +246,7 @@ class Database():
 
         for _t_name, _table_params in tables.items():
             if isinstance(_table_params, Config.Table):
-                if self.Check(_t_name):
+                if self.Table_name_check(_t_name):
                     self.table_cfgs[_t_name] = _table_params
                     continue
                 self.Apply(*_table_params.Create_command(_t_name))
@@ -276,7 +276,7 @@ class Database():
     def Disconnect(self):
         self.db.close()
 
-    def Check(self, name: str) -> bool:
+    def Table_name_check(self, name: str) -> bool:
         _cmd = "SELECT name FROM sqlite_master WHERE type='table';"
         _cs = self.Apply(0, _cmd)
         for _table_name in _cs.fetchall():
@@ -299,7 +299,7 @@ class Database():
         is_override: bool = False
     ):
         # check the table "name" is exist in db
-        if self.Check(name):
+        if self.Table_name_check(name):
             if not is_override:
                 self.Apply(1, f"Table '{name}' is already exist.")
 
@@ -318,3 +318,18 @@ class Database():
     def Insert_value(self, name: str, value: dict[str, Any]):
         self.Apply(*self.table_cfgs[name].Insert_command(name, value))
         self.db.commit()
+
+    def Get(self, name: str, num: int = -1, keys: list[str] | None = None):
+        if name not in self.table_cfgs:
+            return self.Apply(1, "")
+
+        _cmd = "SELECT "
+        if keys is None:
+            _cmd += f"* from {name}"
+
+        else:
+            _column_info = self.table_cfgs[name].column_cfgs
+
+
+        _cmd += f"from {name}"
+        # name FROM sqlite_master WHERE type='table';"
