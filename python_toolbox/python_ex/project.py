@@ -71,6 +71,25 @@ class Config():
             print("If you want do this, override the function 'Read_from'.")
             raise ValueError from _value_e
 
+    @staticmethod
+    def Read_with_arg_parser(
+        config_template: type[Config.cfg_class],
+        parser: argparse.ArgumentParser | None = None
+    ):
+        if parser is None:
+            _parser = argparse.ArgumentParser()
+            _parser.add_argument("--cfg_file", dest="cfg_file", type=str)
+            _f_dir, _f_name = Path_utils.Get_file_name(
+                vars(_parser.parse_args())["cfg_file"])
+            return Config.Read_from_file(config_template, _f_name, _f_dir)
+
+        _arg_dict = vars(parser.parse_args())
+        _cfg_dict = vars(config_template)
+        return config_template(
+            **dict((
+                _k, _v
+            ) for _k, _v in _arg_dict.items() if _k in _cfg_dict))
+
 
 class Project_Template(Generic[Config.cfg_class]):
     """ ### 프로젝트 구성을 위한 기본 구조
@@ -91,38 +110,16 @@ class Project_Template(Generic[Config.cfg_class]):
     - `_Make_save_root`: 프로젝트 결과 저장 최상위 경로 생성 함수
 
     """
-    def __init__(self, name: str, config_type: type[Config.cfg_class]):
+    def __init__(
+        self, name: str, config: Config.cfg_class, result_dir: str = "result"
+    ):
         self.project_name = name
-        self.project_cfg: Config.cfg_class = self._Get_config(config_type)
-        self.save_root = self._Make_save_root()
+        self.project_cfg = config
+        self.save_root = Path_utils.Make_directory(result_dir)
 
-    def _Get_args_by_arg_parser(self) -> argparse.ArgumentParser:
-        _parser = argparse.ArgumentParser()
-        _parser.add_argument("--cfg_file", dest="cfg_file", type=str)
-        return _parser
-
-    def _Get_config(
-        self, config_template: type[Config.cfg_class]
-    ) -> Config.cfg_class:
-        _arg_dict = vars(
-            self._Get_args_by_arg_parser().parse_args())
-
-        _file_path = _arg_dict["cfg_file"]
-
-        if _arg_dict["cfg_file"] is not None:
-            _arg_dict.pop("cfg_file")
-            _f_dir, _f_name = Path_utils.Get_file_name(_file_path)
-
-            return Config.Read_from_file(config_template, _f_name, _f_dir)
-
-        _cfg_dict = vars(config_template)
-        return config_template(
-            **dict((
-                _k, _v
-            ) for _k, _v in _arg_dict.items() if _k in _cfg_dict))
-
-    def _Make_save_root(
-        self, obj_dir: str | list[str] = "result", base_path: str | None = None
+    def Make_save_root(
+        self, obj_dir: str | list[str],
+        base_path: str | None = None, use_time_stamp: bool = True
     ):
         """ ### 프로젝트 결과 저장 최상위 경로 생성 함수
 
@@ -133,8 +130,11 @@ class Project_Template(Generic[Config.cfg_class]):
         ### Returns
             - `Path`: 저장 최상위 경로
         """
-        _obj_dir = obj_dir if isinstance(obj_dir, list) else [obj_dir]
-        _obj_dir += [Time_Utils.Make_text_from()]
+        _obj_dir = [self.project_name]
+        _obj_dir += obj_dir if isinstance(obj_dir, list) else [obj_dir]
+
+        if use_time_stamp:
+            _obj_dir += [Time_Utils.Make_text_from()]
 
         return Path_utils.Make_directory(_obj_dir, base_path)
 
