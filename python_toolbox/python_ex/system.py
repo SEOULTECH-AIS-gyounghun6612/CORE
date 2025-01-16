@@ -12,19 +12,15 @@
 """
 from __future__ import annotations
 from enum import Enum, auto
-from typing import (Tuple, Literal, Any, Callable, TypeVar)
+from typing import (Tuple, Literal, Any, TypeVar)
 
 from dataclasses import dataclass
 
 import sys
-from glob import glob
-from os import path, system, getcwd, makedirs, get_terminal_size
 import platform
+from os import get_terminal_size
 
-import json
-import csv
-import xml.etree.ElementTree as ET
-import yaml
+from pathlib import Path
 
 from datetime import datetime, date, time, timezone
 from dateutil.relativedelta import relativedelta
@@ -107,13 +103,13 @@ class String():
                     any(_txt in str_data.split("T")[-1] for _txt in "+-")
                 )
                 _use_microsec = "." in str_data
-                return Time.Make_time_from(
+                return Time_Utils.Make_time_from(
                     str_data,
                     use_timezone=_use_timezone,
                     use_microsec=_use_microsec
                 )
             if ";" in str_data:
-                return Time.Relative(
+                return Time_Utils.Relative(
                     *[int(_v) for _v in str_data.split(";")]
                 )
             if "." in str_data:
@@ -128,15 +124,15 @@ class String():
 
     @staticmethod
     def Convert_to_str(
-        data: list | datetime | Time.Relative | float | int | str
+        data: list | datetime | Time_Utils.Relative | float | int | str
     ) -> str:
         if isinstance(data, list):
             return ",".join(
                 [String.Convert_to_str(_data) for _data in data]
             )
         if isinstance(data, (datetime, date)):
-            return Time.Make_text_from(data)
-        if isinstance(data, Time.Relative):
+            return Time_Utils.Make_text_from(data)
+        if isinstance(data, Time_Utils.Relative):
             return ";".join(list(data))
         return data if isinstance(data, str) else str(data)
 
@@ -225,496 +221,188 @@ class OperatingSystem():
         return OperatingSystem.THIS_STYLE == like_this_os
 
 
-# -- Mation Function -- #
-class Path():
-    """ ### 파일 및 디렉토리 경로 관련 기능 모음
+class Path_utils():
+    """ ### Pathlib을 사용하여 구현한 자주 사용되는 경로 관련 기능 구현
 
     ---------------------------------------------------------------------------
+    ### Structure
+    - `Join`: 경로 생성 함수
+    - `Path_split`: 경로 분할 함수
+    - `Get_file_name`: 파일 이름 추출 함수
+    - `Make_directory`: 디렉토리 생성 함수
     """
-    WORK_SPACE = getcwd()
-
-    class Type(String.String_Enum):
-        """ ### 작업 대상 구분 상수
-        -----------------------------------------------------------------------
-        ### Attributes
-        - `DIR`: 디렉토리 -> (value = "dir")
-        - `FILE`: 파일 -> (value = "file")
-        """
-        DIR = auto()
-        FILE = auto()
-
-    @staticmethod
-    def Seperater_check(obj_path: str):
-        """
-        #### 경로 문자열에 존재하는 구분자 확인
-        ----------------------------------------------------------------
-        """
-        _is_linux = OperatingSystem.Is_it_runing(OperatingSystem.Name.LINUX)
-        _old_sep = "\\" if _is_linux else "/"
-        return obj_path.replace(_old_sep, path.sep)
 
     @staticmethod
     def Join(obj_path: str | list[str], root_path: str | None = None):
-        """
-        #### 경로 문자열 연결
-        ----------------------------------------------------------------
-        """
-        _path_comp = [] if root_path is None else [root_path]
-        _path_comp += obj_path if isinstance(obj_path, list) else [obj_path]
+        """ ### 경로 객체 생성 함수
+        문자열 데이터를 사용하여 경로 생성을 위한 기본 함수
 
-        if _path_comp[0] == "":
-            _path_comp[0] = " "
-            return path.join(*_path_comp)[1:]
-        return path.join(*_path_comp)
+        -----------------------------------------------------------------------
+        ### Args
+        - `obj_path`: 경로 생성을 위한 문자열 데이터
+        - `root_path`: 생성되는 경로의 기본 경로. (기본값 = 작업 디렉토리)
 
-    @staticmethod
-    def Devide(obj_path: str, level: int = -1):
+        ### Returns
+        - `Path`: 결합된 경로 객체
+
         """
-        #### 주어진 경로 문자열 분할
-        ----------------------------------------------------------------
-        """
-        _path_comp = obj_path.split(path.sep)
-        return Path.Join(_path_comp[:level]), Path.Join(_path_comp[level:])
+        _path = Path().cwd() if root_path is None else Path(root_path)
+
+        if isinstance(obj_path, str):
+            return _path.joinpath(obj_path)
+        return _path.joinpath(*obj_path)
 
     @staticmethod
-    def Exist_check(obj_path: str, target: Path.Type | None = None):
-        """
-        #### 해당 경로의 존재 여부 확인
-        ----------------------------------------------------------------
-        #### Parameter
+    def Path_split(obj_path: Path):
+        """ ### 경로 분할 함수
+        주어진 경로를 나누어 현재 경로의 이름과 부모 경로 문자열 반환하는 함수
+
+        -----------------------------------------------------------------------
+        ### Args
+        - `obj_path`: 대상 경로
+
+        ### Returns
+        - `tuple[str, str]`: 부모 경로 문자열, 현재 경로 문자열
 
         """
-        if target is Path.Type.DIR:
-            return path.isdir(obj_path)
-        if target is Path.Type.FILE:
-            return path.isfile(obj_path)
-        return path.isdir(obj_path) or path.isfile(obj_path)
+        return str(obj_path.parent), obj_path.name
+
+    @staticmethod
+    def Get_file_name(file_path: str | Path):
+        """ ### 파일 이름 추출 함수
+        파일 경로에서 파일 이름과 부모 경로 문자열 반환하는 함수
+
+        -----------------------------------------------------------------------
+        ### Args
+        - `file_path`: 대상 경로
+
+        ### Returns
+        - `tuple[str, str]`: 부모 경로 문자열, 파일 이름 문자열
+
+        ### Raises
+        - ValueError: 주어진 경로가 파일 경로가 아닐 경우
+        """
+
+        _obj = file_path if isinstance(file_path, Path) else Path(file_path)
+
+        if _obj.is_file():
+            return Path_utils.Path_split(_obj)
+        raise ValueError(f"Path {_obj} is not file path")
 
     @staticmethod
     def Make_directory(
-        obj_dir: str | list[str],
-        root_dir: str | None = None,
-        is_force: bool = False
+        obj_path: str | list[str],
+        root_path: str | None = None, mode: int = 511
     ):
-        """ ### Function feature description
-        Note
-
-        ------------------------------------------------------------------
-        ### Args
-        - `arg_name`: Description of the input argument
-
-        ### Returns or Yields
-        - `data_format`: Description of the output argument
-
-        ### Raises
-        - `error_type`: Method of handling according to error issues
-
-        """
-        if root_dir is not None:  # root directory check
-            _exist = Path.Exist_check(root_dir, Path.Type.DIR)
-            if _exist:
-                pass
-            elif is_force:
-                _front, _back = Path.Devide(root_dir)
-                Path.Make_directory(_back, _front)
-            else:
-                raise ValueError(
-                    "\n".join((
-                        f"!!! Root directory {root_dir} is NOT EXIST !!!",
-                        f"{obj_dir} can't make in {root_dir}")
-                    )
-                )
-
-        else:  # use relative root directory (= cwd)
-            root_dir = Path.WORK_SPACE
-
-        _obj_dir = Path.Join(obj_dir, root_dir)
-        makedirs(_obj_dir, exist_ok=True)
-        return _obj_dir
-
-    @staticmethod
-    def Get_file_directory(file_path: str):
-        """ ### Function feature description
-        Note
-
-        ------------------------------------------------------------------
-        ### Args
-        - `arg_name`: Description of the input argument
-
-        ### Returns or Yields
-        - `data_format`: Description of the output argument
-
-        ### Raises
-        - `error_type`: Method of handling according to error issues
-
-        """
-        _file_path = file_path
-        _exist = Path.Exist_check(file_path, Path.Type.FILE)
-
-        return _exist, *Path.Devide(_file_path)
-
-    @staticmethod
-    def Search(
-        obj_path: str,
-        target: Path.Type | None = None,
-        keyword: str | None = None,
-        ext_filter: str | list[str] | None = None
-    ) -> list[str]:
-        """ ### Function feature description
-        Note
-
-        ------------------------------------------------------------------
-        ### Args
-        - `arg_name`: Description of the input argument
-
-        ### Returns or Yields
-        - `data_format`: Description of the output argument
-
-        ### Raises
-        - `error_type`: Method of handling according to error issues
-
-        """
-        assert Path.Exist_check(obj_path, Path.Type.DIR)
-
-        # make keyword
-        _obj_keyword = "*" if keyword is None else keyword
-
-        # make ext list
-        if isinstance(ext_filter, list):
-            _ext_list = [
-                _ext[1:] if _ext[0] == "." else _ext for _ext in ext_filter
-            ]
-        elif isinstance(ext_filter, str):
-            _ext_list = [
-                ext_filter[1:] if ext_filter[0] == "." else ext_filter
-            ]
-        else:
-            _ext_list = [""]
-
-        _searched_list = []
-
-        for _ext in _ext_list:
-            _list = sorted(glob(
-                Path.Join(
-                    _obj_keyword if _ext == "" else f"{_obj_keyword}.{_ext}",
-                    obj_path
-                ))
-            )
-            _searched_list += [
-                _file for _file in _list if Path.Exist_check(_file, target)
-            ]
-        return _searched_list
-
-    class Server():
-        """ ### 네트워크 내 데이터 서버 관련 기능 모음
+        """ ### 디렉토리 생성 함수
+        주어진 디렉토리를 생성하는 함수
 
         -----------------------------------------------------------------------
+        ### Args
+        - `obj_path`: 대상 경로
+        - `root_path`: 생성되는 경로의 기본 경로. (기본값 = 작업 디렉토리)
+        - `mode`: 생성된 경로 계정별 작업 설정
+
+        ### Returns
+        - `Path` : 생성된 디렉토리 경로 객체
+
         """
-        IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
+        _obj = Path_utils.Join(obj_path, root_path)
+        _obj.mkdir(mode, exist_ok=True)
 
-        class Connection_Porcess(String.String_Enum):
-            CIFS = auto()
-
-        def __init__(
-            self,
-            process: Connection_Porcess = Connection_Porcess.CIFS
-        ) -> None:
-            self.process = process
-
-        def _connect_to_Linux(
-            self,
-            host_name: str,
-            mount_dir: str,
-            mount_point: str,
-            user_id: int,
-            group_id: int,
-            dir_mode: int,
-            file_mode: int,
-            credent_path: str
-        ):
-            _command = path.join(
-                f"sudo -S mount -t {self.process}",
-                " -o ",
-                ",".join((
-                    f"uid={user_id}",
-                    f"gid={group_id}",
-                    f"dir_mode={dir_mode%1000:0>4d}",
-                    f"dile_mode={file_mode%1000:0>4d}",
-                    f"credentials={credent_path}",
-                )),
-                f" //{host_name}/{mount_dir} {mount_point}"
-            )
-            system(_command)
-
-            return mount_point
-
-        def _connect_to_Window(
-            self,
-            host_name: str,
-            mount_dir: str,
-            mount_point: str,
-            user_name: str
-        ):
-            raise NotImplementedError
-
-        def _disconnect(self, mounted_dir: str):
-            if self.IS_WINDOW:
-                system(f"NET USE {mounted_dir}: /DELETE")
-            else:
-                system(f"fuser -ck {mounted_dir}")
-                system(f"sudo umount {mounted_dir}")
-
-
-class File():
-    class Support_Format(String.String_Enum):
-        TXT = auto()
-        JSON = auto()
-        CSV = auto()
-        YAML = auto()
-        XML = auto()
+        return _obj
 
     @staticmethod
-    def Extention_checker(file_name: str, file_format: File.Support_Format):
-        _format = str(file_format)
-        if "." in file_name:
-            _ext = file_name.split(".")[-1]
-            if _ext != _format:
-                _file_name = file_name.replace(_ext, _format)
-            else:
-                _file_name = file_name
-        else:
-            _file_name = f"{file_name}.{_format}"
+    def Search_in_(obj_path: str | Path, keyword: str = "*"):
+        """ ### 디렉토리 내 검색 함수
+        주어진 디렉토리에 존재하는 파일 또는 폴더 목록을 가져오는 함수
 
-        return _file_name
+        -----------------------------------------------------------------------
+        ### Args
+        - `obj_path`: 대상 경로
+        - `keyword`: 검색 키워드
 
-    class Text():
-        @staticmethod
-        def Read(
-            file_name: str,
-            file_dir: str,
-            encoding_type: str = "UTF-8"
-        ):
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.TXT),
-                file_dir)
+        ### Returns
+        - `list[Path]` : 검색된 경로 객체 목록
 
-            with open(_file, "r", encoding=encoding_type) as f:
-                lines = f.read().splitlines()
-            return lines
+        """
+        _path = obj_path if isinstance(obj_path, Path) else Path(obj_path)
+        return list(_path.glob(keyword))
 
-        @staticmethod
-        def Write(
-            file_name: str,
-            file_dir: str
-        ):
-            raise NotImplementedError
+    class Server():
+        ...
 
-    class Json():
-        KEYABLE = NUMBER | bool | str
-        VALUEABLE = KEYABLE | Tuple | list | dict | None
-        WRITEABLE = dict[KEYABLE, VALUEABLE]
+    # class Server():
+    #     """ ### 네트워크 내 데이터 서버 관련 기능 모음
 
-        @staticmethod
-        def Read(
-            file_name: str,
-            file_dir: str,
-            encoding_type: str = "UTF-8"
-        ) -> dict:
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+    #     -----------------------------------------------------------------------
+    #     """
+    #     IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
 
-            # read the file
-            if _is_exist:
-                with open(_file, "r", encoding=encoding_type) as _file:
-                    _load_data = json.load(_file)
-                return _load_data
-            print(f"file {file_name} is not exist in {file_dir}")
-            return {}
+    #     class Connection_Porcess(String.String_Enum):
+    #         CIFS = auto()
 
-        @staticmethod
-        def Write(
-            file_name: str,
-            file_dir: str,
-            data: WRITEABLE,
-            encoding_type: str = "UTF-8"
-        ):
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.JSON),
-                file_dir)
+    #     def __init__(
+    #         self,
+    #         process: Connection_Porcess = Connection_Porcess.CIFS
+    #     ) -> None:
+    #         self.process = process
 
-            # dump to file
-            with open(_file, "w", encoding=encoding_type) as _file:
-                try:
-                    json.dump(data, _file, indent="\t")
-                except TypeError:
-                    return False
-            return True
+    #     def _connect_to_Linux(
+    #         self,
+    #         host_name: str,
+    #         mount_dir: str,
+    #         mount_point: str,
+    #         user_id: int,
+    #         group_id: int,
+    #         dir_mode: int,
+    #         file_mode: int,
+    #         credent_path: str
+    #     ):
+    #         _command = path.join(
+    #             f"sudo -S mount -t {self.process}",
+    #             " -o ",
+    #             ",".join((
+    #                 f"uid={user_id}",
+    #                 f"gid={group_id}",
+    #                 f"dir_mode={dir_mode%1000:0>4d}",
+    #                 f"dile_mode={file_mode%1000:0>4d}",
+    #                 f"credentials={credent_path}",
+    #             )),
+    #             f" //{host_name}/{mount_dir} {mount_point}"
+    #         )
+    #         system(_command)
 
-    class Csv():
-        @staticmethod
-        def Read_from_file(
-            file_name: str,
-            file_dir: str,
-            delimiter: str = "|",
-            encoding_type="UTF-8"
-        ) -> list[dict[str, Any]]:
-            """
-            """
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.CSV),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
+    #         return mount_point
 
-            if _is_exist:
-                # read the file
-                with open(_file, "r", encoding=encoding_type) as file:
-                    _raw_data = csv.DictReader(file, delimiter=delimiter)
-                    _read_data = [
-                        dict(
-                            (
-                                _key.replace(" ", ""), _value.replace(" ", "")
-                            ) for _key, _value in _line_dict.items()
-                        ) for _line_dict in _raw_data
-                    ]
-                return _read_data
-            print(f"file {file_name} is not exist in {file_dir}")
-            return []
+    #     def _connect_to_Window(
+    #         self,
+    #         host_name: str,
+    #         mount_dir: str,
+    #         mount_point: str,
+    #         user_name: str
+    #     ):
+    #         raise NotImplementedError
 
-        @staticmethod
-        def Write_to_file(
-            file_name: str,
-            file_dir: str,
-            data: list[dict],
-            feildnames: list[str],
-            delimiter: str = "|",
-            mode: Literal['a', 'w'] = 'w',
-            encoding_type="UTF-8"
-        ):
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.CSV),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            # dump to file
-            with open(
-                _file,
-                mode if not _is_exist else "w",
-                encoding=encoding_type,
-                newline=""
-            ) as _file:
-                try:
-                    _dict_writer = csv.DictWriter(
-                        _file, fieldnames=feildnames, delimiter=delimiter)
-                    _dict_writer.writeheader()
-                    _dict_writer.writerows(data)
-                except TypeError:
-                    return False
-            return True
-
-    class Yaml():
-        @staticmethod
-        def Read(
-            file_name: str,
-            file_dir: str,
-            encoding_type: str = "UTF-8"
-        ) -> dict:
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.YAML),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            # read the file
-            if _is_exist:
-                with open(_file, "r", encoding=encoding_type) as _file:
-                    _load_data = yaml.load(_file, Loader=yaml.FullLoader)
-                return _load_data
-            print(f"file {file_name} is not exist in {file_dir}")
-            return {}
-
-        @staticmethod
-        def Write(
-            file_name: str,
-            file_dir: str,
-            data,
-            encoding_type: str = "UTF-8"
-        ):
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.YAML),
-                file_dir)
-            # dump to file
-            with open(_file, "w", encoding=encoding_type) as _file:
-                try:
-                    yaml.dump(data, _file, indent=4)
-                except TypeError:
-                    return False
-            return True
-
-    class Xml():
-        @classmethod
-        def Xml_to_dict(cls, root_element: ET.Element):
-            _holder: dict[str, str | dict | None] = dict(
-                (f"@{_att}", _v)for _att, _v in root_element.attrib.items()
-            )
-
-            for _child in root_element:
-                _tag = _child.tag
-
-                _data = cls.Xml_to_dict(_child) if (
-                    list(_child)
-                ) else _child.text
-
-                if _tag in _holder:
-                    _exist = _holder[_tag]
-                    if isinstance(_exist, list):
-                        _exist.append(_data)
-                    else:
-                        _exist = [_exist, _data]
-                else:
-                    _holder[_tag] = _data
-
-            return _holder
-
-        @classmethod
-        def Read(
-            cls,
-            file_name: str,
-            file_dir: str,
-            cvt_func: Callable[[ET.Element], dict] | None = None
-        ) -> dict:
-            # make file path
-            _file = Path.Join(
-                File.Extention_checker(file_name, File.Support_Format.XML),
-                file_dir)
-            _is_exist = Path.Exist_check(_file, Path.Type.FILE)
-
-            # read the file
-            if _is_exist:
-                _cvt = cvt_func if cvt_func else cls.Xml_to_dict
-                return _cvt(ET.parse(_file).getroot())
-            print(f"file {file_name} is not exist in {file_dir}")
-            return {}
+    #     def _disconnect(self, mounted_dir: str):
+    #         if self.IS_WINDOW:
+    #             system(f"NET USE {mounted_dir}: /DELETE")
+    #         else:
+    #             system(f"fuser -ck {mounted_dir}")
+    #             system(f"sudo umount {mounted_dir}")
 
 
-class Time():
+class Time_Utils():
     @staticmethod
     def Stamp(set_timezone: timezone | None = None):
-        """
-        현재 시간 정보를 생성하는 함수
+        """ ### 현재 시간 정보를 생성하는 함수
 
         ---------------------------------------------------------------------------------------
         ### Parameters
-        - start_time : 시간 측정을 위한 시작점
+        - `set_timezone` : 타임존 정보
 
         ### Return
-        - this_time : start_time 이후 흐른 시간 (start_time이 없는 경우 현재 시간)
+        - `this_time` : 현재 시간 정보
         """
         return datetime.now(set_timezone)
 
@@ -723,17 +411,17 @@ class Time():
         standard_time: datetime,
         set_timezone: timezone | None = None
     ):
-        return Time.Stamp(set_timezone) - standard_time
+        return Time_Utils.Stamp(set_timezone) - standard_time
 
     @staticmethod
     def Make_text_from(
-        time_source: datetime | date | time,
+        time_source: datetime | date | time | None = None,
         date_format: str | None = None
     ):
+        _time = Time_Utils.Stamp() if time_source is None else time_source
         if date_format is None:
-            return time_source.isoformat()
-        else:
-            return time_source.strftime(date_format)
+            return _time.isoformat()
+        return _time.strftime(date_format)
 
     @staticmethod
     def Make_time_from(

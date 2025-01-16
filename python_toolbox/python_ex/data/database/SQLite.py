@@ -2,23 +2,22 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypeVar
 
-import json
-
 from dataclasses import InitVar, dataclass, field
 import sqlite3
 
-from pathlib import Path
 from python_ex.project import Config as CFG
+from python_ex.system import Path_utils
+from python_ex.file import Read_from_file, Write_to_file
 
 
 class Data():
     @staticmethod
-    def Flag_to_type(flag: str):
-        if flag == "INTEGER":
+    def Convert_to_type_from(string: str):
+        if string == "INTEGER":
             return int
-        if flag == "REAL":
+        if string == "REAL":
             return float
-        if flag == "TEXT":
+        if string == "TEXT":
             return str
         return None  # BLOB
 
@@ -26,9 +25,15 @@ class Data():
 class Config():
     cfg = TypeVar("cfg", bound=CFG.Basement)
 
+    @staticmethod
+    def Prams_to_config(
+        param: dict[str, Any] | cfg, cfg_type: type[cfg]
+    ) -> cfg:
+        return cfg_type(**param) if isinstance(param, dict) else param
+
     @dataclass
     class Column(CFG.Basement):
-        data_sqlite_type: Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+        data_type: Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 
         # option for this column
         empty_able: bool = True
@@ -49,24 +54,28 @@ class Config():
             self.skip_able = any([
                 self.default_value is not None,
                 self.empty_able,
-                (self.primary and self.data_sqlite_type == "INTEGER")
+                (self.primary and self.data_type == "INTEGER"),
+                self.is_time
             ])
 
         def Value_check(self, value: Any):
-            return value  # this code is not apply value check.
+            return value
 
-        def Set_default_value(self, value: Any, is_time: bool = False):
-            _c_type = self.data_sqlite_type
-            _type = Data.Flag_to_type(_c_type)
+        def Set_default_value(self, value: Any):
+            _c_type = self.data_type
+            _type = Data.Convert_to_type_from(_c_type)
 
-            if is_time and self.is_time:
-                # in later add to function for time class change to int or text
-                # if isinstance(value, time):
-                #     value = value
-                ...
+            if self.is_time:
+                if value == "now":
+                    # when param `is_time` is true and `default_value` is None,
+                    # this column default value is "datetime('now')""
+                    return 0, "done"
+
+                if isinstance(value, str):
+                    ...
 
             if _type is None or isinstance(value, _type):
-                self.default_value = self.Value_check(value)
+                self.default_value = value
                 return 0, "done"
 
             return 1, f"Type mismatch, {_c_type}(={_type}) != {type(value)}"
@@ -79,10 +88,8 @@ class Config():
             return ""
 
         def Create_command(self, name: str):
-            _opt = [f"\t{name}", self.data_sqlite_type]
+            _opt = [f"\t{name}", self.data_type]
 
-            if not self.empty_able:
-                _opt.append("NOT NULL")
             if self.is_unique:
                 _opt.append("UNIQUE")
             if self.relation is not None:
@@ -90,6 +97,11 @@ class Config():
                 _opt.append(f"REFERENCES {_rel[0]}({_rel[1]})")
             if self.default_value is not None:
                 _opt.append(f"DEFAULT {self.default_value}")
+            elif self.is_time:
+                _now_cmd = "strftime('%Y-%m-%d %H:%M:%f')"
+                _opt.append(f"DEFAULT ({_now_cmd})")
+            elif not self.empty_able:
+                _opt.append("NOT NULL")
 
             return " ".join(_opt)
 
@@ -210,37 +222,31 @@ class Config():
             }
 
     @staticmethod
-    def Prams_to_config(
-        param: dict[str, Any] | cfg, cfg_type: type[cfg]
-    ) -> cfg:
-        return cfg_type(**param) if isinstance(param, dict) else param
-
-    @staticmethod
-    def Load_from_file(name: str, save_dir: str | None = None):
-        _path = (Path().cwd() if save_dir is None else Path(save_dir)) / Path(name)
-
-        with _path.open(encoding="UTF-8") as cfg_file:
-            if _path.suffix == "json":
-                return Config.Database(**json.load(cfg_file))
-
-        raise ValueError()
+    def Make_db_config_from_file(
+        file_name: str,
+        save_dir: str | None = None,
+        encoding_type: str = "UTF-8"
+    ):
+        try:
+            return Config.Database(
+                **Read_from_file(file_name, save_dir, encoding_type))
+        except ValueError:
+            ...
 
 
 class Database():
     def __init__(
-        self,
-        name: str,
-        tables: dict[str, dict[str, Any] | Config.Table],
+        self, file_name: str, tables: dict[str, dict[str, Any] | Config.Table],
         save_dir: str | None = None
     ):
-        self.db_path = (Path().cwd() if save_dir is None else Path(save_dir)) / Path(name)
+        self.db_path = Path_utils.Join(file_name, save_dir)
         self.table_cfgs: dict[str, Config.Table] = {}
 
         self.db: sqlite3.Connection = sqlite3.connect(self.db_path)
 
         for _t_name, _table_params in tables.items():
             if isinstance(_table_params, Config.Table):
-                if self.Check(_t_name):
+                if self.Table_name_check(_t_name):
                     self.table_cfgs[_t_name] = _table_params
                     continue
                 self.Apply(*_table_params.Create_command(_t_name))
@@ -252,14 +258,9 @@ class Database():
                     ...
 
     def Save_to_cfg_file(self, name: str, save_dir: str | None = None):
-        _cfg_path = (Path().cwd() if save_dir is None else Path(save_dir)) / Path(name)
-
-        _db_cfg = Config.Database(str(self.db_path.parent), self.db_path.name, {})
+        _db_cfg = Config.Database(*Path_utils.Get_file_name(self.db_path), {})
         _db_cfg.table_cfgs = self.table_cfgs
-
-        with _cfg_path.open("w", encoding="UTF-8") as cfg_file:
-            if "json" in _cfg_path.suffix:
-                json.dump(_db_cfg.Config_to_dict(), cfg_file, indent=4)
+        Write_to_file(name, _db_cfg.Config_to_dict(), save_dir)
 
     def Apply(self, error_code: int, cmd: str):
         if error_code:
@@ -275,7 +276,7 @@ class Database():
     def Disconnect(self):
         self.db.close()
 
-    def Check(self, name: str) -> bool:
+    def Table_name_check(self, name: str) -> bool:
         _cmd = "SELECT name FROM sqlite_master WHERE type='table';"
         _cs = self.Apply(0, _cmd)
         for _table_name in _cs.fetchall():
@@ -298,7 +299,7 @@ class Database():
         is_override: bool = False
     ):
         # check the table "name" is exist in db
-        if self.Check(name):
+        if self.Table_name_check(name):
             if not is_override:
                 self.Apply(1, f"Table '{name}' is already exist.")
 
@@ -317,3 +318,18 @@ class Database():
     def Insert_value(self, name: str, value: dict[str, Any]):
         self.Apply(*self.table_cfgs[name].Insert_command(name, value))
         self.db.commit()
+
+    def Get(self, name: str, num: int = -1, keys: list[str] | None = None):
+        if name not in self.table_cfgs:
+            return self.Apply(1, "")
+
+        _cmd = "SELECT "
+        if keys is None:
+            _cmd += f"* from {name}"
+
+        else:
+            _column_info = self.table_cfgs[name].column_cfgs
+
+
+        _cmd += f"from {name}"
+        # name FROM sqlite_master WHERE type='table';"

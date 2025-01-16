@@ -6,152 +6,137 @@ from dataclasses import asdict, dataclass
 
 import argparse
 
-from .system import Path, File, Time
+from .system import Path_utils, Time_Utils
+from .file import Read_from_file, Write_to_file
 
 
 class Config():
     @dataclass
     class Basement():
-        """
-        프로젝트에 사용되는 인자값을 관리하기 위한 객체(dataclass) 기본 구조
+        """ ### 프로젝트에 사용되는 설정을 관리하기 위한 객체(dataclass) 구조
+        기존에 사용되는 dict 구조 대비 효율적으로 사용하고 관리하기 위한 객체\n
+        field 함수와 __post_init__을 이용하여 자동화 값 자동화 구현
 
-        --------------------------------------------------------------------
+        -----------------------------------------------------------------------
+        ### Structure
+        - `Config_to_dict`: 객체를 저장 가능한 dict 데이터 구조로 변환는 함수
+        - `Write_to`: 주어진 경로 정보에 객체 정보를 저장하는 함수
+        - `Get_summation`: 객체를 구성하는 설정 값들 정보를 취합하는 함수
+
         """
         def Config_to_dict(self) -> dict[str, Any]:
-            """
-            설정값을 사용가능한 인자값으로 변경하는 함수
+            """ ### 객체를 저장 가능한 dict 데이터 구조로 변환하는 함수
 
-            ----------------------------------------------------------------
-            ### Parameters
-            - None
-
+            -------------------------------------------------------------------
             ### Return
-            - dictionary : 파라메터로 활용하기 위하여 구성된 인자값
+            - `dict[str, Any]` : 저장 가능한 dict 데이터
 
-            ----------------------------------------------------------------
+            -------------------------------------------------------------------
             """
             return asdict(self)
 
         def Write_to(
-            self,
-            file_name: str,
-            file_dir: str
+            self, file_name: str, file_dir: str, encoding_type: str = "UTF-8"
         ):
-            _ext = file_name.split(".")[-1].lower()
-            _write_data = self.Config_to_dict()
+            """ ### 주어진 경로 정보에 객체 정보를 저장하는 함수
+            -------------------------------------------------------------------
+            ### Args
+            - `file_name`: 파일 이름
+            - `obj_path`: 대상 경로
+            - `encoding_type`: 저장 파일 문자열 포멧 (기본값 = UTF-8)
 
-            if _ext == "yaml":
-                File.Yaml.Write(file_name, file_dir, _write_data)
+            -------------------------------------------------------------------
+            """
+            try:
+                Write_to_file(
+                    file_name, self.Config_to_dict(), file_dir, encoding_type)
+            except ValueError:
+                _cfg_name = self.__class__.__name__
+                _msg = "If you want save this file,"
+                _msg += f" override the function `Write_to` in {_cfg_name}."
+                print(_msg)
 
-            elif _ext == "json":
-                File.Json.Write(file_name, file_dir, _write_data)
-
-            else:
-                _msg = f"Config {self.__class__.__name__} is not support"
-                _msg += f" {_ext} file foramt for write to file.\n"
-                _msg += "If you want do this, overide the function 'Write_to'."
-                raise ValueError(_msg)
-
-        def Set_from(self, source: dict[str, Any]):
-            for _k, _v in source.items():
-                if _k in self.__dict__:
-                    self.__dict__[_k] = _v
-
-        def Get_summation(self) -> list[str]:
-            raise NotImplementedError
+    cfg_class = TypeVar("cfg_class", bound=Basement)
 
     @staticmethod
-    def Read_from_file(file_name: str, file_dir: str):
-        _ext = file_name.split(".")[-1].lower()
+    def Read_from_file(
+        config_obj: type[cfg_class], file_name: str,
+        file_dir: str | None = None, encoding_type: str = "UTF-8"
+    ):
+        try:
+            return config_obj(
+                **Read_from_file(file_name, file_dir, encoding_type))
 
-        if _ext == "yaml":
-            return File.Yaml.Read(file_name, file_dir)
-        if _ext == "json":
-            return File.Json.Read(file_name, file_dir)
+        except ValueError as _value_e:
+            print("If you want do this, override the function 'Read_from'.")
+            raise ValueError from _value_e
 
-        _msg = f"file foramt '{_ext}' is not support for build config "
-        _msg += "by using this code.\n"
-        _msg += "If you want use do file foramt '{_ext}', "
-        _msg += "overide the function 'Config.Read_from'."
-        raise ValueError(_msg)
+    @staticmethod
+    def Read_with_arg_parser(
+        config_template: type[Config.cfg_class],
+        parser: argparse.ArgumentParser | None = None
+    ):
+        if parser is None:
+            _parser = argparse.ArgumentParser()
+            _parser.add_argument("--cfg_file", dest="cfg_file", type=str)
+            _f_dir, _f_name = Path_utils.Get_file_name(
+                vars(_parser.parse_args())["cfg_file"])
+            return Config.Read_from_file(config_template, _f_name, _f_dir)
+
+        _arg_dict = vars(parser.parse_args())
+        _cfg_dict = vars(config_template)
+        return config_template(
+            **dict((
+                _k, _v
+            ) for _k, _v in _arg_dict.items() if _k in _cfg_dict))
 
 
-CFG = TypeVar("CFG", bound=Config.Basement)
-
-
-class Project_Template(Generic[CFG]):
+class Project_Template(Generic[Config.cfg_class]):
     """ ### 프로젝트 구성을 위한 기본 구조
 
     ---------------------------------------------------------------------
     ### Args
-    - Super
-        - None
-    - This
-        - `project_name`: 프로젝트 이름
-        - `category`: 프로젝트 구분
-        - `result_dir`: 프로젝트 결과 저장 최상위 경로를 생성하기 위한 경로
+    - `name`: 프로젝트 이름
+    - `config_type`: 프로젝트에 사용되는 config class 타입
 
     ### Attributes
     - `project_name`: 프로젝트 이름
-    - `result_root`: 프로젝트 결과 저장 최상위 경로
+    - `project_cfg`: 프로젝트 config 데이터
+    - `save_root`: 프로젝트 결과 저장 최상위 경로
 
     ### Structure
-    - Make_save_root: 프로젝트 결과 저장 최상위 경로 생성 함수
+    - `_Get_args_by_arg_parser`
+    - `_Get_config`
+    - `_Make_save_root`: 프로젝트 결과 저장 최상위 경로 생성 함수
 
     """
-    def __init__(self, config_template: type[CFG]):
-        self.project_cfg: CFG = self.Get_config(config_template)
-        self.save_root = self.Make_save_root()
-
-    def Get_args_by_arg_parser(self) -> argparse.ArgumentParser:
-        _parser = argparse.ArgumentParser()
-        _parser.add_argument(
-            "--file_path", "-f",
-            dest="file_path",
-            type=str)
-        return _parser
-
-    def Get_config(self, config_template: type[CFG]) -> CFG:
-        _arg_dict = vars(
-            self.Get_args_by_arg_parser().parse_args())
-
-        _file_path = _arg_dict["file_path"]
-        if _file_path is not None:
-            _f_dir, f_name = Path.Devide(_file_path)
-            _arg_dict.update(Config.Read_from_file(f_name, _f_dir))
-
-        _arg_dict.pop("file_path")
-        return config_template(**_arg_dict)
+    def __init__(
+        self, name: str, config: Config.cfg_class, result_dir: str = "result"
+    ):
+        self.project_name = name
+        self.project_cfg = config
+        self.save_root = Path_utils.Make_directory(result_dir)
 
     def Make_save_root(
-        self,
-        obj_dir: str | list[str] | None = None,
-        result_root: str | None = None
+        self, obj_dir: str | list[str],
+        base_path: str | None = None, use_time_stamp: bool = True
     ):
         """ ### 프로젝트 결과 저장 최상위 경로 생성 함수
 
         ------------------------------------------------------------------
         ### Args
-            - arg_name: Description of the input argument
+            - `obj_dir`:
 
-        ### Returns or Yields
-            - data_format: Description of the output argument
-
-        ### Raises
-            - None
-
+        ### Returns
+            - `Path`: 저장 최상위 경로
         """
+        _obj_dir = [self.project_name]
+        _obj_dir += obj_dir if isinstance(obj_dir, list) else [obj_dir]
 
-        if obj_dir is None:
-            _obj_dir = [
-                "result",
-                Time.Make_text_from(Time.Stamp(), "%Y-%m-%d_%H:%M:%S")
-            ]
-        else:
-            _obj_dir = obj_dir
+        if use_time_stamp:
+            _obj_dir += [Time_Utils.Make_text_from()]
 
-        return Path.Make_directory(
-            _obj_dir, Path.WORK_SPACE if result_root else result_root)
+        return Path_utils.Make_directory(_obj_dir, base_path)
 
 
 class Debuging():
