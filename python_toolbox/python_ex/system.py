@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import sys
 from glob import glob
-from os import path, system, getcwd, makedirs
+from os import path, system, getcwd, makedirs, get_terminal_size
 import platform
 
 import json
@@ -139,6 +139,45 @@ class String():
         if isinstance(data, Time.Relative):
             return ";".join(list(data))
         return data if isinstance(data, str) else str(data)
+
+    @staticmethod
+    def Progress_bar(
+        iteration: int, total: int,
+        prefix: str = '', suffix: str = '',
+        decimals: int = 1, fill: str = '█'
+    ):
+        """
+        Call in a loop to create terminal progress bar
+
+        Parameters
+        --------------------
+        iteration
+            current iteration
+        total
+            total iterations (Int)
+        prefix
+            prefix string (Str)
+        suffix
+            suffix string (Str)
+        decimals
+            positive number of decimals in percent complete (Int)
+        length
+            character length of bar (Int)
+        fill
+            bar fill character (Str)
+        """
+        _percentaget = iteration / float(total)
+        _str_p = ("{0:." + str(decimals) + "f}").format(100 * _percentaget)
+
+        _bias = len(prefix + _str_p + suffix) + 6
+        _bar_l = get_terminal_size().columns - _bias
+        _fill_l = round(_bar_l * _percentaget)
+        _str_b = fill * _fill_l + '-' * (_bar_l - _fill_l)
+
+        print(f'\r{prefix} |{_str_b}| {_str_p}% {suffix}', end="\r")
+        # Print New Line on Complete
+        if iteration == total:
+            print()
 
     class String_Enum(str, Enum):
         @staticmethod
