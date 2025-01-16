@@ -162,12 +162,12 @@ class String():
         fill
             bar fill character (Str)
         """
-        _percentaget = iteration / float(total)
-        _str_p = ("{0:." + str(decimals) + "f}").format(100 * _percentaget)
+        _percentage = iteration / float(total)
+        _str_p = ("{0:." + str(decimals) + "f}").format(100 * _percentage)
 
         _bias = len(prefix + _str_p + suffix) + 6
         _bar_l = get_terminal_size().columns - _bias
-        _fill_l = round(_bar_l * _percentaget)
+        _fill_l = round(_bar_l * _percentage)
         _str_b = fill * _fill_l + '-' * (_bar_l - _fill_l)
 
         print(f'\r{prefix} |{_str_b}| {_str_p}% {suffix}', end="\r")
