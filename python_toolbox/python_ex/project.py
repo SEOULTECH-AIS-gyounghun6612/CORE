@@ -3,11 +3,12 @@ from typing import (
     Any, TypeVar, Generic
 )
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import argparse
 
 from .system import Path_utils, Time_Utils
-from .file import Read_from_file, Write_to_file
+from .file import Read_from, Write_to_file
 
 
 class Config():
@@ -60,12 +61,15 @@ class Config():
 
     @staticmethod
     def Read_from_file(
-        config_obj: type[cfg_class], file_name: str,
-        file_dir: str | None = None, encoding_type: str = "UTF-8"
+        config_obj: type[cfg_class],
+        file_path: Path,
+        encoding_type: str = "UTF-8"
     ):
         try:
-            return config_obj(
-                **Read_from_file(file_name, file_dir, encoding_type))
+            _meta_data = Read_from(file_path, encoding_type, "json")
+            if _meta_data[0] == "json":
+                return config_obj(**_meta_data[1])
+            raise ValueError()
 
         except ValueError as _value_e:
             print("If you want do this, override the function 'Read_from'.")
@@ -79,9 +83,10 @@ class Config():
         if parser is None:
             _parser = argparse.ArgumentParser()
             _parser.add_argument("--cfg_file", dest="cfg_file", type=str)
-            _f_dir, _f_name = Path_utils.Get_file_name(
-                vars(_parser.parse_args())["cfg_file"])
-            return Config.Read_from_file(config_template, _f_name, _f_dir)
+            return Config.Read_from_file(
+                config_template,
+                Path(vars(_parser.parse_args())["cfg_file"]),
+            )
 
         _arg_dict = vars(parser.parse_args())
         _cfg_dict = vars(config_template)

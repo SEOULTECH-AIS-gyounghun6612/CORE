@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, Literal, Any
 
 from pathlib import Path
 
@@ -12,18 +12,21 @@ VALUE = TypeVar(
     "VALUE", bound=int | float | bool | str | tuple | list | dict | None)
 
 
-def Read_from(file: Path, encoding_type: str = "UTF-8"):
+def Read_from(
+    file: Path, encoding_type: str = "UTF-8",
+    file_format: Literal["json", "txt"] | None = None
+):
     if Path.is_file(file):
         with file.open(encoding=encoding_type) as _file:
             _suffix = file.suffix[1:]
-            if _suffix == "json":
-                return _suffix, json.load(_file)
-            if _suffix == "txt":
-                return _suffix, _file.readlines()
-
-            raise ValueError(f"File extension '{_suffix}' is not supported")
-    else:
-        raise ValueError("!!! This path is not FILE !!!")
+            if file_format is None or _suffix == file_format:
+                if _suffix == "json":
+                    _data: dict[str, Any] = json.load(_file)
+                    return _suffix, _data
+                if _suffix == "txt":
+                    return _suffix, _file.readlines()
+        raise ValueError(f"File extension '{_suffix}' is not supported")
+    raise ValueError("!!! This path is not FILE !!!")
 
 
 def Write_to_file(
