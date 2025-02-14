@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse
 
 from .system import Path_utils, Time_Utils
-from .file import Read_from, Write_to_file
+from .file import Read_from, Write_to
 
 
 class Config():
@@ -49,8 +49,11 @@ class Config():
             -------------------------------------------------------------------
             """
             try:
-                Write_to_file(
-                    file_name, self.Config_to_dict(), file_dir, encoding_type)
+                Write_to(
+                    Path_utils.Join(file_name, file_dir),
+                    self.Config_to_dict(),
+                    encoding_type
+                )
             except ValueError:
                 _cfg_name = self.__class__.__name__
                 _msg = "If you want save this file,"

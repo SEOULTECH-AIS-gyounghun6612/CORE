@@ -4,8 +4,6 @@ from pathlib import Path
 
 import json
 
-from python_ex.system import Path_utils
-
 KEY = TypeVar(
     "KEY", bound=int | float | bool | str)
 VALUE = TypeVar(
@@ -29,20 +27,25 @@ def Read_from(
     raise ValueError("!!! This path is not FILE !!!")
 
 
-def Write_to_file(
-    file_name: str,
-    data: dict[KEY, VALUE],
-    save_dir: str | None = None,
+def Write_to(
+    file: Path,
+    data: dict[KEY, VALUE] | list[str],
     encoding_type: str = "UTF-8"
 ):
-    _file_path = Path_utils.Join(file_name, save_dir)
-
-    with _file_path.open("w", encoding=encoding_type) as _file:
-        _suffix = _file_path.suffix[1:]
+    with file.open("w", encoding=encoding_type) as _file:
+        _suffix = file.suffix[1:]
         if _suffix == "json":
-            return json.dump(data, _file, indent=4)
-
-        raise ValueError(f"File extension '{_suffix}' is not supported")
+            json.dump(data, _file, indent=4)
+            return True
+        if _suffix == "txt":
+            if isinstance(data, str):
+                _file.write(data)
+                return True
+            if isinstance(data, list):
+                _file.write("\n".join(data))
+                return True
+        return False
+        # raise ValueError(f"File extension '{_suffix}' is not supported")
 
 
 # class File():
