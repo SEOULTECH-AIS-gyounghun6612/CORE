@@ -308,7 +308,7 @@ class Path_utils():
 
         """
         _obj = Path_utils.Join(obj_path, root_path)
-        _obj.mkdir(mode, exist_ok=True)
+        _obj.mkdir(mode, parents=True, exist_ok=True)
 
         return _obj
 
