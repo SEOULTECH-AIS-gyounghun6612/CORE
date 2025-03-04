@@ -1,10 +1,8 @@
-from typing import TypeVar
+from typing import TypeVar, Literal, Any
 
 from pathlib import Path
 
 import json
-
-from python_ex.system import Path_utils
 
 KEY = TypeVar(
     "KEY", bound=int | float | bool | str)
@@ -12,34 +10,42 @@ VALUE = TypeVar(
     "VALUE", bound=int | float | bool | str | tuple | list | dict | None)
 
 
-def Read_from(file: Path, encoding_type: str = "UTF-8"):
+def Read_from(
+    file: Path, encoding_type: str = "UTF-8",
+    file_format: Literal["json", "txt"] | None = None
+):
     if Path.is_file(file):
         with file.open(encoding=encoding_type) as _file:
             _suffix = file.suffix[1:]
-            if _suffix == "json":
-                return _suffix, json.load(_file)
-            if _suffix == "txt":
-                return _suffix, _file.readlines()
+            if file_format is None or _suffix == file_format:
+                if _suffix == "json":
+                    _data: dict[str, Any] = json.load(_file)
+                    return _suffix, _data
+                if _suffix == "txt":
+                    return _suffix, _file.readlines()
+        raise ValueError(f"File extension '{_suffix}' is not supported")
+    raise ValueError("!!! This path is not FILE !!!")
 
-            raise ValueError(f"File extension '{_suffix}' is not supported")
-    else:
-        raise ValueError("!!! This path is not FILE !!!")
 
-
-def Write_to_file(
-    file_name: str,
-    data: dict[KEY, VALUE],
-    save_dir: str | None = None,
+def Write_to(
+    file: Path,
+    data: dict[KEY, VALUE] | list[str],
     encoding_type: str = "UTF-8"
 ):
-    _file_path = Path_utils.Join(file_name, save_dir)
-
-    with _file_path.open("w", encoding=encoding_type) as _file:
-        _suffix = _file_path.suffix[1:]
+    with file.open("w", encoding=encoding_type) as _file:
+        _suffix = file.suffix[1:]
         if _suffix == "json":
-            return json.dump(data, _file, indent=4)
-
-        raise ValueError(f"File extension '{_suffix}' is not supported")
+            json.dump(data, _file, indent=4)
+            return True
+        if _suffix == "txt":
+            if isinstance(data, str):
+                _file.write(data)
+                return True
+            if isinstance(data, list):
+                _file.write("\n".join(data))
+                return True
+        return False
+        # raise ValueError(f"File extension '{_suffix}' is not supported")
 
 
 # class File():
