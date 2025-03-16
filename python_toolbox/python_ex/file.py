@@ -1,4 +1,5 @@
-from typing import TypeVar, Literal, Any
+from functools import wraps
+from typing import TypeVar, Callable, Any
 
 from pathlib import Path
 
@@ -10,19 +11,134 @@ VALUE = TypeVar(
     "VALUE", bound=int | float | bool | str | tuple | list | dict | None)
 
 
+def Suffix_check(path: Path, ext: list[str] | str, is_fix: bool = True):
+    _ext = ext if isinstance(ext, list) else [ext]
+    if path.suffix in _ext:
+        return True, path
+
+    return False, path.with_suffix(ext[0]) if is_fix else path
+
+
+def Handle_exp(extra_exp: dict[type[Exception], str] | None = None):
+    extra_exp = extra_exp or {}
+
+    def Checker(func: Callable[..., bool | tuple[bool, Any]]):
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _exp = type(e)
+                message = extra_exp.get(_exp, "알 수 없는 파일 처리 오류 발생:")
+                print(f"{message} -> {e}")
+            return False, None
+        return wrapper
+
+    return Checker
+
+
+class File_Process():
+    @classmethod
+    def Ensure_dir(cls, path: Path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def Read_from(
+        cls, file: Path, enc: str = "UTF-8", **kw
+    ) -> tuple[bool, Any]:
+        raise NotImplementedError
+
+    @classmethod
+    def Write_to(
+        cls, file: Path, data: Any, enc: str = "UTF-8", **kw
+    ) -> bool:
+        raise NotImplementedError
+
+
+BASIC_FILE_ERROR = {
+    PermissionError: "파일 권한 부족"
+}
+
+
+class Text(File_Process):
+    @classmethod
+    @Handle_exp()
+    def Read_from(
+        cls, file: Path, enc: str = "UTF-8", start: int = 0, delim: str = "\n"
+    ) -> tuple[bool, list]:
+        _, _file = Suffix_check(file, ".txt")
+        if _file.exists():
+            return True, file.read_text(enc).split(delim)[start:]
+        return False, []
+
+    @classmethod
+    @Handle_exp()
+    def Write_to(
+        cls, file: Path, data: str | list[str], enc: str = "UTF-8",
+        anno: list[str] | str | None = None
+    ) -> bool:
+        cls.Ensure_dir(file)
+        _, _path = Suffix_check(file, ".txt", True)
+
+        _data = (
+            [anno] if isinstance(anno, str) else anno
+        ) if anno else []
+        _data += [data] if isinstance(data, str) else data
+
+        _path.write_text("\n".join(_data), enc)
+
+        return True
+
+
+JSON_FILE_ERROR = {
+    **BASIC_FILE_ERROR,
+    json.JSONDecodeError: "JSON 파싱 오류 발생",
+    TypeError: "JSON 변환 불가능한 데이터 포함"
+}
+
+
+class Json(File_Process):
+    @classmethod
+    @Handle_exp(extra_exp=JSON_FILE_ERROR)
+    def Read_from(
+        cls, file: Path, enc: str = "UTF-8"
+    ) -> tuple[bool, dict[str, Any]]:
+        _, _file = Suffix_check(file, ".json")
+
+        if not _file.exists():
+            return False, {}
+
+        with file.open(encoding=enc) as _f:
+            return True, json.load(_f)
+
+    @classmethod
+    @Handle_exp()
+    def Write_to(
+        cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+        indent: int = 4
+    ) -> bool:
+        cls.Ensure_dir(file)
+
+        _, _path = Suffix_check(file, ".json", True)
+
+        with _path.open(encoding=enc) as _f:
+            json.dump(data, _f, indent=indent)
+        return True
+
+
 def Read_from(
-    file: Path, encoding_type: str = "UTF-8",
-    file_format: Literal["json", "txt"] | None = None
+    file: Path, enc: str = "UTF-8"
 ):
     if Path.is_file(file):
-        with file.open(encoding=encoding_type) as _file:
-            _suffix = file.suffix[1:]
-            if file_format is None or _suffix == file_format:
-                if _suffix == "json":
-                    _data: dict[str, Any] = json.load(_file)
-                    return _suffix, _data
-                if _suffix == "txt":
-                    return _suffix, _file.readlines()
+        _suffix: str = file.suffix
+
+        if _suffix == ".json":
+            return Json.Read_from(file, enc)
+
+        if _suffix == ".txt":
+            return Text.Read_from(file, enc)
+
         raise ValueError(f"File extension '{_suffix}' is not supported")
     raise ValueError("!!! This path is not FILE !!!")
 
@@ -30,258 +146,11 @@ def Read_from(
 def Write_to(
     file: Path,
     data: dict[KEY, VALUE] | list[str],
-    encoding_type: str = "UTF-8"
+    enc: str = "UTF-8",
+    **kw
 ):
-    with file.open("w", encoding=encoding_type) as _file:
-        _suffix = file.suffix[1:]
-        if _suffix == "json":
-            json.dump(data, _file, indent=4)
-            return True
-        if _suffix == "txt":
-            if isinstance(data, str):
-                _file.write(data)
-                return True
-            if isinstance(data, list):
-                _file.write("\n".join(data))
-                return True
-        return False
-        # raise ValueError(f"File extension '{_suffix}' is not supported")
+    if isinstance(data, dict):
+        return Json.Write_to(file, data, enc, **kw)
 
-
-# class File():
-#     class Support_Format(String.String_Enum):
-#         TXT = auto()
-#         JSON = auto()
-#         CSV = auto()
-#         YAML = auto()
-#         XML = auto()
-
-#     @staticmethod
-#     def Extention_checker(file_name: str, file_format: File.Support_Format):
-#         _format = str(file_format)
-#         if "." in file_name:
-#             _ext = file_name.split(".")[-1]
-#             if _ext != _format:
-#                 _file_name = file_name.replace(_ext, _format)
-#             else:
-#                 _file_name = file_name
-#         else:
-#             _file_name = f"{file_name}.{_format}"
-
-#         return _file_name
-
-#     class Text():
-#         @staticmethod
-#         def Read(
-#             file_name: str,
-#             file_dir: str,
-#             encoding_type: str = "UTF-8"
-#         ):
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.TXT),
-#                 file_dir)
-
-#             with open(_file, "r", encoding=encoding_type) as f:
-#                 lines = f.read().splitlines()
-#             return lines
-
-#         @staticmethod
-#         def Write(
-#             file_name: str,
-#             file_dir: str
-#         ):
-#             raise NotImplementedError
-
-#     class Json():
-#         KEYABLE = NUMBER | bool | str
-#         VALUEABLE = KEYABLE | Tuple | list | dict | None
-#         WRITEABLE = dict[KEYABLE, VALUEABLE]
-
-#         @staticmethod
-#         def Read(
-#             file_name: str,
-#             file_dir: str,
-#             encoding_type: str = "UTF-8"
-#         ) -> dict:
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.JSON),
-#                 file_dir)
-#             _is_exist = Path_old.Exist_check(_file, Path_old.Type.FILE)
-
-#             # read the file
-#             if _is_exist:
-#                 with open(_file, "r", encoding=encoding_type) as _file:
-#                     _load_data = json.load(_file)
-#                 return _load_data
-#             print(f"file {file_name} is not exist in {file_dir}")
-#             return {}
-
-#         @staticmethod
-#         def Write(
-#             file_name: str,
-#             file_dir: str,
-#             data: WRITEABLE,
-#             encoding_type: str = "UTF-8"
-#         ):
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.JSON),
-#                 file_dir)
-
-#             # dump to file
-#             with open(_file, "w", encoding=encoding_type) as _file:
-#                 try:
-#                     json.dump(data, _file, indent="\t")
-#                 except TypeError:
-#                     return False
-#             return True
-
-#     class Csv():
-#         @staticmethod
-#         def Read_from_file(
-#             file_name: str,
-#             file_dir: str,
-#             delimiter: str = "|",
-#             encoding_type="UTF-8"
-#         ) -> list[dict[str, Any]]:
-#             """
-#             """
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.CSV),
-#                 file_dir)
-#             _is_exist = Path_old.Exist_check(_file, Path_old.Type.FILE)
-
-#             if _is_exist:
-#                 # read the file
-#                 with open(_file, "r", encoding=encoding_type) as file:
-#                     _raw_data = csv.DictReader(file, delimiter=delimiter)
-#                     _read_data = [
-#                         dict(
-#                             (
-#                                 _key.replace(" ", ""),
-#                                 _value.replace(" ", "")
-#                             ) for _key, _value in _line_dict.items()
-#                         ) for _line_dict in _raw_data
-#                     ]
-#                 return _read_data
-#             print(f"file {file_name} is not exist in {file_dir}")
-#             return []
-
-#         @staticmethod
-#         def Write_to_file(
-#             file_name: str,
-#             file_dir: str,
-#             data: list[dict],
-#             feildnames: list[str],
-#             delimiter: str = "|",
-#             mode: Literal['a', 'w'] = 'w',
-#             encoding_type="UTF-8"
-#         ):
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.CSV),
-#                 file_dir)
-#             _is_exist = Path_old.Exist_check(_file, Path_old.Type.FILE)
-
-#             # dump to file
-#             with open(
-#                 _file,
-#                 mode if not _is_exist else "w",
-#                 encoding=encoding_type,
-#                 newline=""
-#             ) as _file:
-#                 try:
-#                     _dict_writer = csv.DictWriter(
-#                         _file, fieldnames=feildnames, delimiter=delimiter)
-#                     _dict_writer.writeheader()
-#                     _dict_writer.writerows(data)
-#                 except TypeError:
-#                     return False
-#             return True
-
-#     class Yaml():
-#         @staticmethod
-#         def Read(
-#             file_name: str,
-#             file_dir: str,
-#             encoding_type: str = "UTF-8"
-#         ) -> dict:
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.YAML),
-#                 file_dir)
-#             _is_exist = Path_old.Exist_check(_file, Path_old.Type.FILE)
-
-#             # read the file
-#             if _is_exist:
-#                 with open(_file, "r", encoding=encoding_type) as _file:
-#                     _load_data = yaml.load(_file, Loader=yaml.FullLoader)
-#                 return _load_data
-#             print(f"file {file_name} is not exist in {file_dir}")
-#             return {}
-
-#         @staticmethod
-#         def Write(
-#             file_name: str,
-#             file_dir: str,
-#             data,
-#             encoding_type: str = "UTF-8"
-#         ):
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.YAML),
-#                 file_dir)
-#             # dump to file
-#             with open(_file, "w", encoding=encoding_type) as _file:
-#                 try:
-#                     yaml.dump(data, _file, indent=4)
-#                 except TypeError:
-#                     return False
-#             return True
-
-#     class Xml():
-#         @classmethod
-#         def Xml_to_dict(cls, root_element: ET.Element):
-#             _holder: dict[str, str | dict | None] = dict(
-#                 (f"@{_att}", _v)for _att, _v in root_element.attrib.items()
-#             )
-
-#             for _child in root_element:
-#                 _tag = _child.tag
-
-#                 _data = cls.Xml_to_dict(_child) if (
-#                     list(_child)
-#                 ) else _child.text
-
-#                 if _tag in _holder:
-#                     _exist = _holder[_tag]
-#                     if isinstance(_exist, list):
-#                         _exist.append(_data)
-#                     else:
-#                         _exist = [_exist, _data]
-#                 else:
-#                     _holder[_tag] = _data
-
-#             return _holder
-
-#         @classmethod
-#         def Read(
-#             cls,
-#             file_name: str,
-#             file_dir: str,
-#             cvt_func: Callable[[ET.Element], dict] | None = None
-#         ) -> dict:
-#             # make file path
-#             _file = Path_old.Join(
-#                 File.Extention_checker(file_name, File.Support_Format.XML),
-#                 file_dir)
-#             _is_exist = Path_old.Exist_check(_file, Path_old.Type.FILE)
-
-#             # read the file
-#             if _is_exist:
-#                 _cvt = cvt_func if cvt_func else cls.Xml_to_dict
-#                 return _cvt(ET.parse(_file).getroot())
-#             print(f"file {file_name} is not exist in {file_dir}")
-#             return {}
+    if isinstance(data, list):
+        return Json.Write_to(file, data, enc, **kw)
