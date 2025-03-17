@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse
 
 from .system import Path_utils, Time_Utils
-from .file import Read_from, Write_to
+from .file import Json
 
 
 class Config():
@@ -48,17 +48,11 @@ class Config():
 
             -------------------------------------------------------------------
             """
-            try:
-                Write_to(
-                    Path_utils.Join(file_name, file_dir),
-                    self.Config_to_dict(),
-                    encoding_type
-                )
-            except ValueError:
-                _cfg_name = self.__class__.__name__
-                _msg = "If you want save this file,"
-                _msg += f" override the function `Write_to` in {_cfg_name}."
-                print(_msg)
+            Json.Write_to(
+                Path_utils.Join(file_name, file_dir),
+                self.Config_to_dict(),
+                encoding_type
+            )
 
     cfg_class = TypeVar("cfg_class", bound=Basement)
 
@@ -68,15 +62,9 @@ class Config():
         file_path: Path,
         encoding_type: str = "UTF-8"
     ):
-        try:
-            _meta_data = Read_from(file_path, encoding_type, "json")
-            if _meta_data[0] == "json":
-                return config_obj(**_meta_data[1])
-            raise ValueError()
+        _is_done, _meta_data = Json.Read_from(file_path, encoding_type)
 
-        except ValueError as _value_e:
-            print("If you want do this, override the function 'Read_from'.")
-            raise ValueError from _value_e
+        return _is_done, config_obj(**_meta_data)
 
     @staticmethod
     def Read_with_arg_parser(
