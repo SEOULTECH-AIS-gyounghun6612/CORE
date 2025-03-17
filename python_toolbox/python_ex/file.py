@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import TypeVar, Callable, Any
+from typing import TypeVar, Callable, cast, Any
 
 from pathlib import Path
 
@@ -9,6 +9,8 @@ KEY = TypeVar(
     "KEY", bound=int | float | bool | str)
 VALUE = TypeVar(
     "VALUE", bound=int | float | bool | str | tuple | list | dict | None)
+
+F = TypeVar("F", bound=Callable)
 
 
 def Suffix_check(path: Path, ext: list[str] | str, is_fix: bool = True):
@@ -22,7 +24,7 @@ def Suffix_check(path: Path, ext: list[str] | str, is_fix: bool = True):
 def Handle_exp(extra_exp: dict[type[Exception], str] | None = None):
     extra_exp = extra_exp or {}
 
-    def Checker(func: Callable[..., bool | tuple[bool, Any]]):
+    def Checker(func: F) -> F:
 
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -33,7 +35,7 @@ def Handle_exp(extra_exp: dict[type[Exception], str] | None = None):
                 message = extra_exp.get(_exp, "알 수 없는 파일 처리 오류 발생:")
                 print(f"{message} -> {e}")
             return False, None
-        return wrapper
+        return cast(F, wrapper)
 
     return Checker
 
@@ -145,7 +147,7 @@ def Read_from(
 
 def Write_to(
     file: Path,
-    data: dict[KEY, VALUE] | list[str],
+    data: dict[str, VALUE] | list[str],
     enc: str = "UTF-8",
     **kw
 ):
@@ -153,4 +155,4 @@ def Write_to(
         return Json.Write_to(file, data, enc, **kw)
 
     if isinstance(data, list):
-        return Json.Write_to(file, data, enc, **kw)
+        return Text.Write_to(file, data, enc, **kw)
