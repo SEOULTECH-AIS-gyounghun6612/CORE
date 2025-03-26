@@ -7,7 +7,7 @@ from pathlib import Path
 
 import argparse
 
-from .system import Path_utils, Time_Utils
+from .system import Path_utils
 from .file import Json
 
 
@@ -107,32 +107,11 @@ class Project_Template(Generic[Config.cfg_class]):
 
     """
     def __init__(
-        self, name: str, config: Config.cfg_class, result_dir: str = "result"
+        self, name: str, config: Config.cfg_class, result_dir: str
     ):
         self.project_name = name
         self.project_cfg = config
-        self.save_root = Path_utils.Make_directory(result_dir)
-
-    def Make_save_root(
-        self, obj_dir: str | list[str],
-        base_path: str | None = None, use_time_stamp: bool = True
-    ):
-        """ ### 프로젝트 결과 저장 최상위 경로 생성 함수
-
-        ------------------------------------------------------------------
-        ### Args
-            - `obj_dir`:
-
-        ### Returns
-            - `Path`: 저장 최상위 경로
-        """
-        _obj_dir = [self.project_name]
-        _obj_dir += obj_dir if isinstance(obj_dir, list) else [obj_dir]
-
-        if use_time_stamp:
-            _obj_dir += [Time_Utils.Make_text_from()]
-
-        return Path_utils.Make_directory(_obj_dir, base_path)
+        self.result_path = Path(result_dir)
 
 
 class Debuging():
