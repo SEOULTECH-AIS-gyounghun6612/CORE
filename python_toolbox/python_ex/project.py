@@ -88,30 +88,15 @@ class Config():
 
 
 class Project_Template(Generic[Config.cfg_class]):
-    """ ### 프로젝트 구성을 위한 기본 구조
-
-    ---------------------------------------------------------------------
-    ### Args
-    - `name`: 프로젝트 이름
-    - `config_type`: 프로젝트에 사용되는 config class 타입
-
-    ### Attributes
-    - `project_name`: 프로젝트 이름
-    - `project_cfg`: 프로젝트 config 데이터
-    - `save_root`: 프로젝트 결과 저장 최상위 경로
-
-    ### Structure
-    - `_Get_args_by_arg_parser`
-    - `_Get_config`
-    - `_Make_save_root`: 프로젝트 결과 저장 최상위 경로 생성 함수
-
-    """
     def __init__(
-        self, name: str, config: Config.cfg_class, result_dir: str
+        self, name: str, config: Config.cfg_class
     ):
         self.project_name = name
         self.project_cfg = config
-        self.result_path = Path(result_dir)
+        self.result_path = self.Get_result_path()
+
+    def Get_result_path(self) -> Path:
+        raise NotImplementedError
 
 
 class Debuging():
