@@ -93,9 +93,9 @@ class Project_Template(Generic[Config.cfg_class]):
     ):
         self.project_name = name
         self.project_cfg = config
-        self.result_path = self.Get_result_path()
+        self.result_path = self.Get_result_path(config)
 
-    def Get_result_path(self) -> Path:
+    def Get_result_path(self, config: Config.cfg_class) -> Path:
         raise NotImplementedError
 
 
