@@ -28,7 +28,7 @@ from python_ex.project import Config
 from python_ex.project import Project_Template
 
 from .dataset import (
-    Data_Config, Dataloader_Config, Custom_Dataset, Build_dataloader)
+    Data_Config, Dataloader_Config, Custom_Dataset, Build_loader)
 from .neural_network import Custom_Model, Model_Config
 
 
@@ -140,7 +140,9 @@ LOSSES = tuple[Callable[..., Tensor], ...]
 class End_to_End(Project_Template):
     project_cfg: Learning_Config
 
-    def _Get_dataset(self, data_cfg: Data_Config) -> Custom_Dataset:
+    def _Get_dataset(
+        self, mode: Mode, data_cfg: Data_Config
+    ) -> Custom_Dataset:
         raise NotImplementedError
 
     def _Get_model_n_loss(
@@ -173,7 +175,7 @@ class End_to_End(Project_Template):
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
         _dataloader = dict((
-            _m, Build_dataloader(_d_loader_cfg[_m], self._Get_dataset(_d_cfg))
+            _m, Build_loader(_d_loader_cfg[_m], self._Get_dataset(_m, _d_cfg))
         ) for _m, _d_cfg in _d_cfg.items())
 
         _model, _losses = self._Get_model_n_loss(cfg.model_cfg, _device)

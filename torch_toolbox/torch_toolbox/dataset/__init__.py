@@ -9,7 +9,7 @@
 
 """
 from __future__ import annotations
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 from dataclasses import dataclass, field
 
 from torch.utils.data import Dataset, DataLoader
@@ -20,17 +20,25 @@ from python_ex.project import Config
 @dataclass
 class Data_Config(Config.Basement):
     name: str = "no_data"
-    process_type: str = "custom"
+    process: str = "custom"
     data_dir: str = "./datasets"
     additional: dict = field(default_factory=dict)
 
 
 class Custom_Dataset(Dataset):
-    def __init__(self, mode: str, dataset_cfg: Data_Config):
-        self.dataset_cfg = dataset_cfg
-        self.dataset_block = self.Get_datablock(mode)
+    def __init__(
+        self,
+        mode: Literal["train", "validation", "test"], cfg: Data_Config
+    ):
+        self.dataset_cfg = cfg
+        self.dataset_block = self.Get_data_block(
+            mode, cfg.data_dir, cfg.process, **cfg.additional)
 
-    def Get_datablock(self, mode: str) -> dict[int, Any]:
+    def Get_data_block(
+        self,
+        mode: Literal["train", "validation", "test"],
+        data_dir: str, process: str, **kwarg
+    ) -> dict[int, Any]:
         raise NotImplementedError
 
     def __len__(self):
@@ -49,7 +57,7 @@ class Dataloader_Config(Config.Basement):
     drop_last: bool = False
 
 
-def Build_dataloader(
+def Build_loader(
     dataloader_cfg: Dataloader_Config,
     dataset: Dataset,
     collect_func: Callable | None = None
