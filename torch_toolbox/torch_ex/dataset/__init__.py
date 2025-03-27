@@ -17,35 +17,20 @@ from torch.utils.data import Dataset, DataLoader
 from python_ex.project import Config
 
 
-class Parser():
-    def __init__(
-        self,
-        data_dir: str,
-        learning_mode: str,
-        **kwarg
-    ) -> None:
-        self.data_info: dict[str, Any] = {
-            "learning_mode": learning_mode
-        }
-        self.data_block: dict[str, list] = {}
+@dataclass
+class Data_Config(Config.Basement):
+    name: str = "no_data"
+    data_dir: str = "./datasets"
+    additional: dict = field(default_factory=dict)
 
-        self.Get_data_from(data_dir, **kwarg)
-
-    def Get_data_from(self, data_dir: str, **kwarg):
+    def Get_dataset(self, mode: str) -> dict[int, Any]:
         raise NotImplementedError
 
 
-class Dataset_Basement(Dataset):
-    def __init__(
-        self,
-        data_dir: str,
-        learning_mode: str,
-        data_parser: type[Parser] = Parser,
-        **parser_kwarg
-    ) -> None:
-        _parser = data_parser(data_dir, learning_mode, **parser_kwarg)
-        self.data_info = _parser.data_info
-        self.data_block = _parser.data_block
+class Custom_Dataset(Dataset):
+    def __init__(self, mode: str, dataset_cfg: Data_Config):
+        self.dataset_block = dataset_cfg.Get_dataset(mode)
+        self.dataset_cfg = dataset_cfg
 
     def __len__(self):
         raise NotImplementedError
@@ -55,55 +40,18 @@ class Dataset_Basement(Dataset):
 
 
 @dataclass
-class Dataset_Config(Config):
-    name: str = "no_data"
-    data_dir: str = "./datasets"
-    additional: dict = field(default_factory=dict)
-
-    def Build_dataset(
-        self, learning_type: str
-    ) -> Dataset_Basement:
-        raise NotImplementedError
-
-    def Get_summation(self):
-        return [self.name]
-
-
-@dataclass
-class Dataloader_Config(Config):
-    dataset_config: Dataset_Config = field(default_factory=Dataset_Config)
-
+class Dataloader_Config(Config.Basement):
     batch_size: int = 1
     shuffle: bool = True
     num_workers: int = 0
     collate_fn: str | None = None
     drop_last: bool = False
 
-    def _Build_collate_fn(self) -> Callable | None:
-        raise NotImplementedError
 
-    def Builde_dataloder(self, learning_type: str) -> tuple[int, DataLoader]:
-        _dataset = self.dataset_config.Build_dataset(learning_type)
-        try:
-            _collate_fn = self._Build_collate_fn()
-        except NotImplementedError:
-            _collate_fn = None
-
-        return len(_dataset), DataLoader(
-            _dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            num_workers=self.num_workers,
-            collate_fn=_collate_fn,
-            drop_last=self.drop_last)
-
-    def Set_from(self, source: dict[str, Any]):
-        for _k, _v in source.items():
-            if _k in self.__dict__:
-                if _k == "dataset_config":
-                    self.dataset_config.Set_from(_v)
-                else:
-                    self.__dict__[_k] = _v
-
-    def Get_summation(self):
-        return self.dataset_config.Get_summation()
+def Build_dataloader(
+    dataloader_cfg: Dataloader_Config,
+    dataset: Dataset,
+    collect_func: Callable | None = None
+):
+    return DataLoader(
+        dataset, collate_fn=collect_func, **dataloader_cfg.Config_to_dict())
