@@ -10,7 +10,7 @@ setup(
     name="torch_toolbox",
     version="0.0.1",
     description="Custom base code module for pytorch",
-    url="https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git",
+    url="https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_toolbox.git",
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=find_namespace_packages(),
