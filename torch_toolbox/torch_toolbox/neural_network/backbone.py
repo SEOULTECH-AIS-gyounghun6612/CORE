@@ -1,10 +1,16 @@
-from torch import Tensor
-from torch.nn import Module
+from typing import Literal, Any
+
+from torch import Tensor, hub
+from torch.nn import Module, functional as F
 
 
 class Backbone():
     class Backbone_Module(Module):
-        def __init__(self, is_pretrained: bool, is_trainable: bool):
+        def __init__(
+            self,
+            is_pretrained: bool,
+            is_trainable: bool
+        ):
             super().__init__()
             self.is_pretrained = is_pretrained
             self.is_trainable = is_trainable
@@ -95,6 +101,54 @@ class Backbone():
 
         def Average_pooling(self, ouput: Tensor) -> Tensor:
             return self.avgpool(ouput)
+
+    class DINO_V2(Backbone_Module):
+        def __init__(
+            self,
+            model_type: Literal["vits", "vitb", "vitl", "vitg"] = "vits",
+            with_registers: bool = False,
+            is_reshape: bool = True
+        ):
+            super().__init__(True, False)
+            _name_arg = [model_type, '_reg' if with_registers else '']
+            _model: Any = hub.load(
+                "facebookresearch/dinov2",
+                "dinov2_{}14{}".format(*_name_arg)
+            )
+
+            for _parameter in _model.parameters():
+                _parameter.requires_grad = False
+
+            self.is_reshape = is_reshape
+            self.model: Any = _model
+            """
+            "vits": [2, 5, 8, 11],
+            "vitb": [2, 5, 8, 11],
+            "vitl": [4, 11, 17, 23],
+            """
+
+        def forward(self, x: Tensor, *intermediate_layer_ids: int):
+            _b, _, _h, _w = x.shape
+            _b_h, _b_w = _h // 14, _w // 14
+            _r_h, _r_w = _b_h * 14, _b_w * 14
+            _r_x = F.interpolate(
+                x, (_r_h, _r_w), mode="bilinear", align_corners=True
+            )
+
+            _outputs: list[Tensor] = self.model.get_intermediate_layers(
+                _r_x, list(intermediate_layer_ids), return_class_token=False
+            )
+
+            if self.is_reshape:
+                return [
+                    _o
+                    .reshape(_b, _b_h, _b_w, -1)
+                    .permute(0, 3, 1, 2).contiguous() for _o in _outputs
+                ]
+            return list(_outputs)
+
+        def Average_pooling(self, ouput: Tensor) -> Tensor:
+            raise NotImplementedError
 
     @staticmethod
     def Build_backbone(

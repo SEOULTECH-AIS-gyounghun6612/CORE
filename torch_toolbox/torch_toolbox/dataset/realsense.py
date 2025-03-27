@@ -5,9 +5,9 @@ import numpy as np
 import cv2
 
 from python_ex.system import Path, File
-from torch_ex.learning import Mode
+from torch_toolbox.learning import Mode
 
-from . import Parser, Dataset_Basement
+from . import Parser, Custom_Dataset
 
 try:
     import pyrealsense2 as rs
@@ -57,7 +57,7 @@ class Realsense_Parser(Parser):
                 "realsense.yaml", data_dir)
 
 
-class Realsense(Dataset_Basement):
+class Realsense(Custom_Dataset):
     def __init__(
         self,
         data_dir: str,
@@ -75,19 +75,19 @@ class Realsense(Dataset_Basement):
         # in later, make disorted matrix from self.data_info
 
     def __len__(self):
-        return len(self.data_block["rgb"])
+        return len(self.dataset_cfg["rgb"])
 
     def __getitem__(self, index):
-        _rgb_file = self.data_block["rgb"][index]
+        _rgb_file = self.dataset_cfg["rgb"][index]
         _rgb = cv2.imread(_rgb_file, cv2.IMREAD_UNCHANGED)
         # in later add apply disorted
         # ex) cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
 
         _depth = None
         if self.use_depth:
-            _depth_file = self.data_block["depth"][index]
+            _depth_file = self.dataset_cfg["depth"][index]
             _depth = cv2.imread(_depth_file, cv2.IMREAD_UNCHANGED)
 
-        _pose = self.data_block["pose"][index]
+        _pose = self.dataset_cfg["pose"][index]
 
         return _rgb, _depth, _pose
