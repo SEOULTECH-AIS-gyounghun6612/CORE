@@ -20,17 +20,18 @@ from python_ex.project import Config
 @dataclass
 class Data_Config(Config.Basement):
     name: str = "no_data"
+    process_type: str = "custom"
     data_dir: str = "./datasets"
     additional: dict = field(default_factory=dict)
-
-    def Get_dataset(self, mode: str) -> dict[int, Any]:
-        raise NotImplementedError
 
 
 class Custom_Dataset(Dataset):
     def __init__(self, mode: str, dataset_cfg: Data_Config):
-        self.dataset_block = dataset_cfg.Get_dataset(mode)
         self.dataset_cfg = dataset_cfg
+        self.dataset_block = self.Get_datablock(mode)
+
+    def Get_datablock(self, mode: str) -> dict[int, Any]:
+        raise NotImplementedError
 
     def __len__(self):
         raise NotImplementedError
