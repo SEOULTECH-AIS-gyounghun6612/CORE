@@ -1,15 +1,10 @@
 from setuptools import setup, find_namespace_packages
 
 
-requirments_package = [
-    'numpy',
-    'opencv-python',
-    'pyyaml',
-    'flake8',
-    'matplotlib']
+def load_requirements(filename="requirements.txt"):
+    with open(filename, encoding="utf-8") as f:
+        return [_l for _l in f.readlines() if _l and not _l[0] != "#"]
 
-dependency_links = []
-package_opt = {}
 
 setup(
     name="python_ex",
@@ -20,7 +15,6 @@ setup(
     author_email="dev.gyounghun6612@gmail.com",
     packages=find_namespace_packages(),
     python_requires=">= 3.10.0",
-    dependency_links=dependency_links,
-    install_requires=requirments_package,
+    install_requires=load_requirements(),
     zip_safe=False
 )
