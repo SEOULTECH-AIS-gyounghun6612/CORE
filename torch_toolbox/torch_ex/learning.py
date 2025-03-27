@@ -21,14 +21,14 @@ from datetime import datetime
 from torch import Tensor, device
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from torch.utils.data import Dataset
 
 from python_ex.system import String, Time_Utils
 from python_ex.file import Json
 from python_ex.project import Config
 from python_ex.project import Project_Template
 
-from .dataset import Data_Config, Dataloader_Config, Build_dataloader
+from .dataset import (
+    Data_Config, Dataloader_Config, Custom_Dataset, Build_dataloader)
 from .neural_network import Custom_Model, Model_Config
 
 
@@ -140,7 +140,7 @@ LOSSES = tuple[Callable[..., Tensor], ...]
 class End_to_End(Project_Template):
     project_cfg: Learning_Config
 
-    def _Get_dataset(self, data_cfg: Data_Config) -> Dataset:
+    def _Get_dataset(self, data_cfg: Data_Config) -> Custom_Dataset:
         raise NotImplementedError
 
     def _Get_model_n_loss(
