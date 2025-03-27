@@ -45,6 +45,9 @@ class Optimizer_Config(Config.Basement):
 
 @dataclass
 class Learning_Config(Config.Basement):
+    # result directory
+    result_dir: str = "./result"
+
     # epoch
     max_epoch: int = 50
     this_epoch: int = 0
@@ -139,6 +142,19 @@ LOSSES = tuple[Callable[..., Tensor], ...]
 
 class End_to_End(Project_Template):
     project_cfg: Learning_Config
+
+    def Get_result_path(self, config: Learning_Config) -> Path:
+        _result_dir = Path(config.result_dir)
+        _result_dir /= self.project_name
+        _result_dir /= "_".join([
+            f"{str(_m)[0].upper()}_{_d_cfg.name}" for (
+                _m, _d_cfg
+            ) in config.dataset_cfg.items()
+        ])
+
+        _result_dir /= Time_Utils.Make_text_from(
+            Time_Utils.Stamp(), "%Y-%m-%dT%H:%M:%S")
+        return _result_dir
 
     def _Get_dataset(
         self, mode: Mode, data_cfg: Data_Config
