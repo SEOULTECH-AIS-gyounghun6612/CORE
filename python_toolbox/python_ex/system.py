@@ -313,21 +313,14 @@ class Path_utils():
         return _obj
 
     @staticmethod
-    def Search_in_(obj_path: str | Path, keyword: str = "*"):
-        """ ### 디렉토리 내 검색 함수
-        주어진 디렉토리에 존재하는 파일 또는 폴더 목록을 가져오는 함수
-
-        -----------------------------------------------------------------------
-        ### Args
-        - `obj_path`: 대상 경로
-        - `keyword`: 검색 키워드
-
-        ### Returns
-        - `list[Path]` : 검색된 경로 객체 목록
-
-        """
+    def Is_exists(obj_path: str | Path):
         _path = obj_path if isinstance(obj_path, Path) else Path(obj_path)
-        return list(_path.glob(keyword))
+        return _path.exists(), _path
+
+    @staticmethod
+    def Search_in(obj_path: Path, keyword: str = "*", is_sorted: bool = True):
+        _list = obj_path.glob(keyword)
+        return sorted(_list) if is_sorted else _list
 
     class Server():
         ...
