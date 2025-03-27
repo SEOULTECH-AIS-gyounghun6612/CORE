@@ -1,19 +1,10 @@
 from setuptools import setup, find_namespace_packages
 
 
-requirments_package = [
-    'python_ex',
-    'torch>=2.2',
-    'einops',
-    'albumentations',
-    'torchsummary',
-    'tensorboard',
-    'torch-tb-profiler',
-    'torchvision'
-    # 'torchtyping'
-]
+def load_requirements(filename="requirements.txt"):
+    with open(filename, encoding="utf-8") as f:
+        return [_l for _l in f.readlines() if _l and not _l[0] != "#"]
 
-package_opt = {}
 
 setup(
     name="torch_ex",
@@ -23,8 +14,7 @@ setup(
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=find_namespace_packages(),
-    package_data=package_opt,
     python_requires=">=3.10.0",
-    install_requires=requirments_package,
+    install_requires=load_requirements(),
     zip_safe=False,
 )
