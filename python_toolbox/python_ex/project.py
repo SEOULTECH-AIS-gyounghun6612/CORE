@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse
 
 from .system import Path_utils
-from .file import Json
+from .file import Json, Read_from, Suffix_check
 
 
 class Config():
@@ -62,9 +62,14 @@ class Config():
         file_path: Path,
         encoding_type: str = "UTF-8"
     ) -> tuple[bool, cfg_class]:
-        _is_done, _meta_data = Json.Read_from(file_path, encoding_type)
+        _is_ok, _ = Suffix_check(file_path, [".json", ".yaml"], True)
 
-        return _is_done, config_obj(**_meta_data)
+        if _is_ok:
+            _meta: tuple[bool, dict[str, Any]] = Read_from(
+                file_path, encoding_type)
+            return _meta[0], config_obj(**_meta[1])
+
+        return False, config_obj()
 
     @staticmethod
     def Read_with_arg_parser(
