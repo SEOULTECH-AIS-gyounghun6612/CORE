@@ -53,7 +53,6 @@ class Dataloader_Config(Config.Basement):
     batch_size: int = 1
     shuffle: bool = True
     num_workers: int = 0
-    collate_fn: str | None = None
     drop_last: bool = False
 
 

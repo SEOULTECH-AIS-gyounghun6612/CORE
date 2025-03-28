@@ -24,8 +24,7 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from python_ex.system import String, Time_Utils
 from python_ex.file import Json
-from python_ex.project import Config
-from python_ex.project import Project_Template
+from python_ex.project import Config, Project_Template
 
 from .dataset import (
     Data_Config, Dataloader_Config, Custom_Dataset, Build_loader)
@@ -158,7 +157,7 @@ class End_to_End(Project_Template):
 
     def _Get_dataset(
         self, mode: Mode, data_cfg: Data_Config
-    ) -> Custom_Dataset:
+    ) -> tuple[Custom_Dataset, Callable | None]:
         raise NotImplementedError
 
     def _Get_model_n_loss(
@@ -191,7 +190,7 @@ class End_to_End(Project_Template):
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
         _dataloader = dict((
-            _m, Build_loader(_d_loader_cfg[_m], self._Get_dataset(_m, _d_cfg))
+            _m, Build_loader(_d_loader_cfg[_m], *self._Get_dataset(_m, _d_cfg))
         ) for _m, _d_cfg in _d_cfg.items())
 
         _model, _losses = self._Get_model_n_loss(cfg.model_cfg, _device)
