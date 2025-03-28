@@ -126,7 +126,7 @@ class Json(File_Process):
 
         _, _path = Suffix_check(file, ".json", True)
 
-        with _path.open(encoding=enc) as _f:
+        with _path.open(mode="w", encoding=enc) as _f:
             json.dump(data, _f, indent=indent)
         return True
 
@@ -157,7 +157,7 @@ class Yaml(File_Process):
 
         _, _path = Suffix_check(file, ".yaml", True)
 
-        with _path.open(encoding=enc) as _f:
+        with _path.open(mode="w", encoding=enc) as _f:
             yaml.dump(data, _f, indent=indent)
         return True
 
