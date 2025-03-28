@@ -165,7 +165,7 @@ class Yaml(File_Process):
 def Read_from(file: Path, enc: str = "UTF-8", **kwarg):
     if Path.is_file(file):
         _suffix: str = file.suffix
-        _name = _suffix.capitalize()
+        _name = _suffix[1:].capitalize()
         # !!! warning !!! fnc "globals" can return more module or fnc.
         _modules = globals()
 
