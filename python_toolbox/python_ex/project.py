@@ -61,7 +61,7 @@ class Config():
         config_obj: type[cfg_class],
         file_path: Path,
         encoding_type: str = "UTF-8"
-    ):
+    ) -> tuple[bool, cfg_class]:
         _is_done, _meta_data = Json.Read_from(file_path, encoding_type)
 
         return _is_done, config_obj(**_meta_data)
@@ -70,7 +70,10 @@ class Config():
     def Read_with_arg_parser(
         config_template: type[Config.cfg_class],
         parser: argparse.ArgumentParser | None = None
-    ):
+    ) -> tuple[bool, cfg_class]:
+
+        raise NotImplementedError("this function has problem")
+
         if parser is None:
             _parser = argparse.ArgumentParser()
             _parser.add_argument("--cfg_file", dest="cfg_file", type=str)
