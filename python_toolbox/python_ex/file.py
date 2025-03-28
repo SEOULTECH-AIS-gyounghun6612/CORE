@@ -162,20 +162,15 @@ class Yaml(File_Process):
         return True
 
 
-def Read_from(
-    file: Path, enc: str = "UTF-8"
-):
+def Read_from(file: Path, enc: str = "UTF-8", **kwarg):
     if Path.is_file(file):
         _suffix: str = file.suffix
+        _name = _suffix.capitalize()
+        # !!! warning !!! fnc "globals" can return more module or fnc.
+        _modules = globals()
 
-        if _suffix == ".json":
-            return Json.Read_from(file, enc)
-
-        if _suffix == ".txt":
-            return Text.Read_from(file, enc)
-
-        if _suffix == ".yaml":
-            return Yaml.Read_from(file, enc)
+        if _name in _modules:
+            return _modules[_name].Read_from(file, enc, **kwarg)
 
         raise ValueError(f"File extension '{_suffix}' is not supported")
     raise ValueError("!!! This path is not FILE !!!")
