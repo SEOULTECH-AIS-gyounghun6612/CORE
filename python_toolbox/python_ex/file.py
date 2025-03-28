@@ -4,6 +4,8 @@ from typing import TypeVar, Callable, cast, Any
 from pathlib import Path
 
 import json
+import yaml
+
 
 KEY = TypeVar(
     "KEY", bound=int | float | bool | str)
@@ -129,6 +131,37 @@ class Json(File_Process):
         return True
 
 
+class Yaml(File_Process):
+    loader = yaml.FullLoader
+
+    @classmethod
+    @Handle_exp()
+    def Read_from(
+        cls, file: Path, enc: str = "UTF-8", **kw
+    ) -> tuple[bool, Any]:
+        _, _file = Suffix_check(file, ".yaml")
+
+        if not _file.exists():
+            return False, {}
+
+        with file.open(encoding=enc) as _f:
+            return True, yaml.load(_f, cls.loader)
+
+    @classmethod
+    @Handle_exp()
+    def Write_to(
+        cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+        indent: int = 4
+    ) -> bool:
+        cls.Ensure_dir(file)
+
+        _, _path = Suffix_check(file, ".yaml", True)
+
+        with _path.open(encoding=enc) as _f:
+            yaml.dump(data, _f, indent=indent)
+        return True
+
+
 def Read_from(
     file: Path, enc: str = "UTF-8"
 ):
@@ -141,6 +174,9 @@ def Read_from(
         if _suffix == ".txt":
             return Text.Read_from(file, enc)
 
+        if _suffix == ".yaml":
+            return Yaml.Read_from(file, enc)
+
         raise ValueError(f"File extension '{_suffix}' is not supported")
     raise ValueError("!!! This path is not FILE !!!")
 
@@ -152,7 +188,12 @@ def Write_to(
     **kw
 ):
     if isinstance(data, dict):
-        return Json.Write_to(file, data, enc, **kw)
+        _suffix: str = file.suffix
+        if _suffix == ".json":
+            return Json.Write_to(file, data, enc, **kw)
+
+        if _suffix == ".txt":
+            return Yaml.Write_to(file, data, enc, **kw)
 
     if isinstance(data, list):
         return Text.Write_to(file, data, enc, **kw)
