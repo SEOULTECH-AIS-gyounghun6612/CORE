@@ -1,68 +1,52 @@
-# Pytorch EXTENTION utils in AIS
+# Pytorch toolbox in AIS
 
-기본적인 pytorch 활용법과 관련하여 자주 쓰는 구성을 정리하여 이후 작업에 활용하기 위하여 구성한 레포지토리
+연구 과정 중 사용되는 PyTorch 기반의 딥러닝 모델 구현 시 자주 사용되는 구성 요소들을 정리한 레포지토리입니다.
+기초적인 활용부터 고급 구성까지 재사용 가능한 구조로 정리하여 연구 및 개발 효율성을 높이는 것을 목표로 합니다.
 
 ## Update plan
 
 ### 공통 과정
 
-- [ ] docstring 작업 -> [참고 링크](https://github.com/SEOULTECH-AIS-gyounghun6612/SEOULTECH-AIS-gyounghun6612.github.io/blob/main/python_md/doc_string.md#Doc-string-예시)
-  - [ ] dataset/
-  - [ ] newural_network/
-  - [ ] learning.py
+### 📁 dataset
 
-### dataset
+### 📁 neural_network
 
-- [ ] kitti dataset 처리 모듈 추가
+- [ ] 주요 backbone 사용 구조 업데이트
 
-### newural_network
+### 📄 learning.py
 
-- [ ] 주요 모듈 업데이트
-  - [ ] Conv2D 기반 자주 사용되는 encoder-decoder 구조 추가
+- [ ] 심층 신경망 기반 강화학습 구조 코드 추가 예정
 
-### learning.py
+## 🔧 Installation
 
-- [ ] 심층 신경망 강화학습 구조 코드 추가
+### 📚 Requirements
 
-## requirments
+✅ 공통
 
-- 공통 사항
-  - python >= 3.10
-  - python_ex [링크](https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git)
-  - pytorch
+- [python_ex](https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git)
 
-- layer/3d_gaussian
-  - open3d
-  - plyfile
-  - diff-gaussian-rasterization [링크](https://github.com/graphdeco-inria/diff-gaussian-rasterization)
-  - simple-knn [링크](https://gitlab.inria.fr/bkerbl/simple-knn.git)
+✅ layer/3d_gaussian 관련
 
-## Install
+- open3d
+- plyfile
+- [diff-gaussian-rasterization](https://github.com/graphdeco-inria/diff-gaussian-rasterization)
+- [simple-knn](https://gitlab.inria.fr/bkerbl/simple-knn.git)
 
-- pip 사용
+### pip 사용 (HTTPS)
 
-  - using https
+```bash
+# using pip with https
+pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+```
 
-    ``` bash
-    pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
-    ```
+### 직접 설치 (로컬 clone)
 
-  - using ssh
+```bash
+# clone this repository
+git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git
 
-    ```bash
-    pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
-    ```
+cd AIS_torch_ex
 
-- 직접 설치
-
-  - clone this repository
-
-    ```bash
-    git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git
-    ```
-
-  - install
-
-    ```bash
-    cd AIS_torch_ex && pip install -e .
-    ```
+# install 
+pip install -e .
+```
