@@ -2,9 +2,12 @@ from functools import wraps
 from typing import TypeVar, Callable, cast, Any
 
 from pathlib import Path
+from shutil import copyfile
 
 import json
 import yaml
+
+from .system import Path_utils
 
 
 KEY = TypeVar(
@@ -192,3 +195,34 @@ def Write_to(
 
     if isinstance(data, list):
         return Text.Write_to(file, data, enc, **kw)
+
+
+class Utils():
+    @staticmethod
+    def Make_the_file_group(
+        file_dir: Path | str, save_dir: Path | str,
+        keyword: str, size: int, stride: int, overlap: int,
+        drop_last: bool = False
+    ):
+        _range = size * stride
+        _step = stride * (size - overlap)
+
+        _obj_dir = Path_utils.Path_check(file_dir)
+        _save_dir = Path_utils.Path_check(save_dir)
+
+        _file_list = Path_utils.Search_in(_obj_dir, keyword)
+
+        if len(_file_list) % _step:
+            _group_ct = (len(_file_list) // _step) + int(not drop_last)
+        else:
+            _group_ct = len(_file_list) // _step
+
+        for _ct in range(_group_ct):
+            _new_rgb_dir = _save_dir / f"{_ct:0>5d}"
+            _new_rgb_dir.mkdir(exist_ok=True)
+
+            _st = _ct * _step
+            _ed = _st + _range
+
+            for _img_file in _file_list[_st:_ed:stride]:
+                copyfile(_img_file, _new_rgb_dir / _img_file.name)
