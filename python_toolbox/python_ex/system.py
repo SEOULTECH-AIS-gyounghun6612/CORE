@@ -322,6 +322,10 @@ class Path_utils():
         _list = obj_path.glob(keyword)
         return sorted(_list) if is_sorted else _list
 
+    @staticmethod
+    def Path_check(path: str | Path):
+        return path if isinstance(path, Path) else Path(path)
+
     class Server():
         ...
 
