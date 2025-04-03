@@ -319,7 +319,7 @@ class Path_utils():
 
     @staticmethod
     def Search_in(obj_path: Path, keyword: str = "*", is_sorted: bool = True):
-        _list = obj_path.glob(keyword)
+        _list = list(obj_path.glob(keyword))
         return sorted(_list) if is_sorted else _list
 
     @staticmethod
