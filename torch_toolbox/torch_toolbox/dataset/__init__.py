@@ -38,7 +38,7 @@ class Custom_Dataset(Dataset):
         self,
         mode: Literal["train", "validation", "test"],
         data_dir: str, process: str, **kwarg
-    ) -> dict[int, Any]:
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     def __len__(self):
