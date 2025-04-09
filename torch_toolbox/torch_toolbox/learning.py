@@ -12,7 +12,6 @@
 
 """
 from __future__ import annotations
-from enum import auto
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -27,14 +26,14 @@ from python_ex.file import Json
 from python_ex.project import Config, Project_Template
 
 from .dataset import (
-    Data_Config, Dataloader_Config, Custom_Dataset, Build_loader)
+    Data_Config, Dataloader_Config, Custom_Dataset, DataLoader, Build_loader)
 from .neural_network import Custom_Model, Model_Config
 
 
 class Mode(String.String_Enum):
-    TRAIN = auto()
-    VALIDATION = auto()
-    TEST = auto()
+    TRAIN = ("train", True)
+    VALIDATION = ("val", True)
+    TEST = ("test", False)
 
 
 @dataclass
@@ -155,93 +154,112 @@ class End_to_End(Project_Template):
             Time_Utils.Stamp(), "%Y-%m-%dT%H:%M:%S")
         return _result_dir
 
-    def _Get_dataset(
+    def __Get_dataset__(
         self, mode: Mode, data_cfg: Data_Config
     ) -> tuple[Custom_Dataset, Callable | None]:
         raise NotImplementedError
 
-    def _Get_model_n_loss(
+    def __Get_model_n_loss__(
         self, model_cfg: Model_Config, device_info: device
     ) -> tuple[Custom_Model, LOSSES]:
         raise NotImplementedError
 
-    def _Get_optim(
+    def __Get_optim__(
         self, model: Custom_Model, optim_cfg: Optimizer_Config
     ) -> tuple[Optimizer, LRScheduler | None]:
         raise NotImplementedError
 
-    def _Learning(
-        self, data: Any, device_info: device,
-        model: Custom_Model, loss: LOSSES, optim: Optimizer,
-        holder: dict, mode: Mode, epoch: int, st_time: datetime
-    ):
+    def Get_predict(self, data: Any, model: Custom_Model) -> Any:
         raise NotImplementedError
 
-    def _Lerning_decision(self, holder: dict, save_path: Path) -> bool:
+    def __Learning_loop__(
+        self,
+        epoch: int, st_time: datetime,
+        mode: Mode, dataloader: DataLoader, device_info: device,
+        model: Custom_Model, loss: LOSSES, optim: Optimizer,
+        save_path: Path
+    ) -> tuple[dict[str, list[float]], Any]:
+        raise NotImplementedError
+
+    def __Learning_decision__(self, holder: dict, save_path: Path) -> bool:
         return False
 
-    def _Main_work(self, thred_num: int, cfg: Learning_Config):
+    def __Model_learning__(
+        self, this_epoch: int, max_epoch: int,
+        model: Custom_Model, losses: LOSSES,
+        dataloader: dict[Mode, DataLoader],
+        device_info: device,
+        optim: Optimizer, scheduler: LRScheduler | None
+    ):
+        _logger = {}
+
+        for _epoch in range(this_epoch, max_epoch):
+            _this_path = self.result_path / f"{this_epoch:0>6d}"
+            _this_path.mkdir(exist_ok=True)
+
+            _epoch_logger: dict[str, dict] = {}
+            _st_time = Time_Utils.Stamp()
+
+            for _m, _d in dataloader.items():
+                _this_mode = str(_m)
+                _mode_path = _this_path / _this_mode
+                _mode_path.mkdir(exist_ok=True)
+
+                # 실제 데이터를 이용한 학습 진행
+                _epoch_logger[_this_mode], _ = self.__Learning_loop__(
+                    _epoch, _st_time,
+                    _m, _d, device_info,
+                    model.train() if _m.value[1] else model.eval(),
+                    losses, optim,
+                    _mode_path
+                )
+
+            _logger[_epoch] = _epoch_logger
+
+            # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
+            if self.__Learning_decision__(_logger, _this_path):
+                break
+
+            # 학습 속행
+            if scheduler is not None:
+                scheduler.step()
+        return _logger
+
+    def __run_learning__(self, thred_num: int, cfg: Learning_Config):
         # get the device info
         _gpus = cfg.gpus
         _device = device(
             f"cuda:{_gpus[thred_num]}" if len(_gpus) > thred_num else "cpu")
 
         # prepare learning
-        _logger = cfg.logger
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
-        _dataloader = dict((
-            _m, Build_loader(_d_loader_cfg[_m], *self._Get_dataset(_m, _d_cfg))
+        _d_dict = dict((
+            _m,
+            Build_loader(_d_loader_cfg[_m], *self.__Get_dataset__(_m, _d_cfg))
         ) for _m, _d_cfg in _d_cfg.items())
 
-        _model, _losses = self._Get_model_n_loss(cfg.model_cfg, _device)
-        _optim, _scheduler = self._Get_optim(_model, cfg.optim_cfg)
+        _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
+        _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
 
         # use multi gpu
         if len(_gpus) >= 2:
             ...  # not yet
 
-        _this_e = cfg.this_epoch
-        _max_e = cfg.max_epoch
-
         # load pretrained weight
+        _this_e = cfg.this_epoch
         if _this_e:
             ...  # not yet
 
-        # 학습 구조
-        for _epoch in range(_this_e, _max_e):
-            _this_path = self.result_path / f"{_this_e:0>6d}"
-            _this_path.mkdir(exist_ok=True)
+        # 학습 시작
+        cfg.logger = self.__Model_learning__(
+            _this_e, cfg.max_epoch, _model, _losses,
+            dict((_m, _d) for _m, _d in _d_dict.items() if _m.value[1]),
+            _device,
+            _optim, _scheduler
+        )
 
-            _epoch_logger: dict[str, dict] = {}
-            _st_time = Time_Utils.Stamp()
-            for _m, _d in _dataloader.items():
-                _this_mode = str(_m)
-                _this_looger = {}
-                _this_path = _this_path / _this_mode
-                _this_path.mkdir(exist_ok=True)
-
-                _model = _model.train() if _m is Mode.TRAIN else _model.eval()
-
-                # 실제 데이터를 이용한 학습 진행
-                for _data in _d:
-                    self._Learning(
-                        _data, _device, _model, _losses, _optim,
-                        _this_looger, _m, _epoch, _st_time
-                    )
-
-                _epoch_logger[_this_mode] = _this_looger
-            _logger[_epoch] = _epoch_logger
-
-            # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
-            if self._Lerning_decision(_logger, _this_path):
-                break
-
-            # 학습 속행
-            if _scheduler is not None:
-                _scheduler.step()
-
-    def Run(self):
+    def Train_with_validation(self):
         """ ### 학습 실행 함수
 
         ------------------------------------------------------------------
@@ -262,4 +280,4 @@ class End_to_End(Project_Template):
             self.project_cfg.Config_to_dict()
         )
 
-        self._Main_work(0, self.project_cfg)
+        self.__run_learning__(0, self.project_cfg)
