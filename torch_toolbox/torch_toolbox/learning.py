@@ -177,8 +177,8 @@ class End_to_End(Project_Template):
     ):
         raise NotImplementedError
 
-    def _Lerning_decision(self, holder: dict) -> bool:
-        return True
+    def _Lerning_decision(self, holder: dict, save_path: Path) -> bool:
+        return False
 
     def _Main_work(self, thred_num: int, cfg: Learning_Config):
         # get the device info
@@ -234,7 +234,7 @@ class End_to_End(Project_Template):
             _logger[_epoch] = _epoch_logger
 
             # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
-            if self._Lerning_decision(_logger):
+            if self._Lerning_decision(_logger, _this_path):
                 break
 
             # 학습 속행
