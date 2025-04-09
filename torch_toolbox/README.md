@@ -15,7 +15,10 @@
 
 ### 📄 learning.py
 
-- [ ] 심층 신경망 기반 강화학습 구조 코드 추가 예정
+- [ ] test 구조와 train-validation 과정 분리
+
+- [ ] 학습 구조 추가
+  - [ ] 심층 신경망 기반 강화학습
 
 ## 🔧 Installation
 
