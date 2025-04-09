@@ -171,7 +171,8 @@ class End_to_End(Project_Template):
         raise NotImplementedError
 
     def _Learning(
-        self, data: Any, model: Custom_Model, loss: LOSSES, optim: Optimizer,
+        self, data: Any, device_info: device,
+        model: Custom_Model, loss: LOSSES, optim: Optimizer,
         holder: dict, mode: Mode, epoch: int, st_time: datetime
     ):
         raise NotImplementedError
@@ -222,11 +223,12 @@ class End_to_End(Project_Template):
 
                 _model = _model.train() if _m is Mode.TRAIN else _model.eval()
 
-                _debugging = _this_looger, _m, _epoch, _st_time
-
                 # 실제 데이터를 이용한 학습 진행
                 for _data in _d:
-                    self._Learning(_data, _model, _losses, _optim, *_debugging)
+                    self._Learning(
+                        _data, _device, _model, _losses, _optim,
+                        _this_looger, _m, _epoch, _st_time
+                    )
 
                 _epoch_logger[_this_mode] = _this_looger
             _logger[_epoch] = _epoch_logger
