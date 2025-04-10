@@ -154,6 +154,7 @@ class End_to_End(Project_Template):
 
         _result_dir /= Time_Utils.Make_text_from(
             Time_Utils.Stamp(), "%Y-%m-%dT%H:%M:%S")
+        _result_dir.mkdir(parents=True)
         return _result_dir
 
     def __Get_dataset__(
