@@ -45,159 +45,167 @@ def Handle_exp(extra_exp: dict[type[Exception], str] | None = None):
     return Checker
 
 
-class File_Process():
-    @classmethod
-    def Ensure_dir(cls, path: Path):
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-    @classmethod
-    def Read_from(
-        cls, file: Path, enc: str = "UTF-8", **kw
-    ) -> tuple[bool, Any]:
-        raise NotImplementedError
-
-    @classmethod
-    def Write_to(
-        cls, file: Path, data: Any, enc: str = "UTF-8", **kw
-    ) -> bool:
-        raise NotImplementedError
-
-
 BASIC_FILE_ERROR = {
     PermissionError: "파일 권한 부족"
 }
 
-
-class Text(File_Process):
-    @classmethod
-    @Handle_exp()
-    def Read_from(
-        cls, file: Path, enc: str = "UTF-8", start: int = 0, delim: str = "\n"
-    ) -> tuple[bool, list]:
-        _, _file = Suffix_check(file, ".txt")
-        if _file.exists():
-            return True, file.read_text(enc).split(delim)[start:]
-        return False, []
-
-    @classmethod
-    @Handle_exp()
-    def Write_to(
-        cls, file: Path, data: str | list[str], enc: str = "UTF-8",
-        anno: list[str] | str | None = None
-    ) -> bool:
-        cls.Ensure_dir(file)
-        _, _path = Suffix_check(file, ".txt", True)
-
-        _data = (
-            [anno] if isinstance(anno, str) else anno
-        ) if anno else []
-        _data += [data] if isinstance(data, str) else data
-
-        _path.write_text("\n".join(_data), enc)
-
-        return True
-
-
-JSON_FILE_ERROR = {
+JSON_FILE_READ_ERROR = {
     **BASIC_FILE_ERROR,
     json.JSONDecodeError: "JSON 파싱 오류 발생",
     TypeError: "JSON 변환 불가능한 데이터 포함"
 }
 
 
-class Json(File_Process):
-    @classmethod
-    @Handle_exp(extra_exp=JSON_FILE_ERROR)
-    def Read_from(
-        cls, file: Path, enc: str = "UTF-8"
-    ) -> tuple[bool, dict[str, Any]]:
-        _, _file = Suffix_check(file, ".json")
+class Process():
+    class File_Process():
+        @classmethod
+        def Ensure_dir(cls, path: Path):
+            path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not _file.exists():
-            return False, {}
+        @classmethod
+        def Read_from(
+            cls, file: Path, enc: str = "UTF-8",
+            **kwarg
+        ) -> tuple[bool, Any]:
+            raise NotImplementedError
 
-        with file.open(encoding=enc) as _f:
-            return True, json.load(_f)
+        @classmethod
+        def Write_to(
+            cls, file: Path, data: Any, enc: str = "UTF-8",
+            **kwarg
+        ) -> bool:
+            raise NotImplementedError
 
-    @classmethod
-    @Handle_exp()
-    def Write_to(
-        cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
-        indent: int = 4
-    ) -> bool:
-        cls.Ensure_dir(file)
+    class Text(File_Process):
+        @classmethod
+        @Handle_exp()
+        def Read_from(
+            cls, file: Path, enc: str = "UTF-8",
+            start: int = 0, delim: str = "\n"
+        ) -> tuple[bool, list]:
+            _, _file = Suffix_check(file, ".txt")
+            if _file.exists():
+                return True, file.read_text(enc).split(delim)[start:]
+            return False, []
 
-        _, _path = Suffix_check(file, ".json", True)
+        @classmethod
+        @Handle_exp()
+        def Write_to(
+            cls, file: Path, data: str | list[str], enc: str = "UTF-8",
+            anno: list[str] | str | None = None
+        ) -> bool:
+            cls.Ensure_dir(file)
+            _, _path = Suffix_check(file, ".txt", True)
 
-        with _path.open(mode="w", encoding=enc) as _f:
-            json.dump(data, _f, indent=indent)
-        return True
+            _data = (
+                [anno] if isinstance(anno, str) else anno
+            ) if anno else []
+            _data += [data] if isinstance(data, str) else data
 
+            _path.write_text("\n".join(_data), enc)
 
-class Yaml(File_Process):
-    loader = yaml.FullLoader
+            return True
 
-    @classmethod
-    @Handle_exp()
-    def Read_from(
-        cls, file: Path, enc: str = "UTF-8", **kw
-    ) -> tuple[bool, Any]:
-        _, _file = Suffix_check(file, ".yaml")
+    class Json(File_Process):
+        @classmethod
+        @Handle_exp(extra_exp=JSON_FILE_READ_ERROR)
+        def Read_from(
+            cls, file: Path, enc: str = "UTF-8"
+        ) -> tuple[bool, dict[str, Any]]:
+            _, _file = Suffix_check(file, ".json")
 
-        if not _file.exists():
-            return False, {}
+            if not _file.exists():
+                return False, {}
 
-        with file.open(encoding=enc) as _f:
-            return True, yaml.load(_f, cls.loader)
+            with file.open(encoding=enc) as _f:
+                return True, json.load(_f)
 
-    @classmethod
-    @Handle_exp()
-    def Write_to(
-        cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
-        indent: int = 4
-    ) -> bool:
-        cls.Ensure_dir(file)
+        @classmethod
+        @Handle_exp()
+        def Write_to(
+            cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+            indent: int = 4
+        ) -> bool:
+            cls.Ensure_dir(file)
 
-        _, _path = Suffix_check(file, ".yaml", True)
+            _, _path = Suffix_check(file, ".json", True)
 
-        with _path.open(mode="w", encoding=enc) as _f:
-            yaml.dump(data, _f, indent=indent)
-        return True
+            with _path.open(mode="w", encoding=enc) as _f:
+                json.dump(data, _f, indent=indent)
+            return True
 
+    class Yaml(File_Process):
+        loader = yaml.FullLoader
 
-def Read_from(file: Path, enc: str = "UTF-8", **kwarg):
-    if Path.is_file(file):
-        _suffix: str = file.suffix
-        _name = _suffix[1:].capitalize()
-        # !!! warning !!! fnc "globals" can return more module or fnc.
-        _modules = globals()
+        @classmethod
+        @Handle_exp()
+        def Read_from(
+            cls, file: Path, enc: str = "UTF-8",
+            **kwarg
+        ) -> tuple[bool, Any]:
+            _, _file = Suffix_check(file, ".yaml")
 
-        if _name in _modules:
-            return _modules[_name].Read_from(file, enc, **kwarg)
+            if not _file.exists():
+                return False, {}
 
-        raise ValueError(f"File extension '{_suffix}' is not supported")
-    raise ValueError("!!! This path is not FILE !!!")
+            with file.open(encoding=enc) as _f:
+                return True, yaml.load(_f, cls.loader)
 
+        @classmethod
+        @Handle_exp()
+        def Write_to(
+            cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+            indent: int = 4
+        ) -> bool:
+            cls.Ensure_dir(file)
 
-def Write_to(
-    file: Path,
-    data: dict[str, VALUE] | list[str],
-    enc: str = "UTF-8",
-    **kw
-):
-    if isinstance(data, dict):
-        _suffix: str = file.suffix
-        if _suffix == ".json":
-            return Json.Write_to(file, data, enc, **kw)
+            _, _path = Suffix_check(file, ".yaml", True)
 
-        if _suffix == ".txt":
-            return Yaml.Write_to(file, data, enc, **kw)
-
-    if isinstance(data, list):
-        return Text.Write_to(file, data, enc, **kw)
+            with _path.open(encoding=enc) as _f:
+                yaml.dump(data, _f, indent=indent)
+            return True
 
 
 class Utils():
+    @staticmethod
+    def Read_from(file: Path, enc: str = "UTF-8", **kwarg):
+        if Path.is_file(file):
+            _suffix: str = file.suffix
+            _name = _suffix[1:].capitalize()
+
+            if hasattr(Process, _name):
+                return getattr(Process, _name).Read_from(file, enc, **kwarg)
+
+            raise ValueError(f"File extension '{_suffix}' is not supported")
+        raise ValueError("!!! This path is not FILE !!!")
+
+    @staticmethod
+    def Write_to(
+        file: Path,
+        data: dict[str, VALUE] | list[str],
+        enc: str = "UTF-8",
+        **kwarg
+    ):
+        _suffix: str = file.suffix
+        _name = _suffix[1:].capitalize()
+
+        if isinstance(data, dict):
+            if _name not in ["Yaml", "Json"]:
+                raise ValueError((
+                    "Format error:\n"
+                    f"    Check data type(= {type(data)})"
+                    f"and file format(= {_suffix[1:]}) before saving."
+                ))
+        else:
+            if _name not in ["Text"]:
+                raise ValueError((
+                    "Format error:\n"
+                    f"    Check data type(= {type(data)})"
+                    f"and file format(= {_suffix[1:]}) before saving."
+                ))
+
+        getattr(Process, _name).Write_to(file, data, enc, **kwarg)
+
     @staticmethod
     def Make_the_file_group(
         file_dir: Path | str, save_dir: Path | str,
