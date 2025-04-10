@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse
 
 from .system import Path_utils
-from .file import Json, Read_from, Suffix_check
+from .file import Utils, Suffix_check
 
 
 class Config():
@@ -48,7 +48,7 @@ class Config():
 
             -------------------------------------------------------------------
             """
-            Json.Write_to(
+            Utils.Write_to(
                 Path_utils.Join(file_name, file_dir),
                 self.Config_to_dict(),
                 encoding_type
@@ -65,7 +65,7 @@ class Config():
         _is_ok, _ = Suffix_check(file_path, [".json", ".yaml"], True)
 
         if _is_ok:
-            _meta: tuple[bool, dict[str, Any]] = Read_from(
+            _meta: tuple[bool, dict[str, Any]] = Utils.Read_from(
                 file_path, encoding_type)
             return _meta[0], config_obj(**_meta[1])
 
