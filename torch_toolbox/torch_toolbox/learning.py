@@ -22,7 +22,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 from python_ex.system import String, Time_Utils
-from python_ex.file import Json
+from python_ex.file import Utils
 from python_ex.project import Config, Project_Template
 
 from .dataset import (
@@ -39,6 +39,8 @@ class Mode(String.String_Enum):
 @dataclass
 class Optimizer_Config(Config.Basement):
     learning_rate: float = 0.005
+
+    scheduler_cfg: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -97,7 +99,7 @@ class Learning_Config(Config.Basement):
             if not _file:
                 continue
             _mode: Mode = getattr(Mode, _k.upper())
-            _is_exist, _dataset_arg = Json.Read_from(Path(_file))
+            _is_exist, _dataset_arg = Utils.Read_from(Path(_file))
             if not _is_exist:
                 continue
             _dataset_cfg[_mode] = Data_Config(**_dataset_arg)
@@ -110,7 +112,7 @@ class Learning_Config(Config.Basement):
         ) for _k, _arg in _dataloader_arg.items())
 
         # set model cfg
-        _is_exist, _model_cfg = Json.Read_from(Path(self.model_cfg_file))
+        _is_exist, _model_cfg = Utils.Read_from(Path(self.model_cfg_file))
 
         if _is_exist:
             self.model_cfg = Model_Config(**_model_cfg)
@@ -225,7 +227,7 @@ class End_to_End(Project_Template):
                 scheduler.step()
         return _logger
 
-    def __run_learning__(self, thred_num: int, cfg: Learning_Config):
+    def __run__learning__(self, thred_num: int, cfg: Learning_Config):
         # get the device info
         _gpus = cfg.gpus
         _device = device(
@@ -275,9 +277,9 @@ class End_to_End(Project_Template):
         """
         # not use distribute
         # in later add code, that use distribute option
-        Json.Write_to(
-            self.result_path / "config.json",
+        Utils.Write_to(
+            self.result_path / "config.yaml",
             self.project_cfg.Config_to_dict()
         )
 
-        self.__run_learning__(0, self.project_cfg)
+        self.__run__learning__(0, self.project_cfg)
