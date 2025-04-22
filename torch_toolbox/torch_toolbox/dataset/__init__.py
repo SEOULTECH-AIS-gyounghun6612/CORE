@@ -25,6 +25,11 @@ class Data_Config(Config.Basement):
     additional: dict = field(default_factory=dict)
 
 
+class Paser():
+    # TODO: A template class needs to be created for upcoming data parsing tasks.
+    ...
+
+
 class Custom_Dataset(Dataset):
     def __init__(
         self,
@@ -32,12 +37,12 @@ class Custom_Dataset(Dataset):
     ):
         self.dataset_cfg = cfg
         self.dataset_block = self.Get_data_block(
-            mode, cfg.data_dir, cfg.process, **cfg.additional)
+            mode, cfg.name, cfg.data_dir, cfg.process, **cfg.additional)
 
     def Get_data_block(
         self,
         mode: Literal["train", "validation", "test"],
-        data_dir: str, process: str, **kwarg
+        name: str, data_dir: str, process: str, **kwarg
     ) -> dict[str, Any]:
         raise NotImplementedError
 
