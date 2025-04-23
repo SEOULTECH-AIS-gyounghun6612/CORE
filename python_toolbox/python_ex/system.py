@@ -11,10 +11,10 @@
 
 """
 from __future__ import annotations
-from enum import Enum, auto
-from typing import (Tuple, Literal, Any, TypeVar)
+from enum import StrEnum, auto
+from typing import (Tuple, Literal, TypeVar)
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import sys
 import platform
@@ -35,20 +35,35 @@ PYTHON_VERSION = sys.version_info
 
 
 class String():
-    """ ### 문자열 처리 함수
+    """ ### 문자열 처리와 변환 관련 유틸리티 함수 모음
+    문자열 정렬, 변환, 출력 포맷 지정 등에 활용되는 기능 제공
+
     ---------------------------------------------------------------------------
+    ### Structure
+    - Count_auto_align: 숫자 정렬 문자열 생성
+    - Str_adjust: 문자열 길이 조정
+    - Progress_bar: 터미널 진행바 출력
+    - String_Enum: 문자열로 출력되는 열거형 클래스
     """
     @staticmethod
     def Count_auto_align(
-        value: int, max_count: int,
-        is_right: bool = False, filler: str = "0"
+        value: int, max_count: int, is_right: bool = True, fill: str = "0"
     ):
-        _str_len = len(str(max_count))
-        _v = str(value).rjust(_str_len, filler) if (
-            is_right
-        ) else str(value).ljust(_str_len, filler)
+        """ ### 숫자를 정렬하여 문자열 형태로 반환
 
-        return f"{_v}/{max_count}"
+        ------------------------------------------------------------------
+        ### Args
+        - value: 출력할 숫자 값
+        - max_count: 최대 숫자 (전체 자리수 기준)
+        - is_right: 오른쪽 정렬 여부
+        - filler: 채울 문자
+
+        ### Returns
+        - str: 정렬된 문자열 (예: "003/100")
+        """
+        if is_right:
+            return f"{str(value).rjust(len(str(max_count)), fill)}/{max_count}"
+        return f"{str(value).ljust(len(str(max_count)), fill)}/{max_count}"
 
     @staticmethod
     def Str_adjust(
@@ -57,6 +72,18 @@ class String():
         fill: str = " ",
         align: Literal["l", "c", "r"] = "r"
     ) -> Tuple[int, str]:
+        """ ### 문자열을 지정된 길이에 맞춰 정렬
+
+        ------------------------------------------------------------------
+        ### Args
+        - text: 입력 문자열
+        - max_length: 최대 길이
+        - fill: 채움 문자
+        - align: 정렬 방향 ("l", "c", "r")
+
+        ### Returns
+        - Tuple[int, str]: 초과 길이, 정렬된 문자열
+        """
         for _str in text:
             max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
 
@@ -69,98 +96,21 @@ class String():
         return 0, text.rjust(max_length, fill)
 
     @staticmethod
-    def Str_adjust_with_key(
-        key: str,
-        value: str,
-        max_length: int,
-        fill: str = " ",
-        align: Literal["l", "c", "r"] = "r"
-    ):
-        _k_l, _k = String.Str_adjust(key, max_length, fill, align)
-        _v_l, _v = String.Str_adjust(value, max_length, fill, align)
-
-        if not (_k_l or _v_l):
-            return (_k, _v)
-
-        _max_length = max_length - min(_k_l, _v_l)
-
-        return (
-            String.Str_adjust(key, _max_length, fill, align)[-1],
-            String.Str_adjust(value, _max_length, fill, align)[-1]
-        )
-
-    @staticmethod
-    def Convert_from_str(str_data: str, empty_is_None: bool = False) -> Any:
-        try:
-            if "," in str_data:
-                return [
-                    String.Convert_from_str(
-                        _d
-                    ) for _d in str_data[1:-1].split(",")
-                ]
-            if str_data[0] != "-" and ("-" in str_data or ":" in str_data):
-                _use_timezone = "T" in str_data and (
-                    any(_txt in str_data.split("T")[-1] for _txt in "+-")
-                )
-                _use_microsec = "." in str_data
-                return Time_Utils.Make_time_from(
-                    str_data,
-                    use_timezone=_use_timezone,
-                    use_microsec=_use_microsec
-                )
-            if ";" in str_data:
-                return Time_Utils.Relative(
-                    *[int(_v) for _v in str_data.split(";")]
-                )
-            if "." in str_data:
-                return float(str_data)
-            return int(str_data)
-        except ValueError:
-            if str_data in ("True", "False"):
-                return str_data == "True"
-            return str_data
-        except IndexError:
-            return None if empty_is_None else ""
-
-    @staticmethod
-    def Convert_to_str(
-        data: list | datetime | Time_Utils.Relative | float | int | str
-    ) -> str:
-        if isinstance(data, list):
-            return ",".join(
-                [String.Convert_to_str(_data) for _data in data]
-            )
-        if isinstance(data, (datetime, date)):
-            return Time_Utils.Make_text_from(data)
-        if isinstance(data, Time_Utils.Relative):
-            return ";".join(list(data))
-        return data if isinstance(data, str) else str(data)
-
-    @staticmethod
     def Progress_bar(
         iteration: int, total: int,
         prefix: str = '', suffix: str = '',
         decimals: int = 1, fill: str = '█'
     ):
-        """
-        Call in a loop to create terminal progress bar
+        """ ### 반복문 내에서 사용할 터미널 진행 표시 바 출력
 
-        Parameters
-        --------------------
-        iteration
-            current iteration
-        total
-            total iterations (Int)
-        prefix
-            prefix string (Str)
-        suffix
-            suffix string (Str)
-        decimals
-            positive number of decimals in percent complete (Int)
-        length
-            character length of bar (Int)
-        fill
-            bar fill character (Str)
+        ------------------------------------------------------------------
+        ### Args
+        - iteration: 현재 반복 횟수
+        - total: 전체 반복 횟수
+        - prefix: 진행바 앞에 붙는 문자열
+        - suffix: 진행바 뒤에 붙는 문자열
+        - decimals: 퍼센트 표시 소수점 자리수
+        - fill: 진행바 채움 문자
         """
         _percentage = iteration / float(total)
         _str_p = ("{0:." + str(decimals) + "f}").format(100 * _percentage)
@@ -175,23 +125,16 @@ class String():
         if iteration == total:
             print()
 
-    class String_Enum(Enum):
-        @staticmethod
-        def _generate_next_value_(name, start, count, last_values):
-            return name
+    class String_Enum(StrEnum):
+        """ ### 문자열로 출력되는 열거형 클래스
 
-        def __repr__(self):
+        ------------------------------------------------------------------
+        """
+        def __repr__(self) -> str:
             return self.name.lower()
 
-        def __str__(self):
-            return self.name.lower()
 
-        @classmethod
-        def list(cls):
-            return [str(c) for c in cls]
-
-
-class OperatingSystem():
+class Operating_System():
     """### Frequently used features for handling OS-related tasks
     --------------------------------------------------------------------
     ### Requirement
@@ -213,12 +156,12 @@ class OperatingSystem():
         LINUX = auto()
 
     @staticmethod
-    def Is_it_runing(like_this_os: OperatingSystem.Name):
+    def Matches_os(like_this_os: Operating_System.Name | str = "window"):
         """
         #### 제시된 OS와 프로그램이 돌아가는 OS를 비교하는 함수
         ----------------------------------------------------------------
         """
-        return OperatingSystem.THIS_STYLE == like_this_os
+        return Operating_System.THIS_STYLE == like_this_os
 
 
 class Path_utils():
@@ -231,87 +174,6 @@ class Path_utils():
     - `Get_file_name`: 파일 이름 추출 함수
     - `Make_directory`: 디렉토리 생성 함수
     """
-
-    @staticmethod
-    def Join(obj_path: str | list[str], root_path: str | None = None):
-        """ ### 경로 객체 생성 함수
-        문자열 데이터를 사용하여 경로 생성을 위한 기본 함수
-
-        -----------------------------------------------------------------------
-        ### Args
-        - `obj_path`: 경로 생성을 위한 문자열 데이터
-        - `root_path`: 생성되는 경로의 기본 경로. (기본값 = 작업 디렉토리)
-
-        ### Returns
-        - `Path`: 결합된 경로 객체
-
-        """
-        _path = Path().cwd() if root_path is None else Path(root_path)
-
-        if isinstance(obj_path, str):
-            return _path.joinpath(obj_path)
-        return _path.joinpath(*obj_path)
-
-    @staticmethod
-    def Path_split(obj_path: Path):
-        """ ### 경로 분할 함수
-        주어진 경로를 나누어 현재 경로의 이름과 부모 경로 문자열 반환하는 함수
-
-        -----------------------------------------------------------------------
-        ### Args
-        - `obj_path`: 대상 경로
-
-        ### Returns
-        - `tuple[str, str]`: 부모 경로 문자열, 현재 경로 문자열
-
-        """
-        return str(obj_path.parent), obj_path.name
-
-    @staticmethod
-    def Get_file_name(file_path: str | Path):
-        """ ### 파일 이름 추출 함수
-        파일 경로에서 파일 이름과 부모 경로 문자열 반환하는 함수
-
-        -----------------------------------------------------------------------
-        ### Args
-        - `file_path`: 대상 경로
-
-        ### Returns
-        - `tuple[str, str]`: 부모 경로 문자열, 파일 이름 문자열
-
-        ### Raises
-        - ValueError: 주어진 경로가 파일 경로가 아닐 경우
-        """
-
-        _obj = file_path if isinstance(file_path, Path) else Path(file_path)
-
-        if _obj.is_file():
-            return Path_utils.Path_split(_obj)
-        raise ValueError(f"Path {_obj} is not file path")
-
-    @staticmethod
-    def Make_directory(
-        obj_path: str | list[str],
-        root_path: str | None = None, mode: int = 511
-    ):
-        """ ### 디렉토리 생성 함수
-        주어진 디렉토리를 생성하는 함수
-
-        -----------------------------------------------------------------------
-        ### Args
-        - `obj_path`: 대상 경로
-        - `root_path`: 생성되는 경로의 기본 경로. (기본값 = 작업 디렉토리)
-        - `mode`: 생성된 경로 계정별 작업 설정
-
-        ### Returns
-        - `Path` : 생성된 디렉토리 경로 객체
-
-        """
-        _obj = Path_utils.Join(obj_path, root_path)
-        _obj.mkdir(mode, parents=True, exist_ok=True)
-
-        return _obj
-
     @staticmethod
     def Is_exists(obj_path: str | Path):
         _path = obj_path if isinstance(obj_path, Path) else Path(obj_path)
@@ -326,8 +188,14 @@ class Path_utils():
     def Path_check(path: str | Path):
         return path if isinstance(path, Path) else Path(path)
 
+    @dataclass
     class Server():
-        ...
+        is_window: bool = field(default_factory=Operating_System.Matches_os)
+
+        @classmethod
+        def Connect_to(cls):
+            # TODO:
+            raise NotImplementedError
 
     # class Server():
     #     """ ### 네트워크 내 데이터 서버 관련 기능 모음
