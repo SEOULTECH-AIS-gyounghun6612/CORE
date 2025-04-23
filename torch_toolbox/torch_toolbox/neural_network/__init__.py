@@ -36,7 +36,6 @@ class Custom_Model(Module):
     def __init__(self, model_cfg: Model_Config) -> None:
         super().__init__()
         self.model_name = model_cfg.model_name
-        raise NotImplementedError
 
     def forward(self, **kwarg):
         raise NotImplementedError

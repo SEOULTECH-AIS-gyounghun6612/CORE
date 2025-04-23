@@ -39,16 +39,16 @@
 
 ```bash
 # using pip with https
-pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git@ver_alpha
+pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_toolbox.git@ver_alpha
 ```
 
 ### 직접 설치 (로컬 clone)
 
 ```bash
 # clone this repository
-git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_ex.git
+git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_toolbox.git
 
-cd AIS_torch_ex
+cd AIS_torch_toolbox
 
 # install 
 pip install -e .
