@@ -14,13 +14,13 @@ from __future__ import annotations
 from enum import StrEnum, auto
 from typing import (Tuple, Literal, TypeVar)
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import sys
 import platform
 from os import get_terminal_size
 
-from pathlib import Path
+# from pathlib import Path
 
 from datetime import datetime, date, time, timezone
 from dateutil.relativedelta import relativedelta
@@ -135,14 +135,12 @@ class String():
 
 
 class Operating_System():
-    """### Frequently used features for handling OS-related tasks
+    """ ### 운영체제(OS) 관련 정보 및 조건 처리 유틸리티 클래스
+
     --------------------------------------------------------------------
-    ### Requirement
-        None
-
     ### Structure
-        ...
-
+    - Name: 운영체제 이름 열거형
+    - Matches_os: 현재 OS가 입력된 OS와 일치하는지 확인
     """
 
     THIS_STYLE = platform.system().lower()
@@ -156,46 +154,53 @@ class Operating_System():
         LINUX = auto()
 
     @staticmethod
-    def Matches_os(like_this_os: Operating_System.Name | str = "window"):
+    def Matches_os(name: Operating_System.Name | str = "window"):
+        """ ### 현재 OS가 지정된 OS와 일치하는지 확인
+
+        ------------------------------------------------------------------
+        ### Args
+        - os_name: 비교 대상이 되는 OS 이름 (문자열 또는 Enum)
+
+        ### Returns
+        - bool: 현재 OS와 비교 대상 OS가 일치하면 True
         """
-        #### 제시된 OS와 프로그램이 돌아가는 OS를 비교하는 함수
-        ----------------------------------------------------------------
-        """
-        return Operating_System.THIS_STYLE == like_this_os
+        return Operating_System.THIS_STYLE == name
 
 
-class Path_utils():
-    """ ### Pathlib을 사용하여 구현한 자주 사용되는 경로 관련 기능 구현
+class Server():
+    """ ### 서버 연결 관련 기능을 제공하는 클래스
 
-    ---------------------------------------------------------------------------
+    운영체제 정보에 따라 연결 로직을 분기할 수 있도록 설계됨
+
+    ------------------------------------------------------------------
+    ### Attributes
+    - is_window: 현재 실행 환경이 Windows 운영체제인지 여부
+
     ### Structure
-    - `Join`: 경로 생성 함수
-    - `Path_split`: 경로 분할 함수
-    - `Get_file_name`: 파일 이름 추출 함수
-    - `Make_directory`: 디렉토리 생성 함수
+    - Connect_to: 서버에 연결을 시도하는 메서드 (미구현)
+    - Disconnect_to: 서버 연결을 종료하는 메서드 (미구현)
     """
-    @staticmethod
-    def Is_exists(obj_path: str | Path):
-        _path = obj_path if isinstance(obj_path, Path) else Path(obj_path)
-        return _path.exists(), _path
+    is_window: bool = Operating_System.Matches_os()
 
-    @staticmethod
-    def Search_in(obj_path: Path, keyword: str = "*", is_sorted: bool = True):
-        _list = list(obj_path.glob(keyword))
-        return sorted(_list) if is_sorted else _list
+    @classmethod
+    def Connect_to(cls):
+        """ ### 서버 연결을 초기화하는 메서드 (미구현)
+        ------------------------------------------------------------------
+        ### Raises
+        - NotImplementedError: 해당 기능은 아직 구현되지 않음
+        """
+        # TODO:
+        raise NotImplementedError
 
-    @staticmethod
-    def Path_check(path: str | Path):
-        return path if isinstance(path, Path) else Path(path)
-
-    @dataclass
-    class Server():
-        is_window: bool = field(default_factory=Operating_System.Matches_os)
-
-        @classmethod
-        def Connect_to(cls):
-            # TODO:
-            raise NotImplementedError
+    @classmethod
+    def Disconnect_to(cls):
+        """ ### 서버 연결을 종료하는 메서드 (미구현)
+        ------------------------------------------------------------------
+        ### Raises
+        - NotImplementedError: 해당 기능은 아직 구현되지 않음
+        """
+        # TODO:
+        raise NotImplementedError
 
     # class Server():
     #     """ ### 네트워크 내 데이터 서버 관련 기능 모음
@@ -258,53 +263,99 @@ class Path_utils():
 
 
 class Time_Utils():
+    """ ### 시간 관련 유틸리티 기능을 제공하는 클래스
+
+    현재 시각 생성, 시각 차이 계산, 포맷 변환 등의 기능을 포함함
+
+    ---------------------------------------------------------------------------
+    ### Structure
+    - Stamp: 현재 시각을 timezone 정보와 함께 반환
+    - Get_term: 기준 시각으로부터의 시간 차이 계산
+    - Make_text_from: datetime 객체를 문자열로 변환
+    - Make_time_from: 문자열을 datetime 객체로 변환
+    """
     @staticmethod
     def Stamp(set_timezone: timezone | None = None):
-        """ ### 현재 시간 정보를 생성하는 함수
+        """ ### 현재 시간 정보를 반환
 
-        ---------------------------------------------------------------------------------------
-        ### Parameters
-        - `set_timezone` : 타임존 정보
+        ------------------------------------------------------------------
+        ### Args
+        - set_timezone: 반환될 datetime에 적용할 timezone 객체 (기본값: None)
 
-        ### Return
-        - `this_time` : 현재 시간 정보
+        ### Returns
+        - datetime: 현재 시각 객체
         """
         return datetime.now(set_timezone)
 
     @staticmethod
     def Get_term(
-        standard_time: datetime,
-        set_timezone: timezone | None = None
+        standard_time: datetime, set_timezone: timezone | None = None
     ):
+        """ ### 기준 시간으로부터의 경과 시간 계산
+
+        ------------------------------------------------------------------
+        ### Args
+        - standard_time: 기준 시간 (datetime 객체)
+        - set_timezone: 현재 시각 기준 timezone (기본값: None)
+
+        ### Returns
+        - timedelta: 기준 시간으로부터의 시간 차이
+        """
         return Time_Utils.Stamp(set_timezone) - standard_time
 
     @staticmethod
     def Make_text_from(
-        time_source: datetime | date | time | None = None,
-        date_format: str | None = None
+        src: datetime | date | time | None = None, d_fmt: str | None = None
     ):
-        _time = Time_Utils.Stamp() if time_source is None else time_source
-        if date_format is None:
+        """ ### 날짜/시간 객체를 문자열로 변환
+
+        ------------------------------------------------------------------
+        ### Args
+        - src: 변환할 시간 객체 (기본값: 현재 시각)
+        - d_fmt: 문자열 포맷 지정 (기본값: ISO 8601)
+
+        ### Returns
+        - str: 포맷된 날짜/시간 문자열
+        """
+        _time = Time_Utils.Stamp() if src is None else src
+        if d_fmt is None:
             return _time.isoformat()
-        return _time.strftime(date_format)
+        return _time.strftime(d_fmt)
 
     @staticmethod
     def Make_time_from(
-        text_source: str,
-        date_format: str | None = None,
+        src: str, d_fmt: str | None = None,
         use_microsec: bool = False,
         use_timezone: bool = False
     ):
-        if date_format is not None:
-            _date_format = date_format
+        """ ### 문자열을 datetime 객체로 변환
+
+        ISO 8601 또는 지정된 포맷 문자열을 기반으로 변환함
+
+        ------------------------------------------------------------------
+        ### Args
+        - src: 변환 대상 문자열
+        - d_fmt: 수동 지정 포맷 문자열 (기본값: None → ISO)
+        - use_microsec: ISO 포맷 사용 시 마이크로초 포함 여부
+        - use_timezone: ISO 포맷 사용 시 timezone 포함 여부
+
+        ### Returns
+        - datetime: 파싱된 datetime 객체
+
+        ### Raises
+        - ValueError: 포맷이 일치하지 않을 경우 발생
+        """
+        if d_fmt is not None:
+            _date_format = d_fmt
         else:  # iso
             _date_format = "%Y-%m-%dT%H:%M:%S"
             _date_format += ".%f" if use_microsec else ""
             _date_format += "%z" if use_timezone else ""
 
-        _datetime = datetime.strptime(text_source, _date_format)
+        _datetime = datetime.strptime(src, _date_format)
         return _datetime
 
+    # TODO: refactoring this relative time class
     @dataclass
     class Relative():
         years: int = 0

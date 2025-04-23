@@ -7,7 +7,7 @@ from pathlib import Path
 
 import argparse
 
-from .file import Utils, Suffix_check
+from .file import Utils
 
 
 class Config():
@@ -76,7 +76,7 @@ class Config():
         ### Returns
         - Tuple[bool, cfg_class]: 성공 여부, 설정 객체 인스턴스
         """
-        _is_ok, _ = Suffix_check(file_path, [".json", ".yaml"], True)
+        _is_ok, _ = Utils.Suffix_check(file_path, [".json", ".yaml"], True)
 
         if _is_ok:
             _meta: tuple[bool, dict[str, Any]] = Utils.Read_from(
