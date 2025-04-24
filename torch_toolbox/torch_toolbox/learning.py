@@ -16,6 +16,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from datetime import datetime
+from enum import auto
 
 from torch import Tensor, device
 from torch.optim.optimizer import Optimizer
@@ -31,9 +32,9 @@ from .neural_network import Custom_Model, Model_Config
 
 
 class Mode(String.String_Enum):
-    TRAIN = ("train", True)
-    VALIDATION = ("val", True)
-    TEST = ("test", False)
+    TRAIN = auto()
+    VALIDATION = auto()
+    TEST = auto()
 
 
 @dataclass
@@ -98,17 +99,16 @@ class Learning_Config(Config.Basement):
         for _k, _file in _dataset_cfg_files.items():
             if not _file:
                 continue
-            _mode: Mode = getattr(Mode, _k.upper())
             _is_exist, _dataset_arg = Utils.Read_from(Path(_file))
             if not _is_exist:
                 continue
-            _dataset_cfg[_mode] = Data_Config(**_dataset_arg)
+            _dataset_cfg[Mode(_k.upper())] = Data_Config(**_dataset_arg)
         self.dataset_cfg = _dataset_cfg
 
         # set dataloader cfg
         _dataloader_arg = self.dataloader_arg
         self.dataloader_cfg = dict((
-            getattr(Mode, _k.upper()), Dataloader_Config(**_arg)
+            Mode(_k.upper()), Dataloader_Config(**_arg)
         ) for _k, _arg in _dataloader_arg.items())
 
         # set model cfg
@@ -147,7 +147,7 @@ class End_to_End(Project_Template):
         _result_dir = Path(config.result_dir)
         _result_dir /= self.project_name
         _result_dir /= "_".join([
-            f"{str(_m)[0].upper()}_{_d_cfg.name}" for (
+            f"{_m[0].upper()}_{_d_cfg.name}" for (
                 _m, _d_cfg
             ) in config.dataset_cfg.items()
         ])
@@ -212,7 +212,7 @@ class End_to_End(Project_Template):
                 _epoch_logger[_this_mode], _ = self.__Learning_loop__(
                     _epoch, _st_time,
                     _m, _d, device_info,
-                    model.train() if _m.value[1] else model.eval(),
+                    model.train() if _m == "train" else model.eval(),
                     losses, optim,
                     _mode_path
                 )
@@ -257,7 +257,7 @@ class End_to_End(Project_Template):
         # 학습 시작
         cfg.logger = self.__Model_learning__(
             _this_e, cfg.max_epoch, _model, _losses,
-            dict((_m, _d) for _m, _d in _d_dict.items() if _m.value[1]),
+            dict((_m, _d) for _m, _d in _d_dict.items() if _m != "test"),
             _device,
             _optim, _scheduler
         )
