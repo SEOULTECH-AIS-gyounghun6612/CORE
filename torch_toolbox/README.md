@@ -7,15 +7,31 @@
 
 ### 공통 과정
 
+- [ ] python naming 규칙 통일 및 docstring 작업 -> [참고 링크](https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_lab_manual/blob/Publish/python/doc_string.md)
+  - [ ] learning.py
+  - [ ] loss_and_acc.py
+  - [ ] file.py
+
 ### 📁 dataset
+
+- [ ] 주요 내용 재작업
+  - [X] __init__.py
+  - [ ] kitti.py
+  - [ ] realsense.py
 
 ### 📁 neural_network
 
-- [ ] 주요 backbone 사용 구조 업데이트
+- [ ] 주요 내용 재작업
+  - [X] __init__.py
+  - [ ] backbone.py
+  - [ ] gaussian_model.py
+  - [ ] transformer.py
 
 ### 📄 learning.py
 
 - [ ] test 구조와 train-validation 과정 분리
+  - [x] train-validation -> End_to_End.Train_with_validation
+  - [ ] test
 
 - [ ] 학습 구조 추가
   - [ ] 심층 신경망 기반 강화학습
