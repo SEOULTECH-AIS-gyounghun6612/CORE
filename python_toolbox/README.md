@@ -6,15 +6,15 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
 ### 공통 과정
 
-- [ ] python naming 규칙 통일 및 docstring 작업 -> [참고 링크](https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_lab_manual/blob/Publish/python/doc_string.md)
-  - [ ] system.py
-  - [ ] project.py
-  - [ ] file.py
+- [x] python naming 규칙 통일 및 docstring 작업 -> [참고 링크](https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_lab_manual/blob/Publish/python/doc_string.md)
+  - [x] system.py
+  - [x] project.py
+  - [x] file.py
 
 ### system.py
 
 - [x] Pathlib 모듈 적용을 통해 Path 및 File 관련 코드 정리
-  - [ ] 파일 입출력 관련 코드 정리 -> Path class를 이용한 단순한 코드를 제외하고, 모듈 단위 코드 정리 필요
+  - [x] 파일 입출력 관련 코드 정리 -> Path class를 이용한 단순한 코드를 제외하고, 모듈 단위 코드 정리 필요
 
 ### project.py
 

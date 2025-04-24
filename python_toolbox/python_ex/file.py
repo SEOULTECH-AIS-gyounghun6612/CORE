@@ -1,3 +1,32 @@
+""" ### 파일 처리와 예외 핸들링을 위한 유틸리티 통합 모듈
+
+이 모듈은 텍스트, JSON, YAML 포맷 파일의 읽기/쓰기 기능을 통합 제공합니다.
+파일 저장 시 자동 디렉토리 생성 및 확장자 기반 분기 처리를 지원하며,
+파일 입출력 과정에서 발생할 수 있는 예외를 공통 방식으로 처리하는
+데코레이터 `Handle_exp` 도 함께 포함합니다.
+
+---------------------------------------------------------------------------
+### Requirement
+    - Python >= 3.10
+    - json, yaml
+    - pathlib, shutil
+    - typing, dataclasses
+
+### Structure
+    - Handle_exp
+        - 예외 메시지를 표준화하여 출력하는 데코레이터 생성 함수
+    - Process
+        - File_Process: 입출력 공통 베이스 클래스
+        - Text: .txt 파일 처리 클래스
+        - Json: .json 파일 처리 클래스
+        - Yaml: .yaml 파일 처리 클래스
+    - Utils
+        - Suffix_check: 확장자 검사 및 자동 보정
+        - Read_from: 파일 확장자에 따른 읽기 자동 분기
+        - Write_to: 데이터 유형 기반 저장 분기
+        - Make_the_file_group: 이미지 파일을 그룹 단위로 복사 정리
+"""
+
 from functools import wraps
 from typing import TypeVar, Callable, cast, Any
 

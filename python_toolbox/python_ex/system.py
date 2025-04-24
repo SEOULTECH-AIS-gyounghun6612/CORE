@@ -1,14 +1,27 @@
-""" ### Frequently used features for handling system-related tasks
+""" ### 시스템 및 문자열 유틸리티, OS 처리, 시간 계산 등을 포함한 도구 모음
 
-------------------------------------------------------------------------
+이 모듈은 Python 환경에서 자주 사용하는 기능들을 클래스 기반으로 구성합니다.
+운영체제 구분, 문자열 정렬 및 포맷팅, 시간 관련 변환, 서버 연결 인터페이스 등을
+제공합니다.
+
+---------------------------------------------------------------------------
 ### Requirement
-    None
+    - Python >= 3.10
+    - numpy
+    - scipy (Rotation 모듈 사용 시)
+    - dateutil (relativedelta)
 
 ### Structure
-    OperatingSystem: ...
-    Path: ...
-    File: ...
-
+    - String
+        - 문자열 포맷팅, 길이 정렬, 진행바 등 처리 유틸리티 클래스
+        - 하위: String_Enum (StrEnum 기반 enum 확장)
+    - Operating_System
+        - 현재 운영체제 확인 및 열거형 정의
+    - Server
+        - 서버 연결 상태 관리 및 OS 기반 처리 분기
+    - Time_Utils
+        - 현재 시간 생성, 포맷 변환, 시간 간격 계산 기능 제공
+        - 하위: Relative (상대적 시간 정보를 저장하는 dataclass)
 """
 from __future__ import annotations
 from enum import StrEnum, auto

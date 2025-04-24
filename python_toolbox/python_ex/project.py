@@ -1,3 +1,27 @@
+""" ### 설정 객체 관리 및 프로젝트 템플릿 정의 모듈
+
+이 모듈은 설정 데이터를 객체화하여 dict 기반 설정보다 관리와 재사용성을
+높이고자 설계되었습니다. 또한 설정 정보를 기반으로 프로젝트 템플릿을 구성할
+수 있는 클래스를 제공합니다.
+
+---------------------------------------------------------------------------
+### Requirement
+    - Python >= 3.10
+    - argparse
+    - pathlib
+    - dataclasses
+    - json / yaml 파일 포맷 사용 가능 (Utils 기반 처리)
+
+### Structure
+    - Config
+        - 설정 데이터 클래스인 Basement 정의
+        - 설정 파일을 로드하는 Read_from_file 함수 포함
+        - argparse 기반 설정 생성용 Read_with_arg_parser 함수 포함
+    - Project_Template
+        - Config 객체를 기반으로 프로젝트 이름과 결과 경로를 관리
+        - 프로젝트별 결과 저장 경로 로직 커스터마이징 가능
+"""
+
 from __future__ import annotations
 from typing import (
     Any, TypeVar, Generic
