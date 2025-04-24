@@ -102,13 +102,13 @@ class Learning_Config(Config.Basement):
             _is_exist, _dataset_arg = Utils.Read_from(Path(_file))
             if not _is_exist:
                 continue
-            _dataset_cfg[Mode(_k.upper())] = Data_Config(**_dataset_arg)
+            _dataset_cfg[Mode(_k.lower())] = Data_Config(**_dataset_arg)
         self.dataset_cfg = _dataset_cfg
 
         # set dataloader cfg
         _dataloader_arg = self.dataloader_arg
         self.dataloader_cfg = dict((
-            Mode(_k.upper()), Dataloader_Config(**_arg)
+            Mode(_k.lower()), Dataloader_Config(**_arg)
         ) for _k, _arg in _dataloader_arg.items())
 
         # set model cfg
