@@ -141,8 +141,6 @@ LOSSES = tuple[Callable[..., Tensor], ...]
 
 
 class End_to_End(Project_Template):
-    project_cfg: Learning_Config
-
     def Get_result_path(self, config: Learning_Config) -> Path:
         _result_dir = Path(config.result_dir)
         _result_dir /= self.project_name
@@ -262,7 +260,7 @@ class End_to_End(Project_Template):
             _optim, _scheduler
         )
 
-    def Train_with_validation(self):
+    def Train_with_validation(self, config: Learning_Config):
         """ ### 학습 실행 함수
 
         ------------------------------------------------------------------
@@ -280,7 +278,7 @@ class End_to_End(Project_Template):
         # in later add code, that use distribute option
         Utils.Write_to(
             self.result_path / "config.yaml",
-            self.project_cfg.Config_to_dict()
+            config.Config_to_dict()
         )
 
-        self.__run__learning__(0, self.project_cfg)
+        self.__run__learning__(0, config)
