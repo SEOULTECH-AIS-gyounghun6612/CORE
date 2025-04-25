@@ -14,7 +14,7 @@ setup(
     author="Choi_keonghun & Jun_eins",
     author_email="dev.gyounghun6612@gmail.com",
     packages=find_namespace_packages(),
-    python_requires=">= 3.10.0",
+    python_requires=">= 3.12.0",
     install_requires=load_requirements(),
     zip_safe=False
 )
