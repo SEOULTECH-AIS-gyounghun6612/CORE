@@ -137,7 +137,10 @@ class Learning_Config(Config.Basement):
         }
 
 
-LOSSES = tuple[Callable[..., Tensor], ...]
+FUNC_LOSS = Callable[
+    [dict[str, Tensor], dict[str, Tensor], dict[str, list[float]]],
+    Tensor
+]
 
 
 class End_to_End(Project_Template):
@@ -162,7 +165,7 @@ class End_to_End(Project_Template):
 
     def __Get_model_n_loss__(
         self, model_cfg: Model_Config, device_info: device
-    ) -> tuple[Custom_Model, LOSSES]:
+    ) -> tuple[Custom_Model, FUNC_LOSS]:
         raise NotImplementedError
 
     def __Get_optim__(
@@ -177,9 +180,9 @@ class End_to_End(Project_Template):
         self,
         epoch: int, st_time: datetime,
         mode: Mode, dataloader: DataLoader, device_info: device,
-        model: Custom_Model, loss: LOSSES, optim: Optimizer,
+        model: Custom_Model, loss: FUNC_LOSS, optim: Optimizer,
         save_path: Path
-    ) -> tuple[dict[str, list[float]], Any]:
+    ) -> dict[str, list[float]]:
         raise NotImplementedError
 
     def __Learning_decision__(self, holder: dict, save_path: Path) -> bool:
@@ -187,7 +190,7 @@ class End_to_End(Project_Template):
 
     def __Model_learning__(
         self, this_epoch: int, max_epoch: int,
-        model: Custom_Model, losses: LOSSES,
+        model: Custom_Model, losses: FUNC_LOSS,
         dataloader: dict[Mode, DataLoader],
         device_info: device,
         optim: Optimizer, scheduler: LRScheduler | None
@@ -207,7 +210,7 @@ class End_to_End(Project_Template):
                 _mode_path.mkdir(exist_ok=True)
 
                 # 실제 데이터를 이용한 학습 진행
-                _epoch_logger[_this_mode], _ = self.__Learning_loop__(
+                _epoch_logger[_this_mode] = self.__Learning_loop__(
                     _epoch, _st_time,
                     _m, _d, device_info,
                     model.train() if _m == "train" else model.eval(),
@@ -226,7 +229,7 @@ class End_to_End(Project_Template):
                 scheduler.step()
         return _logger
 
-    def __run__learning__(self, thred_num: int, cfg: Learning_Config):
+    def __run_learning__(self, thred_num: int, cfg: Learning_Config):
         # get the device info
         _gpus = cfg.gpus
         _device = device(
@@ -281,4 +284,4 @@ class End_to_End(Project_Template):
             config.Config_to_dict()
         )
 
-        self.__run__learning__(0, config)
+        self.__run_learning__(0, config)
