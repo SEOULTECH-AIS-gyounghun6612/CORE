@@ -236,7 +236,9 @@ class End_to_End(Project_Template):
         _gpus = cfg.gpus
         _device = device(
             f"cuda:{_gpus[thred_num]}" if len(_gpus) > thred_num else "cpu")
+        print(f"this process learning by {_device}")
 
+        print("start the learning pre-process")
         # prepare learning
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
@@ -247,6 +249,7 @@ class End_to_End(Project_Template):
 
         _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
         _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
+        print("pre-process done")
 
         # use multi gpu
         if len(_gpus) >= 2:
@@ -258,6 +261,7 @@ class End_to_End(Project_Template):
             ...  # not yet
 
         # 학습 시작
+        print("start the train")
         cfg.logger = self.__Model_learning__(
             _this_e, cfg.max_epoch, _model, _losses,
             dict((_m, _d) for _m, _d in _d_dict.items() if _m != "test"),
