@@ -185,7 +185,9 @@ class End_to_End(Project_Template):
     ) -> dict[str, list[float]]:
         raise NotImplementedError
 
-    def __Learning_decision__(self, holder: dict, save_path: Path) -> bool:
+    def __Learning_decision__(
+        self, holder: dict, model: Custom_Model, save_path: Path
+    ) -> bool:
         return False
 
     def __Model_learning__(
@@ -221,7 +223,7 @@ class End_to_End(Project_Template):
             _logger[_epoch] = _epoch_logger
 
             # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
-            if self.__Learning_decision__(_logger, _this_path):
+            if self.__Learning_decision__(_logger, model, _this_path):
                 break
 
             # 학습 속행
@@ -229,7 +231,7 @@ class End_to_End(Project_Template):
                 scheduler.step()
         return _logger
 
-    def __run_learning__(self, thred_num: int, cfg: Learning_Config):
+    def __run__learning__(self, thred_num: int, cfg: Learning_Config):
         # get the device info
         _gpus = cfg.gpus
         _device = device(
@@ -284,4 +286,4 @@ class End_to_End(Project_Template):
             config.Config_to_dict()
         )
 
-        self.__run_learning__(0, config)
+        self.__run__learning__(0, config)
