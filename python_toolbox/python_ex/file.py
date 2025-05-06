@@ -410,7 +410,7 @@ class Utils():
 
     @staticmethod
     def Write_to(
-        file: Path, data: dict[str, VALUE] | list[str], enc: str = "UTF-8",
+        file: Path, data: dict[KEY, VALUE] | list[str], enc: str = "UTF-8",
         **kwarg
     ):
         """ ### 데이터 형식에 따라 파일로 저장 처리
