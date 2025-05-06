@@ -200,7 +200,7 @@ class End_to_End(Project_Template):
         _logger = {}
 
         for _epoch in range(this_epoch, max_epoch):
-            _this_path = self.result_path / f"{this_epoch:0>6d}"
+            _this_path = self.result_path / f"{_epoch:0>6d}"
             _this_path.mkdir(exist_ok=True)
 
             _epoch_logger: dict[str, dict] = {}
@@ -223,7 +223,7 @@ class End_to_End(Project_Template):
             _logger[_epoch] = _epoch_logger
 
             # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
-            if self.__Learning_decision__(_logger, model, _this_path):
+            if self.__Learning_decision__(_epoch_logger, model, _this_path):
                 break
 
             # 학습 속행
@@ -236,9 +236,7 @@ class End_to_End(Project_Template):
         _gpus = cfg.gpus
         _device = device(
             f"cuda:{_gpus[thred_num]}" if len(_gpus) > thred_num else "cpu")
-        print(f"this process learning by {_device}")
 
-        print("start the learning pre-process")
         # prepare learning
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
@@ -249,7 +247,6 @@ class End_to_End(Project_Template):
 
         _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
         _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
-        print("pre-process done")
 
         # use multi gpu
         if len(_gpus) >= 2:
@@ -261,7 +258,6 @@ class End_to_End(Project_Template):
             ...  # not yet
 
         # 학습 시작
-        print("start the train")
         cfg.logger = self.__Model_learning__(
             _this_e, cfg.max_epoch, _model, _losses,
             dict((_m, _d) for _m, _d in _d_dict.items() if _m != "test"),
@@ -291,3 +287,9 @@ class End_to_End(Project_Template):
         )
 
         self.__run__learning__(0, config)
+        
+        Utils.Write_to(
+            self.result_path / "learning_log.json",
+            config.logger
+        )
+

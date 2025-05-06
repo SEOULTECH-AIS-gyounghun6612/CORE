@@ -33,7 +33,7 @@ class Paser():
 class Custom_Dataset(Dataset):
     def __init__(
         self,
-        mode: Literal["train", "validation", "test"], cfg: Data_Config
+        mode: str, cfg: Data_Config
     ):
         self.dataset_cfg = cfg
         self.dataset_block = self.Get_data_block(
@@ -41,9 +41,27 @@ class Custom_Dataset(Dataset):
 
     def Get_data_block(
         self,
-        mode: Literal["train", "validation", "test"],
+        mode: str,
         name: str, data_dir: str, process: str, **kwarg
     ) -> dict[int, Any]:
+        """ ### 지정된 모드와 설정에 따라 데이터를 로드하거나 구성하는 추상 메소드
+
+        ------------------------------------------------------------------
+        ### Args
+        - mode: 데이터셋 모드. -> "train", "validation", "test"
+        - name: 데이터셋의 이름.
+        - data_dir: 데이터가 저장된 디렉토리 경로.
+        - process: 데이터 전처리 방법 또는 식별자.
+        - **kwarg: 추가적인 설정 값들 (Data_Config의 additional).
+
+        ### Returns
+        - Dict[int, Any]: 데이터 인덱스를 키로, 해당 데이터를 값으로 하는 딕셔너리.
+                           (예: {0: (이미지_데이터, 레이블), 1: (이미지_데이터, 레이블), ...})
+
+        ### Raises
+        - NotImplementedError: 이 메소드가 하위 클래스에서 구현되지 않았을 경우 발생.
+
+        """
         raise NotImplementedError
 
     def __len__(self):
