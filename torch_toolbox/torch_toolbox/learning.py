@@ -218,7 +218,7 @@ class End_to_End(Project_Template):
     ):
         model.load_state_dict(load(save_path, map_location=device_info))
 
-    def __Recovey_train__(
+    def __Recovey_model__(
         self, model: Custom_Model, epoch: int, device_info: device
     ):
         self.Load_model(
@@ -290,7 +290,7 @@ class End_to_End(Project_Template):
         # load pretrained weight
         _this_e = cfg.this_epoch
         if _this_e and not _rank:
-            self.__Recovey_train__(_model, _this_e, _device)
+            self.__Recovey_model__(_model, _this_e, _device)
 
         if _is_mp:
             dist.init_process_group(
@@ -379,6 +379,74 @@ class End_to_End(Project_Template):
             else:  # use single gpu
                 self.__Run_train_and_validation__(0, config)
 
+        else:
+            # in this code not use train by CPU
+            raise ValueError
+
+    def __Run_test__(
+        self, local_rank: int, cfg: Learning_Config
+    ):
+        # get the device info
+        _rank = cfg.node_rank_offset + local_rank
+        _device = device(f"cuda:{cfg.gpus[local_rank]}")
+
+        # prepare learning
+        _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
+        _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
+
+        # load pretrained weight
+        _this_e = cfg.this_epoch
+        if _this_e and not _rank:
+            self.__Recovey_model__(_model, _this_e, _device)
+
+        print((
+            "Info: Model ready for single-process execution on "
+            f"device '{_device}'."
+        ))
+
+        # ready for train data
+        _d_cfg = cfg.dataset_cfg
+        _d_loader_cfg = cfg.dataloader_cfg
+        _d_dict = dict((
+            _m,
+            Build_loader(
+                _d_loader_cfg[_m],
+                *self.__Get_dataset__(_m, _d_cfg),
+                is_multi_process=False
+            )
+        ) for _m, _d_cfg in _d_cfg.items())
+
+        # 학습 시작
+        self.__Model_running__(
+            _this_e, cfg.max_epoch, _rank, _model, _losses,
+            dict((_m, _d) for _m, _d in _d_dict.items() if _m == "test"),
+            _device,
+            _optim, _scheduler
+        )
+
+    def Test(self, config: Learning_Config):
+        """ ### 학습 실행 함수
+
+        ------------------------------------------------------------------
+        ### Args
+        - `prams`: 학습에 사용되는 인자값
+
+        ### Returns
+        - None
+
+        ### Raises
+        - None
+
+        """
+        Utils.Write_to(
+            self.result_path / "config.yaml", config.Config_to_dict()
+        )
+
+        # multi process check
+        _n_size = len(config.gpus) if config.gpus else 0
+
+        if _n_size:
+            self.__Run_test__(0, config)
         else:
             # in this code not use train by CPU
             raise ValueError
