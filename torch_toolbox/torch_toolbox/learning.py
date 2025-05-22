@@ -18,16 +18,23 @@ from typing import Any, Callable
 from datetime import datetime
 from enum import auto
 
-from torch import Tensor, device
+from torch import (
+    Tensor, device, distributed as dist, multiprocessing as torch_mp,
+    save, load, manual_seed
+)
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
+
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from python_ex.system import String, Time_Utils
 from python_ex.file import Utils
 from python_ex.project import Config, Project_Template
 
 from .dataset import (
-    Data_Config, Dataloader_Config, Custom_Dataset, DataLoader, Build_loader)
+    Data_Config, Dataloader_Config, Custom_Dataset,
+    DataLoader, DistributedSampler, Build_loader
+)
 from .neural_network import Custom_Model, Model_Config
 
 
@@ -40,22 +47,29 @@ class Mode(String.String_Enum):
 @dataclass
 class Optimizer_Config(Config.Basement):
     learning_rate: float = 0.005
-
     scheduler_cfg: dict = field(default_factory=dict)
 
 
 @dataclass
 class Learning_Config(Config.Basement):
+    seed: int = 930110
     # result directory
     result_dir: str = "./result"
+    recovery_path: str | None = None
 
     # epoch
     max_epoch: int = 50
     this_epoch: int = 0
     is_save_each_epoch: bool = True
 
-    # multi gpus
-    gpus: list[int] = field(default_factory=lambda: [0])
+    # gpus
+    gpus: list[int] = field(default_factory=lambda:[0])
+    # with multi
+    host_name: str = "localhost"  # "localhost" or "127.0.0.1"
+    port_num: int = 12355
+
+    world_size: int = 1
+    node_rank_offset: int = 0
 
     # dataset
     dataset_cfg_files: dict[str, str | None] = field(default_factory=lambda: {
@@ -88,9 +102,6 @@ class Learning_Config(Config.Basement):
 
     })
     optim_cfg: Optimizer_Config = field(init=False)
-
-    # logger -> {mode: {epoch: loss_logger(dict)}}
-    logger: dict[int, dict[str, dict]] = field(default_factory=dict)
 
     def __post_init__(self):
         # set data cfg
@@ -132,8 +143,7 @@ class Learning_Config(Config.Basement):
             "dataset_cfg_files": self.dataset_cfg_files,
             "dataloader_arg": self.dataloader_arg,
             "model_cfg_file": self.model_cfg_file,
-            "optim_arg": self.optim_arg,
-            "logger": self.logger
+            "optim_arg": self.optim_arg
         }
 
 
@@ -145,17 +155,24 @@ FUNC_LOSS = Callable[
 
 class End_to_End(Project_Template):
     def Get_result_path(self, config: Learning_Config) -> Path:
-        _result_dir = Path(config.result_dir)
-        _result_dir /= self.project_name
-        _result_dir /= "_".join([
+        _root_dir = Path(config.result_dir) / self.project_name
+        _root_dir /= "_".join([
             f"{_m[0].upper()}_{_d_cfg.name}" for (
                 _m, _d_cfg
             ) in config.dataset_cfg.items()
         ])
 
-        _result_dir /= Time_Utils.Make_text_from(
-            Time_Utils.Stamp(), "%Y-%m-%dT%H:%M:%S")
-        _result_dir.mkdir(parents=True)
+        _r_path = config.recovery_path
+        if _r_path is not None and (_root_dir / _r_path).is_dir():
+            return _root_dir / _r_path
+
+        config.this_epoch = 0
+        _r_path = Time_Utils.Make_text_from(
+            Time_Utils.Stamp(), "%Y-%m-%dT%H:%M:%S"
+        )
+        _result_dir = _root_dir / _r_path
+        _result_dir.mkdir(exist_ok= True)
+
         return _result_dir
 
     def __Get_dataset__(
@@ -173,57 +190,82 @@ class End_to_End(Project_Template):
     ) -> tuple[Optimizer, LRScheduler | None]:
         raise NotImplementedError
 
-    def Get_predict(self, data: Any, model: Custom_Model) -> Any:
-        raise NotImplementedError
-
-    def __Learning_loop__(
+    def __Run_one_epoch__(
         self,
         epoch: int, st_time: datetime,
         mode: Mode, dataloader: DataLoader, device_info: device,
-        model: Custom_Model, loss: FUNC_LOSS, optim: Optimizer,
+        model: Custom_Model | DDP, loss: FUNC_LOSS, optim: Optimizer,
         save_path: Path
     ) -> dict[str, list[float]]:
         raise NotImplementedError
 
-    def __Learning_decision__(
-        self, holder: dict, model: Custom_Model, save_path: Path
+    def __Should_stop_early__(
+        self,
+        holder: dict, model: Custom_Model | DDP, save_path: Path, rank: int
     ) -> bool:
+        Utils.Write_to(save_path / f"{rank:0>3d}_result.json", holder)
+        
+        if not rank:
+            _state: dict[str, Any] = model.module.state_dict() if isinstance(
+                model, DDP
+            ) else model.state_dict()
+            save(_state, save_path / "model.pth")
+
         return False
 
-    def __Model_learning__(
-        self, this_epoch: int, max_epoch: int,
-        model: Custom_Model, losses: FUNC_LOSS,
-        dataloader: dict[Mode, DataLoader],
+    def Load_model(
+        self, model: Custom_Model, save_path: Path, device_info: device
+    ):
+        model.load_state_dict(load(save_path, map_location=device_info))
+
+    def __Recovey_train__(
+        self, model: Custom_Model, epoch: int, device_info: device
+    ):
+        self.Load_model(
+            model,
+            self.result_path / f"{epoch:0>6d}" / "model.pth",
+            device_info
+        )
+
+    def __Model_running__(
+        self, this_epoch: int, max_epoch: int, rank: int,
+        model: Custom_Model | DDP, losses: FUNC_LOSS,
+        dataloader: dict[Mode, tuple[DataLoader, DistributedSampler | None]],
         device_info: device,
         optim: Optimizer, scheduler: LRScheduler | None
     ):
         _logger = {}
 
         for _epoch in range(this_epoch, max_epoch):
-            _this_path = self.result_path / f"{_epoch:0>6d}"
-            _this_path.mkdir(exist_ok=True)
+            _path = self.result_path / f"{_epoch:0>6d}"
+
+            if not rank:
+                _path.mkdir(exist_ok=True)
 
             _epoch_logger: dict[str, dict] = {}
             _st_time = Time_Utils.Stamp()
 
-            for _m, _d in dataloader.items():
-                _this_mode = str(_m)
-                _mode_path = _this_path / _this_mode
-                _mode_path.mkdir(exist_ok=True)
+            for _m, (_dataset, _sampler) in dataloader.items():
+                if _sampler is not None:
+                    _sampler.set_epoch(_epoch)
+
+                _m_str = str(_m)
+                _m_path = _path / _m_str
+                _m_path.mkdir(exist_ok=True)
 
                 # 실제 데이터를 이용한 학습 진행
-                _epoch_logger[_this_mode] = self.__Learning_loop__(
+                _epoch_logger[_m_str] = self.__Run_one_epoch__(
                     _epoch, _st_time,
-                    _m, _d, device_info,
+                    _m, _dataset, device_info,
                     model.train() if _m == "train" else model.eval(),
                     losses, optim,
-                    _mode_path
+                    _m_path
                 )
 
             _logger[_epoch] = _epoch_logger
 
             # 현재까지 학습 결과를 바탕으로 학습 진행 여부 결정
-            if self.__Learning_decision__(_epoch_logger, model, _this_path):
+            if self.__Should_stop_early__(_epoch_logger, model, _path, rank):
                 break
 
             # 학습 속행
@@ -231,39 +273,73 @@ class End_to_End(Project_Template):
                 scheduler.step()
         return _logger
 
-    def __run__learning__(self, thred_num: int, cfg: Learning_Config):
+    def __Run_train_and_validation__(
+        self, local_rank: int, cfg: Learning_Config
+    ):
+        manual_seed(cfg.seed)
         # get the device info
-        _gpus = cfg.gpus
-        _device = device(
-            f"cuda:{_gpus[thred_num]}" if len(_gpus) > thred_num else "cpu")
+        _w_size = cfg.world_size
+        _is_mp = _w_size > 1
+        _rank = cfg.node_rank_offset + local_rank
+        _device = device(f"cuda:{cfg.gpus[local_rank]}")
 
         # prepare learning
+        _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
+        _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
+
+        # load pretrained weight
+        _this_e = cfg.this_epoch
+        if _this_e and not _rank:
+            self.__Recovey_train__(_model, _this_e, _device)
+
+        if _is_mp:
+            dist.init_process_group(
+                backend="nccl",
+                init_method=f"tcp://{cfg.host_name}:{cfg.port_num}",
+                world_size=_w_size,
+                rank=_rank
+            )
+            _model = DDP(
+                _model, device_ids=[local_rank], output_device=local_rank,
+                # find_unused_parameters=True
+                # # 모델의 일부 파라미터가 forward에서 사용되지 않을 경우
+            )
+            print((
+                f"Info: [Rank {_rank}/{_w_size}] DDP initialized"
+                "Model wrapped with DDP."
+            ))
+        else:
+            print((
+                "Info: Model ready for single-process execution on "
+                f"device '{_device}'."
+            ))
+
+        # ready for train data
         _d_cfg = cfg.dataset_cfg
         _d_loader_cfg = cfg.dataloader_cfg
         _d_dict = dict((
             _m,
-            Build_loader(_d_loader_cfg[_m], *self.__Get_dataset__(_m, _d_cfg))
+            Build_loader(
+                _d_loader_cfg[_m],
+                *self.__Get_dataset__(_m, _d_cfg),
+                is_multi_process=_is_mp,
+                world_size=_w_size,
+                rank=_rank
+            )
         ) for _m, _d_cfg in _d_cfg.items())
 
-        _model, _losses = self.__Get_model_n_loss__(cfg.model_cfg, _device)
-        _optim, _scheduler = self.__Get_optim__(_model, cfg.optim_cfg)
-
-        # use multi gpu
-        if len(_gpus) >= 2:
-            ...  # not yet
-
-        # load pretrained weight
-        _this_e = cfg.this_epoch
-        if _this_e:
-            ...  # not yet
-
         # 학습 시작
-        cfg.logger = self.__Model_learning__(
-            _this_e, cfg.max_epoch, _model, _losses,
+        self.__Model_running__(
+            _this_e, cfg.max_epoch, _rank, _model, _losses,
             dict((_m, _d) for _m, _d in _d_dict.items() if _m != "test"),
             _device,
             _optim, _scheduler
         )
+
+        if _is_mp and dist.is_initialized():
+            dist.destroy_process_group()
+            if _rank == 0:
+                print("DDP process group destroyed.")
 
     def Train_with_validation(self, config: Learning_Config):
         """ ### 학습 실행 함수
@@ -279,17 +355,30 @@ class End_to_End(Project_Template):
         - None
 
         """
-        # not use distribute
-        # in later add code, that use distribute option
         Utils.Write_to(
-            self.result_path / "config.yaml",
-            config.Config_to_dict()
+            self.result_path / "config.yaml", config.Config_to_dict()
         )
 
-        self.__run__learning__(0, config)
-        
-        Utils.Write_to(
-            self.result_path / "learning_log.json",
-            config.logger
-        )
+        # multi process check
+        _w_size = config.world_size
+        _n_size = len(config.gpus) if config.gpus else 0
 
+        if _n_size > _w_size:
+            raise ValueError
+
+        if _n_size:
+            if _w_size > 1:  # use multi gpu
+                # do multi process
+                torch_mp.spawn(
+                    self.__Run_train_and_validation__,
+                    args=(config),
+                    nprocs=_n_size,
+                    join=True
+                )  
+
+            else:  # use single gpu
+                self.__Run_train_and_validation__(0, config)
+
+        else:
+            # in this code not use train by CPU
+            raise ValueError

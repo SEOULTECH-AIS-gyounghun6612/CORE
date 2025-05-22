@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Callable, Literal
 from dataclasses import dataclass, field
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, DistributedSampler
 
 from python_ex.project import Config
 
@@ -82,7 +82,24 @@ class Dataloader_Config(Config.Basement):
 def Build_loader(
     dataloader_cfg: Dataloader_Config,
     dataset: Dataset,
-    collect_func: Callable | None = None
+    collect_func: Callable | None = None,
+    is_multi_process: bool = False,
+    world_size: int = 1,
+    rank: int = 0
 ):
-    return DataLoader(
-        dataset, collate_fn=collect_func, **dataloader_cfg.Config_to_dict())
+    _dataloader_cfg = dataloader_cfg.Config_to_dict()
+    if is_multi_process:
+        _smapler = DistributedSampler(
+            dataset, world_size, rank, _dataloader_cfg["shuffle"]
+        )
+        _dataloader_cfg["shuffle"] = False
+
+    else:
+        _smapler = None
+
+    _dataloder = DataLoader(
+        dataset, sampler=_smapler, collate_fn=collect_func,
+        **dataloader_cfg.Config_to_dict()
+    )
+
+    return _dataloder, _smapler
