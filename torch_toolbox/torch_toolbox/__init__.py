@@ -1,8 +1,8 @@
-if __package__ == "":
-    # if this module call to local for another project
-    import sys
-    from os import path
+from enum import auto
+from python_ex.system import String
 
-    # add file dir
-    if path.dirname(path.abspath(__file__)) not in sys.path:
-        sys.path.append(path.dirname(path.abspath(__file__)))
+
+class Mode(String.String_Enum):
+    TRAIN = auto()
+    VALIDATION = auto()
+    TEST = auto()

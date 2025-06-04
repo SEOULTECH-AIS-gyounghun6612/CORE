@@ -1,4 +1,7 @@
-""" ### 학습을 위한 기본 구조 처리 모듈
+# learning.py
+"""
+### 신경망 학습 과정의 기본 구조 및 실행 지원 모듈
+학습 설정, 데이터 로딩, 모델 실행, 결과 저장 등 학습 파이프라인 전반을 관리.
 
 ------------------------------------------------------------------------
 ### Requirement
@@ -8,7 +11,23 @@
 
 ### Structure
     - Mode: 학습 과정을 표현하기 위한 열거형
-    - LearningProcess: End to End 학습을 구현한 기본 구조
+    - Optimizer_Config: 옵티마이저 및 학습률 스케줄러 설정 데이터 클래스.
+    - Learning_Config: 학습 전반의 주요 설정(시드, 경로, 에폭, GPU 등) 관리 데이터 클래스.
+    - FUNC_LOSS: 손실 함수 타입 정의.
+    - End_to_End: End-to-End 학습 파이프라인 추상 기본 클래스.
+        - Get_result_path: 결과 저장 경로 생성 및 관리.
+        - __Get_dataset__: 모드별 데이터셋 및 추가 정보 반환 (하위 클래스에서 구현).
+        - __Get_model_n_loss__: 모델 및 손실 함수 반환 (하위 클래스에서 구현).
+        - __Get_optim__: 옵티마이저 및 스케줄러 반환 (하위 클래스에서 구현).
+        - __Run_one_epoch__: 단일 에폭의 학습/검증/테스트 실행 (하위 클래스에서 구현).
+        - __Should_stop_early__: 조기 종료 조건 확인 및 현재 에폭 결과 저장.
+        - Load_model: 저장된 모델 가중치를 로드.
+        - __Recovey_model__: 지정된 에폭의 모델 가중치 복구.
+        - __Model_running__: 전체 에폭에 대한 학습 및 검증/테스트 루프 실행.
+        - __Run_train_and_validation__: 학습 및 검증 프로세스 전체 실행 (단일/다중 GPU 지원).
+        - Train_with_validation: 학습 및 검증 프로세스 시작점.
+        - __Run_test__: 테스트 프로세스 전체 실행 (단일 GPU).
+        - Test: 테스트 프로세스 시작점.
 
 """
 from __future__ import annotations
@@ -16,7 +35,6 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from datetime import datetime
-from enum import auto
 
 from torch import (
     Tensor, device, distributed as dist, multiprocessing as torch_mp,
@@ -27,9 +45,11 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from python_ex.system import String, Time_Utils
+from python_ex.system import Time_Utils
 from python_ex.file import Utils
 from python_ex.project import Config, Project_Template
+
+from . import Mode
 
 from .dataset import (
     Data_Config, Dataloader_Config, Custom_Dataset,
@@ -38,14 +58,17 @@ from .dataset import (
 from .neural_network import Custom_Model, Model_Config
 
 
-class Mode(String.String_Enum):
-    TRAIN = auto()
-    VALIDATION = auto()
-    TEST = auto()
-
-
 @dataclass
 class Optimizer_Config(Config.Basement):
+    """ ### 옵티마이저 및 학습률 스케줄러 설정 데이터 클래스
+
+    학습에 사용될 옵티마이저의 학습률 및 스케줄러 관련 설정을 정의.
+
+    ------------------------------------------------------------------
+    ### Args
+    - learning_rate (optional): 옵티마이저 학습률. (default=0.005)
+    - scheduler_cfg (optional): 학습률 스케줄러 설정 딕셔너리. (default={})
+    """
     learning_rate: float = 0.005
     scheduler_cfg: dict = field(default_factory=dict)
 
@@ -218,7 +241,7 @@ class End_to_End(Project_Template):
     ):
         model.load_state_dict(load(save_path, map_location=device_info))
 
-    def __Recovey_model__(
+    def __Recovery_model__(
         self, model: Custom_Model, epoch: int, device_info: device
     ):
         self.Load_model(
@@ -290,7 +313,7 @@ class End_to_End(Project_Template):
         # load pretrained weight
         _this_e = cfg.this_epoch
         if _this_e and not _rank:
-            self.__Recovey_model__(_model, _this_e, _device)
+            self.__Recovery_model__(_model, _this_e, _device)
 
         if _is_mp:
             dist.init_process_group(
@@ -397,7 +420,7 @@ class End_to_End(Project_Template):
         # load pretrained weight
         _this_e = cfg.this_epoch
         if _this_e and not _rank:
-            self.__Recovey_model__(_model, _this_e, _device)
+            self.__Recovery_model__(_model, _this_e, _device)
 
         print((
             "Info: Model ready for single-process execution on "

@@ -25,11 +25,6 @@ class Data_Config(Config.Basement):
     additional: dict = field(default_factory=dict)
 
 
-class Paser():
-    # TODO: A template class needs to be created for upcoming data parsing tasks.
-    ...
-
-
 class Custom_Dataset(Dataset):
     def __init__(
         self,
@@ -43,7 +38,7 @@ class Custom_Dataset(Dataset):
         self,
         mode: str,
         name: str, data_dir: str, process: str, **kwarg
-    ) -> dict[int, Any]:
+    ) -> dict[str, Any]:
         """ ### 지정된 모드와 설정에 따라 데이터를 로드하거나 구성하는 추상 메소드
 
         ------------------------------------------------------------------
