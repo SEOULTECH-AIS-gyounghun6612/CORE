@@ -9,7 +9,7 @@
 
 """
 from __future__ import annotations
-from typing import Any, Callable, Literal
+from typing import Any, Callable
 from dataclasses import dataclass, field
 
 from torch.utils.data import Dataset, DataLoader, DistributedSampler
