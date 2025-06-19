@@ -1,77 +1,195 @@
-""" ### 데이터 증폭 처리 모듈
+from typing import Literal, Callable, Any
+from pathlib import Path
 
-------------------------------------------------------------------------
-### Requirement
-    - python_ex
+import numpy as np
+import cv2
 
-### Structure
-    - Get_support_augmentation:
-    - Build:
-
-"""
-from typing import Dict, Any
-import sys
-# import importlib
-
-from python_ex.system import Path
+import torch
 
 
-def Get_support_augmentation():
-    """ ###
+class Read_Image():
+    """Resize sample to given size (width, height).
+    -----------------------
 
-    ------------------------------------------------------------------
-    ### Args
-    - None
-
-    ### Returns
-    - `Dataset`: 학습에 사용하고자 하는 데이터 셋
-
-    ### Raises
-    - None
-
+    this code base on depth_anthing_v2 resize code
     """
-    _, _this_path, this_file_name = Path.Get_file_directory(__file__)
-    sys.path.append(_this_path)  # add this path for import
-    _not_dataset = [this_file_name, "basement.py"]
 
-    _datasets = []
+    def __init__(
+        self,
+        width: int, height: int,
+        key_list: list[str], keep_key_list: list[str],
+        keep_ratio=True,
+        block_size=1,
+        bound: Literal["lower", "upper", "minimal"] = "lower",
+        use_padding: bool = False,
+        interpolation=cv2.INTER_AREA,
+    ):
+        self.key_list = key_list
+        self.keep_key_list = keep_key_list
 
-    for _path in Path.Search(_this_path, ext_filter=".py"):
-        _name = Path.Devide(_path)[-1]
-        if _name not in _not_dataset:
-            _datasets.append(_name)
+        self.width = width
+        self.height = height
+        self.block_size = block_size
 
-    return _datasets
+        self.keep_ratio = keep_ratio
+        self.use_padding = use_padding
+        if keep_ratio and use_padding:
+            if bound != "upper":
+                print((
+                    "if want use padding resize for multi size image,"
+                    "use upper bound"
+                ))
+            self.bound = "upper"
+        else:
+            self.bound = bound
+        # else:
+        #     raise ValueError(f"resize_method '{_b}' not implemented")
+        self.interpolation = interpolation
+
+    def Align_to_block(
+        self, v: np.ndarray, min_val=0, max_val=None
+    ):
+        _b = self.block_size
+        _x = np.array(v, dtype=np.int32)
+        _y = ((_x + _b // 2) // _b) * _b  # block size round
+
+        if max_val is not None:
+            _mask = _y > max_val
+            if np.any(_mask):
+                _y[_mask] = (_x[_mask] // _b) * _b  # block size floor
+
+        _mask = _y < min_val
+        if np.any(_mask):
+            _y[_mask] = ((_x[_mask] + _b - 1) // _b) * _b  # block size ceil
+
+        return _y
+
+    def Get_size(self, width: list[int] | int, height: list[int] | int):
+        # determine new height and width
+        _h, _w = self.height, self.width
+        _r_h = _h / np.asarray(height, dtype=np.float32)
+        _r_w = _w /np.asarray(width, dtype=np.float32)
+        _b = self.bound
+
+        if self.keep_ratio:
+            if _b == "lower":
+                # scale such that output size is lower bound
+                _n = np.maximum(_r_h, _r_w)
+            elif _b == "upper":
+                _n = np.minimum(_r_h, _r_w)
+            else:  # _b -> "minimal"
+                _n = np.where(np.abs(1 - _r_w) < np.abs(1 - _r_h), _r_w, _r_h)
+
+            _r_h = _r_w = _n
+
+        if _b == "lower":
+            _new_h = self.Align_to_block(_r_h * height, min_val=_h)
+            _new_w = self.Align_to_block(_r_w * width, min_val=_w)
+        elif _b == "upper":
+            _new_h = self.Align_to_block(_r_h * height, max_val=_h)
+            _new_w = self.Align_to_block(_r_w * width, max_val=_w)
+        else:  # _b -> "minimal"
+            _new_h = self.Align_to_block(_r_h * height)
+            _new_w = self.Align_to_block(_r_w * width)
+
+        return (_new_w.astype(int), _new_h.astype(int))
+
+    def Read_img(self, file_name: str | Path):
+        _img = cv2.imread(str(file_name), cv2.IMREAD_UNCHANGED)
+        _dim = _img.ndim
+
+        if _dim == 4:
+            return cv2.cvtColor(_img, cv2.COLOR_BGRA2RGB)
+        if _dim == 3:
+            return cv2.cvtColor(_img, cv2.COLOR_BGR2RGB)
+        return _img
+
+    def __call__(
+        self, sample: dict[str, list[str | Path]], depth_limit: int = -1
+    ):
+        _key_list = self.key_list
+        _keep_key_list = self.keep_key_list
+        _inter = self.interpolation
+        _sample = {}
+        for _k, _file_list in sample.items():
+            if _k not in _key_list:
+                continue
+
+            _img_list = []
+            _size = []
+            for _name in _file_list:
+                _img = self.Read_img(_name)
+
+                if depth_limit > 0:
+                    _img[_img > depth_limit] = 0
+
+                if _img is not None:
+                    _img_list.append(_img)
+                    _size.append(_img.shape[:2])
+
+            if not _size:
+                raise ValueError
+
+            _ori_h, _ori_w = np.array(_size).T
+            _new_w, _new_h = self.Get_size(_ori_w, _ori_h)
+            _data = [
+                cv2.resize(
+                    _img, (_w, _h), interpolation=_inter
+                ) for _img, _w, _h in zip(_img_list, _new_w, _new_h)
+            ]
+
+            _sample[_k] = np.array(_data, dtype=np.uint8)
+            _sample[f"{_k}_size"] = np.array(_size, dtype=np.uint16)
+
+            if _k in _keep_key_list:
+                _sample[f"{_k}_ori"] = np.array(_data)
+
+        return _sample
 
 
-def Build(augment_name: str, process_config: Dict[str, Dict[str, Any]]):
-    """ ###
+class Norm():
+    def __init__(
+        self,
+        norm_by_key: dict[str, Literal["ILSVRC", "min_max"]],
+    ):
+        self.norm_by_key: dict[str, Callable[[np.ndarray], np.ndarray]] = dict((
+            _k, getattr(self, f"Norm_{_v.lower()}")
+        ) for _k, _v in norm_by_key.items())
 
-    ------------------------------------------------------------------
-    ### Args
-    - `augment_name`:
-    - `process_config`:
+    def Norm_ilsvrc(self, img: np.ndarray):  # ImageNet
+        _img = img / 255.0
+        return (_img - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
 
-    ### Returns
-    - `Dataset`: 학습에 사용하고자 하는 데이터 셋
+    def Norm_min_max(self, img: np.ndarray):
+        _dim = img.ndim
+        _axis = list(range(_dim-1))
+        _min = img.min(axis=_axis)
+        _max = img.max(axis=_axis)
 
-    ### Raises
-    - None
+        return (img - _min) / (_max - _min)
 
-    """
-    if augment_name.lower() == "torchvision":
-        from .by_torchvision import FromTorchvision
-        return FromTorchvision().Config_to_compose(process_config)
+    def __call__(self, sample: dict[str, np.ndarray]):
+        for _k, _norm in self.norm_by_key.items():
+            if _k in sample:
+                sample[_k] = _norm(sample[_k])
 
-    _error_text = "\n".join(
-        [
-            ", ".join([
-                "This augment process",
-                f"that from {augment_name.lower()}",
-                "is not suport in this module version."
-            ]),
-            "Please change the augment process or module version"
-        ]
-    )
+        return sample
 
-    raise ValueError(_error_text)
+
+# class To_Tenser():
+#     def __call__(self, *args, **kwds):
+#         raise NotImplementedError
+
+class To_Tenser():
+    def __call__(self, sample: dict[str, Any]):
+        if "image" in sample:
+            _img: np.ndarray = sample["image"]
+            if _img.ndim == 3:
+                _img = _img[None, :, :, :]
+
+            sample["image"] = torch.from_numpy(
+                np.ascontiguousarray(
+                    np.transpose(_img, (0, 3, 1, 2))
+                ).astype(np.float32)
+            )
+        return sample

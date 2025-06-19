@@ -29,7 +29,9 @@ def Get_scene_block(data_dir: Path, use_target: bool = True):
     """
     _block = {"input": sorted((data_dir / "rgb").glob("*"))}
     if use_target:
-        _block.update({"gt": sorted((data_dir / "depth").glob("*.npz"))})
+        _block.update({
+            "gt": sorted((data_dir / "depth").glob("*.npz"))
+        })
 
     return _block
 
