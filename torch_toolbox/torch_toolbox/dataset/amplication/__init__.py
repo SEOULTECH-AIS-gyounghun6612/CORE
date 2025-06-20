@@ -16,8 +16,10 @@ class Read_Image():
 
     def __init__(
         self,
-        width: int, height: int,
-        key_list: list[str], keep_key_list: list[str],
+        key_list: list[str],
+        keep_key_list: list[str] | None = None,
+        width: int = -1,
+        height: int = -1,
         keep_ratio=True,
         block_size=1,
         bound: Literal["lower", "upper", "minimal"] = "lower",
@@ -27,8 +29,11 @@ class Read_Image():
         self.key_list = key_list
         self.keep_key_list = keep_key_list
 
+        self.resize = width != -1 and height != -1
+
         self.width = width
         self.height = height
+
         self.block_size = block_size
 
         self.keep_ratio = keep_ratio
@@ -105,7 +110,7 @@ class Read_Image():
         return _img
 
     def __call__(
-        self, sample: dict[str, list[str | Path]], depth_limit: int = -1
+        self, sample: dict[str, list[str | Path]], value_limit: int = -1
     ):
         _key_list = self.key_list
         _keep_key_list = self.keep_key_list
@@ -115,34 +120,36 @@ class Read_Image():
             if _k not in _key_list:
                 continue
 
-            _img_list = []
+            _meta = []
             _size = []
             for _name in _file_list:
                 _img = self.Read_img(_name)
 
-                if depth_limit > 0:
-                    _img[_img > depth_limit] = 0
-
                 if _img is not None:
-                    _img_list.append(_img)
+                    if value_limit > 0:
+                        _img[_img > value_limit] = 0
+                    
+                    _meta.append(_img)
                     _size.append(_img.shape[:2])
 
-            if not _size:
-                raise ValueError
-
-            _ori_h, _ori_w = np.array(_size).T
-            _new_w, _new_h = self.Get_size(_ori_w, _ori_h)
-            _data = [
-                cv2.resize(
-                    _img, (_w, _h), interpolation=_inter
-                ) for _img, _w, _h in zip(_img_list, _new_w, _new_h)
-            ]
+            if self.resize:
+                if not _size:
+                    raise ValueError
+                
+                _ori_h, _ori_w = np.array(_size).T
+                _new_w, _new_h = self.Get_size(_ori_w, _ori_h)
+                _data = [
+                    cv2.resize(
+                        _img, (_w, _h), interpolation=_inter
+                    ) for _img, _w, _h in zip(_meta, _new_w, _new_h)
+                ]
+                _sample[f"{_k}_size"] = np.array(_size, dtype=np.uint16)
+            else:
+                _data = _meta
 
             _sample[_k] = np.array(_data, dtype=np.uint8)
-            _sample[f"{_k}_size"] = np.array(_size, dtype=np.uint16)
-
-            if _k in _keep_key_list:
-                _sample[f"{_k}_ori"] = np.array(_data)
+            if _keep_key_list and _k in _keep_key_list:
+                _sample[f"{_k}_ori"] = np.array(_meta)
 
         return _sample
 
@@ -150,7 +157,7 @@ class Read_Image():
 class Norm():
     def __init__(
         self,
-        norm_by_key: dict[str, Literal["ILSVRC", "min_max"]],
+        norm_by_key: dict[str, Literal["ILSVRC", "min_max", "div_255"]],
     ):
         self.norm_by_key: dict[str, Callable[[np.ndarray], np.ndarray]] = dict((
             _k, getattr(self, f"Norm_{_v.lower()}")
@@ -167,6 +174,9 @@ class Norm():
         _max = img.max(axis=_axis)
 
         return (img - _min) / (_max - _min)
+    
+    def Norm_div_255(self, img: np.ndarray):
+        return img / 255
 
     def __call__(self, sample: dict[str, np.ndarray]):
         for _k, _norm in self.norm_by_key.items():
@@ -181,15 +191,20 @@ class Norm():
 #         raise NotImplementedError
 
 class To_Tenser():
-    def __call__(self, sample: dict[str, Any]):
-        if "image" in sample:
-            _img: np.ndarray = sample["image"]
-            if _img.ndim == 3:
-                _img = _img[None, :, :, :]
+    def __init__(self, color_key: list[str]):
+        self.color_key = color_key
 
-            sample["image"] = torch.from_numpy(
-                np.ascontiguousarray(
-                    np.transpose(_img, (0, 3, 1, 2))
-                ).astype(np.float32)
-            )
+    def __call__(self, sample: dict[str, Any]):
+        for _k, _v in sample.items():
+            if isinstance(_v, np.ndarray):
+                if _k in self.color_key:
+                    if _v.ndim == 3:
+                        _v = np.transpose(_v, (2, 0, 1))
+                    if _v.ndim == 4:
+                        _v = np.transpose(_v, (0, 3, 1, 2))
+
+                sample[_k] = torch.from_numpy(
+                    np.ascontiguousarray(_v).astype(np.float32)
+                )
+
         return sample

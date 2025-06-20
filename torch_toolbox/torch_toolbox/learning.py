@@ -180,7 +180,7 @@ class End_to_End(Project_Template):
     def Get_result_path(self, config: Learning_Config) -> Path:
         _root_dir = Path(config.result_dir) / self.project_name
         _root_dir /= "_".join([
-            f"{_m[0].upper()}_{_d_cfg.name}" for (
+            f"{_m.capitalize()[:2]}_{_d_cfg.name}" for (
                 _m, _d_cfg
             ) in config.dataset_cfg.items()
         ])
@@ -227,7 +227,7 @@ class End_to_End(Project_Template):
         holder: dict, model: Custom_Model | DDP, save_path: Path, rank: int
     ) -> bool:
         Utils.Write_to(save_path / f"{rank:0>3d}_result.json", holder)
-        
+
         if not rank:
             _state: dict[str, Any] = model.module.state_dict() if isinstance(
                 model, DDP

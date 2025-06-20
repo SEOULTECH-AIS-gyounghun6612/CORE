@@ -16,8 +16,6 @@
 
 - [ ] 주요 내용 재작업
   - [X] __init__.py
-  - [ ] kitti.py
-  - [ ] realsense.py
 
 ### 📁 neural_network
 

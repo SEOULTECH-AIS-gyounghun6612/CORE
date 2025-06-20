@@ -78,14 +78,14 @@ class Area_Under_Curve():
 
         _list, _ths = Area_Under_Curve.Get_accs(
             _this_e, _this_th, step_ct, mask)
-        
+
         _auc_holder.append(torch.trapz(_list, _ths) / _this_th)
 
         if len(errors_list) > 1:
             for _e, _th in zip(errors_list[1:], max_thresholds[1:]):
                 _this_list, _ = Area_Under_Curve.Get_accs(
                     _e, _th, step_ct, mask)
-                
+
                 _auc_holder.append(torch.trapz(_this_list, _ths) / _this_th)
 
                 # min
