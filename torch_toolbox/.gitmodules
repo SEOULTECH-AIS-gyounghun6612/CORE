@@ -1,8 +1,3 @@
-[submodule "torch_ex/layer_n_weight/3d_gaussian/submodules/diff-gaussian-rasterization"]
-	path = torch_ex/layer_n_weight/3d_gaussian/submodules/diff-gaussian-rasterization
-	url = https://github.com/graphdeco-inria/diff-gaussian-rasterization
-	branch = main
-[submodule "torch_ex/layer_n_weight/3d_gaussian/submodules/simple-knn"]
-	path = torch_ex/layer_n_weight/3d_gaussian/submodules/simple-knn
-	url = https://gitlab.inria.fr/bkerbl/simple-knn.git
-	branch = main
+[submodule "torch_toolbox/neural_network/submodules/dino_v2"]
+	path = torch_toolbox/neural_network/submodules/dino_v2
+	url = https://github.com/facebookresearch/dinov2.git

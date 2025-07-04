@@ -59,11 +59,11 @@ def Get_multi_scene_block(
     ### Returns
     - dict: 키는 (선택적 `prefix` 적용) 하위 장면 폴더명, 값은 해당 폴더의 `Get_scene_block` 결과 딕셔너리.
     """
-    _paths = sorted(data_dir.glob("*"))
-    _prefix = f"{prefix}_" if prefix != "" else prefix
+    _prefix = f"{prefix}*" if prefix != "" else "*"
+    _paths = sorted(data_dir.glob(_prefix))
     if term:
         return dict((
-            f"{_prefix}{_p.name}",
+            f"{_p.name}",
             Get_scene_block(_p, use_target)
         ) for _ct, _p in enumerate(_paths) if pickup ^ bool(_ct % term))
     
