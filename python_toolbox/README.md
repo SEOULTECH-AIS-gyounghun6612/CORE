@@ -34,7 +34,7 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
 ### data
 
-- [별도 페이지 참조](./python_ex/data/README.md)
+- [별도 페이지 참조](./python_toolbox/data/README.md)
 
 ## Install
 
@@ -42,19 +42,19 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
   ```bash
   # using pip with https
-  pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha
+  pip install git+https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_toolbox.git
   
   # using pip with ssh
-  pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git@ver_alpha
+  pip install git+ssh://git@github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_toolbox.git
   ```
 
 - 직접 설치
 
   ```bash
   # clone this repository
-  git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_ex.git
+  git clone https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_python_toolbox.git
 
-  cd AIS_python_ex
+  cd AIS_python_toolbox
 
   # install 
   pip install -e .
