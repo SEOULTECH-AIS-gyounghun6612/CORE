@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python_toolbox"
+version = "0.1"
+description = "python example for AIS"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AIS" }
+authors = [
+    { name = "user_name", email = "user_name@ais.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "opencv-python",
+    "pyyaml",
+    "matplotlib",
+    "python-dateutil",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+]

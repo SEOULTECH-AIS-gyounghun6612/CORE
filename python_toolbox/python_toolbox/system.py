@@ -23,6 +23,7 @@
         - 현재 시간 생성, 포맷 변환, 시간 간격 계산 기능 제공
         - 하위: Relative (상대적 시간 정보를 저장하는 dataclass)
 """
+
 from __future__ import annotations
 from enum import StrEnum, auto
 from typing import (Tuple, Literal, TypeVar)
@@ -87,6 +88,8 @@ class String():
     ) -> Tuple[int, str]:
         """ ### 문자열을 지정된 길이에 맞춰 정렬
 
+        한글 등 멀티바이트 문자를 너비 2로 간주하여 시각적 길이를 계산합니다.
+
         ------------------------------------------------------------------
         ### Args
         - text: 입력 문자열
@@ -97,16 +100,28 @@ class String():
         ### Returns
         - Tuple[int, str]: 초과 길이, 정렬된 문자열
         """
-        for _str in text:
-            max_length -= 1 if _str.encode().isalpha() ^ _str.isalpha() else 0
+        # 참고: 이 방식은 터미널 환경에 따라 정확하지 않을 수 있습니다.
+        # 보다 정확한 계산이 필요하면 wcwidth 라이브러리 사용을 권장합니다.
+        visual_width = 0
+        for char in text:
+            # 간단한 휴리스틱: encode 결과가 isalpha와 다르면 멀티바이트로 간주
+            if char.encode().isalpha() != char.isalpha():
+                visual_width += 2
+            else:
+                visual_width += 1
 
-        if max_length < 0:
-            return -max_length, text
+        padding_size = max_length - visual_width
+        if padding_size < 0:
+            return -padding_size, text
+
         if align == "l":
-            return 0, text.ljust(max_length, fill)
+            return 0, text + fill * padding_size
         if align == "c":
-            return 0, text.center(max_length, fill)
-        return 0, text.rjust(max_length, fill)
+            left_padding = padding_size // 2
+            right_padding = padding_size - left_padding
+            return 0, fill * left_padding + text + fill * right_padding
+        # align == 'r'
+        return 0, fill * padding_size + text
 
     @staticmethod
     def Progress_bar(
@@ -215,65 +230,6 @@ class Server():
         # TODO:
         raise NotImplementedError
 
-    # class Server():
-    #     """ ### 네트워크 내 데이터 서버 관련 기능 모음
-
-    #     -----------------------------------------------------------------------
-    #     """
-    #     IS_WINDOW = OperatingSystem.Is_it_runing(OperatingSystem.Name.WINDOW)
-
-    #     class Connection_Porcess(String.String_Enum):
-    #         CIFS = auto()
-
-    #     def __init__(
-    #         self,
-    #         process: Connection_Porcess = Connection_Porcess.CIFS
-    #     ) -> None:
-    #         self.process = process
-
-    #     def _connect_to_Linux(
-    #         self,
-    #         host_name: str,
-    #         mount_dir: str,
-    #         mount_point: str,
-    #         user_id: int,
-    #         group_id: int,
-    #         dir_mode: int,
-    #         file_mode: int,
-    #         credent_path: str
-    #     ):
-    #         _command = path.join(
-    #             f"sudo -S mount -t {self.process}",
-    #             " -o ",
-    #             ",".join((
-    #                 f"uid={user_id}",
-    #                 f"gid={group_id}",
-    #                 f"dir_mode={dir_mode%1000:0>4d}",
-    #                 f"dile_mode={file_mode%1000:0>4d}",
-    #                 f"credentials={credent_path}",
-    #             )),
-    #             f" //{host_name}/{mount_dir} {mount_point}"
-    #         )
-    #         system(_command)
-
-    #         return mount_point
-
-    #     def _connect_to_Window(
-    #         self,
-    #         host_name: str,
-    #         mount_dir: str,
-    #         mount_point: str,
-    #         user_name: str
-    #     ):
-    #         raise NotImplementedError
-
-    #     def _disconnect(self, mounted_dir: str):
-    #         if self.IS_WINDOW:
-    #             system(f"NET USE {mounted_dir}: /DELETE")
-    #         else:
-    #             system(f"fuser -ck {mounted_dir}")
-    #             system(f"sudo umount {mounted_dir}")
-
 
 class Time_Utils():
     """ ### 시간 관련 유틸리티 기능을 제공하는 클래스
@@ -368,9 +324,10 @@ class Time_Utils():
         _datetime = datetime.strptime(src, _date_format)
         return _datetime
 
-    # TODO: refactoring this relative time class
     @dataclass
     class Relative():
+        """ ### relativedelta를 쉽게 다루기 위한 데이터 클래스
+        """
         years: int = 0
         months: int = 0
         weeks: int = 0
@@ -378,16 +335,24 @@ class Time_Utils():
         hours: int = 0
         minutes: int = 0
         seconds: int = 0
-        microsecond: int = 0
+        microseconds: int = 0
 
-        def __post_init__(self):
-            self.__position__ = 0
+        @classmethod
+        def from_delta(cls, delta: relativedelta) -> Time_Utils.Relative:
+            """ relativedelta 객체로부터 Relative 인스턴스를 생성합니다. """
+            return cls(
+                years=delta.years,
+                months=delta.months,
+                weeks=delta.weeks,
+                days=delta.days,
+                hours=delta.hours,
+                minutes=delta.minutes,
+                seconds=delta.seconds,
+                microseconds=delta.microseconds
+            )
 
-        def Delta_to_order_dict(self, time_delta: relativedelta):
-            for _key in self.__dict__:
-                self.__dict__[_key] = time_delta.__dict__[_key]
-
-        def Order_dict_to_delta(self):
+        def to_delta(self) -> relativedelta:
+            """ Relative 인스턴스를 relativedelta 객체로 변환합니다. """
             return relativedelta(
                 years=self.years,
                 months=self.months,
@@ -396,32 +361,5 @@ class Time_Utils():
                 hours=self.hours,
                 minutes=self.minutes,
                 seconds=self.seconds,
-                microsecond=self.microsecond
+                microseconds=self.microseconds
             )
-
-        def __iter__(self):
-            self.__position__ = 0
-            return self
-
-        def __next__(self):
-            _p = self.__position__
-            if _p >= 8:
-                raise StopIteration
-            if _p == 1:
-                _v = self.months
-            elif _p == 2:
-                _v = self.weeks
-            elif _p == 3:
-                _v = self.days
-            elif _p == 4:
-                _v = self.hours
-            elif _p == 5:
-                _v = self.minutes
-            elif _p == 6:
-                _v = self.seconds
-            elif _p == 7:
-                _v = self.microsecond
-            else:
-                _v = self.years
-            self.__position__ += 1
-            return str(_v)

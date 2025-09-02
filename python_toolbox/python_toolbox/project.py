@@ -86,7 +86,7 @@ class Config():
     @staticmethod
     def Read_from_file(
         cfg_obj: type[cfg_class], file_path: Path, encoding_type: str = "UTF-8"
-    ) -> tuple[bool, cfg_class]:
+    ) -> cfg_class:
         """ ### 파일에서 설정 정보를 로드하여 객체로 반환
 
         json 또는 yaml 포맷을 지원함
@@ -98,16 +98,31 @@ class Config():
         - encoding_type: 파일 인코딩 (기본값: UTF-8)
 
         ### Returns
-        - Tuple[bool, cfg_class]: 성공 여부, 설정 객체 인스턴스
+        - cfg_class: 설정 객체 인스턴스
+
+        ### Raises
+        - ValueError: 지원하지 않는 파일 형식이거나 파일 읽기 실패 시
         """
-        _is_ok, _ = Utils.Suffix_check(file_path, [".json", ".yaml"], True)
+        _is_ok, _ = Utils.Suffix_check(
+            file_path, [".json", ".yaml"], is_fix=False
+        )
 
-        if _is_ok:
-            _meta: tuple[bool, dict[str, Any]] = Utils.Read_from(
-                file_path, encoding_type)
-            return _meta[0], cfg_obj(**_meta[1])
+        if not _is_ok:
+            raise ValueError(
+                f"Unsupported config file format: {file_path.suffix}"
+            )
 
-        return False, cfg_obj()
+        is_read_ok, data = Utils.Read_from(file_path, encoding_type)
+
+        if is_read_ok and isinstance(data, dict):
+            try:
+                return cfg_obj(**data)
+            except TypeError as e:
+                raise ValueError(
+                    f"Failed to instantiate config from {file_path}: {e}"
+                )
+
+        raise ValueError(f"Failed to read or parse config file: {file_path}")
 
     @staticmethod
     def Read_with_arg_parser(

@@ -26,11 +26,11 @@ Python에서 자주 사용되는 기능을 별도로 정리하여 이후 모듈�
 
 ### file.py
 
-- [ ] 주요 파일 포멧 지원
+- [x] 주요 파일 포멧 지원
   - [x] json
-  - [ ] xml
+  - [x] xml
   - [x] yaml
-  - [ ] csv
+  - [x] csv
 
 ### data
 

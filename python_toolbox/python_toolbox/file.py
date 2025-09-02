@@ -26,7 +26,7 @@
         - Write_to: 데이터 유형 기반 저장 분기
         - Make_the_file_group: 이미지 파일을 그룹 단위로 복사 정리
 """
-
+from abc import ABC, abstractmethod
 from functools import wraps
 from typing import TypeVar, Callable, cast, Any
 
@@ -106,7 +106,7 @@ class Process():
     - Json: JSON 파일 입출력 기능 제공
     - Yaml: YAML 파일 입출력 기능 제공
     """
-    class File_Process():
+    class File_Process(ABC):
         """ ### 파일 입출력의 공통 로직을 정의한 베이스 클래스
 
         파일 존재 보장, 일반화된 read/write 인터페이스를 제공함
@@ -128,6 +128,7 @@ class Process():
             path.parent.mkdir(parents=True, exist_ok=True)
 
         @classmethod
+        @abstractmethod
         def Read_from(
             cls, file: Path, enc: str = "UTF-8", **kwarg
         ) -> tuple[bool, Any]:
@@ -148,6 +149,7 @@ class Process():
             raise NotImplementedError
 
         @classmethod
+        @abstractmethod
         def Write_to(
             cls, file: Path, data: Any, enc: str = "UTF-8", **kwarg
         ) -> bool:
@@ -196,7 +198,7 @@ class Process():
             """
             _, _file = Utils.Suffix_check(file, ".txt")
             if _file.exists():
-                return True, file.read_text(enc).split(delim)[start:]
+                return True, _file.read_text(enc).split(delim)[start:]
             return False, []
 
         @classmethod
@@ -265,7 +267,7 @@ class Process():
         @classmethod
         @Handle_exp()
         def Write_to(
-            cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+            cls, file: Path, data: Any, enc: str = "UTF-8",
             indent: int = 4
         ) -> bool:
             """ ### 딕셔너리 데이터를 JSON 파일로 저장
@@ -325,7 +327,7 @@ class Process():
         @classmethod
         @Handle_exp()
         def Write_to(
-            cls, file: Path, data: dict[str, Any], enc: str = "UTF-8",
+            cls, file: Path, data: Any, enc: str = "UTF-8",
             indent: int = 4
         ) -> bool:
             """ ### 데이터를 YAML 형식으로 파일에 저장
@@ -378,7 +380,7 @@ class Utils():
         if path.suffix in _ext:
             return True, path
 
-        return False, path.with_suffix(ext[0]) if is_fix else path
+        return False, path.with_suffix(_ext[0]) if is_fix else path
 
     @staticmethod
     def Read_from(file: Path, enc: str = "UTF-8", **kwarg):
@@ -410,12 +412,12 @@ class Utils():
 
     @staticmethod
     def Write_to(
-        file: Path, data: dict[KEY, VALUE] | list[str], enc: str = "UTF-8",
+        file: Path, data: Any, enc: str = "UTF-8",
         **kwarg
     ):
-        """ ### 데이터 형식에 따라 파일로 저장 처리
+        """ ### 파일 확장자에 따라 파일로 저장 처리
 
-        dict → JSON/YAML, list → TEXT 형식으로 자동 구분하여 저장함
+        파일 확장자에 따라 .json, .yaml, .txt 형식으로 자동 구분하여 저장함
 
         ------------------------------------------------------------------
         ### Args
@@ -428,27 +430,17 @@ class Utils():
         - None
 
         ### Raises
-        - ValueError: 지원되지 않는 데이터 유형 또는 포맷
+        - ValueError: 지원되지 않는 파일 확장자
         """
         _suffix: str = file.suffix
         _name = _suffix[1:].capitalize()
 
-        if isinstance(data, dict):
-            if _name not in ["Yaml", "Json"]:
-                raise ValueError((
-                    "Format error:\n"
-                    f"    Check data type(= {type(data)})"
-                    f"and file format(= {_suffix[1:]}) before saving."
-                ))
+        if hasattr(Process, _name):
+            getattr(Process, _name).Write_to(file, data, enc, **kwarg)
         else:
-            if _name not in ["Text"]:
-                raise ValueError((
-                    "Format error:\n"
-                    f"    Check data type(= {type(data)})"
-                    f"and file format(= {_suffix[1:]}) before saving."
-                ))
-
-        getattr(Process, _name).Write_to(file, data, enc, **kwarg)
+            raise ValueError(
+                f"File extension '{_suffix}' is not supported for writing."
+            )
 
     @staticmethod
     def Make_the_file_group(
