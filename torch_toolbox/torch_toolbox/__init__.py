@@ -1,8 +1,7 @@
-from enum import auto
-from python_ex.system import String
+from enum import StrEnum
 
 
-class Mode(String.String_Enum):
-    TRAIN = auto()
-    VALIDATION = auto()
-    TEST = auto()
+class Mode(StrEnum):
+    TRAIN = "train"
+    VALIDATION = "val"
+    TEST = "test"

@@ -20,24 +20,27 @@ from python_ex.project import Config
 @dataclass
 class Data_Config(Config.Basement):
     name: str = "no_data"
-    process: str = "custom"
+    load_method: str = "from_folder"  # or "from_annotation"
     data_dir: str = "./datasets"
     additional: dict = field(default_factory=dict)
 
+    def Config_to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "b_proc": self.load_method,
+            "data_dir": self.data_dir,
+            **self.additional
+        }
+
+
 
 class Custom_Dataset(Dataset):
-    def __init__(
-        self,
-        mode: str, cfg: Data_Config
-    ):
+    def __init__(self, mode: str, cfg: Data_Config):
         self.dataset_cfg = cfg
-        self.dataset_block = self.Get_data_block(
-            mode, cfg.name, cfg.data_dir, cfg.process, **cfg.additional)
+        self.dataset_block = self.Get_data_block(mode, **cfg.Config_to_dict())
 
     def Get_data_block(
-        self,
-        mode: str,
-        name: str, data_dir: str, process: str, **kwarg
+        self, mode: str, name: str, b_proc: str, data_dir: str, **kwarg
     ) -> dict[str, Any]:
         """ ### 지정된 모드와 설정에 따라 데이터를 로드하거나 구성하는 추상 메소드
 

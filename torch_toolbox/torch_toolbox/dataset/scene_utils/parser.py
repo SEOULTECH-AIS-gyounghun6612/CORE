@@ -10,8 +10,11 @@
 - Get_multi_scene_block: 다중 장면 데이터 정보를 구성하는 함수.
 - Get_multi_scene_block_in_subset: 하위 집합 내 다중 장면 데이터 정보를 구성하는 함수.
 """
+
 from pathlib import Path
 
+import numpy as np
+from python_ex.file import Utils as File_Utils
 
 def Get_scene_block(data_dir: Path, use_target: bool = True):
     """ ### 단일 장면 데이터 정보를 구성하는 함수
@@ -30,10 +33,12 @@ def Get_scene_block(data_dir: Path, use_target: bool = True):
     _block = {"input": sorted((data_dir / "rgb").glob("*"))}
     if use_target:
         _block.update({
-            "gt": sorted((data_dir / "depth").glob("*.npz"))
+            "pose_with_depth": np.load(data_dir / "pose.npz"),
+            **File_Utils.Read_from(data_dir / "info.yaml")[1]
         })
 
     return _block
+
 
 
 def Get_multi_scene_block(
