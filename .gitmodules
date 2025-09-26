@@ -1,0 +1,16 @@
+[submodule "python_toolbox"]
+	path = python_toolbox
+	url = https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git
+	branch = python_toolbox
+[submodule "vision_toolbox"]
+	path = vision_toolbox
+	url = https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git
+	branch = vision_toolbox
+[submodule "gui_toolbox"]
+	path = gui_toolbox
+	url = https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git
+	branch = gui_toolbox
+[submodule "torch_toolbox"]
+	path = torch_toolbox
+	url = https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git
+	branch = torch_toolbox
