@@ -1,0 +1,7 @@
+# Docker pre-built storage
+build_pool/*
+!build_pool/.gitkeep
+
+# Docker build context (managed by Makefile)
+build_for_container/*
+!build_for_container/.gitkeep

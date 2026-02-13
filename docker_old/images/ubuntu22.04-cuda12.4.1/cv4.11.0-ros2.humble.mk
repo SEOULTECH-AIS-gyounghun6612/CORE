@@ -1,0 +1,29 @@
+# --- 베이스 이미지 설정 ---
+CUDA_VERSION = 12.4.131
+CUDNN_VERSION = 9.19.0.56
+IMAGE_TYPE = devel
+UBUNTU_VERSION = 22.04
+
+# --- [애플리케이션 프로필 활성화] ---
+# 1. ROS2 설정
+ENABLE_ROS2 = yes
+ROS2_DISTRO = humble
+ROS2_TYPE = desktop
+
+# 2. OpenCV 설정
+ENABLE_OPENCV = yes
+OPENCV_VERSION = 4.11.0
+OPENCV_WITH_CUDA = ON
+OPENCV_GPU_ARCH = 9.0;8.9;8.6;8.0
+OPENCV_JOBS = 4
+OPENCV_INSTALL_PREFIX = /usr/local
+OPENCV_WORK_DIR = /opt/build
+OPENCV_PYTHON_PATH = /usr/bin/python3
+OPENCV_CPP_STD = 17
+
+# 미리 빌드된 아티팩트 사용 여부
+OPENCV_USE_PREBUILT = yes
+OPENCV_ARTIFACT_NAME = opencv-$(OPENCV_VERSION)
+
+# SSH 포트 설정
+SSH_PORT = 2222
