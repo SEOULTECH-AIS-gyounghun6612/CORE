@@ -6,15 +6,12 @@
 
 ---------------------------------------------------------------------------
 ### Requirement
-    - Python >= 3.8
-    - numpy
-    - scipy (Rotation 모듈 사용 시)
+    - Python >= 3.10
     - dateutil (relativedelta)
 
 ### Structure
     - String
         - 문자열 포맷팅, 길이 정렬, 진행바 등 처리 유틸리티 클래스
-        - 하위: String_Enum (str, Enum 기반 enum 확장)
     - Operating_System
         - 현재 운영체제 확인 및 열거형 정의
     - Server
@@ -25,7 +22,7 @@
 """
 
 from __future__ import annotations
-from enum import Enum, auto
+from enum import StrEnum, auto
 from typing import (Tuple, Literal, TypeVar, Union)
 
 from dataclasses import dataclass
@@ -153,21 +150,6 @@ class String():
         if iteration == total:
             print()
 
-    class String_Enum(str, Enum):
-        """ ### 문자열로 출력되는 열거형 클래스
-
-        ------------------------------------------------------------------
-        """
-        @staticmethod
-        def _generate_next_value_(name, start, count, last_values):
-            return name.lower()
-
-        def __repr__(self) -> str:
-            return self.name.lower()
-
-        def __str__(self) -> str:
-            return str(self.value)
-
 
 class Operating_System():
     """ ### 운영체제(OS) 관련 정보 및 조건 처리 유틸리티 클래스
@@ -180,7 +162,7 @@ class Operating_System():
 
     THIS_STYLE = platform.system().lower()
 
-    class Name(String.String_Enum):
+    class Name(StrEnum):
         """
         각 OS 별 처리 문자열
         ----------------------------------------------------------------

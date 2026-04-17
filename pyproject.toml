@@ -4,25 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python_toolbox"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Choi_keonghun & Jun_eins", email="dev.gyounghun6612@gmail.com" },
 ]
 description = "Frequently used Python utility functions and classes for AIS projects."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy",
     "pyyaml",
-    "matplotlib",
     "python-dateutil",
 ]
 
@@ -34,4 +30,4 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/SEOULTECH-AIS-gyounghun6612/CORE/tree/python_toolbox"
+"Homepage" = "https://github.com/DXR-keonghun6612/CORE/tree/python_toolbox"
