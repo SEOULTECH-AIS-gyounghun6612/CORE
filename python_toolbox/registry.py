@@ -9,13 +9,14 @@ Requirement:
     - typing, inspect, collections.abc
 """
 from __future__ import annotations
-from typing import Any, TypeVar, Generic, Callable, get_origin, get_args, cast
+from typing import Any, TypeVar, Generic, Callable, get_origin, get_args, cast, overload
 import inspect
 import collections.abc
 
 
 T = TypeVar("T")
 C = TypeVar("C")
+C_Type = TypeVar("C_Type")
 
 
 class Registry(Generic[T]):
@@ -59,21 +60,39 @@ class Registry(Generic[T]):
                 f"[ERROR] 지원하지 않는 target_type: {self.target_type}"
             )
 
-    def Get(self, key: str) -> T:
+    @overload
+    def Get(self, key: str) -> T: ...
+    @overload
+    def Get(self, key: str, expected: type[C_Type]) -> type[C_Type]: ...
+
+    def Get(self, key: str, expected: type | None = None) -> Any:
         """등록된 모듈을 키로 조회함.
 
         Args:
             key: 등록 시 사용된 이름.
+            expected: 기대하는 상위 타입. 지정 시 issubclass 검증 후 반환.
 
         Returns:
-            등록된 객체.
+            등록된 객체. expected 지정 시 type[expected]로 좁혀짐.
 
         Raises:
             KeyError: 미등록 키인 경우.
+            TypeError: expected 지정 시 issubclass 검증 실패한 경우.
         """
         if key not in self._module_dict:
             raise KeyError(f"'{key}'은(는) {self.name}에 등록되지 않았음.")
-        return self._module_dict[key]
+
+        _data = self._module_dict[key]
+
+        if expected is None:
+            return _data
+
+        if inspect.isclass(_data) and issubclass(_data, expected):
+            return cast(type, _data)
+
+        raise TypeError(
+            f"'{key}'은(는) '{expected.__name__}'의 하위 클래스가 아님."
+        )
 
     def Register_module(self, name: str | None = None) -> Callable[[C], C]:
         """대상 객체를 레지스트리에 등록하는 데코레이터 팩토리.

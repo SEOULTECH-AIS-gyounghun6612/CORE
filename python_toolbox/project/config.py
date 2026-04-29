@@ -1,40 +1,42 @@
 """파일 I/O 진입점이 부여된 Data_Schema 특화 모듈.
 
-JSON/YAML 파일 또는 argparse.Namespace로부터의 객체 구성과 파일 저장을
+JSON/YAML 파일 또는 Registry를 통해 설정 객체를 구성하고 파일 저장을
 지원하는 Base_Config 및 팩토리 함수를 제공함. python_toolbox.file 의존을
 이 모듈로 격리하여 Data_Schema 코어를 stdlib만 의존하도록 유지함.
 
 Requirement:
     - Python >= 3.10
-    - argparse, pathlib
-    - python_toolbox.data_schema, python_toolbox.file
+    - pathlib, argparse
+    - python_toolbox.data_schema, python_toolbox.file, python_toolbox.registry
 """
 from __future__ import annotations
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, TypeVar
 import argparse
+import types as _types
+from dataclasses import dataclass, fields, MISSING
+from pathlib import Path
+from typing import Any, ClassVar, TypeVar, Union, get_type_hints, get_origin, get_args
 
-from python_toolbox.data_schema import Data_Schema
-from python_toolbox.file import (
-    Read_from as _File_Read_from,
-    Write_to as _File_Write_to,
-    Suffix_check,
-)
+from ..data_schema import Data_Schema
+from ..registry import Registry
+from ..file import Read_from, Write_to
 
 
 @dataclass
 class Base_Config(Data_Schema):
+    config_type: str = ""
+    object_type: str = ""
+    __exclude_extract__: ClassVar[set[str]] = {"config_type", "object_type"}
+
     """파일 I/O 진입점을 보유한 Data_Schema 특화 클래스.
 
-    설정/구성 데이터를 JSON/YAML로 저장하거나, argparse 결과 또는
-    설정 파일에서 직접 객체를 구성하는 용도에 적합함. 데이터 스키마로서의
-    역할(Serialize/Extract)은 Data_Schema에서 상속받음.
+    설정/구성 데이터를 JSON/YAML로 저장하거나, Registry와 설정 파일에서
+    직접 객체를 구성하는 용도에 적합함. 데이터 스키마로서의 역할
+    (Serialize/Extract)은 Data_Schema에서 상속받음.
 
     ## 사용 패턴
     - `cfg.Write_to(name, dir)` — 현재 상태를 파일로 저장.
-    - `Build_from_args(MyConfig, ns)` — argparse.Namespace에서 객체 구성.
-    - `Read_from_file(MyConfig, path)` — JSON/YAML에서 객체 구성.
+    - `Build_sub_config(ctx, Expected, registry, key="path")` — Registry 기반 객체 구성.
+    - `Build_parser_from_config(MyConfig)` — 필드 기반 ArgumentParser 생성.
     """
 
     def Write_to(
@@ -47,69 +49,113 @@ class Base_Config(Data_Schema):
             save_dir: 저장 디렉토리 경로.
             encoding_type: 파일 인코딩 (기본 UTF-8).
         """
-        _File_Write_to(Path(save_dir) / name, self.Serialize(), encoding_type)
+        Write_to(Path(save_dir) / name, self.Serialize(), encoding_type)
 
 
 C_Type = TypeVar("C_Type", bound=Base_Config)
 
 
-def Build_from_args(
-    cfg_obj: type[C_Type], args: argparse.Namespace | dict[str, Any]
+def Build_sub_config(
+    context: dict[str, Any],
+    expected: type[C_Type],
+    registry: Registry,
+    **key_with_file: str | None,
 ) -> C_Type:
-    """인자 데이터로부터 Base_Config 객체를 구성함.
-
-    모든 객체 생성의 단일 진입점(Single Source of Truth) 역할 수행.
-    파일 로드 경로(Read_from_file) 또한 최종적으로 본 함수에 위임됨.
+    """Registry와 파일 또는 키를 기반으로 설정 객체를 생성하고 반환함.
 
     Args:
-        cfg_obj: 구성할 Base_Config 자식 클래스.
-        args: argparse.Namespace 또는 dict 형태의 인자.
+        context: 설정 객체에 주입할 컨텍스트 데이터.
+        expected: 반환될 설정 객체의 상위 타입.
+        registry: 설정 클래스가 등록된 레지스트리.
+        **key_with_file: 단일 기본 설정 키와 파일 경로 (예: key="path/to/file").
 
     Returns:
-        구성된 Base_Config 인스턴스.
+        초기화된 설정(Configuration) 객체 인스턴스.
 
     Raises:
-        ValueError: 시그니처 불일치 등으로 객체 생성 실패 시.
+        ValueError: key_with_file 인자가 비어 있는 경우.
+        KeyError: Registry에서 키를 찾을 수 없는 경우.
+        TypeError: Registry에서 반환된 타입이 expected와 일치하지 않는 경우.
     """
-    _arg_dict = vars(args) if isinstance(args, argparse.Namespace) else args
+    if not key_with_file:
+        raise ValueError("key_with_file 인자가 비어 있음.")
 
-    try:
-        return cfg_obj(**_arg_dict)
-    except TypeError as e:
-        raise ValueError(
-            f"[ERROR] Failed to build config '{cfg_obj.__name__}': {e}"
-        ) from e
+    _cfg_key, _file_path = next(iter(key_with_file.items()))
+    _cfg: type[C_Type] | None = None
+    _meta: dict[str, Any] = {}
+
+    if _file_path and (_path := Path(_file_path)).exists():
+        _is_ok, _meta = Read_from(_path)
+        if _is_ok and isinstance(_meta, dict):
+            _type_key = _meta.get("config_type", "")
+            if _type_key:
+                _cfg = registry.Get(_type_key, expected)
+
+    if _cfg is None:
+        _cfg = registry.Get(_cfg_key, expected)
+        _meta = {}
+
+    _valid = {f.name for f in fields(_cfg)} & context.keys()
+    return _cfg(**(_meta | {k: context[k] for k in _valid}))
 
 
-def Read_from_file(
-    cfg_obj: type[C_Type], file_path: Path, encoding_type: str = "UTF-8"
-) -> C_Type:
-    """JSON/YAML 파일에서 Base_Config 객체를 구성함.
+def Build_parser_from_config(
+    config_type: type[Base_Config],
+    parser: argparse.ArgumentParser | None = None,
+) -> argparse.ArgumentParser:
+    """Base_Config 필드 정보로부터 ArgumentParser를 구성함.
 
-    I/O 처리 및 포맷 검증만 담당하고 객체 생성은 Build_from_args에 위임함.
+    __exclude_extract__ 필드는 등록에서 제외됨.
+    bool → BooleanOptionalAction, list → nargs, dict → str(파일 경로),
+    Optional[X] / X | None → 내부 타입으로 unwrap.
 
     Args:
-        cfg_obj: 구성할 Base_Config 자식 클래스.
-        file_path: 설정 파일 경로 (.json 또는 .yaml).
-        encoding_type: 파일 인코딩 (기본 UTF-8).
+        config_type: 파싱 기준이 될 Base_Config 자식 클래스.
+        parser: 기존 파서에 인자를 추가할 경우 전달. None이면 새로 생성.
 
     Returns:
-        구성된 Base_Config 인스턴스.
-
-    Raises:
-        ValueError: 미지원 포맷, 파싱 실패, 또는 dict 형태가 아닌 경우.
+        필드 기반으로 인자가 등록된 ArgumentParser.
     """
-    _is_ok, _ = Suffix_check(file_path, [".json", ".yaml"], is_fix=False)
-    if not _is_ok:
-        raise ValueError(
-            f"[ERROR] Unsupported config file format: {file_path.suffix}"
+    if parser is None:
+        parser = argparse.ArgumentParser()
+
+    _hints = get_type_hints(config_type)
+    _exclude = getattr(config_type, "__exclude_extract__", set())
+
+    for f in fields(config_type):
+        if f.name in _exclude:
+            continue
+
+        _type = _hints.get(f.name, str)
+        _has_default = not (f.default is MISSING and f.default_factory is MISSING)  # type: ignore[misc]
+        _default = (
+            f.default if f.default is not MISSING
+            else f.default_factory() if f.default_factory is not MISSING  # type: ignore[misc]
+            else None
         )
 
-    _is_read_ok, _data = _File_Read_from(file_path, enc=encoding_type)
+        # Unwrap Optional[X] / X | None
+        _origin = get_origin(_type)
+        if _origin is Union or isinstance(_type, _types.UnionType):
+            _inner = [a for a in get_args(_type) if a is not type(None)]
+            _type = _inner[0] if _inner else str
+            _origin = get_origin(_type)
 
-    if not _is_read_ok or not isinstance(_data, dict):
-        raise ValueError(
-            f"[ERROR] Failed to read or parse config file: {file_path}"
+        kwargs: dict[str, Any] = (
+            {"default": _default} if _has_default else {"required": True}
         )
 
-    return Build_from_args(cfg_obj, _data)
+        if _type is bool:
+            kwargs["action"] = argparse.BooleanOptionalAction
+        elif _origin is list:
+            _inner_args = get_args(_type)
+            kwargs["type"] = _inner_args[0] if _inner_args else str
+            kwargs["nargs"] = "*" if _has_default else "+"
+        elif _origin is dict:
+            kwargs["type"] = str
+        else:
+            kwargs["type"] = _type
+
+        parser.add_argument(f"--{f.name}", **kwargs)
+
+    return parser

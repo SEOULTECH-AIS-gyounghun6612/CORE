@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python_toolbox"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   { name="Choi_keonghun & Jun_eins", email="dev.gyounghun6612@gmail.com" },
 ]
@@ -24,10 +24,17 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "pytest",
     "flake8",
     "black",
     "isort",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["python_toolbox*"]
 
 [project.urls]
 "Homepage" = "https://github.com/DXR-keonghun6612/CORE/tree/python_toolbox"
