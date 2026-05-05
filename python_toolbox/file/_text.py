@@ -1,4 +1,4 @@
-"""텍스트(.txt) 파일 입출력."""
+"""Plain-text file reader and writer."""
 from __future__ import annotations
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from ._base import File_Process, Handle_exp, Suffix_check
 
 
 class Text(File_Process):
-    """텍스트 파일(.txt) 읽기/쓰기를 위한 처리 클래스."""
+    """Handles plain-text file persistence."""
 
     @classmethod
     @Handle_exp()
@@ -14,16 +14,16 @@ class Text(File_Process):
         cls, file: Path,
         enc: str = "UTF-8", start: int = 0, delim: str = "\n"
     ) -> tuple[bool, list[str]]:
-        """텍스트 파일을 읽어 구분자 기준으로 나눈 리스트 반환.
+        """Reads a text file and splits it by a delimiter.
 
         Args:
-            file: 읽을 파일 경로.
-            enc: 인코딩.
-            start: 읽기 시작 인덱스.
-            delim: 구분자 (기본 줄바꿈).
+            file: Input text file path.
+            enc: Text encoding.
+            start: Start index applied after splitting.
+            delim: Delimiter used to split the text.
 
         Returns:
-            (성공 여부, 문자열 리스트).
+            A tuple of ``(is_ok, parts)``.
         """
         _, _file = Suffix_check(file, ".txt")
         if _file.exists():
@@ -36,16 +36,16 @@ class Text(File_Process):
         cls, file: Path, data: str | list[str], enc: str = "UTF-8",
         anno: list[str] | str | None = None
     ) -> bool:
-        """텍스트 데이터를 파일로 저장 (선택적으로 상단 주석 포함).
+        """Writes plain text to a file.
 
         Args:
-            file: 저장 파일 경로.
-            data: 저장할 문자열 또는 리스트.
-            enc: 인코딩.
-            anno: 상단에 추가할 주석/메타.
+            file: Output text file path.
+            data: String or string list to write.
+            enc: Text encoding.
+            anno: Optional header lines written before ``data``.
 
         Returns:
-            저장 성공 여부.
+            ``True`` when the write succeeds.
         """
         cls.Ensure_dir(file)
         _, _path = Suffix_check(file, ".txt", True)

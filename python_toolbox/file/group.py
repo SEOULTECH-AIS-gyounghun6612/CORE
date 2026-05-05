@@ -1,4 +1,4 @@
-"""파일 그룹 디렉토리 생성 유틸 (데이터셋 패치 분할 용도)."""
+"""Utility for copying files into sliding-window directory groups."""
 from __future__ import annotations
 from pathlib import Path
 from shutil import copyfile
@@ -9,19 +9,16 @@ def Make_the_file_group(
     keyword: str, size: int, stride: int, overlap: int,
     drop_last: bool = False
 ) -> None:
-    """지정된 크기와 간격으로 파일을 묶어 디렉토리 그룹을 생성함.
-
-    슬라이딩 윈도우 방식으로 원본 디렉토리의 파일을 그룹화하여 각 그룹을
-    별도 디렉토리로 복사함. 주로 시계열 데이터셋 패치 분할에 사용됨.
+    """Copies files into per-group directories using a sliding window.
 
     Args:
-        file_dir: 원본 파일 디렉토리.
-        save_dir: 그룹별 저장 디렉토리 (자동 생성).
-        keyword: glob 패턴 필터링 키워드.
-        size: 그룹당 파일 개수.
-        stride: 슬라이딩 윈도우 간격.
-        overlap: 그룹 간 겹침 개수.
-        drop_last: 마지막 부족 그룹 제거 여부.
+        file_dir: Source directory scanned with ``glob``.
+        save_dir: Destination directory containing per-group subdirectories.
+        keyword: Glob pattern used to filter source files.
+        size: Number of files included in each group window.
+        stride: Step between files selected inside one window.
+        overlap: Number of items overlapped between adjacent groups.
+        drop_last: Whether to drop the final incomplete group.
     """
     _range = size * stride
     _step = stride * (size - overlap)

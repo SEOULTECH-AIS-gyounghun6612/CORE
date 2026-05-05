@@ -1,17 +1,24 @@
-# project — 설정 데이터 + 파이프라인 템플릿 사용 예시
+# project — 설정 데이터 + 워크스페이스 템플릿
 
-`Base_Config(Data_Schema)`는 데이터 스키마 위에 파일 I/O 진입점을 추가합니다. JSON/YAML 라운드트립과 argparse 통합이 핵심 용도입니다. `Project_Template`은 워크스페이스 + 멱등성 Setup을 관리합니다.
+`project/`는 두 층으로 나뉨.
 
----
+- `Base_Config`: `Data_Schema` 기반 설정 객체 저장
+- `Project_Template`: 실행 workspace와 멱등성 `_Setup()`
 
-## Base_Config — 설정 파일 I/O
+현재 공개 API는 아래 네 가지임.
+
+- `Base_Config`
+- `Build_sub_config`
+- `Build_parser_from_config`
+- `Project_Template`
+
+## 레시피 1: Base_Config 저장
 
 ```python
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from python_toolbox import (
-    Base_Config, Build_from_args, Read_from_file,
-)
+
+from python_toolbox.project import Base_Config
 
 @dataclass
 class Train_Config(Base_Config):
@@ -20,19 +27,26 @@ class Train_Config(Base_Config):
     epochs: int = 100
 
 cfg = Train_Config(lr=5e-5, epochs=50)
-
-# 저장 (확장자 기반 포맷 자동 분기)
-cfg.Write_to("config.yaml", save_dir=Path("./output"))
-
-# 파일에서 복원
-restored = Read_from_file(Train_Config, Path("./output/config.yaml"))
+cfg.Write_to("config.yaml", Path("./output"))
 ```
 
----
-
-## 중첩 Config 구성
+`Base_Config`는 읽기 helper를 직접 제공하지 않음. 읽기는 `python_toolbox.file.Read_from()`으로 raw dict를 읽고, 해당 config 클래스에 다시 넣는 방식이 기본이다.
 
 ```python
+from pathlib import Path
+
+from python_toolbox.file import Read_from
+
+is_ok, data = Read_from(Path("./output/config.yaml"))
+if is_ok:
+    restored = Train_Config(**data)
+```
+
+## 레시피 2: 중첩 Config
+
+```python
+from dataclasses import dataclass, field
+
 @dataclass
 class Model_Config(Base_Config):
     name: str = "resnet50"
@@ -46,70 +60,78 @@ class Train_Config(Base_Config):
 
 cfg = Train_Config()
 cfg.Serialize()
-# {"model": {"name": "resnet50", "num_classes": 1000},
-#  "lr": 0.0001, "epochs": 100}
-
 cfg.Extract()
-# {"name": "resnet50", "num_classes": 1000, "lr": 0.0001, "epochs": 100}
-# model이 Data_Schema이므로 자동으로 평탄화됨
 ```
 
-`Serialize`/`Extract` 동작 제어 ClassVar(`__exclude_serialize__`, `__custom_keys__`, `__exclude_extract__`, `__unpack_extract__` 등)는 [Data_Schema 사용 예시](../../COOKBOOK.md#data_schema--직렬화추출-코어)를 참조하세요.
+`Serialize()`는 중첩 구조를 유지하고, `Extract()`는 `Data_Schema` 규약에 따라 평탄화된 dict를 만든다.
 
----
-
-## argparse 통합
+## 레시피 3: ArgumentParser 자동 생성
 
 ```python
-import argparse
-from python_toolbox import Build_from_args
+from python_toolbox.project import Build_parser_from_config
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--name", default="exp01")
-parser.add_argument("--lr", type=float, default=1e-4)
-parser.add_argument("--epochs", type=int, default=100)
-ns = parser.parse_args()
-
-cfg = Build_from_args(Train_Config, ns)
+parser = Build_parser_from_config(Train_Config)
+args = parser.parse_args([])
 ```
 
-`Build_from_args`는 `argparse.Namespace` 또는 `dict`를 모두 받습니다. 모든 객체 생성의 단일 진입점(SSoT) 역할을 하며, `Read_from_file`도 내부적으로 본 함수에 위임합니다.
+`Build_parser_from_config()`는 dataclass 필드를 읽어 `argparse` 인자를 자동 구성한다.
 
----
+- `bool` -> `BooleanOptionalAction`
+- `list[T]` -> `nargs`
+- `dict` -> 문자열 경로 입력
+- `Optional[T]` / `T | None` -> 내부 타입 unwrap
 
-## Project_Template — 워크스페이스 관리
-
-```python
-from python_toolbox import Project_Template
-
-class My_Pipeline(Project_Template):
-    def Run(self):
-        if not self._Setup():
-            print(f"Workspace: {self.workspace}")
-        # 학습/처리 로직
-
-pipeline = My_Pipeline("my_experiment")
-pipeline.Run()
-# ./result/my_experiment/20260417_153012_a3f2b1/ 생성됨
-```
-
-`_Setup()`은 최초 호출 시에만 디렉토리를 생성하고 `False`를 반환합니다. 이후 호출은 `True`를 반환하며 아무 작업도 수행하지 않습니다 (멱등성).
-
-워크스페이스는 타임스탬프 + 짧은 UUID 조합으로 고유성이 보장되어 동일 프로젝트의 중복 실행이 서로 덮어쓰지 않습니다.
-
----
-
-## Base_Config + Project_Template 통합 예시
+## 레시피 4: Registry 기반 sub-config 구성
 
 ```python
 from dataclasses import dataclass
-from python_toolbox import Base_Config, Project_Template, Build_from_args
+
+from python_toolbox.project import Base_Config, Build_sub_config
+from python_toolbox.registry import Registry
+
+MODEL_REGISTRY = Registry("models", Base_Config)
+
+@MODEL_REGISTRY.Register_module("resnet")
+@dataclass
+class ResNet_Config(Base_Config):
+    depth: int = 50
+
+cfg = Build_sub_config(
+    context={"depth": 101},
+    expected=Base_Config,
+    registry=MODEL_REGISTRY,
+    resnet=None,
+)
+```
+
+`Build_sub_config()`는 파일 경로가 있으면 그 파일의 `config_type`을 우선 보고, 없으면 전달된 키를 registry 조회 키로 사용한다.
+
+## 레시피 5: Project_Template로 workspace 확보
+
+```python
+from python_toolbox.project import Project_Template
+
+project = Project_Template("my_experiment")
+
+first = project._Setup()   # False
+again = project._Setup()   # True
+
+print(project.workspace)
+```
+
+`_Setup()`은 최초 한 번만 디렉토리를 만들고 `False`를 반환한다. 이후 호출은 `True`를 반환하며 아무 일도 하지 않는다.
+
+## 레시피 6: Config와 Template 함께 쓰기
+
+```python
+from dataclasses import dataclass
+
+from python_toolbox.project import Base_Config, Project_Template
 
 @dataclass
 class Exp_Config(Base_Config):
-    project_name: str = "default"
-    lr: float = 1e-4
-    epochs: int = 100
+    project_name: str = "demo"
+    epochs: int = 10
 
 class Trainer(Project_Template):
     def __init__(self, cfg: Exp_Config):
@@ -118,13 +140,5 @@ class Trainer(Project_Template):
 
     def Run(self):
         self._Setup()
-        self.cfg.Write_to("config.yaml", self.workspace)
-        # ... 학습 루프
-        for _epoch in range(self.cfg.epochs):
-            ...
-
-cfg = Build_from_args(Exp_Config, {"project_name": "demo", "lr": 5e-5})
-Trainer(cfg).Run()
+        self.cfg.Write_to("config.json", self.workspace)
 ```
-
-워크스페이스에 사용된 설정을 함께 저장하여 실험 재현성을 확보하는 패턴입니다.

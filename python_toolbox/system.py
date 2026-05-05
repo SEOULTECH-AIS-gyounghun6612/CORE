@@ -1,25 +1,4 @@
-""" ### 시스템 및 문자열 유틸리티, OS 처리, 시간 계산 등을 포함한 도구 모음
-
-이 모듈은 Python 환경에서 자주 사용하는 기능들을 클래스 기반으로 구성합니다.
-운영체제 구분, 문자열 정렬 및 포맷팅, 시간 관련 변환, 서버 연결 인터페이스 등을
-제공합니다.
-
----------------------------------------------------------------------------
-### Requirement
-    - Python >= 3.10
-    - dateutil (relativedelta)
-
-### Structure
-    - String
-        - 문자열 포맷팅, 길이 정렬, 진행바 등 처리 유틸리티 클래스
-    - Operating_System
-        - 현재 운영체제 확인 및 열거형 정의
-    - Server
-        - 서버 연결 상태 관리 및 OS 기반 처리 분기
-    - Time_Utils
-        - 현재 시간 생성, 포맷 변환, 시간 간격 계산 기능 제공
-        - 하위: Relative (상대적 시간 정보를 저장하는 dataclass)
-"""
+"""String, OS, and time helpers used across the project."""
 
 from __future__ import annotations
 from enum import StrEnum, auto
@@ -31,46 +10,30 @@ import sys
 import platform
 from os import get_terminal_size
 
-# from pathlib import Path
-
 from datetime import datetime, date, time, timezone
 from dateutil.relativedelta import relativedelta
 
 
-# -- DEFINE CONSTNAT -- #
-# Data type for hint
 NUMBER = TypeVar("NUMBER", bound=Union[int, float])
-
-# System Constant
 PYTHON_VERSION = sys.version_info
 
 
 class String():
-    """ ### 문자열 처리와 변환 관련 유틸리티 함수 모음
-    문자열 정렬, 변환, 출력 포맷 지정 등에 활용되는 기능 제공
-
-    ---------------------------------------------------------------------------
-    ### Structure
-    - Count_auto_align: 숫자 정렬 문자열 생성
-    - Str_adjust: 문자열 길이 조정
-    - Progress_bar: 터미널 진행바 출력
-    - String_Enum: 문자열로 출력되는 열거형 클래스
-    """
+    """String formatting helpers for CLI-oriented output."""
     @staticmethod
     def Count_auto_align(
         value: int, max_count: int, is_right: bool = True, fill: str = "0"
     ):
-        """ ### 숫자를 정렬하여 문자열 형태로 반환
+        """Builds a counter string with automatic width alignment.
 
-        ------------------------------------------------------------------
-        ### Args
-        - value: 출력할 숫자 값
-        - max_count: 최대 숫자 (전체 자리수 기준)
-        - is_right: 오른쪽 정렬 여부
-        - filler: 채울 문자
+        Args:
+            value: Current counter value.
+            max_count: Maximum counter value used to determine width.
+            is_right: Whether to right-align the current value.
+            fill: Fill character used for padding.
 
-        ### Returns
-        - str: 정렬된 문자열 (예: "003/100")
+        Returns:
+            A string such as ``"003/100"``.
         """
         if is_right:
             return f"{str(value).rjust(len(str(max_count)), fill)}/{max_count}"
@@ -83,25 +46,22 @@ class String():
         fill: str = " ",
         align: Literal["l", "c", "r"] = "r"
     ) -> Tuple[int, str]:
-        """ ### 문자열을 지정된 길이에 맞춰 정렬
+        """Pads a string to a target display width.
 
-        한글 등 멀티바이트 문자를 너비 2로 간주하여 시각적 길이를 계산합니다.
+        Multibyte characters are treated as width ``2`` with a simple
+        heuristic intended for terminal output.
 
-        ------------------------------------------------------------------
-        ### Args
-        - text: 입력 문자열
-        - max_length: 최대 길이
-        - fill: 채움 문자
-        - align: 정렬 방향 ("l", "c", "r")
+        Args:
+            text: Input text.
+            max_length: Target display width.
+            fill: Padding character.
+            align: Alignment direction. One of ``"l"``, ``"c"``, or ``"r"``.
 
-        ### Returns
-        - Tuple[int, str]: 초과 길이, 정렬된 문자열
+        Returns:
+            A tuple of ``(overflow, adjusted_text)``.
         """
-        # 참고: 이 방식은 터미널 환경에 따라 정확하지 않을 수 있습니다.
-        # 보다 정확한 계산이 필요하면 wcwidth 라이브러리 사용을 권장합니다.
         visual_width = 0
         for char in text:
-            # 간단한 휴리스틱: encode 결과가 isalpha와 다르면 멀티바이트로 간주
             if char.encode().isalpha() != char.isalpha():
                 visual_width += 2
             else:
@@ -117,7 +77,6 @@ class String():
             left_padding = padding_size // 2
             right_padding = padding_size - left_padding
             return 0, fill * left_padding + text + fill * right_padding
-        # align == 'r'
         return 0, fill * padding_size + text
 
     @staticmethod
@@ -126,16 +85,15 @@ class String():
         prefix: str = '', suffix: str = '',
         decimals: int = 1, fill: str = '█'
     ):
-        """ ### 반복문 내에서 사용할 터미널 진행 표시 바 출력
+        """Prints a terminal progress bar in-place.
 
-        ------------------------------------------------------------------
-        ### Args
-        - iteration: 현재 반복 횟수
-        - total: 전체 반복 횟수
-        - prefix: 진행바 앞에 붙는 문자열
-        - suffix: 진행바 뒤에 붙는 문자열
-        - decimals: 퍼센트 표시 소수점 자리수
-        - fill: 진행바 채움 문자
+        Args:
+            iteration: Current step.
+            total: Total number of steps.
+            prefix: Text shown before the bar.
+            suffix: Text shown after the bar.
+            decimals: Decimal precision for the percentage.
+            fill: Fill character used inside the bar.
         """
         _percentage = iteration / float(total)
         _str_p = ("{0:." + str(decimals) + "f}").format(100 * _percentage)
@@ -146,102 +104,67 @@ class String():
         _str_b = fill * _fill_l + '-' * (_bar_l - _fill_l)
 
         print(f'\r{prefix} |{_str_b}| {_str_p}% {suffix}', end="\r")
-        # Print New Line on Complete
         if iteration == total:
             print()
 
 
 class Operating_System():
-    """ ### 운영체제(OS) 관련 정보 및 조건 처리 유틸리티 클래스
-
-    --------------------------------------------------------------------
-    ### Structure
-    - Name: 운영체제 이름 열거형
-    - Matches_os: 현재 OS가 입력된 OS와 일치하는지 확인
-    """
+    """Operating system helpers."""
 
     THIS_STYLE = platform.system().lower()
 
     class Name(StrEnum):
-        """
-        각 OS 별 처리 문자열
-        ----------------------------------------------------------------
-        """
+        """Normalized OS names used by :class:`Operating_System`."""
         WINDOW = auto()
         LINUX = auto()
 
     @staticmethod
     def Matches_os(name: Operating_System.Name | str = "window"):
-        """ ### 현재 OS가 지정된 OS와 일치하는지 확인
+        """Checks whether the current OS matches a target name.
 
-        ------------------------------------------------------------------
-        ### Args
-        - os_name: 비교 대상이 되는 OS 이름 (문자열 또는 Enum)
+        Args:
+            name: OS name or enum value to compare against.
 
-        ### Returns
-        - bool: 현재 OS와 비교 대상 OS가 일치하면 True
+        Returns:
+            ``True`` if the current OS matches ``name``.
         """
         return Operating_System.THIS_STYLE == name
 
 
 class Server():
-    """ ### 서버 연결 관련 기능을 제공하는 클래스
-
-    운영체제 정보에 따라 연결 로직을 분기할 수 있도록 설계됨
-
-    ------------------------------------------------------------------
-    ### Attributes
-    - is_window: 현재 실행 환경이 Windows 운영체제인지 여부
-
-    ### Structure
-    - Connect_to: 서버에 연결을 시도하는 메서드 (미구현)
-    - Disconnect_to: 서버 연결을 종료하는 메서드 (미구현)
-    """
+    """Placeholder server interface with OS-aware branching hooks."""
     is_window: bool = Operating_System.Matches_os()
 
     @classmethod
     def Connect_to(cls):
-        """ ### 서버 연결을 초기화하는 메서드 (미구현)
-        ------------------------------------------------------------------
-        ### Raises
-        - NotImplementedError: 해당 기능은 아직 구현되지 않음
+        """Initializes a server connection.
+
+        Raises:
+            NotImplementedError: Always raised until a backend is implemented.
         """
-        # TODO:
         raise NotImplementedError
 
     @classmethod
     def Disconnect_to(cls):
-        """ ### 서버 연결을 종료하는 메서드 (미구현)
-        ------------------------------------------------------------------
-        ### Raises
-        - NotImplementedError: 해당 기능은 아직 구현되지 않음
+        """Terminates a server connection.
+
+        Raises:
+            NotImplementedError: Always raised until a backend is implemented.
         """
-        # TODO:
         raise NotImplementedError
 
 
 class Time_Utils():
-    """ ### 시간 관련 유틸리티 기능을 제공하는 클래스
-
-    현재 시각 생성, 시각 차이 계산, 포맷 변환 등의 기능을 포함함
-
-    ---------------------------------------------------------------------------
-    ### Structure
-    - Stamp: 현재 시각을 timezone 정보와 함께 반환
-    - Get_term: 기준 시각으로부터의 시간 차이 계산
-    - Make_text_from: datetime 객체를 문자열로 변환
-    - Make_time_from: 문자열을 datetime 객체로 변환
-    """
+    """Date and time helpers."""
     @staticmethod
     def Stamp(set_timezone: timezone | None = None):
-        """ ### 현재 시간 정보를 반환
+        """Returns the current time.
 
-        ------------------------------------------------------------------
-        ### Args
-        - set_timezone: 반환될 datetime에 적용할 timezone 객체 (기본값: None)
+        Args:
+            set_timezone: Optional timezone for ``datetime.now``.
 
-        ### Returns
-        - datetime: 현재 시각 객체
+        Returns:
+            The current ``datetime``.
         """
         return datetime.now(set_timezone)
 
@@ -249,15 +172,14 @@ class Time_Utils():
     def Get_term(
         standard_time: datetime, set_timezone: timezone | None = None
     ):
-        """ ### 기준 시간으로부터의 경과 시간 계산
+        """Returns elapsed time from a reference timestamp.
 
-        ------------------------------------------------------------------
-        ### Args
-        - standard_time: 기준 시간 (datetime 객체)
-        - set_timezone: 현재 시각 기준 timezone (기본값: None)
+        Args:
+            standard_time: Reference datetime.
+            set_timezone: Optional timezone applied to the current timestamp.
 
-        ### Returns
-        - timedelta: 기준 시간으로부터의 시간 차이
+        Returns:
+            A ``timedelta`` between now and ``standard_time``.
         """
         return Time_Utils.Stamp(set_timezone) - standard_time
 
@@ -265,15 +187,14 @@ class Time_Utils():
     def Make_text_from(
         src: datetime | date | time | None = None, d_fmt: str | None = None
     ):
-        """ ### 날짜/시간 객체를 문자열로 변환
+        """Formats a date/time object as text.
 
-        ------------------------------------------------------------------
-        ### Args
-        - src: 변환할 시간 객체 (기본값: 현재 시각)
-        - d_fmt: 문자열 포맷 지정 (기본값: ISO 8601)
+        Args:
+            src: Source object. If omitted, the current time is used.
+            d_fmt: Optional ``strftime`` format. If omitted, ISO format is used.
 
-        ### Returns
-        - str: 포맷된 날짜/시간 문자열
+        Returns:
+            A formatted date/time string.
         """
         _time = Time_Utils.Stamp() if src is None else src
         if d_fmt is None:
@@ -286,22 +207,21 @@ class Time_Utils():
         use_microsec: bool = False,
         use_timezone: bool = False
     ):
-        """ ### 문자열을 datetime 객체로 변환
+        """Parses text into a ``datetime``.
 
-        ISO 8601 또는 지정된 포맷 문자열을 기반으로 변환함
+        Args:
+            src: Input string to parse.
+            d_fmt: Optional explicit ``strptime`` format.
+            use_microsec: Whether to expect microseconds in the default ISO
+                format.
+            use_timezone: Whether to expect timezone info in the default ISO
+                format.
 
-        ------------------------------------------------------------------
-        ### Args
-        - src: 변환 대상 문자열
-        - d_fmt: 수동 지정 포맷 문자열 (기본값: None → ISO)
-        - use_microsec: ISO 포맷 사용 시 마이크로초 포함 여부
-        - use_timezone: ISO 포맷 사용 시 timezone 포함 여부
+        Returns:
+            A parsed ``datetime`` instance.
 
-        ### Returns
-        - datetime: 파싱된 datetime 객체
-
-        ### Raises
-        - ValueError: 포맷이 일치하지 않을 경우 발생
+        Raises:
+            ValueError: If parsing fails.
         """
         if d_fmt is not None:
             _date_format = d_fmt
@@ -315,7 +235,17 @@ class Time_Utils():
 
     @dataclass
     class Relative():
-        """ ### relativedelta를 쉽게 다루기 위한 데이터 클래스
+        """Serializable wrapper for ``dateutil.relativedelta``.
+
+        Attributes:
+            years: Relative year offset.
+            months: Relative month offset.
+            weeks: Relative week offset.
+            days: Relative day offset.
+            hours: Relative hour offset.
+            minutes: Relative minute offset.
+            seconds: Relative second offset.
+            microseconds: Relative microsecond offset.
         """
         years: int = 0
         months: int = 0
@@ -328,7 +258,7 @@ class Time_Utils():
 
         @classmethod
         def from_delta(cls, delta: relativedelta) -> Time_Utils.Relative:
-            """ relativedelta 객체로부터 Relative 인스턴스를 생성합니다. """
+            """Builds a ``Relative`` instance from a ``relativedelta``."""
             return cls(
                 years=delta.years,
                 months=delta.months,
@@ -341,7 +271,7 @@ class Time_Utils():
             )
 
         def to_delta(self) -> relativedelta:
-            """ Relative 인스턴스를 relativedelta 객체로 변환합니다. """
+            """Converts the wrapper back to a ``relativedelta``."""
             return relativedelta(
                 years=self.years,
                 months=self.months,

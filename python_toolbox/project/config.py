@@ -1,14 +1,4 @@
-"""파일 I/O 진입점이 부여된 Data_Schema 특화 모듈.
-
-JSON/YAML 파일 또는 Registry를 통해 설정 객체를 구성하고 파일 저장을
-지원하는 Base_Config 및 팩토리 함수를 제공함. python_toolbox.file 의존을
-이 모듈로 격리하여 Data_Schema 코어를 stdlib만 의존하도록 유지함.
-
-Requirement:
-    - Python >= 3.10
-    - pathlib, argparse
-    - python_toolbox.data_schema, python_toolbox.file, python_toolbox.registry
-"""
+"""Config helpers built on top of :class:`python_toolbox.data_schema.Data_Schema`."""
 from __future__ import annotations
 import argparse
 import types as _types
@@ -23,31 +13,29 @@ from ..file import Read_from, Write_to
 
 @dataclass
 class Base_Config(Data_Schema):
+    """Schema base class with a file-writing convenience method.
+
+    The class keeps config objects as ordinary :class:`Data_Schema` instances
+    and only adds a small persistence entrypoint through :meth:`Write_to`.
+
+    Attributes:
+        config_type: Optional registry-facing type key stored with the config.
+        object_type: Optional object category string stored with the config.
+    """
+
     config_type: str = ""
     object_type: str = ""
     __exclude_extract__: ClassVar[set[str]] = {"config_type", "object_type"}
 
-    """파일 I/O 진입점을 보유한 Data_Schema 특화 클래스.
-
-    설정/구성 데이터를 JSON/YAML로 저장하거나, Registry와 설정 파일에서
-    직접 객체를 구성하는 용도에 적합함. 데이터 스키마로서의 역할
-    (Serialize/Extract)은 Data_Schema에서 상속받음.
-
-    ## 사용 패턴
-    - `cfg.Write_to(name, dir)` — 현재 상태를 파일로 저장.
-    - `Build_sub_config(ctx, Expected, registry, key="path")` — Registry 기반 객체 구성.
-    - `Build_parser_from_config(MyConfig)` — 필드 기반 ArgumentParser 생성.
-    """
-
     def Write_to(
         self, name: str, save_dir: str | Path, encoding_type: str = "UTF-8"
     ) -> None:
-        """현재 상태를 Serialize 결과로 파일에 저장함.
+        """Serializes the config and writes it to a file.
 
         Args:
-            name: 저장 파일명 (확장자 포함, 예: "config.json").
-            save_dir: 저장 디렉토리 경로.
-            encoding_type: 파일 인코딩 (기본 UTF-8).
+            name: Output filename including suffix.
+            save_dir: Directory that will contain the config file.
+            encoding_type: Text encoding forwarded to the file writer.
         """
         Write_to(Path(save_dir) / name, self.Serialize(), encoding_type)
 
@@ -61,21 +49,22 @@ def Build_sub_config(
     registry: Registry,
     **key_with_file: str | None,
 ) -> C_Type:
-    """Registry와 파일 또는 키를 기반으로 설정 객체를 생성하고 반환함.
+    """Builds a config instance from registry metadata and runtime context.
 
     Args:
-        context: 설정 객체에 주입할 컨텍스트 데이터.
-        expected: 반환될 설정 객체의 상위 타입.
-        registry: 설정 클래스가 등록된 레지스트리.
-        **key_with_file: 단일 기본 설정 키와 파일 경로 (예: key="path/to/file").
+        context: Runtime values injected into the config constructor.
+        expected: Expected base type returned from the registry.
+        registry: Registry containing config classes.
+        **key_with_file: A single mapping from fallback registry key to config
+            file path.
 
     Returns:
-        초기화된 설정(Configuration) 객체 인스턴스.
+        A config instance of the resolved type.
 
     Raises:
-        ValueError: key_with_file 인자가 비어 있는 경우.
-        KeyError: Registry에서 키를 찾을 수 없는 경우.
-        TypeError: Registry에서 반환된 타입이 expected와 일치하지 않는 경우.
+        ValueError: If no fallback key is provided.
+        KeyError: If the resolved key is not registered.
+        TypeError: If the resolved type does not match ``expected``.
     """
     if not key_with_file:
         raise ValueError("key_with_file 인자가 비어 있음.")
@@ -103,18 +92,14 @@ def Build_parser_from_config(
     config_type: type[Base_Config],
     parser: argparse.ArgumentParser | None = None,
 ) -> argparse.ArgumentParser:
-    """Base_Config 필드 정보로부터 ArgumentParser를 구성함.
-
-    __exclude_extract__ 필드는 등록에서 제외됨.
-    bool → BooleanOptionalAction, list → nargs, dict → str(파일 경로),
-    Optional[X] / X | None → 내부 타입으로 unwrap.
+    """Builds an ``ArgumentParser`` from ``Base_Config`` fields.
 
     Args:
-        config_type: 파싱 기준이 될 Base_Config 자식 클래스.
-        parser: 기존 파서에 인자를 추가할 경우 전달. None이면 새로 생성.
+        config_type: Config class used as the parser schema.
+        parser: Existing parser to extend. If omitted, a new parser is created.
 
     Returns:
-        필드 기반으로 인자가 등록된 ArgumentParser.
+        An ``ArgumentParser`` populated from dataclass fields.
     """
     if parser is None:
         parser = argparse.ArgumentParser()
@@ -134,7 +119,6 @@ def Build_parser_from_config(
             else None
         )
 
-        # Unwrap Optional[X] / X | None
         _origin = get_origin(_type)
         if _origin is Union or isinstance(_type, _types.UnionType):
             _inner = [a for a in get_args(_type) if a is not type(None)]

@@ -1,6 +1,4 @@
-"""
-python_toolbox: A collection of frequently used Python utility functions and classes.
-"""
+"""Common utility package for schema, file I/O, registry, and project helpers."""
 
 from .file import Handle_exp
 from .data_schema import Data_Schema

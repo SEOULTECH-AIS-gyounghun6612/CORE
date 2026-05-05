@@ -1,4 +1,4 @@
-"""YAML(.yaml) 파일 입출력."""
+"""YAML file reader and writer."""
 from __future__ import annotations
 from pathlib import Path
 from typing import Any
@@ -9,7 +9,7 @@ from ._base import File_Process, Handle_exp, Suffix_check
 
 
 class Yaml(File_Process):
-    """YAML 파일의 읽기/쓰기를 제공하는 클래스."""
+    """Handles YAML file persistence."""
 
     loader = yaml.FullLoader
 
@@ -18,14 +18,15 @@ class Yaml(File_Process):
     def Read_from(
         cls, file: Path, enc: str = "UTF-8", **kwarg
     ) -> tuple[bool, Any]:
-        """YAML 파일을 읽어 객체로 반환.
+        """Reads a YAML file into a Python object.
 
         Args:
-            file: YAML 파일 경로.
-            enc: 인코딩.
+            file: Input YAML file path.
+            enc: Text encoding.
+            **kwarg: Unused compatibility arguments.
 
         Returns:
-            (성공 여부, 파싱된 객체).
+            A tuple of ``(is_ok, parsed_object)``.
         """
         _, _file = Suffix_check(file, ".yaml")
 
@@ -40,16 +41,16 @@ class Yaml(File_Process):
     def Write_to(
         cls, file: Path, data: Any, enc: str = "UTF-8", indent: int = 4
     ) -> bool:
-        """데이터를 YAML 형식으로 파일에 저장.
+        """Writes data to a YAML file.
 
         Args:
-            file: 저장 파일 경로.
-            data: 저장 데이터.
-            enc: 인코딩.
-            indent: 들여쓰기 수준.
+            file: Output YAML file path.
+            data: Data to serialize.
+            enc: Text encoding.
+            indent: YAML indentation level.
 
         Returns:
-            저장 성공 여부.
+            ``True`` when the write succeeds.
         """
         cls.Ensure_dir(file)
         _, _path = Suffix_check(file, ".yaml", True)

@@ -1,15 +1,62 @@
-# COOKBOOK
+# Python Toolbox Cookbook
 
-python_toolbox 사용 예시 모음.
+`python_toolbox`의 상위 사용 흐름만 빠르게 정리한 문서임. 세부 API는 각 하위 문서를 참조.
 
-각 모듈/패키지 단위로 분리된 상세 사용법은 아래 문서를 참고하세요.
+## 모듈 문서
 
-| 모듈/패키지 | 문서 링크 | 설명 |
-| :------: | :----: | :----: |
-| `data_schema` | [data_schema 사용 예시](cookbook/data_schema_COOKBOOK.md) | 직렬화/추출 기능 부여, 중첩 객체 처리, 동작 제어 |
-| `registry` | [registry 사용 예시](cookbook/registry_COOKBOOK.md) | 클래스 및 Callable의 타입/시그니처 안전성 보장 레지스트리 |
-| `system` | [system 사용 예시](cookbook/system_COOKBOOK.md) | 시간 측정, 문자열 정렬, 진행바 출력, OS 환경 분기 |
-| `log` | [log 사용 예시](cookbook/log_COOKBOOK.md) | Data_Schema 기반의 확장 가능한 구조적 로깅 |
-| `file/` | [file 사용 예시](python_toolbox/file/COOKBOOK.md) | 파일 I/O 확장자 자동 분기, 포맷 클래스 직접 제어 |
-| `project/` | [project 사용 예시](python_toolbox/project/COOKBOOK.md) | 워크스페이스 관리(멱등성 Setup), Base_Config 통합 |
+| 모듈 | 설명 | 문서 |
+|---|---|---|
+| `data_schema` | 직렬화/추출 규약, ClassVar 제어 | [data_schema cookbook](./cookbook/data_schema_COOKBOOK.md) |
+| `registry` | 타입/시그니처 안전 registry | [registry cookbook](./cookbook/registry_COOKBOOK.md) |
+| `system` | 문자열/시간/OS 유틸 | [system cookbook](./cookbook/system_COOKBOOK.md) |
+| `log` | `Log_Line` 기반 구조적 로깅 | [log cookbook](./cookbook/log_COOKBOOK.md) |
+| `file` | 확장자 기반 읽기/쓰기 | [file cookbook](./python_toolbox/file/COOKBOOK.md) |
+| `project` | `Base_Config`, `Project_Template` | [project cookbook](./python_toolbox/project/COOKBOOK.md) |
 
+## 빠른 시작 1: Data_Schema 직렬화
+
+```python
+from dataclasses import dataclass
+from python_toolbox import Data_Schema
+
+@dataclass
+class Item(Data_Schema):
+    name: str = "demo"
+
+data = Item().Serialize()
+```
+
+## 빠른 시작 2: 파일 저장과 읽기
+
+```python
+from pathlib import Path
+from python_toolbox.file import Read_from, Write_to
+
+Write_to(Path("result.json"), {"score": 0.95})
+is_ok, data = Read_from(Path("result.json"))
+```
+
+## 빠른 시작 3: 설정 객체 저장
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+from python_toolbox.project import Base_Config
+
+@dataclass
+class Train_Config(Base_Config):
+    epochs: int = 10
+
+cfg = Train_Config(epochs=20)
+cfg.Write_to("config.yaml", Path("./output"))
+```
+
+## 빠른 시작 4: workspace 할당
+
+```python
+from python_toolbox.project import Project_Template
+
+project = Project_Template("demo")
+project._Setup()
+print(project.workspace)
+```
