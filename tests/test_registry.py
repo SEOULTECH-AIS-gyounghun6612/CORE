@@ -114,8 +114,8 @@ def test_register_callable_with_class_raises(fn_reg):
 
 
 def test_register_lambda_raises(cls_reg):
-    """람다 함수 등록(이름 추론 불가) → ValueError."""
-    with pytest.raises(ValueError):
+    """클래스 전용 레지스트리에 람다 등록 → TypeError."""
+    with pytest.raises(TypeError):
         cls_reg.Register_module()(lambda: None)
 
 
