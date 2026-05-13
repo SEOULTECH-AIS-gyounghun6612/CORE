@@ -1,13 +1,23 @@
 """String, OS, and time helpers used across the project."""
 
 from __future__ import annotations
-from enum import StrEnum, auto
+from enum import auto
 from typing import (Tuple, Literal, TypeVar, Union)
 
 from dataclasses import dataclass
 
 import sys
 import platform
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        @staticmethod
+        def _generate_next_value_(name, start, count, last_values):
+            return name.lower()
 from os import get_terminal_size
 
 from datetime import datetime, date, time, timezone
