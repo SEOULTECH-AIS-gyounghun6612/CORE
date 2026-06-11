@@ -43,49 +43,59 @@ class Base_Config(Data_Schema):
 C_Type = TypeVar("C_Type", bound=Base_Config)
 
 
-def Build_sub_config(
-    context: dict[str, Any],
+def Build_config(
     expected: type[C_Type],
-    registry: Registry,
-    **key_with_file: str | None,
+    registry: Registry | None,
+    meta: dict[str, Any] | None = None,
+    **override: Any,
 ) -> C_Type:
-    """Builds a config instance from registry metadata and runtime context.
+    """meta 데이터와 override로부터 config 객체를 생성함.
 
     Args:
-        context: Runtime values injected into the config constructor.
-        expected: Expected base type returned from the registry.
-        registry: Registry containing config classes.
-        **key_with_file: A single mapping from fallback registry key to config
-            file path.
-
-    Returns:
-        A config instance of the resolved type.
+        expected: 반환 타입 제약. config_type이 없거나 registry가 None이면 직접 사용됨.
+        registry: config class 조회에 사용할 레지스트리. None이면 expected를 직접 사용함.
+        meta: config 초기값 딕셔너리. config_type 키로 registry에서 class를 결정함.
+        **override: config 필드를 덮어쓸 공용 값. meta보다 우선 적용됨.
 
     Raises:
-        ValueError: If no fallback key is provided.
-        KeyError: If the resolved key is not registered.
-        TypeError: If the resolved type does not match ``expected``.
+        KeyError: 레지스트리 조회 실패 시.
+        TypeError: 조회된 타입이 expected와 불일치 시.
     """
-    if not key_with_file:
-        raise ValueError("key_with_file 인자가 비어 있음.")
+    _meta = meta or {}
+    _type_key = _meta.get("config_type", "")
 
-    _cfg_key, _file_path = next(iter(key_with_file.items()))
-    _cfg: type[C_Type] | None = None
+    if registry is None or _type_key == "":
+        _cfg = expected
+    else:
+        _cfg = registry.Get(_type_key, expected)
+
+    _valid = {f.name for f in fields(_cfg)} & override.keys()
+    return _cfg(**(_meta | {k: override[k] for k in _valid}))
+
+
+def Build_config_from_file(
+    expected: type[C_Type],
+    registry: Registry | None,
+    file_path: str | Path | None = None,
+    **override: Any,
+) -> C_Type:
+    """파일 경로에서 meta를 로드한 뒤 Build_config를 호출함.
+
+    Args:
+        expected: 반환 타입 제약.
+        registry: config class 조회에 사용할 레지스트리. None이면 expected를 직접 사용함.
+        file_path: 로드할 config 파일 경로. None이거나 파일이 없으면 meta 없이 진행.
+        **override: config 필드를 덮어쓸 공용 값.
+    """
     _meta: dict[str, Any] = {}
+    if file_path:
+        _path = Path(file_path)
+        if _path.exists():
+            _is_ok, _loaded = Read_from(_path)
+            if _is_ok and isinstance(_loaded, dict):
+                _meta = _loaded
 
-    if _file_path and (_path := Path(_file_path)).exists():
-        _is_ok, _meta = Read_from(_path)
-        if _is_ok and isinstance(_meta, dict):
-            _type_key = _meta.get("config_type", "")
-            if _type_key:
-                _cfg = registry.Get(_type_key, expected)
-
-    if _cfg is None:
-        _cfg = registry.Get(_cfg_key, expected)
-        _meta = {}
-
-    _valid = {f.name for f in fields(_cfg)} & context.keys()
-    return _cfg(**(_meta | {k: context[k] for k in _valid}))
+    return Build_config(expected, registry, _meta, **override)
 
 
 def Build_parser_from_config(
