@@ -4,12 +4,12 @@ from typing import Any
 from dataclasses import fields
 from pathlib import Path
 
-from python_toolbox.file import Read_from
+from python_toolbox.file import Make_dict_from
 
 from .runtime import Base_Runner
 
 
-def Resolve_config(value: Any) -> Any:
+def Resolve_config(value: str | dict) -> dict:
     """config 값을 재귀적으로 정규화한다.
 
     .yaml 문자열이면 파일을 읽어 재귀 적용하고,
@@ -22,10 +22,10 @@ def Resolve_config(value: Any) -> Any:
         정규화된 값.
     """
     if isinstance(value, str) and value.endswith((".yaml", ".yml")):
-        return Resolve_config(Read_from(Path(value))[1])
+        return Resolve_config(Make_dict_from(Path(value))[1])
     if isinstance(value, dict):
         return {_k: Resolve_config(_v) for _k, _v in value.items()}
-    return value
+    raise ValueError
 
 
 def Build_runner_parser() -> argparse.ArgumentParser:
@@ -72,7 +72,7 @@ def Runtime_init(
     Returns:
         runner_cls 인스턴스.
     """
-    _, _hub = Read_from(Path(config_file))
+    _, _hub = Make_dict_from(Path(config_file))
     _hub.update({_k: _v for _k, _v in hub_override.items() if _v is not None})
 
     _runner_field_names = {f.name for f in fields(runner_cls) if f.init}
