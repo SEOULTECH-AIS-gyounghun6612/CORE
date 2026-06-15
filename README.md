@@ -12,3 +12,26 @@
 | [torch_toolbox](./torch_toolbox) | PyTorch 기반 딥러닝 파이프라인 프레임워크 |
 | [spatial_toolbox](./spatial_toolbox) | 3D scene graph 관리·렌더링·시뮬레이션 패키지 |
 | [vision_toolbox](./vision_toolbox) | 2D-3D 비전 연산 라이브러리 |
+
+미완료 작업 목록은 [TODO](./TODO.md) 참조.
+
+## Install
+
+python 패키지 설치.
+
+```bash
+# 원격 설치
+pip install git+https://github.com/DXR-keonghun6612/ToolBox.git@HUB#subdirectory=폴더명
+
+# 로컬 설치
+pip install -e . --config-settings editable_mode=compat
+```
+
+---
+
+## 개발 로그
+
+| 날짜 | 대상 | 내용 |
+| --- | --- | --- |
+| 2026-06-15 | `python_toolbox/file` | `dispatch.py` → `__init__.py` 병합, `Make_dict_from`/`Make_list_from` 추가, `_csv.py` 구현 |
+| 2026-06-15 | `torch_toolbox` | 중앙 `registry.py`/`typing.py` 삭제 → 각 서브모듈 `__init__`으로 분산, `Runtime_init` 시그니처 변경 |
