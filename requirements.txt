@@ -1,0 +1,4 @@
+numpy
+scipy
+opencv-python
+python_toolbox @ git+https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git@python_toolbox
