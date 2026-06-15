@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "torch_toolbox"
+version = "1.1.0"
+authors = [
+  { name="Choi_keonghun & Jun_eins", email="dev.gyounghun6612@gmail.com" },
+]
+description = "Custom base code module for pytorch"
+readme = "README.md"
+requires-python = ">=3.11.0"
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "timm>=0.9.0",
+    "einops",
+    "torchsummary",
+    "tensorboard",
+    "onnx",
+    "onnxruntime",
+    "onnxscript",
+    "python_toolbox @ git+https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git@python_toolbox",
+]
+
+[tool.setuptools.packages.find]
+include = ["torch_toolbox*"]
+
+[project.urls]
+"Homepage" = "https://github.com/SEOULTECH-AIS-gyounghun6612/AIS_torch_toolbox.git"
