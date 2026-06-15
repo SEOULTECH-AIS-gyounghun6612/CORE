@@ -9,23 +9,20 @@ Config 하나로 모델·데이터셋·학습 파이프라인 전체를 선언�
 
 진행 목표는 [**다음 내용**](./TODO.md)을 참고
 
+### 1.1.1
+
+- `registry.py`·`typing.py` 삭제 — 레지스트리·타입을 각 서브모듈 `__init__`으로 분산
+- `Runtime_init` 시그니처 변경 — `config_file` keyword-only 전환, CLI `--config` → `--config_file`
+
 ### 1.1.0
 
-- 전면 재설계 — logger 제거 → `runner/utils/` 순수 함수 대체, `Base_Runner`·`Component_Assembler` `@dataclass` 전환, DDP `device_ids` `current_device()` 수정
-- `definition.py` / `build.py` / `runtime.py` 역할 분리 전면 적용 — 모든 Config·추상 클래스는 `definition.py`, 빌더는 `build.py`, 실행 클래스는 `runtime.py`
-- `Build_from_registry(config, registry)` 단일 함수 도입 — `modules/model/build.py`·`modules/loss/build.py` 제거
-- `runner/` 구조 정리 — `Mode_Config`·`Build_mode`·`Build_metric_for_mode` 제거, `RUNNERS` 레지스트리 제거
-- `runner/__init__.py` — `Runtime_init`으로 hub YAML → runner 인스턴스 직접 생성, hub 키를 runner/assembler로 자동 분리, `Resolve_config`로 str 값 파일 로드 통일
-- `optim/` 신설 — `Optim_Node_Config`·`Build_optim`을 `runner/`에서 분리, 범용화
-- `dataloader/template/` 신설 — `classification/`·`detection/` 구현체 재구성, `PK_Batch_Sampler` `functional/`로 이전, `Build_dataloader` 단일 플로우 통합
-- `metric/` 정리 — `Assemble_Accumulator` → `Assemble_Metric`, `Assemble_Accumulator_Config` → `Assemble_Metric_Config` 리네임, Config는 `sub_metric_meta` 단순 필드만 보유, 조립 로직은 `Build_metric`으로 이전
+- 전면 재설계 — `definition.py`·`build.py`·`runtime.py` 역할 분리, `Build_from_registry` 도입, `optim/` 분리
+- `runner/` — `Runtime_init`으로 hub YAML → runner 직접 생성, `Resolve_config` 통일
 
 ### 1.0.0
 
 - runner 훅 구조 전환, assembler config 재구성
-- `Cls_Dataset` 및 ImageNet transform 추가
-- ONNX export 파이프라인 구축 — 모델·전처리 융합 export
-- logger 결과 파일 서브디렉토리 분리, resume iter off-by-one 수정
+- `Cls_Dataset` 및 ImageNet transform 추가, ONNX export 파이프라인 구축
 
 ---
 
@@ -33,14 +30,15 @@ Config 하나로 모델·데이터셋·학습 파이프라인 전체를 선언�
 
 ```text
 torch_toolbox/
-├── registry.py              # 전역 레지스트리
-├── typing.py                # 공용 타입 (Mode 등)
+├── __init__.py              # CFGS, Mode
 ├── modules/                 # 모델·손실함수 조립 엔진
+│   ├── __init__.py          # MODELS, LOSSES
 │   ├── definition.py        # Module_Config_Template, Composable_Config, Composable_Module
 │   ├── build.py             # Build_from_registry(config, registry) — 재귀 조립
 │   ├── model/               # Trainable_Model, Trainable_Model_Config, backbone
 │   └── loss/                # Assemble_Loss, Assemble_Loss_Config
 ├── dataloader/              # 데이터셋·DataLoader 조립
+│   ├── __init__.py          # DATASETS, DATALOADER_FN
 │   ├── definition.py        # Dataset_Config, Dataloader_Config, Custom_Dataset
 │   ├── build.py             # Build_dataset, Build_dataloader
 │   ├── functional/          # 도메인 무관 유틸
@@ -53,11 +51,13 @@ torch_toolbox/
 │       └── detection/       # Detection_Dataset 계층 (구현 예정)
 │           └── coco.py      # COCO_Dataset (스텁)
 ├── metric/                  # 평가 지표
+│   ├── __init__.py          # ACCUMULATORS
 │   ├── definition.py        # Accumulator ABC, Accumulator_Config, Assemble_Metric_Config, Assemble_Metric
 │   ├── build.py             # Build_metric
 │   ├── component/           # Scalar_Accumulator, Centroid_Accumulator
 │   └── functional/          # stateless 순수 함수
 ├── optim/                   # 옵티마이저·스케줄러
+│   ├── __init__.py          # SCHEDULER
 │   ├── definition.py        # Optim_Node_Config
 │   └── build.py             # Build_optim
 └── runner/                  # 학습 실행 인프라
@@ -92,7 +92,7 @@ torch_toolbox/
 
 - 확장 = 새 클래스 작성 + 데코레이터 등록. 기존 코드 수정 없음
 - Config의 `config_type` / `object_type` 필드가 레지스트리 조회 키
-- 전역 레지스트리: `CFGS`, `MODELS`, `LOSSES`, `DATASETS`, `DATALOADER_FN`, `ACCUMULATORS`, `SCHEDULER`
+- 레지스트리는 각 서브모듈 `__init__`에 위치: `CFGS`·`Mode` → `torch_toolbox`, `MODELS`·`LOSSES` → `modules`, `DATASETS`·`DATALOADER_FN` → `dataloader`, `ACCUMULATORS` → `metric`, `SCHEDULER` → `optim`
 
 ### 3. Config / Module / Builder 삼중 분리
 
@@ -118,7 +118,7 @@ torch_toolbox/
 
 Runner는 컴포넌트가 무엇인지 모른다. Assembler가 `dict[str, Any]`로 건네면 Runner는 루프만 돈다.
 
-`Runtime_init(config_path, runner_cls, assembler_cls)` 한 호출로 hub YAML → runner 인스턴스까지 직접 생성한다.
+`Runtime_init(runner_cls, assembler_cls, *, config_file=...)` 한 호출로 hub YAML → runner 인스턴스까지 직접 생성한다.
 
 ### 6. 훅 아키텍처 (최소 override)
 
