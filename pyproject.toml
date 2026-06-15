@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spatial_toolbox"
+version = "0.1.0"
+authors = [
+  { name="Choi_keonghun & Jun_eins", email="dev.gyounghun6612@gmail.com" },
+]
+description = "A comprehensive 3D Scene Graph and Multi-Pass Rendering Framework."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Graphics :: 3D Rendering",
+]
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "trimesh",
+    "PyOpenGL",
+    "scipy",
+    "Pillow",
+    "usd-core",
+    "bpy==4.5",
+    "python_toolbox @ git+https://github.com/DXR-keonghun6612/ToolBox.git@python_toolbox",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "black",
+    "isort",
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["spatial_toolbox*"]
+
+[project.urls]
+"Homepage" = "https://github.com/DXR-keonghun6612/spatial_toolbox"
+"Bug Tracker" = "https://github.com/DXR-keonghun6612/spatial_toolbox/issues"
