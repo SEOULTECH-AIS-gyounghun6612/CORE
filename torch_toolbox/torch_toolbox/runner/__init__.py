@@ -6,6 +6,8 @@ from pathlib import Path
 
 from python_toolbox.file import Read_from
 
+from .runtime import Base_Runner
+
 
 def Resolve_config(value: Any) -> Any:
     """config 값을 재귀적으로 정규화한다.
@@ -35,8 +37,8 @@ def Build_runner_parser() -> argparse.ArgumentParser:
         공통 runner 인자가 등록된 ArgumentParser.
     """
     _p = argparse.ArgumentParser()
-    _p.add_argument("--config",         type=str, default="conf/runtime.yaml")
-    _p.add_argument("--test",           action="store_true")
+    _p.add_argument("--config_file",   type=str, default="conf/runtime.yaml")
+    _p.add_argument("--test",          action="store_true")
     _p.add_argument("--assembler_meta", type=str, default=None)
     _p.add_argument("--project_name",  type=str, default=None)
     _p.add_argument("--max_iters",     type=int, default=None)
@@ -49,11 +51,12 @@ def Build_runner_parser() -> argparse.ArgumentParser:
 
 
 def Runtime_init(
-    config_path: str | Path,
     runner_cls: type,
     assembler_cls: type,
+    *,
+    config_file: str | Path,
     **hub_override: Any,
-) -> Any:
+) -> Base_Runner:
     """hub config를 읽어 runner 인스턴스를 직접 생성한다.
 
     hub의 최상위 키 중 runner 필드명과 일치하는 것은 runner kwargs로 분리하고,
@@ -69,7 +72,7 @@ def Runtime_init(
     Returns:
         runner_cls 인스턴스.
     """
-    _, _hub = Read_from(Path(config_path))
+    _, _hub = Read_from(Path(config_file))
     _hub.update({_k: _v for _k, _v in hub_override.items() if _v is not None})
 
     _runner_field_names = {f.name for f in fields(runner_cls) if f.init}

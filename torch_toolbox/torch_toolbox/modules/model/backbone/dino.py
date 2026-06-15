@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 import timm
 import torch.nn as nn
 
-from ....registry import CFGS, MODELS
+from .... import CFGS
+from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
 

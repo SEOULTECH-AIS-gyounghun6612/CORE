@@ -1,7 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from ....registry import DATASETS, CFGS
+from .... import CFGS
+from ... import DATASETS
 from ...definition import Custom_Dataset, Dataset_Config
 
 

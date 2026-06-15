@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
-from ....registry import CFGS, LOSSES
+from .... import CFGS
+from ... import LOSSES
 from ...definition import Module_Config_Template, Composable_Module
 
 

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from ..definition import Accumulator
-from ...registry import ACCUMULATORS
+from .. import ACCUMULATORS
 
 
 @ACCUMULATORS.Register_module("centroid_accumulator")

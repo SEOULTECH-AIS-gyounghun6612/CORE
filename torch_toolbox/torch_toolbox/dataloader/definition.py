@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 from python_toolbox.project import Base_Config
 
-from ..typing import Mode
+from .. import Mode
 
 
 @dataclass

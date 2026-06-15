@@ -6,7 +6,8 @@ import torch
 from torch import Tensor
 from torch.nn import ModuleDict
 
-from ...registry import CFGS, LOSSES
+from ... import CFGS
+from .. import LOSSES
 from ..definition import Composable_Config, Composable_Module
 
 

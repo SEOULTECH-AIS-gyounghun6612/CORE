@@ -3,7 +3,7 @@ from typing import cast
 
 from python_toolbox.registry import Registry
 
-from ..registry import CFGS
+from .. import CFGS
 from .definition import Composable_Config, Composable_Module, Module_Config_Template
 from .model.definition import Trainable_Model, Trainable_Model_Config
 from .model.backbone import BACKBONES, BACKBONE_CFGS

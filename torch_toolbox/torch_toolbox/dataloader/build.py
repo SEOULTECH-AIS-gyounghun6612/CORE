@@ -3,8 +3,8 @@ from typing import cast
 
 from torch.utils.data import DataLoader, DistributedSampler
 
-from ..typing import Mode
-from ..registry import CFGS, DATASETS, DATALOADER_FN
+from .. import CFGS, Mode
+from . import DATASETS, DATALOADER_FN
 from .definition import Custom_Dataset, Dataset_Config, Dataloader_Config
 from .functional import PK_Batch_Sampler
 from .template import Classification_Dataset, Classification_Dataset_Config

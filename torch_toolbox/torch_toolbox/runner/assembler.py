@@ -10,8 +10,7 @@ from torch.amp.grad_scaler import GradScaler
 from python_toolbox.project import Build_config
 from python_toolbox.file import Write_to
 
-from ..registry import CFGS
-from ..typing import Mode
+from .. import CFGS, Mode
 from ..dataloader.definition import Dataloader_Config
 from ..dataloader.build import Build_dataloader
 from ..metric.definition import Assemble_Metric_Config, Assemble_Metric

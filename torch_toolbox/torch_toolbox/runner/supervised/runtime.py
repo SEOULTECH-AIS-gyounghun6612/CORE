@@ -12,7 +12,7 @@ from torch.amp.grad_scaler import GradScaler
 
 from python_toolbox.system import Time_Utils
 
-from ...typing import Mode
+from ... import Mode
 from ..utils.log import log_batch, log_iter
 from ...dataloader.definition import Custom_Dataset
 from ...modules.model.definition import Trainable_Model

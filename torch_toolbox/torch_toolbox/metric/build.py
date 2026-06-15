@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..registry import ACCUMULATORS
+from . import ACCUMULATORS
 from .definition import Accumulator_Config, Assemble_Metric_Config, Assemble_Metric
 
 

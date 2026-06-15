@@ -7,7 +7,7 @@ from torch.optim import lr_scheduler
 from torch.amp.grad_scaler import GradScaler
 
 from ..modules.model.definition import Trainable_Model
-from ..registry import SCHEDULER
+from . import SCHEDULER
 from .definition import Optim_Node_Config
 
 

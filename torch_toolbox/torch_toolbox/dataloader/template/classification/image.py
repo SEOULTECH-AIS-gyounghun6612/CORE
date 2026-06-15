@@ -10,7 +10,8 @@ from torch.export import Dim
 from torchvision import transforms
 from torchvision.io import read_image, ImageReadMode
 
-from ....registry import DATASETS, CFGS
+from .... import CFGS
+from ... import DATASETS
 from ...functional.image_net import Get_transform
 from ._base import Classification_Dataset, Classification_Dataset_Config
 

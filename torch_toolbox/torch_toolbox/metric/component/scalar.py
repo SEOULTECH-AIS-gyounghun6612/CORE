@@ -4,7 +4,7 @@ from typing import Any
 import torch
 
 from ..definition import Accumulator
-from ...registry import ACCUMULATORS
+from .. import ACCUMULATORS
 
 
 @ACCUMULATORS.Register_module("scalar_accumulator")

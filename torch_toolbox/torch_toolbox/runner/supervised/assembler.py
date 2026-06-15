@@ -14,7 +14,8 @@ from pathlib import Path
 from ...modules.build import Build_from_registry
 from ...modules.model.definition import Trainable_Model, Trainable_Model_Config
 from ...modules.loss.definition import Assemble_Loss_Config
-from ...registry import CFGS, MODELS, LOSSES
+from ... import CFGS
+from ...modules import MODELS, LOSSES
 from ..assembler import Component_Assembler
 from ...optim.definition import Optim_Node_Config
 from ...optim.build import Build_optim
