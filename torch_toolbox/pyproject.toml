@@ -21,7 +21,7 @@ dependencies = [
     "onnx",
     "onnxruntime",
     "onnxscript",
-    "python_toolbox @ git+https://github.com/SEOULTECH-AIS-gyounghun6612/CORE.git@python_toolbox",
+    "python_toolbox @ git+https://github.com/DXR-keonghun6612/ToolBox.git@HUB#subdirectory=python_toolbox",
 ]
 
 [tool.setuptools.packages.find]
