@@ -58,6 +58,7 @@ htmlcov/
 coverage.xml
 *.cover
 nosetests.xml
+temp.*
 
 # ==============================================================================
 # 5. IDE 및 에디터 (IDE and Editor Settings)
@@ -184,4 +185,3 @@ CLAUDE*.*
 # 특정 파일이나 폴더를 예외적으로 추적하고 싶다면 아래에 '!'를 붙여 추가하세요.
 # 예: !dataset/sample.csv
 # 예: !pychart/assets/logo.png
-
