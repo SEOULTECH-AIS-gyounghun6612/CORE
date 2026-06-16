@@ -77,13 +77,11 @@ class Custom_Dataset(Dataset):
     Attributes:
         layout: 데이터 레이아웃 설명 (예: "NCHW"). ONNX export 메타데이터용.
         data_format: 데이터 포맷 설명 (예: "RGB_uint8"). ONNX export 메타데이터용.
-        shape_profile: TensorRT 최적화 프로파일. {"min": [...], "opt": [...], "max": [...]}.
         mode: 현재 데이터셋의 실행 mode (train / val / test).
     """
 
     layout: str = ""
     data_format: str = ""
-    shape_profile: dict[str, list[int]] = {"min": [], "opt": [], "max": []}
 
     def __init__(self, mode: Mode, **kwargs):
         self.mode = mode
@@ -116,13 +114,40 @@ class Custom_Dataset(Dataset):
     ]:
         """ONNX export에 필요한 정보를 반환한다.
 
+        각 구체 데이터셋이 직접 구현해야 한다.
+
         Returns:
             tuple:
                 - preprocess_layer: 모델 앞에 융합할 전처리 레이어. 없으면 None.
                 - dummy_inputs: torch.onnx.export에 전달할 더미 입력 텐서 튜플.
-                - onnx_kwargs: torch.onnx.export에 전달할 추가 키워드 인자
-                  (input_names, output_names, dynamic_axes 등).
-                - runtime_kwargs: TensorRT 런타임 설정 딕셔너리
-                  (precision, workspace_size 등).
+                  입력이 여러 개면 순서대로 나열한다.
+                - onnx_kwargs: torch.onnx.export에 전달할 추가 키워드 인자.
+                  ``input_names``, ``output_names``, ``dynamic_shapes`` 등을 포함한다.
+                - runtime_kwargs: ``_rt_cfg``에 병합되는 TensorRT 런타임 설정.
+                  반드시 ``input_profiles``와 ``output_profiles`` 키를 포함해야 하며,
+                  각 항목은 텐서 하나에 대응한다. min/opt/max_shape 모두 필수::
+
+                      {
+                          "input_profiles": [
+                              {
+                                  "name":      str,        # input_names와 일치
+                                  "dtype":     str,        # 예: "float32", "uint8"
+                                  "min_shape": list[int],  # 필수
+                                  "opt_shape": list[int],  # 필수
+                                  "max_shape": list[int],  # 필수
+                              },
+                              ...
+                          ],
+                          "output_profiles": [
+                              {
+                                  "name":      str,        # output_names와 일치
+                                  "dtype":     str,
+                                  "min_shape": list[int],  # 필수
+                                  "opt_shape": list[int],  # 필수
+                                  "max_shape": list[int],  # 필수
+                              },
+                              ...
+                          ],
+                      }
         """
         raise NotImplementedError

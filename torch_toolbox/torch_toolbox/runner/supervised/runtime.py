@@ -1,11 +1,9 @@
 from __future__ import annotations
 from typing import Any, Callable
 from contextlib import nullcontext
-from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.amp.grad_scaler import GradScaler
@@ -14,7 +12,6 @@ from python_toolbox.system import Time_Utils
 
 from ... import Mode
 from ..utils.log import log_batch, log_iter
-from ...dataloader.definition import Custom_Dataset
 from ...modules.model.definition import Trainable_Model
 from ...metric.definition import Assemble_Metric
 from ..runtime import Base_Runner
@@ -193,81 +190,3 @@ class Supervised_Runner(Base_Runner[Supervised_Assembler, torch.Tensor | None]):
         _save_dir.mkdir(parents=True, exist_ok=True)
         torch.save(_checkpoint, _save_dir / f"checkpoint_{current_iter}.pt")
 
-    def _Prepare_export_artifacts(
-        self,
-        device: torch.device,
-        save_path: Path,
-        *,
-        opset_version: int,
-        do_constant_folding: bool,
-        precision: str,
-        size_mb: int,
-        model: Trainable_Model,
-        datasets: dict[Mode, Custom_Dataset],
-        **kwargs: Any,
-    ) -> tuple[nn.Module, tuple[Tensor, ...], str, dict[str, Any], dict[str, Any]]:
-        """ONNX export에 필요한 모델·입력·설정을 준비한다.
-
-        dataset의 Info_for_onnx()에서 전처리 레이어와 dummy 입력을 가져온다.
-        전처리 레이어가 있으면 Sequential로 모델 앞에 융합한다.
-
-        Args:
-            device: 타깃 디바이스.
-            save_path: ONNX 파일 저장 디렉터리.
-            opset_version: ONNX opset 버전.
-            do_constant_folding: 상수 폴딩 최적화 여부.
-            precision: TensorRT 추론 정밀도.
-            size_mb: TensorRT workspace 크기 (MB).
-            model: export할 모델.
-            datasets: mode별 dataset. TEST → VALIDATION 순으로 참조.
-            **kwargs: torch.onnx.export 추가 인자.
-
-        Returns:
-            tuple: (export_model, dummy_inputs, name, onnx_cfg, rt_cfg)
-
-        Raises:
-            RuntimeError: TEST/VALIDATION dataset이 모두 없는 경우.
-        """
-        # DDP 래퍼 벗기기
-        _target = (
-            model.module
-            if isinstance(model, nn.parallel.DistributedDataParallel)
-            else model
-        )
-        _target.eval()
-
-        # export용 dataset: TEST 우선, 없으면 VALIDATION fallback
-        _key = Mode.TEST if Mode.TEST in datasets else Mode.VALIDATION
-        _dataset = datasets.get(_key)
-        if _dataset is None:
-            raise RuntimeError(
-                "[ERROR] ONNX export를 위한 test/val dataset이 없습니다.")
-
-        _layer, _dummy, _onnx_kwarg, _rt_kwarg = _dataset.Info_for_onnx()
-
-        # 전처리 레이어가 있으면 모델 앞에 융합하여 단일 모듈로 export
-        _export_model: nn.Module = (
-            nn.Sequential(_layer.to(device).eval(), _target)
-            if _layer is not None else _target
-        )
-        _dummy_tuple = tuple(_v.to(device) for _v in _dummy)
-
-        _name = self.assembler.model_cfg.name
-        _onnx_file = f"{_name}.onnx"
-
-        _onnx_cfg: dict[str, Any] = {
-            "f": str(save_path / _onnx_file),
-            "export_params": True,
-            "opset_version": opset_version,
-            "do_constant_folding": do_constant_folding,
-            **_onnx_kwarg,
-            **kwargs,
-        }
-        _rt_cfg: dict[str, Any] = {
-            "onnx_file": _onnx_file,
-            "precision": precision,
-            "workspace_size_mb": size_mb,
-            **_rt_kwarg,
-        }
-
-        return _export_model, _dummy_tuple, _name, _onnx_cfg, _rt_cfg
