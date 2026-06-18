@@ -8,6 +8,13 @@ import yaml
 from ._base import File_Process, Handle_exp, Suffix_check
 
 
+class _Smart_Dumper(yaml.Dumper):
+    def represent_sequence(self, tag, sequence, flow_style=None):
+        if all(not isinstance(v, (dict, list)) for v in sequence):
+            flow_style = True
+        return super().represent_sequence(tag, sequence, flow_style=flow_style)
+
+
 class Yaml(File_Process):
     """Handles YAML file persistence."""
 
@@ -56,5 +63,6 @@ class Yaml(File_Process):
         _, _path = Suffix_check(file, ".yaml", True)
 
         with _path.open(mode="w", encoding=enc) as _f:
-            yaml.dump(data, _f, indent=indent, sort_keys=False)
+            yaml.dump(
+                data, _f, indent=indent, sort_keys=False, Dumper=_Smart_Dumper)
         return True
