@@ -9,7 +9,7 @@ from python_toolbox.file import Make_dict_from
 from .runtime import Base_Runner
 
 
-def Resolve_config(value: str | dict) -> dict:
+def Resolve_config(value: Any) -> Any:
     """config 값을 재귀적으로 정규화한다.
 
     .yaml 문자열이면 파일을 읽어 재귀 적용하고,
@@ -25,7 +25,7 @@ def Resolve_config(value: str | dict) -> dict:
         return Resolve_config(Make_dict_from(Path(value))[1])
     if isinstance(value, dict):
         return {_k: Resolve_config(_v) for _k, _v in value.items()}
-    raise ValueError
+    return value
 
 
 def Build_runner_parser() -> argparse.ArgumentParser:
@@ -78,9 +78,6 @@ def Runtime_init(
     _runner_field_names = {f.name for f in fields(runner_cls) if f.init}
     _runner_kwargs = {_k: _v for _k, _v in _hub.items() if _k in _runner_field_names}
 
-    _assembler_meta = {
-        _k: Resolve_config(_v)
-        for _k, _v in Resolve_config(_hub.get("assembler_meta", {})).items()
-    }
+    _assembler_meta = Resolve_config(_hub.get("assembler_meta", {}))
 
     return runner_cls(assembler=assembler_cls(**_assembler_meta), **_runner_kwargs)
