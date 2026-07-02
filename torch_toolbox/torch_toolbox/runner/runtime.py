@@ -239,7 +239,6 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
                 )
 
                 torch.onnx.export(_model, _inputs, **_onnx_cfg)
-                Write_to(_save_path / f"{_name}_onnx_cfg.yaml", _onnx_cfg)
                 Write_to(_save_path / f"{_name}_rt_cfg.yaml", _rt_cfg)
                 print(f"[INFO] ONNX Export 완료: {save_path}")
         finally:
@@ -288,4 +287,52 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
     ) -> tuple[
         nn.Module, tuple[Tensor, ...], str, dict[str, Any], dict[str, Any]
     ]:
+        """ONNX export에 필요한 모델·입력·설정을 준비한다.
+
+        각 구체 Runner가 직접 구현해야 한다.
+
+        Args:
+            device: 타깃 디바이스.
+            save_path: ONNX 파일 저장 디렉터리.
+            opset_version: ONNX opset 버전.
+            do_constant_folding: 상수 폴딩 최적화 여부.
+            precision: TensorRT 추론 정밀도 (FP32 / FP16 / INT8).
+            size_mb: TensorRT workspace 크기 (MB).
+            **components: Assembler.__call__()이 반환한 컴포넌트 dict.
+
+        Returns:
+            tuple:
+                - export_model: export할 nn.Module. 전처리 레이어 융합 포함 가능.
+                - dummy_inputs: torch.onnx.export에 전달할 더미 입력 텐서 튜플.
+                - name: ONNX 파일명 기반 (확장자 제외).
+                - onnx_cfg: torch.onnx.export에 전달할 키워드 인자 dict.
+                  ``f``, ``export_params``, ``opset_version``, ``do_constant_folding``,
+                  ``input_names``, ``output_names``, ``dynamic_shapes`` 등을 포함한다.
+                - rt_cfg: ``{name}_rt_cfg.yaml``로 저장되는 TensorRT 런타임 설정 dict.
+                  반드시 아래 키를 포함해야 한다::
+
+                      {
+                          "onnx_file":        str,
+                          "precision":        str,
+                          "workspace_size_mb": int,
+                          "input_profiles": [
+                              {
+                                  "name":      str,
+                                  "dtype":     str,
+                                  "min_shape": list[int],
+                                  "opt_shape": list[int],
+                                  "max_shape": list[int],
+                              }, ...
+                          ],
+                          "output_profiles": [
+                              {
+                                  "name":      str,
+                                  "dtype":     str,
+                                  "min_shape": list[int],
+                                  "opt_shape": list[int],
+                                  "max_shape": list[int],
+                              }, ...
+                          ],
+                      }
+        """
         raise NotImplementedError
