@@ -12,19 +12,20 @@ from .runtime import Base_Runner
 def Resolve_config(value: Any) -> Any:
     """config 값을 재귀적으로 정규화한다.
 
-    .yaml 문자열이면 파일을 읽어 재귀 적용하고,
-    dict이면 각 값에 재귀 적용하며, 그 외는 그대로 반환한다.
+    dict이면 각 값에 재귀 적용하고, .yaml 문자열이면 파일을 읽어 **dict로 로드만** 한다
+    (로드된 config 내용까지는 재귀하지 않는다 — model/loader/metric 등은 자기완결적 config이고,
+    그 안의 .yaml 값은 id_map_path 같은 데이터 경로라 문자열로 보존해야 한다). 그 외는 그대로 반환.
 
     Args:
-        value: 파일 경로 문자열, 인라인 dict, 또는 기타 스칼라 값.
+        value: 인라인 dict, config 파일 경로(.yaml) 문자열, 또는 기타 스칼라 값.
 
     Returns:
         정규화된 값.
     """
-    if isinstance(value, str) and value.endswith((".yaml", ".yml")):
-        return Resolve_config(Make_dict_from(Path(value))[1])
     if isinstance(value, dict):
         return {_k: Resolve_config(_v) for _k, _v in value.items()}
+    if isinstance(value, str) and value.endswith((".yaml", ".yml")):
+        return Make_dict_from(Path(value))[1]          # 파일 참조는 로드만, 내용은 재귀 안 함
     return value
 
 
@@ -78,6 +79,9 @@ def Runtime_init(
     _runner_field_names = {f.name for f in fields(runner_cls) if f.init}
     _runner_kwargs = {_k: _v for _k, _v in _hub.items() if _k in _runner_field_names}
 
-    _assembler_meta = Resolve_config(_hub.get("assembler_meta", {}))
+    _am = _hub.get("assembler_meta", {})
+    if isinstance(_am, str):                            # 최상위 assembler 파일은 내용을 정규화해야 함
+        _, _am = Make_dict_from(Path(_am))
+    _assembler_meta = Resolve_config(_am)
 
     return runner_cls(assembler=assembler_cls(**_assembler_meta), **_runner_kwargs)
