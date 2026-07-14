@@ -96,9 +96,20 @@ class DINO(Trainable_Model):
         )
 
     def forward(self, x, **kwarg):
-        tokens = self.backbone.forward_features(x)      # (B, N+1, D)
-        patches = tokens[:, 1:]                          # CLS 제거 → (B, N, D)
+        tokens = self.backbone.forward_features(x)      # (B, prefix + N, D)
+
+        # CLS(1) + register(reg 변형은 4) 등 prefix 토큰 제거 → (B, N, D)
+        num_prefix = getattr(self.backbone, "num_prefix_tokens", 1)
+        patches = tokens[:, num_prefix:]
+
         B, N, D = patches.shape
-        H = W = int(N ** 0.5)
+        ph, pw = self.backbone.patch_embed.patch_size
+        H, W = x.shape[-2] // ph, x.shape[-1] // pw     # 비정사각 입력 대응
+        if H * W != N:
+            raise ValueError(
+                f"패치 격자({H}x{W}={H * W})와 토큰 수({N})가 불일치합니다. "
+                f"입력 크기 {tuple(x.shape[-2:])}가 패치 크기 {(ph, pw)}의 배수인지 확인하세요."
+            )
+
         spatial = patches.permute(0, 2, 1).reshape(B, D, H, W)  # (B, D, H, W)
         return [spatial]
