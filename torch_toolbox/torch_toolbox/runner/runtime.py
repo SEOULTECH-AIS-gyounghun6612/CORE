@@ -196,6 +196,7 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
         self, save_path: str | Path | None = None,
         opset_version: int = 21, do_constant_folding: bool = True,
         precision: str = "FP32", size_mb: int = 4096,
+        external_data: bool = False,
         **kwargs: Any
     ):
         """설정된 파이프라인을 기반으로 ONNX 모델을 추출한다.
@@ -209,6 +210,10 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
             do_constant_folding: 상수 폴딩 최적화 여부.
             precision: TensorRT 추론 정밀도 (FP32 / FP16 / INT8).
             size_mb: TensorRT workspace 크기 (MB).
+            external_data: 가중치를 .onnx.data로 분리할지 여부. 기본 False = **단일 파일**.
+                분리되면 .onnx 안에 data 파일명이 박혀 둘을 항상 같이 옮겨야 한다.
+                False여도 모델이 protobuf 한계(2GB)를 넘으면 torch가 자동으로 분리하므로
+                안전하다.
             **kwargs: torch.onnx.export 추가 인자.
         """
         self._Setup()
@@ -237,6 +242,7 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
                     opset_version=opset_version,
                     do_constant_folding=do_constant_folding,
                     precision=precision, size_mb=size_mb,
+                    external_data=external_data,
                     **_components, **kwargs,
                 )
 
@@ -284,7 +290,7 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
     def _Prepare_export_artifacts(
         self, device: torch.device, save_path: Path, *,
         opset_version: int, do_constant_folding: bool,
-        precision: str, size_mb: int,
+        precision: str, size_mb: int, external_data: bool=False,
         **components: Any,
     ) -> tuple[
         nn.Module, tuple[Tensor, ...], str, dict[str, Any], dict[str, Any]
@@ -296,6 +302,8 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
         Args:
             device: 타깃 디바이스.
             save_path: ONNX 파일 저장 디렉터리.
+            external_data: 가중치를 .onnx.data로 분리할지 여부(기본 False = 단일 파일).
+                onnx_cfg에 그대로 넣어주면 된다.
             opset_version: ONNX opset 버전.
             do_constant_folding: 상수 폴딩 최적화 여부.
             precision: TensorRT 추론 정밀도 (FP32 / FP16 / INT8).
