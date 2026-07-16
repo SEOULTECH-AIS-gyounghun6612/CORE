@@ -63,13 +63,17 @@ class Assemble_Loss(Composable_Module):
             self._cached_func[_name] = (_coef, _module)
 
     def forward(
-        self, pred: dict[str, Tensor], target: dict[str, Tensor]
+        self, pred: dict[str, Tensor], target: dict[str, Tensor], **kwarg: Any
     ) -> tuple[Tensor, dict[str, float]]:
         """가중합 loss를 계산한다.
 
         Args:
             pred: 모델 출력 딕셔너리.
             target: 정답 딕셔너리.
+            **kwarg: 서브 Loss에 그대로 전달되는 부가 데이터(예: 관심영역 mask).
+                비어 있으면 서브 Loss는 (pred, target)만 받은 것과 동일하다.
+                부가 데이터를 넘길 때는 **모든** 서브 Loss가 그 키를 받을 수 있어야 한다
+                (쓰지 않는 Loss는 `**kwarg`로 흘려보내면 된다).
 
         Returns:
             tuple:
@@ -94,7 +98,7 @@ class Assemble_Loss(Composable_Module):
                     f"target keys: {list(target.keys())}"
                 )
 
-            _raw_loss: Tensor = _func(pred[_k], target[_k])
+            _raw_loss: Tensor = _func(pred[_k], target[_k], **kwarg)
             _weighted_loss = _coef * _raw_loss
             _total_loss = _total_loss + _weighted_loss
 
