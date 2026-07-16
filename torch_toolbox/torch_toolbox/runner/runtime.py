@@ -193,7 +193,7 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
             self.__Process(0, is_test)
 
     def Export(
-        self, save_path: str | Path,
+        self, save_path: str | Path | None = None,
         opset_version: int = 21, do_constant_folding: bool = True,
         precision: str = "FP32", size_mb: int = 4096,
         **kwargs: Any
@@ -203,7 +203,8 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
         단일 GPU 모드로 강제 전환하여 export 후 원래 상태를 복원한다.
 
         Args:
-            save_path: ONNX 파일 저장 디렉터리.
+            save_path: ONNX 파일 저장 디렉터리. None이면 **workspace**에 저장한다
+                (resume 시 해당 run 디렉터리) — 산출물이 출처가 된 체크포인트와 함께 남는다.
             opset_version: ONNX opset 버전.
             do_constant_folding: 상수 폴딩 최적화 여부.
             precision: TensorRT 추론 정밀도 (FP32 / FP16 / INT8).
@@ -224,7 +225,8 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
             with self._Process_context(0, is_test=True) as (
                 _, _device, _, _components, _
             ):
-                _save_path = Path(save_path)
+                # 미지정이면 workspace(resume 시 해당 run 디렉터리)에 저장
+                _save_path = Path(save_path) if save_path is not None else Path(self.workspace)
                 _save_path.mkdir(exist_ok=True, parents=True)
                 print(f"[INFO] ONNX Export 시작: {_device}")
 

@@ -48,6 +48,12 @@ def Build_runner_parser() -> argparse.ArgumentParser:
     _p.add_argument("--resume_path",   type=str, default=None)
     _p.add_argument("--weight_path",   type=str, default=None)
     _p.add_argument("--start_iter",    type=int, default=None)
+    # Export는 Base_Runner의 기능이므로 CLI도 여기 둔다 (--test와 같은 계층).
+    # 저장 위치는 workspace(체크포인트가 있는 run 디렉터리) — 산출물이 출처와 함께 남는다.
+    _p.add_argument("--export",        action="store_true",
+                    help="학습/추론 대신 ONNX export 수행 (workspace에 저장)")
+    _p.add_argument("--precision",     type=str, default="FP32",
+                    choices=["FP32", "FP16", "INT8"], help="TensorRT 추론 정밀도")
     return _p
 
 
