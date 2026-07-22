@@ -69,7 +69,8 @@ def _Resolve_value(value: Any, built: dict[str, Any], context: dict[str, Any] | 
         {"sum": [...]}   항들을 더해 정수로 (차원 산술)
         "$key"           context 값을 **그대로** 치환 (타입 제한 없음 — 정수, 리스트 등)
 
-    나머지는 손대지 않는다.
+    dict/list 안에도 재귀한다 — ``timm_kwargs.in_chans`` 처럼 중첩된 자리에서
+    참조하는 경우가 있다. 그 외 값은 손대지 않는다.
     """
     if isinstance(value, dict) and set(value) == {"sum"}:
         return sum(_Resolve_term(_t, built, context) for _t in value["sum"])
@@ -82,6 +83,11 @@ def _Resolve_value(value: Any, built: dict[str, Any], context: dict[str, Any] | 
                 f"(현재 context 키: {sorted(context) if context else []})"
             )
         return context[_key]
+    # 중첩 구조 안에서도 참조가 풀려야 한다 (예: timm_kwargs.in_chans).
+    if isinstance(value, dict):
+        return {_k: _Resolve_value(_v, built, context) for _k, _v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(_Resolve_value(_v, built, context) for _v in value)
     return value
 
 
