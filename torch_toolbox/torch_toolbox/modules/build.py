@@ -61,19 +61,39 @@ def _Resolve_term(term: Any, built: dict[str, Any], context: dict[str, Any] | No
     return int(built[_name].Out_channels()[_idx])
 
 
+def _Resolve_value(value: Any, built: dict[str, Any], context: dict[str, Any] | None) -> Any:
+    """meta 값 하나를 해석한다.
+
+    두 형태를 지원한다::
+
+        {"sum": [...]}   항들을 더해 정수로 (차원 산술)
+        "$key"           context 값을 **그대로** 치환 (타입 제한 없음 — 정수, 리스트 등)
+
+    나머지는 손대지 않는다.
+    """
+    if isinstance(value, dict) and set(value) == {"sum"}:
+        return sum(_Resolve_term(_t, built, context) for _t in value["sum"])
+    if isinstance(value, str) and value.startswith("$"):
+        _key = value[1:]
+        if not context or _key not in context:
+            raise KeyError(
+                f"config가 context['{_key}']를 참조하는데 주입되지 않았다. "
+                f"assembler의 _Build_context()가 이 키를 채우는지 확인할 것. "
+                f"(현재 context 키: {sorted(context) if context else []})"
+            )
+        return context[_key]
+    return value
+
+
 def _Resolve_meta(
     meta: dict[str, Any], built: dict[str, Any], context: dict[str, Any] | None
 ) -> dict[str, Any]:
-    """meta 값 중 ``{"sum": [...]}`` 형태를 정수로 치환한다. 나머지는 그대로 둔다.
+    """meta 의 각 값을 :func:`_Resolve_value` 로 해석한다.
 
-    config 원본은 건드리지 않는다 — 표현식이 그대로 남아 있어야 "이 차원이 어떻게
-    나왔는지"가 config 에 기록으로 남고, resume 시에도 같은 규칙으로 다시 풀린다.
+    config 원본은 건드리지 않는다 — 표현식이 그대로 남아 있어야 "이 값이 어디서
+    왔는지"가 config 에 기록으로 남고, resume 시에도 같은 규칙으로 다시 풀린다.
     """
-    return {
-        _k: (sum(_Resolve_term(_t, built, context) for _t in _v["sum"])
-             if isinstance(_v, dict) and set(_v) == {"sum"} else _v)
-        for _k, _v in meta.items()
-    }
+    return {_k: _Resolve_value(_v, built, context) for _k, _v in meta.items()}
 
 
 def Build_from_registry(
