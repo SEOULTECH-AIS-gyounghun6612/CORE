@@ -102,8 +102,8 @@ class Supervised_Assembler(
         Returns:
             Runner의 _Iter_hook이 **components로 수신하는 컴포넌트 dict.
         """
-        _model = self._Build_model(device, world_size)
         _datasets, _dataloaders, _metric = self._Build_mode_data(is_test, world_size, rank)
+        _model = self._Build_model(device, world_size)
 
         if is_test:
             # 추론 시에는 loss·optim·scaler 불필요
