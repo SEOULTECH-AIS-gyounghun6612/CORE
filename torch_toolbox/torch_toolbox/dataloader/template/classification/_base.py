@@ -118,7 +118,14 @@ class Classification_Dataset(Custom_Dataset):
             ValueError: 옛 dict 형식인 경우.
         """
         self.class_map = {}
+        # 시도한 경로를 남긴다 — 서브클래스가 실패를 보고할 때 이 값을 쓴다.
+        self.id_map_path = map_path
         if not map_path.exists():
+            print(
+                f"[WARN] id_map 파일이 없다: {map_path.resolve()}\n"
+                f"       (data_dir/name 기준 상대경로 '{map_path.name}' 로 해석됨. "
+                f"config 의 id_map_file 과 실제 파일 위치를 확인할 것)"
+            )
             return {}
         with open(map_path, "r", encoding="utf-8") as _f:
             _raw = yaml.safe_load(_f) or {}
