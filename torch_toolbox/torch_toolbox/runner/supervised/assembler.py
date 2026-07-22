@@ -116,7 +116,7 @@ class Supervised_Assembler(
                 "metric": _metric,
             }
 
-        _loss_fn = self._Build_loss(device)
+        _loss_fn = self._Build_loss(device, self._Build_context(_datasets))
         _optim, _scheduler, _scaler = self._Build_optim_and_scheduler(_model)
         return {
             "model": _model,
@@ -165,16 +165,20 @@ class Supervised_Assembler(
             )
         return cast(Trainable_Model, _model)
 
-    def _Build_loss(self, device: torch.device) -> nn.Module:
+    def _Build_loss(
+        self, device: torch.device, context: dict[str, Any] | None = None,
+    ) -> nn.Module:
         """loss_cfg로 loss 모듈을 조립하고 디바이스로 이동한다.
 
         Args:
             device: 타깃 디바이스.
+            context: 조립 밖에서 오는 값 (``$키`` 로 참조). 모델과 같은 것을 받는다 —
+                예약 클래스 인덱스처럼 dataset 이 정하는 값이 loss 에도 필요하다.
 
         Returns:
             조립된 loss 모듈.
         """
-        return Build_from_registry(self.loss_cfg, LOSSES).to(device)
+        return Build_from_registry(self.loss_cfg, LOSSES, context).to(device)
 
     def _Build_optim_and_scheduler(
         self, model: Trainable_Model,
