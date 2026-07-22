@@ -79,6 +79,24 @@ class Composable_Module(Module):
     def forward(self, *args, **kwarg):
         raise NotImplementedError
 
+    def Out_channels(self) -> list[int]:
+        """출력 텐서별 채널 수. **출력 하나당 한 항목**이며 단일 출력도 리스트다.
+
+        같은 계층의 다른 모듈이 자기 입력 차원을 도출할 때 참조한다
+        (``Build_from_registry``의 동일 계층 해석). config에서
+        ``in_channels: {sum: [backbone, $feat_dim]}`` 처럼 이름으로 가리킨다.
+
+        기본 구현은 실패한다 — **참조당하는 모듈만** 구현하면 되고, 구현하지 않은 모듈을
+        가리키면 조립 시점에 바로 드러난다.
+
+        Returns:
+            출력 텐서별 채널 수 리스트.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__}에 Out_channels()가 없다. config에서 이 모듈을 "
+            f"차원 출처로 참조하려면 구현해야 한다."
+        )
+
     def Load_weights(self, weight_path: str) -> None:
         """사전학습 가중치를 부분 로드한다.
 

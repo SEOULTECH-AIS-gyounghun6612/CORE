@@ -9,7 +9,7 @@ from .... import CFGS
 from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
-from .utils.from_timm import load_timm_backbone
+from .utils.from_timm import Timm_Feature_Backbone, load_timm_backbone
 
 
 MODEL_NAME = "resnet"
@@ -47,7 +47,7 @@ class ResNet_Config(Module_Config_Template):
 
 
 @MODELS.Register_module(MODEL_NAME)
-class ResNet(Trainable_Model):
+class ResNet(Timm_Feature_Backbone, Trainable_Model):
     """
     timm 라이브러리를 기반으로 ResNet 계열 모델을 불러오는 직관적인 백본 래퍼입니다.
     """

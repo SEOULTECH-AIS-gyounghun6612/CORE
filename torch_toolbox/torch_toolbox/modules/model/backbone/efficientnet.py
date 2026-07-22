@@ -9,7 +9,7 @@ from .... import CFGS
 from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
-from .utils.from_timm import load_timm_backbone
+from .utils.from_timm import Timm_Feature_Backbone, load_timm_backbone
 
 
 MODEL_NAME = "efficientnet"
@@ -54,7 +54,7 @@ class EfficientNet_Config(Module_Config_Template):
 
 
 @MODELS.Register_module(MODEL_NAME)
-class EfficientNet(Trainable_Model):
+class EfficientNet(Timm_Feature_Backbone, Trainable_Model):
     """
     timm 라이브러리를 기반으로 경량화/고효율의 EfficientNet 및 EfficientNet V2 모델을 불러오는 래퍼입니다.
     """

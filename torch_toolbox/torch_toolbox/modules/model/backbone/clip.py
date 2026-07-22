@@ -9,7 +9,7 @@ from .... import CFGS
 from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
-from .utils.from_timm import load_timm_backbone
+from .utils.from_timm import Timm_Feature_Backbone, load_timm_backbone
 
 
 MODEL_NAME = "clip_vision"
@@ -53,7 +53,7 @@ class CLIP_Vision_Config(Module_Config_Template):
 
 
 @MODELS.Register_module(MODEL_NAME)
-class CLIP_Vision(Trainable_Model):
+class CLIP_Vision(Timm_Feature_Backbone, Trainable_Model):
     """
     timm 라이브러리를 기반으로 CLIP 모델의 Vision Encoder 부분만 불러오는 래퍼입니다.
     Zero-shot 분류나 멀티모달 연구의 이미지 백본으로 활용하기 좋습니다.

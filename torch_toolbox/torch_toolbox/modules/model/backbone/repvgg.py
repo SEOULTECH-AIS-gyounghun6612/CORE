@@ -9,7 +9,7 @@ from .... import CFGS
 from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
-from .utils.from_timm import load_timm_backbone
+from .utils.from_timm import Timm_Feature_Backbone, load_timm_backbone
 
 MODEL_NAME = "repvgg"
 CONFIG_NAME = f"{MODEL_NAME}_Config"
@@ -36,7 +36,7 @@ class RepVGG_Config(Module_Config_Template):
     timm_kwargs: dict[str, Any] = field(default_factory=dict)
 
 @MODELS.Register_module(MODEL_NAME)
-class RepVGG(Trainable_Model):
+class RepVGG(Timm_Feature_Backbone, Trainable_Model):
     """
     timm 기반 RepVGG 백본 래퍼. 
     10ms 제약 통과를 위해 배포 전 반드시 convert_for_inference() 호출 요망.

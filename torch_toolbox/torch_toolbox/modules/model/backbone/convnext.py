@@ -9,7 +9,7 @@ from .... import CFGS
 from ... import MODELS
 from ...build import Module_Config_Template
 from ..definition import Trainable_Model
-from .utils.from_timm import load_timm_backbone
+from .utils.from_timm import Timm_Feature_Backbone, load_timm_backbone
 
 
 MODEL_NAME = "convnext"
@@ -59,7 +59,7 @@ class ConvNeXt_Config(Module_Config_Template):
     timm_kwargs: dict[str, Any] = field(default_factory=dict)
 
 @MODELS.Register_module(MODEL_NAME)
-class ConvNeXt(Trainable_Model):
+class ConvNeXt(Timm_Feature_Backbone, Trainable_Model):
     """
     timm 라이브러리를 기반으로 ConvNeXt 및 ConvNeXt V2 모델을 불러오는 직관적인 백본 래퍼입니다.
     """

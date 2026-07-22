@@ -113,6 +113,7 @@ class Component_Assembler(Generic[OPTIM, SCHEDULER, MODEL]):
 
     def _Build_model(
         self, device: torch.device, world_size: int,
+        context: dict[str, Any] | None = None,
     ) -> MODEL:
         raise NotImplementedError
 

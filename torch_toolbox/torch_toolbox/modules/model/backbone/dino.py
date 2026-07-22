@@ -95,6 +95,14 @@ class DINO(Trainable_Model):
             **(timm_kwargs or {})
         )
 
+    def Out_channels(self) -> list[int]:
+        """DINO 는 단일 텐서를 내므로 항목 하나다.
+
+        ``features_only`` 가 아니라 ``timm.create_model(num_classes=0)`` 으로 만들어
+        ``feature_info`` 대신 ``num_features`` 가 출력 차원이다.
+        """
+        return [int(self.backbone.num_features)]
+
     def forward(self, x, **kwarg):
         tokens = self.backbone.forward_features(x)      # (B, prefix + N, D)
 

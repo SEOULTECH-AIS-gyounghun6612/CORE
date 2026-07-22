@@ -103,7 +103,9 @@ class Supervised_Assembler(
             Runner의 _Iter_hook이 **components로 수신하는 컴포넌트 dict.
         """
         _datasets, _dataloaders, _metric = self._Build_mode_data(is_test, world_size, rank)
-        _model = self._Build_model(device, world_size)
+        # dataset 을 먼저 조립하는 이유가 여기다 — 모델의 차원 표현식이 참조할 값을
+        # dataset 에서 뽑아 넘긴다 (config 에 숫자를 중복 기입하지 않기 위해).
+        _model = self._Build_model(device, world_size, self._Build_context(_datasets))
 
         if is_test:
             # 추론 시에는 loss·optim·scaler 불필요
@@ -127,8 +129,23 @@ class Supervised_Assembler(
             "metric": _metric,
         }
 
+    def _Build_context(self, datasets: dict[Any, Any]) -> dict[str, Any]:
+        """모델 차원 표현식이 ``$키`` 로 참조할 외부 값을 만든다.
+
+        조립 밖(dataset)에서 결정되는 차원을 여기서 모아 넘긴다. 기본은 비어 있고,
+        필요한 도메인의 서브클래스가 채운다.
+
+        Args:
+            datasets: mode별 dataset dict.
+
+        Returns:
+            ``{"feat_dim": 695}`` 같은 이름→정수 매핑.
+        """
+        return {}
+
     def _Build_model(
         self, device: torch.device, world_size: int,
+        context: dict[str, Any] | None = None,
     ) -> Trainable_Model:
         """model_cfg로 모델을 조립하고 DDP 필요 시 래핑한다.
 
@@ -139,7 +156,7 @@ class Supervised_Assembler(
         Returns:
             조립된 Trainable_Model (DDP 래퍼 포함 가능).
         """
-        _model = Build_from_registry(self.model_cfg, MODELS).to(device)
+        _model = Build_from_registry(self.model_cfg, MODELS, context).to(device)
         if world_size > 1:
             # device_ids는 set_device 이후 current_device()로 결정
             _local = torch.cuda.current_device()
