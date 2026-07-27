@@ -50,8 +50,11 @@ class DINO_Config(Module_Config_Template):
     trainable: bool = False
 
     variant: DinoVariantType = "v2_vits14"
+    # 이 래퍼가 존재하는 이유가 DINO 사전학습 표현이라 기본이 True 다. False 로 만들면
+    # frozen 랜덤 ViT 가 되는데, 그건 아무 에러 없이 조용히 학습이 무의미해지는 구성이다.
+    pretrained: bool = True
     timm_kwargs: dict[str, Any] = field(default_factory=dict)
-    # trainable=False일 때 전체 freeze 후 이 목록의 모듈만 reset + unfreeze
+    # trainable=False일 때 전체 freeze 후 이 목록의 모듈만 unfreeze (가중치는 보존)
     trainable_modules: list[str] = field(default_factory=list)
 
 
@@ -69,13 +72,12 @@ class DINO(Trainable_Model):
         **build_kwarg,
     ) -> None:
         super().__init__(name, trainable, **build_kwarg)
-        # Composable_Module이 전체 freeze를 적용한 뒤 지정 모듈만 reset + unfreeze
+        # Composable_Module이 전체 freeze를 적용한 뒤 지정 모듈만 unfreeze 한다.
+        # **가중치는 건드리지 않는다** — 사전학습 표현을 남겨두고 미세조정하는 것이 목적이다.
         if not trainable and trainable_modules:
             for mod_name, module in self.backbone.named_modules():
                 for prefix in trainable_modules:
                     if mod_name == prefix or mod_name.startswith(f"{prefix}."):
-                        if hasattr(module, "reset_parameters"):
-                            module.reset_parameters()
                         for param in module.parameters(recurse=False):
                             param.requires_grad_(True)
                         break
@@ -83,16 +85,36 @@ class DINO(Trainable_Model):
     def Build(
         self,
         variant: str,
+        pretrained: bool = True,
         timm_kwargs: dict[str, Any] | None = None,
         **build_kwarg
     ) -> None:
+        """timm 에서 DINO 백본을 만든다.
+
+        Args:
+            variant: ``_DINO_VARIANTS`` 의 키.
+            pretrained: DINO 사전학습 가중치 로드 여부. 기본 True.
+            timm_kwargs: ``timm.create_model`` 추가 인자 (``img_size``·``in_chans`` 등).
+                ``pretrained`` 는 여기 넣지 않는다 — 위 인자가 정본이다.
+
+        Raises:
+            ValueError: 알 수 없는 variant 이거나 ``pretrained`` 가 중복 지정된 경우.
+        """
         if variant not in _DINO_VARIANTS:
             raise ValueError(f"Unsupported DINO variant '{variant}'")
 
+        _kwargs = dict(timm_kwargs or {})
+        if "pretrained" in _kwargs:
+            raise ValueError(
+                "'pretrained' 는 timm_kwargs 가 아니라 config 의 pretrained 필드로 준다 "
+                "(두 곳에 두면 어느 쪽이 이겼는지 보이지 않는다)."
+            )
+
         self.backbone = timm.create_model(
             _DINO_VARIANTS[variant],
+            pretrained=pretrained,
             num_classes=0,
-            **(timm_kwargs or {})
+            **_kwargs
         )
 
     def Out_channels(self) -> list[int]:

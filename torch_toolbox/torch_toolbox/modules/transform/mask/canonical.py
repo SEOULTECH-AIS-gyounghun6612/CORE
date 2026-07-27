@@ -71,12 +71,15 @@ class Centroid_Frame(Trainable_Model):
 
         angle = 0.5 * atan2(2 * Sxy, Sxx - Syy)
 
-    180° 모호성은 주축 방향 ``u`` 기준 **좌우 픽셀 수 불균형의 부호**로 확정한다.
-    무거운 쪽이 +u 로 오도록 필요하면 pi 를 더한다 (반사가 아니라 **회전**이므로
-    좌우/카이랄 정보가 보존된다 — 거울상 구분 신호는 상하 비대칭으로 남는다).
+    주축은 선(90° 주기)이라 방위가 4겹 모호하다. {θ, θ+90, θ+180, θ+270} 중 **BR 사분면
+    (+u=우측, +v=하단)의 질량이 최대**가 되는 회전을 고른다 — 네 후보가 물체의 네 사분면을
+    차례로 BR 에 놓으므로, 이는 곧 **최대 질량 사분면을 BR 로 보내는** 회전이다. 반사가 아니라
+    회전이라 좌우/카이랄 정보가 보존된다(거울상 구분 신호는 상하 비대칭으로 남는다).
 
-    불균형을 카운트 **차이**가 아니라 **비율**로 계산하는 이유: 1e4 규모 두 수의 차는
-    FP16 에서 눈금이 8 이라 상쇄 소거로 무너진다. 비율은 [-1, 1] 로 유계다.
+    좌우 질량 부호로 180° 만 확정하던 방식보다 근대칭 형상에서 안정적이다 — 주축이 거의
+    불안정한(``Sxx≈Syy``) 경우에도 4겹 방위가 하나로 굳는다. 대신 u 가 major 축이라는 보장이
+    사라지므로(θ±90 후보), major/minor 크기를 쓰는 :class:`Region_Scalars` 는 축 이름이 아니라
+    **고유값 크기순**으로 뽑아야 한다(둘은 한 벌로 바뀐다).
 
     Note:
         입력 마스크는 fill/최대연결성분 처리를 **하지 않은** 원본이어야 한다.
@@ -122,13 +125,22 @@ class Centroid_Frame(Trainable_Model):
         _syy = (_m * _ddy * _ddy).sum(dim=(1, 2)) / _n
         _sxy = (_m * _ddx * _ddy).sum(dim=(1, 2)) / _n
 
-        _angle = 0.5 * torch.atan2(2.0 * _sxy, _sxx - _syy)    # (B,) 주축각
+        _angle = 0.5 * torch.atan2(2.0 * _sxy, _sxx - _syy)    # (B,) **주축(major) 각** (선, 180° 주기)
 
-        # 180° 확정: 주축 u 방향 좌우 픽셀 수 불균형의 부호 (비율이라 [-1,1] 유계)
-        _cos, _sin = torch.cos(_angle).view(-1, 1, 1), torch.sin(_angle).view(-1, 1, 1)
-        _u = _ddx * _cos + _ddy * _sin                         # (B, H, W) 주축 성분
-        _lr = (_m * torch.where(_u >= 0, 1.0, -1.0)).sum(dim=(1, 2)) / _n
-        _angle = _angle + torch.where(_lr < 0, torch.pi, 0.0)
+        # 2-fold 확정: {θ, θ+180} 중 BR 사분면(+u 우측·+v 하단) 질량이 큰 쪽. u축은 **항상 major
+        # 축**이고(θ±90 = 부축 후보를 넣지 않는다 — 그게 90° 회전의 원인이었다), major 선의 180°
+        # 방향 모호성만 BR 질량으로 가른다. 비대칭 부품은 여기서 방향이 유일해지고(작은 비대칭이
+        # 노이즈만 이기면 됨 — 인접 사분면과 경쟁 안 함), 대칭 부품은 BR 질량이 같아 180° 가 남는다
+        # (원리적 — 대칭 객체는 실루엣이 180° 돌아도 같으므로 문제없다).
+        _br = []
+        for _off in (0.0, torch.pi):
+            _cos = torch.cos(_angle + _off).view(-1, 1, 1)
+            _sin = torch.sin(_angle + _off).view(-1, 1, 1)
+            _u =  _ddx * _cos + _ddy * _sin                    # +u 우측
+            _v = -_ddx * _sin + _ddy * _cos                    # +v 하단 (row 증가)
+            _br.append((_m * ((_u > 0) & (_v > 0)).to(_m.dtype)).sum(dim=(1, 2)))
+        _k = torch.stack(_br, dim=1).argmax(dim=1)             # (B,) 0/1 — BR 질량 큰 방향
+        _angle = _angle + _k.to(_angle.dtype) * torch.pi
 
         _h, _w = self.size
         _center = torch.stack([_cx + (_w - 1) / 2.0, _cy + (_h - 1) / 2.0], dim=1)

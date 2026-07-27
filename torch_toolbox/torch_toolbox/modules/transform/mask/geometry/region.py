@@ -92,19 +92,18 @@ class Region_Scalars(Trainable_Model):
         self.dtheta = 2.0 * math.pi / int(num_angular)
 
     def Spec(self) -> tuple[Feature_Spec, ...]:
-        """이론 범위 선언.
+        """이론 범위 선언 — **원본 스케일(선형)**. 형상 정보라 log 로 뭉개지 않는다.
 
         면적·둘레는 픽셀 수에 유계이고, 길이는 캔버스 대각에 유계다. 비율은 원리적으로
         상한이 없어 실용 상한 10 으로 선언한다 — 정규화용이라 벗어나도 값이 잘리지 않고
-        구간 밖으로 나갈 뿐이다.
+        구간 밖으로 나갈 뿐이다. 정규화는 표시 시점의 선형 scale 이고, 저장은 원본값이다.
         """
-        _area_max = math.log1p(self.size[0] * self.size[1])
-        _len_max = math.log1p(4.0 * self.norm)
+        _area_max = float(self.size[0] * self.size[1])
+        _len_max = 4.0 * self.norm
         return (
-            Feature_Spec("size",     len(SIZE_NAMES),  "log1p",    (0.0, max(_area_max, _len_max))),
+            Feature_Spec("size",     len(SIZE_NAMES),  "identity", (0.0, max(_area_max, _len_max))),
             Feature_Spec("ratio",    len(RATIO_NAMES), "identity", (0.0, 10.0)),
-            Feature_Spec("position", len(POS_NAMES),   "slog",     (-math.log1p(self.norm),
-                                                                     math.log1p(self.norm))),
+            Feature_Spec("position", len(POS_NAMES),   "identity", (-self.norm, self.norm)),
         )
 
     def forward(
@@ -138,11 +137,14 @@ class Region_Scalars(Trainable_Model):
         _bu = (_umax - _umin) * self.norm
         _bv = (_vmax - _vmin) * self.norm
 
-        # major/minor — u, v 가 주축이므로 공분산이 대각. skimage 규약(4*sqrt(lambda)).
+        # major/minor — 4-fold 정준화(Centroid_Frame)는 u 가 major 라고 보장하지 않으므로
+        # (θ±90 후보가 u 를 minor 축에 놓을 수 있다) 회전 불변량인 major/minor 는 축 이름이
+        # 아니라 **분산 크기순**으로 뽑는다. max/min 은 교차점에서 연속이라 근정사각 형상에서도
+        # 안정적이다. skimage 규약(4*sqrt(lambda)).
         _lu = (_m * u * u).sum(dim=(1, 2)) / _n
         _lv = (_m * v * v).sum(dim=(1, 2)) / _n
-        _major = 4.0 * _lu.clamp_min(0).sqrt() * self.norm
-        _minor = 4.0 * _lv.clamp_min(0).sqrt() * self.norm
+        _major = 4.0 * torch.maximum(_lu, _lv).clamp_min(0).sqrt() * self.norm
+        _minor = 4.0 * torch.minimum(_lu, _lv).clamp_min(0).sqrt() * self.norm
 
         # 외곽이 감싸는 면적 — convex hull 대신 radial profile 의 반음적분.
         _swept = 0.5 * (profile.r_outer * profile.r_outer).sum(dim=1) * self.dtheta

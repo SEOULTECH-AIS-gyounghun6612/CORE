@@ -80,8 +80,11 @@ class Profile_Stats(Trainable_Model):
         return 5 + len(self.quantiles)
 
     def Spec(self, name: str, vmax: float) -> tuple[Feature_Spec, ...]:
-        """Args: name: 그룹 이름. vmax: 원본 프로파일의 이론 상한(예: r_max)."""
-        return (Feature_Spec(name, self.dim, "log1p", (0.0, math.log1p(vmax))),)
+        """Args: name: 그룹 이름. vmax: 원본 프로파일의 이론 상한(예: r_max).
+
+        **원본 스케일(선형)** — 형상 통계라 log 로 뭉개지 않는다.
+        """
+        return (Feature_Spec(name, self.dim, "identity", (0.0, vmax)),)
 
     def forward(self, profile: Tensor) -> Tensor:
         """

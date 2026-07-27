@@ -6,6 +6,52 @@
 
 ## 후속 작업
 
+### ★ 계획 — config 기반 **위상 조립기** (동적 그래프 조립 모듈)
+
+용접 클래스(`Silhouette_Embedding` 등 특정 조합을 코드로 박은 것)를 없애고, **config 가 layer 위상을
+선언하면 그대로 연결하는 범용 조립 모듈**을 둔다. 핵심은 단순 순차가 아니라 **위상(topology)** —
+여러 입력·분기를 처리해 각 layer 를 config 가 정한 연결대로 잇는다(모델 그래프 구성).
+
+- `Build_from_registry`(build.py)는 **조립(construction)만** 하고 런타임 데이터 흐름(위상)은 forward
+  코드가 갖는다 — 그래서 지금은 용접 클래스가 forward 로 위상을 하드코딩한다. 이 조립기가 그 위상을
+  **config 로** 받아 연결하면 용접이 사라진다.
+- LENS `process` 의 ctx/Stage 엔진이 정확히 이 개념(유닛이 ctx 에서 꺼내 쓰고 route) — 공유로 올릴지,
+  torch_toolbox 자체 조립기로 갈지 미결(→ 세션 초 "core 연산 엔진 공유" 논의와 같은 지점).
+- 적용 대상: crop→resize→geometry 전처리, geometry 내부(frame→polar→radial→descriptor→토큰화),
+  학습 그래프(geometry 토큰 → transformer 헤더). 지금은 용접 클래스/소비처 배선으로 임시.
+
+### ★ geometry embedding — config 조립 + 토큰 출력 전환 (진행 중)
+
+`transform/mask/geometry` 를 **config 기반 조립 + 토큰 시퀀스 출력**으로 재작성한다. 왜:
+
+- **지금은 하드코딩** — `Geometry_Embedding.Build` 가 sub-module(frame·coords·polar·radial·region·
+  moment·occ·stats·fourier)과 spec 리스트·concat 순서를 전부 코드로 박아, descriptor 를 넣고 빼려면
+  코드를 고쳐야 한다. `Silhouette_Embedding` 은 config 조립(sub_module_meta)인데 geometry 내부만 monolith.
+- **descriptor 는 이미 다 등록 모듈**(`centroid_frame`·`polar_raster`·`radial_rle`·`region_scalars`·
+  `chirality_moments`·`fourier_descriptor` … MODELS 등록 확인됨). `Build_from_registry` 로 조립 가능 —
+  build.py 는 조립만, 데이터 흐름(frame→polar→radial→descriptor)은 forward 코드가 표현(classification 이
+  `cat(backbone, geometry)→header` 를 forward 로 잇듯이).
+
+**출력 = 토큰 `(B, seq, 2K)`.** flat `(B, D)` 는 `(B, 1, D)` 인 토큰의 특수형이라 토큰이 일반형이다.
+목표 토큰 스키마(합의됨):
+
+- **각도 시퀀스**: `radial_rle` (512, 2K) — θ별 재료 밴드(살-구멍-살). centroid 위치 무관하게 구멍 표현
+  (기존 radial_outer/inner 는 centroid 가 구멍 안에 있어야만 구멍이 보였다 — rle 가 대체).
+- **전역 토큰(각 2K=8, 뒤 패딩)**: `moment`(6)·`area`(2)·`ratio`(6)·`size`(7)·`position`(2).
+- **제거**: radial_outer/inner, outer/inner/thickness/coverage_stats, spectral(fourier mag/phase 전부).
+  spectral 은 radial 프로파일의 Fourier(=중복), stats 도 프로파일 파생 → rle 로 통일.
+- `K` 는 config 상수(`Radial_RLE.max_bands`, 기본 4). 2K = 토큰 차원.
+
+**목적 — 토큰 기반 학습**: geometry 토큰 → transformer 헤더(기존 FC 헤더 대체, 더 압축적). 형상을
+토큰이 다 담으므로 **DINOv2(ViT) 백본 제거** 가능(이미지 백본 없이 형상 토큰만으로 분류). 재학습 동반.
+
+- [ ] descriptor 를 sub_module_meta 로 선언, 파이프라인(frame/coords/polar/radial)은 항상, descriptor 는
+      config 선택. forward 가 **존재하는 descriptor 만 동적 조립**(고정 concat 제거).
+- [ ] 출력 shape flat → 토큰 `(B, seq, 2K)`. Normalizer(그룹별 선형 scale)·`data_group_of`·`axis_of`·
+      `Grouped` 를 토큰 축에 맞춰 갱신.
+- [ ] stats/fourier 처럼 **한 모듈이 여러 입력**(r_outer/r_inner)에 쓰이던 것 — 토큰 스키마에선 제거라
+      당장 불필요하나, 되살릴 땐 입력 바인딩(어느 중간값을 소비) 설계 필요.
+- [ ] 소비처(LENS analysis: flat 가정) 토큰 대응 → LENS `core/process/TODO.md`.
 
 ---
 

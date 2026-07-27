@@ -103,10 +103,12 @@ class Fourier_Descriptor(Trainable_Model):
         return 3 * self.num_harmonics
 
     def Spec(self, name: str, vmax: float) -> tuple[Feature_Spec, ...]:
-        """magnitude 는 유계 비음수, phase 는 부호 있는 복소계수라 범위가 다르다."""
+        """magnitude 는 유계 비음수, phase 는 부호 있는 복소계수라 범위가 다르다.
+
+        **원본 스케일(선형)** — 형상 스펙트럼이라 log 로 뭉개지 않는다.
+        """
         return (
-            Feature_Spec(f"{name}_fft_mag", self.num_harmonics, "log1p",
-                         (0.0, math.log1p(vmax))),
+            Feature_Spec(f"{name}_fft_mag", self.num_harmonics, "identity", (0.0, vmax)),
             Feature_Spec(f"{name}_fft_phase", 2 * self.num_harmonics, "identity",
                          (-vmax, vmax)),
         )

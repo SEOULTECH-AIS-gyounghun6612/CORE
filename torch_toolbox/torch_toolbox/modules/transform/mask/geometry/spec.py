@@ -9,16 +9,17 @@ from torch import Tensor, nn
 
 파이프라인 순서를 고정한다::
 
-    descriptor (raw)  ->  transform (log1p / slog, 그룹별 고정)  ->  normalize (offset, scale)
+    descriptor (raw, 원본 스케일)  ->  transform (identity)  ->  normalize (offset, scale, 선형)
 
 - descriptor 모듈은 **raw 값만** 낸다. 정규화를 계산식 안에 섞지 않는다.
-- ``transform`` 은 자릿수 압축이라 **의미의 일부**다. ``area`` 처럼 몇 자릿수를 오가는 양은
-  선형 정규화만 하면 좁은 구간에 뭉친다. 교체 대상이 아니다.
-- ``normalize`` 만 교체 대상. ``(x - offset) / scale`` 을 한 번 적용하고, 그 상수를
-  **buffer 로 들고 있어 export 직전에 갈아끼울 수 있다.**
-
-운용: 이론값으로 먼저 뽑아 실제 분포를 보고, 필요하면 그 통계로 buffer 를 채워 다시
-export 한다. 어느 쪽이든 **그래프 구조는 동일**하다.
+- ``transform`` 은 이제 **전부 identity** 다. 예전엔 ``log1p``/``slog`` 로 자릿수를 압축했으나,
+  이 feature 는 **형상 정보**라 log 같은 비선형이 형상을 뭉갠다(절대 크기·비율 왜곡). 그래서
+  압축을 걷어냈다 — 자릿수 차이는 log 가 아니라 그룹별 선형 ``scale`` 로 흡수한다(``value_range``).
+  필드는 남겨 두되(그래프 구조 불변) 값은 identity 로 고정한다.
+- ``normalize`` 는 **표시·학습용 선형 scale** 이다. ``(x - offset) / scale`` 을 한 번 적용하고,
+  그 상수는 buffer 라 export 직전에 갈아끼울 수 있다. **저장은 정규화 전 원본값**(``Raw``)이고,
+  정규화는 볼 때/학습할 때 적용한다 — 그래야 언제 뽑은 데이터든 같은 scale 을 쓰고 절대 크기를
+  잃지 않는다.
 
 ``FEAT_DIM`` 과 그룹 슬라이스를 하드코딩하지 않는 이유: 기존 ``sample_extractor`` 는
 ``FEAT_DIM = 426`` 과 ``FEAT_GROUPS`` 슬라이스가 리터럴이라 ``num_angles`` 를 바꾸면
@@ -35,12 +36,16 @@ class Feature_Spec:
         dim: 차원 수.
         transform: ``identity`` | ``log1p`` | ``slog``.
         value_range: **transform 적용 후** 범위 ``(lo, hi)``.
+        axis: 이 그룹의 값 축 종류. ``"scalar"``(기본, 순서 없는 스칼라 묶음) |
+            ``"angular"``(θ 색인 프로파일 — dim 개 값이 각도축을 등분한다. 극좌표 r-θ 로 그리면
+            실루엣 외곽이 보인다). 소비처가 크기로 추측하지 않고 이 선언으로 각도축을 안다.
     """
 
     name: str
     dim: int
     transform: str
     value_range: tuple[float, float]
+    axis: str = "scalar"
 
 
 def Apply_transform(x: Tensor, kind: str) -> Tensor:
@@ -55,10 +60,14 @@ def Apply_transform(x: Tensor, kind: str) -> Tensor:
 
 
 class Normalizer(nn.Module):
-    """선언된 spec 에서 ``(offset, scale)`` 을 만들어 마지막에 한 번 적용한다.
+    """선언된 spec 에서 그룹별 ``(offset, scale)`` 을 만들어 마지막에 한 번 적용하는 **선형** 정규화.
 
-    기본값은 각 spec 의 **이론 범위**에서 나온다. ``Set_statistics`` 로 데이터 측정
-    통계(평균·표준편차)로 교체할 수 있으며, 그래프 구조는 바뀌지 않는다.
+    **정규화는 embedding forward 에서 분리돼 있다** — descriptor 는 raw(원본 스케일)를 내고, 이 모듈이
+    학습·배포 그래프 앞단에 융합돼 config scale 로 정규화한다. 저장·분석은 raw 를 쓴다(절대 크기 보존).
+
+    scale 기본값은 각 spec 의 **이론 범위**(선형)에서 나오고, ``Set_scale`` 로 그룹별 config 상수를
+    override 할 수 있다(안 적은 그룹은 이론값). 데이터 통계가 아니라 **상수** 라, 언제 뽑은 데이터든
+    같은 scale 을 쓴다.
 
     Args:
         specs: 이어붙일 순서대로의 :class:`Feature_Spec`.
@@ -79,20 +88,21 @@ class Normalizer(nn.Module):
         self.register_buffer("scale",  torch.tensor(_scl, dtype=torch.float32), persistent=False)
 
     @torch.no_grad()
-    def Set_statistics(self, mean: Tensor, std: Tensor) -> None:
-        """정규화 상수를 데이터 측정 통계로 교체한다. export 직전에 호출한다.
+    def Set_scale(self, group_scale: dict[str, float]) -> None:
+        """그룹별 scale 상수를 config 값으로 override 한다 (안 적은 그룹은 이론값 유지).
+
+        offset 은 그대로 두고 scale 만 바꾼다 — 원본이 [0, hi] 인 형상량은 offset 없이 scale 로만
+        [0, 1] 근방에 두는 게 자연스럽다(부호 있는 그룹은 spec range 가 대칭이라 offset=0).
 
         Args:
-            mean: (FEAT_DIM,) — transform 적용 **후** 값의 평균.
-            std:  (FEAT_DIM,) — 같은 값의 표준편차.
+            group_scale: ``{그룹명: scale}``. 그 그룹의 모든 dim 에 같은 상수를 건다.
         """
-        if mean.shape != self.offset.shape or std.shape != self.scale.shape:
-            raise ValueError(
-                f"차원 불일치: spec {tuple(self.offset.shape)} vs "
-                f"mean {tuple(mean.shape)} / std {tuple(std.shape)}"
-            )
-        self.offset.copy_(mean.to(self.offset))
-        self.scale.copy_(std.to(self.scale).clamp_min(1e-6))
+        _at = 0
+        for _s in self.specs:
+            if _s.name in group_scale:
+                _v = max(float(group_scale[_s.name]), 1e-6)
+                self.scale[_at: _at + _s.dim] = _v
+            _at += _s.dim
 
     def forward(self, x: Tensor) -> Tensor:
         """(B, FEAT_DIM) raw(=transform 적용 후) -> 정규화."""

@@ -95,11 +95,14 @@ class Occupancy(Trainable_Model):
         self.cells = int(num_radial) * int(num_angular)
 
     def Spec(self) -> tuple[Feature_Spec, ...]:
-        """두 면적은 픽셀 수·셀 수에 유계. 비는 실용 상한으로 선언한다."""
+        """두 면적은 픽셀 수·셀 수에 유계. 비는 실용 상한으로 선언한다.
+
+        **원본 스케일(선형)** — 형상 크기라 log 로 뭉개지 않는다.
+        """
         return (
-            Feature_Spec("area_cartesian", 1, "log1p",
-                         (0.0, math.log1p(self.size[0] * self.size[1]))),
-            Feature_Spec("area_polar",     1, "log1p", (0.0, math.log1p(self.cells))),
+            Feature_Spec("area_cartesian", 1, "identity",
+                         (0.0, float(self.size[0] * self.size[1]))),
+            Feature_Spec("area_polar",     1, "identity", (0.0, float(self.cells))),
             Feature_Spec("area_ratio",     1, "identity", (0.0, 20.0)),
         )
 
@@ -193,3 +196,100 @@ class Radial_Profile(Trainable_Model):
             r_inner=torch.where(_has, (_inner + 0.5) * self.dr, _zero),
             coverage=polar.mean(dim=1),
         )
+
+
+_RADIAL_RLE_NAME = "radial_rle"
+_RADIAL_RLE_CFG  = f"{_RADIAL_RLE_NAME}_Config"
+
+
+@CFGS.Register_module(_RADIAL_RLE_CFG)
+@dataclass
+class RadialRLE_Config(Composable_Config):
+    """theta별 재료 RLE(전이점) 설정.
+
+    Attributes:
+        size: 캔버스 ``(H, W)``. ``r_max`` None 일 때 반대각.
+        num_radial: r bin 수. ``dr`` 도출.
+        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
+        max_transitions: theta 당 담을 최대 **전이점 수** ``K``. 넘으면 자른다. 출력 차원 = K.
+    """
+    config_type: str = _RADIAL_RLE_CFG
+    object_type: str = _RADIAL_RLE_NAME
+    trainable: bool = False
+    size: tuple[int, int] = (224, 224)
+    num_radial: int = 224
+    r_max: float | None = None
+    threshold: float = 0.5
+    max_transitions: int = 8
+
+
+@MODELS.Register_module(_RADIAL_RLE_NAME)
+class Radial_RLE(Trainable_Model):
+    """극좌표 occupancy -> theta별 **재료 RLE 간격** ``(B, NT, K)``.
+
+    각 theta 방사선을 r 축으로 훑어 재료 있음/없음의 구간을 **간격**으로 담는다:
+    ``[시작 반경, 살1 두께, 구멍1 두께, 살2 두께, 구멍2 두께, …]`` (안쪽부터). 통짜면
+    ``[r0, 두께, 0, …]``, 살-구멍-살이면 ``[r0, 살1, 구멍, 살2, 0, …]``.
+
+    전이점(절대 반경)이 아니라 **간격**인 이유: 각 슬롯 의미가 고정(시작·살1·구멍1·…)이라 stem
+    마다 밴드 개수가 달라도 **위치별 평균이 성립**한다(전이점은 밴드 없는 stem 에서 슬롯이 밀려
+    class 평균이 무너진다). centroid 위치와 무관하게 구멍이 표현되는 건 그대로.
+
+    빈 자리는 0. ``Radial_Profile`` 이 theta 당 최외곽/최내곽 하나씩만 접던 한계를 여기서 편다.
+
+    Args:
+        size / num_radial / r_max: ``dr`` 도출. ``Polar_Raster`` 와 같은 값이어야 한다.
+        threshold: 재료 판정 하한.
+        max_transitions: theta 당 슬롯 수 K (시작 + 살/구멍 간격들).
+    """
+
+    def Out_channels(self) -> list[int]:
+        """간격 한 텐서 — ``K`` 채널 ``[시작r, 살1, 구멍1, 살2, …]`` (안쪽부터)."""
+        return [self.max_transitions]
+
+    def Build(
+        self, size: tuple[int, int] = (224, 224), num_radial: int = 224,
+        r_max: float | None = None, threshold: float = 0.5, max_transitions: int = 8,
+        **kwargs: Any,
+    ) -> None:
+        _rmax = (math.hypot((size[0] - 1) / 2.0, (size[1] - 1) / 2.0)
+                 if r_max is None else float(r_max))
+        self.dr = _rmax / int(num_radial)
+        self.threshold = float(threshold)
+        self.max_transitions = int(max_transitions)
+
+    def forward(self, polar: Tensor) -> Tensor:
+        """
+        Args:
+            polar: (B, NR, NT) float — occupancy 분수.
+
+        Returns:
+            (B, NT, K) float — theta 당 간격 ``[시작r, 살1, 구멍1, 살2, …]`` (px). 빈 자리 0.
+        """
+        _b, _nr, _nt = polar.shape
+        _hit = (polar >= self.threshold).to(polar.dtype)                 # (B, NR, NT)
+
+        # r 축 인접 차분의 절댓값으로 **모든 전이**(0->1, 1->0) 검출. r=0 앞·r=NR 뒤 0 패딩.
+        _pad = torch.zeros(_b, 1, _nt, dtype=polar.dtype, device=polar.device)
+        _h = torch.cat([_pad, _hit, _pad], dim=1)                        # (B, NR+2, NT)
+        _trans = (_h[:, 1:] - _h[:, :-1]).abs() > 0.5                    # (B, NR+1, NT) 전이 위치
+        _ridx = torch.arange(_nr + 1, device=polar.device, dtype=polar.dtype).view(1, -1, 1)
+
+        _K = self.max_transitions
+        _rank = torch.cumsum(_trans.to(torch.int64), dim=1)             # 전이 누적 순번
+        # 먼저 전이 반경 K+1 개(시작 슬롯 + 간격 K-1 개를 만들려면 전이 K 개 필요)를 뽑는다.
+        _tr = torch.zeros(_b, _nt, _K, dtype=polar.dtype, device=polar.device)
+        _cnt = _rank[:, -1, :]                                           # (B, NT) theta 당 전이 수
+        for _k in range(_K):
+            _sel = _trans & (_rank == (_k + 1))
+            _tr[:, :, _k] = (_ridx * _sel.to(_ridx.dtype)).sum(dim=1) * self.dr
+
+        # 간격으로 변환: [t0, t1-t0, t2-t1, …]. 단 존재하는 전이까지만(그 뒤 슬롯은 0).
+        _out = torch.zeros_like(_tr)
+        _out[:, :, 0] = _tr[:, :, 0]                                     # 시작 반경
+        for _k in range(1, _K):
+            _gap = _tr[:, :, _k] - _tr[:, :, _k - 1]
+            _valid = (_cnt >= (_k + 1))                                  # k+1 번째 전이가 존재
+            _out[:, :, _k] = torch.where(_valid, _gap, torch.zeros_like(_gap))
+        return _out
