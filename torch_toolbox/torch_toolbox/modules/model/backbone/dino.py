@@ -56,6 +56,15 @@ class DINO_Config(Module_Config_Template):
     timm_kwargs: dict[str, Any] = field(default_factory=dict)
     # trainable=False일 때 전체 freeze 후 이 목록의 모듈만 unfreeze (가중치는 보존)
     trainable_modules: list[str] = field(default_factory=list)
+    # 꺼낼 블록 인덱스. 비우면 마지막 블록만(기존 동작).
+    #
+    # ViT 는 해상도를 유지한 채 블록마다 표현이 달라진다 — 얕을수록 국소·위치 정보가,
+    # 깊을수록 의미가 강하다. 마지막 하나만 쓰면 dense prediction 이 필요로 하는 국소
+    # 정보를 버리는데, **frozen 백본에서는 그게 순손실이다**: 중간 블록은 어차피
+    # 계산되고, 꺼내 써도 학습 파라미터가 늘지 않는다.
+    # 여러 단을 지정하면 forward 가 그만큼의 텐서를 내므로 소비하는 쪽이 합쳐야 한다
+    # (Out_channels() 도 단마다 하나씩 낸다 → config 의 {sum: [...]} 로 폭을 도출).
+    out_indices: list[int] = field(default_factory=list)
 
 
 @MODELS.Register_module(MODEL_NAME)
@@ -87,6 +96,7 @@ class DINO(Trainable_Model):
         variant: str,
         pretrained: bool = True,
         timm_kwargs: dict[str, Any] | None = None,
+        out_indices: list[int] | None = None,
         **build_kwarg
     ) -> None:
         """timm 에서 DINO 백본을 만든다.
@@ -96,9 +106,12 @@ class DINO(Trainable_Model):
             pretrained: DINO 사전학습 가중치 로드 여부. 기본 True.
             timm_kwargs: ``timm.create_model`` 추가 인자 (``img_size``·``in_chans`` 등).
                 ``pretrained`` 는 여기 넣지 않는다 — 위 인자가 정본이다.
+            out_indices: 꺼낼 블록 인덱스. None/빈 리스트면 마지막 블록만.
+                근거는 :class:`DINO_Config` 의 같은 이름 필드 참조.
 
         Raises:
-            ValueError: 알 수 없는 variant 이거나 ``pretrained`` 가 중복 지정된 경우.
+            ValueError: 알 수 없는 variant, ``pretrained`` 중복 지정,
+                또는 ``out_indices`` 가 블록 범위를 벗어난 경우.
         """
         if variant not in _DINO_VARIANTS:
             raise ValueError(f"Unsupported DINO variant '{variant}'")
@@ -117,15 +130,32 @@ class DINO(Trainable_Model):
             **_kwargs
         )
 
+        self.out_indices = [int(_i) for _i in (out_indices or [])]
+        _depth = len(self.backbone.blocks)
+        for _i in self.out_indices:
+            if not -_depth <= _i < _depth:
+                raise ValueError(
+                    f"out_indices 의 {_i} 가 블록 범위를 벗어남 "
+                    f"(variant '{variant}' 의 블록 수 {_depth})."
+                )
+
     def Out_channels(self) -> list[int]:
-        """DINO 는 단일 텐서를 내므로 항목 하나다.
+        """꺼내는 단마다 하나씩. ``out_indices`` 가 비면 항목 하나다.
 
         ``features_only`` 가 아니라 ``timm.create_model(num_classes=0)`` 으로 만들어
-        ``feature_info`` 대신 ``num_features`` 가 출력 차원이다.
+        ``feature_info`` 대신 ``num_features`` 가 출력 차원이다. ViT 는 모든 블록이 같은
+        폭이라 단이 몇 개든 값은 같다 — 소비하는 쪽이 합칠 때 폭이 필요해서 개수를 맞춘다.
         """
-        return [int(self.backbone.num_features)]
+        return [int(self.backbone.num_features)] * max(len(self.out_indices), 1)
 
     def forward(self, x, **kwarg):
+        if self.out_indices:
+            # 중간 블록 추출. reshape=True 면 prefix 토큰 제거와 (B,D,H,W) 재배치까지
+            # timm 이 하고, norm=True 로 최종 LayerNorm 을 태워 단들의 스케일을 맞춘다
+            # (안 태우면 얕은 블록의 분산이 커 concat 뒤 한쪽이 지배한다).
+            return list(self.backbone.get_intermediate_layers(
+                x, n=self.out_indices, reshape=True, norm=True))
+
         tokens = self.backbone.forward_features(x)      # (B, prefix + N, D)
 
         # CLS(1) + register(reg 변형은 4) 등 prefix 토큰 제거 → (B, N, D)
