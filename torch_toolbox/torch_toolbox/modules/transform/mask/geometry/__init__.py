@@ -42,6 +42,39 @@ from ..polar import Polar_Raster
 _NAME = "geometry_embedding"
 _CFG  = f"{_NAME}_Config"
 
+
+def _signed(rle: Tensor) -> Tensor:
+    """RLE 간격 ``(B, NT, K)`` -> **부호합** ``(B, NT)`` = 살합 − 빈공간합.
+
+    슬롯은 안쪽부터 ``[시작r, 살1, 구멍1, 살2, …]`` 이라 **짝수 자리가 빈 공간, 홀수가 살**이다
+    (시작r 도 재료가 없는 구간이므로 음수다). 그 부호로 더한다.
+
+    RLE 를 그대로 쓰면 광선이 구멍을 스칠 때 밴드가 하나 늘어 슬롯이 통째로 밀리고 값이 계단으로
+    뛴다. 부호합은 그 순간 차이가 ``2·(사라진 구멍 두께)`` 라 구멍이 0 으로 줄면 차이도 0 으로 줄어
+    **연속**이다. 그러면서 외곽선과 달리 구멍 정보를 버리지 않는다 (``부호합 = 2·살합 − 외곽r``).
+    """
+    _sign = torch.where(
+        torch.arange(rle.shape[-1], device=rle.device) % 2 == 1, 1.0, -1.0)
+    return (rle * _sign).sum(-1)
+
+
+#: radial 도메인 이름 -> RLE ``(B, NT, K)`` 를 접는 법. **구멍을 얼마나 보느냐**로 갈린다::
+#:
+#:     rle      (NT, K)  밴드 배치까지     "구멍 위치까지 같아야 같다"
+#:     signed   (NT,)    살합 − 빈합       "구멍 총량이 같으면 같다"
+#:     outline  (NT,)    sum(2)           "실루엣만 같으면 같다"
+#:
+#: 도메인이 직교라 소비처가 각자 가른다 — 어느 쪽이 맞는지는 데이터가 답할 문제다.
+#: **구멍 경계를 볼수록 도넛이 흩어진다** — 안쪽 모서리는 대비가 낮아 분할이 더 흔들리고 그 노이즈가
+#: 값에 실린다. 실측(class 안 최근접 거리, 도넛 ÷ 솔리드): signed 2.45 · 살합 1.46 · **outline 0.89**.
+#:
+#: 새 접기를 더하려면 여기 한 줄과 config 의 ``radial_domains`` 한 항목이면 된다.
+RADIAL_FOLDS = {
+    "rle":     lambda _r: _r,
+    "signed":  _signed,
+    "outline": lambda _r: _r.sum(-1),
+}
+
 #: 생성 그룹 -> 데이터 그룹(물리량 종류). 같은 key 끼리 pool/표시 단위로 묶는다. 매핑에 없으면
 #: 자기 이름이 곧 key(고유 그룹). radial 계열은 모두 px 반경이라 한 pool 이어야 outer-inner 간격
 #: (살 두께·구멍 깊이)이 표준화로 안 사라진다. size 는 면적(px²)·길이(px) 혼합이라 자기 그룹으로 둔다.
@@ -70,6 +103,10 @@ class Geometry_Embedding_Config(Composable_Config):
         sub: 극좌표 셀당 축별 sub-sample 수. 늘리면 바깥쪽 얇은 구멍 민감도가 오른다.
         r_max: 최대 반경(px). None 이면 캔버스 반대각.
         occupancy_threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
+        radial_domains: **낼 radial 도메인**. :data:`RADIAL_FOLDS` 의 key 중에서 고른다.
+            도메인 목록은 산출물의 정체(서명)에 들어가므로, 여기를 고치면 서명이 바뀌어 소비처가
+            **자동으로 다시 추출한다** — 코드가 도메인을 몰래 늘리면 서명이 그대로라 옛 산출물이
+            새 계약을 달고 남는다(실측으로 그렇게 어긋났다).
         max_transitions: radial_rle theta 당 최대 전이점 수 ``K``. 토큰 차원 상한에도 기여한다
             (token_dim = max(전역 그룹 차원, K)).
         variance_warn: 토큰 그룹 차원 편차 경고 배율 — max/min 이 이 값을 넘으면 경고(결합 실수 힌트).
@@ -83,6 +120,7 @@ class Geometry_Embedding_Config(Composable_Config):
     sub: int = 1
     r_max: float | None = None
     occupancy_threshold: float = 0.5
+    radial_domains: tuple[str, ...] = ("rle",)
     max_transitions: int = 8
     variance_warn: float = 3.0
 
@@ -111,6 +149,7 @@ class Geometry_Embedding(Trainable_Model):
         sub: int = 1,
         r_max: float | None = None,
         occupancy_threshold: float = 0.5,
+        radial_domains: tuple[str, ...] = ("rle",),
         max_transitions: int = 8,
         variance_warn: float = 3.0,
         **kwargs: Any,
@@ -133,6 +172,11 @@ class Geometry_Embedding(Trainable_Model):
         self.rle    = Radial_RLE(
             name="rle", num_radial=num_radial, num_angular=num_angular, r_max=r_max,
             threshold=occupancy_threshold, max_transitions=max_transitions, **_K)
+
+        _unknown = [_d for _d in radial_domains if _d not in RADIAL_FOLDS]
+        if _unknown:
+            raise KeyError(f"모르는 radial 도메인 {_unknown} (가능: {sorted(RADIAL_FOLDS)})")
+        self.radial_domains = tuple(radial_domains)
 
         self._variance_warn = float(variance_warn)
         # 전역 descriptor 의 (출력, spec) 순서 — data_group 재묶기·토큰 조립에 쓴다.
@@ -203,7 +247,22 @@ class Geometry_Embedding(Trainable_Model):
         (성질별 거리·클러스터), 학습 헤더는 :meth:`Tokens` 로 병합한다. 같은 입력에서 같은 값을
         내는 것이 공유의 핵심이고, 조립까지 같을 필요는 없다.
 
-        도메인 성질은 :attr:`domain_kinds` 가 밝힌다 (FEATURE=유클리드 / TOKEN=회전정합).
+        **세 radial 도메인은 구멍을 얼마나 보느냐로 갈린다** — 도메인이 직교라 각자 가르고,
+        어느 쪽이 맞는지는 데이터가 답한다::
+
+            radial_rle      밴드 배치까지 전부      "구멍 위치까지 같아야 같다"
+            radial_signed   살합 − 빈합 (접음)      "구멍 총량이 같으면 같다"
+            radial_outline  최외곽만               "실루엣만 같으면 같다"
+
+        **구멍 경계를 볼수록 도넛이 흩어진다.** 안쪽 모서리는 대비가 낮아 분할이 더 흔들리고 그
+        노이즈가 값에 실린다 — 실측(class 안 최근접 거리, 도넛 ÷ 솔리드)::
+
+            radial_signed 2.45  ·  살합 1.46  ·  radial_outline **0.89**
+
+        외곽선만 쓰면 도넛이 솔리드보다 **오히려 잘 뭉친다**. 크기 탓이 아니다 — 크기 정규화·표본별
+        std·z-score 어느 것으로도 이 비가 안 움직였다(2.48 → 2.38 / 2.40 / 2.60).
+
+        도메인 성질은 :attr:`domain_kinds` 가 밝힌다 (FEATURE=유클리드 / TOKEN=순서 있음).
         정규화 전 raw(원본 px·값) — 정규화는 소비처가 선형 scale 로 따로 한다.
         """
         _frame = self.frame(mask)
@@ -228,7 +287,9 @@ class Geometry_Embedding(Trainable_Model):
 
         _feats: dict[str, Tensor] = {_dg: torch.cat(_by_dg[_dg], dim=1)     # (B, dim) scalar 도메인
                                      for _dg in self._global_group_dims()}
-        _feats["radial_rle"] = self.rle(_polar)                            # (B, NT, K) sequence 도메인
+        _rle = self.rle(_polar)
+        for _name in self.radial_domains:                                  # config 가 고른 것만
+            _feats[f"radial_{_name}"] = RADIAL_FOLDS[_name](_rle)
         return _feats
 
     @property
@@ -236,7 +297,8 @@ class Geometry_Embedding(Trainable_Model):
         """도메인 -> 성질 (``FEATURE`` 순서 없음 / ``TOKEN`` 순서 있음). 소비처가 거리 방식을 고른다."""
         from ....feature._base import FEATURE, TOKEN
         _kinds = {_dg: FEATURE for _dg in self._global_group_dims()}
-        _kinds["radial_rle"] = TOKEN
+        for _name in self.radial_domains:
+            _kinds[f"radial_{_name}"] = TOKEN
         return _kinds
 
     def Tokens(self, mask: Tensor) -> Tensor:

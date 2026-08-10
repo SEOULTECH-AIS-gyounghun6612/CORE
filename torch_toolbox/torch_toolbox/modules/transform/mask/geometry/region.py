@@ -137,10 +137,10 @@ class Region_Scalars(Trainable_Model):
         _bu = (_umax - _umin) * self.norm
         _bv = (_vmax - _vmin) * self.norm
 
-        # major/minor — 4-fold 정준화(Centroid_Frame)는 u 가 major 라고 보장하지 않으므로
-        # (θ±90 후보가 u 를 minor 축에 놓을 수 있다) 회전 불변량인 major/minor 는 축 이름이
-        # 아니라 **분산 크기순**으로 뽑는다. max/min 은 교차점에서 연속이라 근정사각 형상에서도
-        # 안정적이다. skimage 규약(4*sqrt(lambda)).
+        # major/minor — `Centroid_Frame` 은 u 를 major 로 두지만, 회전 불변량인 major/minor 는
+        # 축 이름에 기대지 않고 **분산 크기순**으로 뽑는다. 근정사각 형상에서 주축각이 90°
+        # 튀어도 이 값은 안 흔들리고, max/min 은 교차점에서 연속이라 안정적이다.
+        # skimage 규약(4*sqrt(lambda)).
         _lu = (_m * u * u).sum(dim=(1, 2)) / _n
         _lv = (_m * v * v).sum(dim=(1, 2)) / _n
         _major = 4.0 * torch.maximum(_lu, _lv).clamp_min(0).sqrt() * self.norm
