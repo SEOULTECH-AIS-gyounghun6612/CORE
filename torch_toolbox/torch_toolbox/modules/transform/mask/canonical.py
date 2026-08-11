@@ -30,6 +30,16 @@ sub-pixel 원점으로 바꾸면 그 상수성이 깨진다.
 """
 
 
+def _Abs2(re: Tensor, im: Tensor) -> Tensor:
+    """복소수 크기 |re + i·im|. ``torch.hypot`` 대신 쓴다.
+
+    ONNX exporter 에 ``prims.hypot`` 디컴포지션이 없어 export 가 실패하기 때문이다.
+    ``clamp_min`` 은 0 에서 sqrt 의 기울기가 무한대인 것을 막는다(회전대칭 형상에서
+    실제로 0 이 나온다).
+    """
+    return (re * re + im * im).clamp_min(1e-24).sqrt()
+
+
 class Frame(NamedTuple):
     """정준 좌표계 파라미터.
 
@@ -203,7 +213,9 @@ class Centroid_Frame(Trainable_Model):
 
         # |Z2| 를 전체 관성으로 정규화 — k=2 harmonic 이 얼마나 실재하는지. 0 이면 주축이 없고
         # (원환·n>=3 회전대칭에서 정확히 0) 위 atan2 는 노이즈의 위상을 낸 것이다.
-        _aniso = torch.hypot(_z_re, _z_im) / _trace.clamp_min(1e-12)
+        # torch.hypot 을 쓰지 않는다 — ONNX exporter 에 prims.hypot 디컴포지션이 없어
+        # export 가 실패한다. 여기 값들은 정규화된 모멘트라 제곱해도 넘치지 않는다.
+        _aniso = _Abs2(_z_re, _z_im) / _trace.clamp_min(1e-12)
 
         # 2-fold 확정: **홀수 harmonic** Z3 = Σ m·r³·e^{i3θ} = Σ m·(dx + i·dy)³ 를 쓴다.
         # π 회전에서 e^{i3π} = -1 이라 Z3 가 통째로 부호를 뒤집는다 — 정확히 필요한 한 비트다.
@@ -230,7 +242,7 @@ class Centroid_Frame(Trainable_Model):
         # r³ 는 pow(1.5) 대신 r²·sqrt(r²) 로 둔다 (일반 거듭제곱보다 빠르다).
         _r2 = _xx + _yy
         _r3 = (_m * _r2 * _r2.sqrt()).sum(dim=(1, 2)).clamp_min(1e-12)
-        _flip = torch.hypot(_z3_re, _z3_im) / _r3              # (B,) [0, 1]
+        _flip = _Abs2(_z3_re, _z3_im) / _r3                    # (B,) [0, 1]
 
         _h, _w = self.size
         _center = torch.stack([_cx + (_w - 1) / 2.0, _cy + (_h - 1) / 2.0], dim=1)
