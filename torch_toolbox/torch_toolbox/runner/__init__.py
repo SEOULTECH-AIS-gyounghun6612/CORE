@@ -47,10 +47,10 @@ def Build_runner_parser() -> argparse.ArgumentParser:
     _p.add_argument("--gpus",          type=int, nargs="*", default=None)
     _p.add_argument("--resume_path",   type=str, default=None)
     _p.add_argument("--weight_path",   type=str, default=None)
-    # 정수 또는 "best"(학습 로그에서 지표가 가장 좋은 iter). str 로 받고 해석은
-    # Resolve_weight_path 가 한다 — 판정 기준은 러너의 best_metric 이 선언한다.
-    _p.add_argument("--start_iter",    type=str, default=None,
-                    help="복원할 iteration. 정수 또는 'best'")
+    # 명시 override 전용. 안 주면 러너가 선언한 phase 별 선택(resume_selection /
+    # eval_selection)이 정한다 — 도메인 상수를 실행할 때마다 문자열로 받지 않는다.
+    _p.add_argument("--start_iter",    type=int, default=None,
+                    help="복원할 iteration 을 직접 지정 (미지정 시 러너 선언에 따름)")
     # Export는 Base_Runner의 기능이므로 CLI도 여기 둔다 (--test와 같은 계층).
     # 저장 위치는 workspace(체크포인트가 있는 run 디렉터리) — 산출물이 출처와 함께 남는다.
     # 값은 TensorRT 추론 정밀도 = export 산출물의 속성이므로 --export에 병합했다

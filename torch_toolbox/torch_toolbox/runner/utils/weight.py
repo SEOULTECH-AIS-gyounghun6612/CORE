@@ -1,80 +1,118 @@
 from __future__ import annotations
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 from python_toolbox.file import Read_from
 
-#: ``start_iter`` 에 숫자 대신 줄 수 있는 키워드. 학습 로그에서 iter 를 고른다.
-BEST_KEYWORD = "best"
-
-#: ``(mode, metric, higher_is_better)``. 어떤 지표를 어느 방향으로 볼지는 도메인 지식이라
-#: 러너가 선언한다 — 이름으로 max/min 을 추측하면 그게 조용한 오답이 된다.
-BEST_METRIC = tuple[str, str, bool]
+#: iter 별 점수에서 하나를 고르는 규칙. **방향이 곧 규칙**이라 higher_is_better 같은
+#: 플래그를 따로 두지 않는다.
+SELECT_RULE = Callable[[Mapping[int, float]], int]
 
 
-def Select_iter_from_log(workspace: Path, best_metric: BEST_METRIC) -> int:
-    """``avg`` 로그를 훑어 지표가 가장 좋은 iteration 을 고른다.
+def Max_of(scores: Mapping[int, float]) -> int:
+    """점수가 가장 큰 iteration. 동률이면 나중 것(더 학습된 쪽)."""
+    return max(sorted(scores, reverse=True), key=lambda _k: scores[_k])
 
-    ``log_iter`` 가 iter 마다 ``avg/<mode>/<acc_name>/iter_<i>.json`` 으로 떨군 값을 읽는다.
 
-    **못 고르면 마지막 체크포인트로 떨어지지 않고 실패한다.** "best 를 골랐다" 고 믿는데
-    실제로는 아무거나 잡는 것이 제일 나쁘다.
+def Min_of(scores: Mapping[int, float]) -> int:
+    """점수가 가장 작은 iteration. 동률이면 나중 것."""
+    return min(sorted(scores, reverse=True), key=lambda _k: scores[_k])
+
+
+@dataclass(frozen=True)
+class Iter_Selection:
+    """복원할 iteration 을 고르는 방법. **규칙과 대상을 나눠 든다.**
+
+    나눠 두면 조립된다 — 같은 규칙을 train/val 어느 지표에도 걸 수 있고, 새 규칙을 붙여도
+    대상 쪽은 안 건드린다. ``Min_of`` + ``("train", "loss")`` 도 ``Max_of`` +
+    ``("val", "accuracy")`` 도 같은 자리에 들어간다.
+
+    **러너가 선언한다.** CLI 문자열로 받지 않는 이유는 도메인 상수이기 때문이다 — 오타가
+    런타임까지 살아 있을 이유가 없고, "이 도메인에서 좋은 모델이 무엇인가"는 실행할 때마다
+    고를 값이 아니다.
+
+    Attributes:
+        rule: 점수 dict 에서 iteration 하나를 고르는 함수.
+        mode: 볼 로그의 mode (``train`` / ``val`` 등).
+        metric: 볼 지표 이름 (``accuracy`` / ``loss`` 등).
+    """
+
+    rule: SELECT_RULE
+    mode: str
+    metric: str
+
+    def __call__(self, workspace: Path) -> int:
+        """학습 로그를 읽어 iteration 을 고른다.
+
+        Raises:
+            FileNotFoundError: 그 mode 의 로그 디렉터리가 없는 경우.
+            ValueError: 그 지표를 가진 iteration 이 하나도 없는 경우.
+        """
+        _scores = Read_metric_log(workspace, self.mode, self.metric)
+        _pick = self.rule(_scores)
+        print(f"[INFO] iter {_pick} 선택 ({self.rule.__name__} of "
+              f"{self.mode}/{self.metric}={_scores[_pick]:.6f}, 후보 {len(_scores)}개)")
+        return _pick
+
+
+def Read_metric_log(workspace: Path, mode: str, metric: str) -> dict[int, float]:
+    """``avg/<mode>/<acc_name>/iter_<i>.json`` 에서 ``{iter: 값}`` 을 모은다.
+
+    ``log_iter`` 가 학습 중 떨군 값이다.
 
     Args:
         workspace: run 디렉터리.
-        best_metric: ``(mode, metric, higher_is_better)``.
+        mode: 로그 mode 이름.
+        metric: 지표 이름.
 
     Returns:
-        선택된 iteration.
+        iteration → 값.
 
     Raises:
-        FileNotFoundError: 로그 디렉터리가 없는 경우(학습을 안 돌렸거나 mode 이름이 틀렸다).
-        ValueError: 그 지표를 가진 iter 가 없거나, 여러 accumulator 가 같은 이름을 내서
-            어느 것을 볼지 모호한 경우.
+        FileNotFoundError: 그 mode 의 로그 디렉터리가 없는 경우 — 학습을 안 돌렸거나
+            mode 이름이 틀렸다.
+        ValueError: 지표가 없거나, 여러 accumulator 가 같은 이름을 내서 모호한 경우.
     """
-    _mode, _metric, _higher = best_metric
-    _dir = workspace / "avg" / _mode
+    _dir = workspace / "avg" / mode
     if not _dir.exists():
         raise FileNotFoundError(
-            f"'{BEST_KEYWORD}' 를 요구했으나 로그가 없다: {_dir}. "
-            f"학습을 돌렸는지, mode 이름('{_mode}')이 맞는지 확인할 것."
+            f"학습 로그가 없다: {_dir}. 학습을 돌렸는지, mode 이름('{mode}')이 맞는지 "
+            f"확인할 것."
         )
 
     _scores: dict[int, float] = {}
     _sources: set[str] = set()
-    for _json in _dir.glob(f"*/iter_*.json"):
+    for _json in _dir.glob("*/iter_*.json"):
         _iter = _Iter_of(_json)
         if _iter is None:
             continue
         _ok, _data = Read_from(_json)
-        if not _ok or not isinstance(_data, dict) or _metric not in _data:
+        if not _ok or not isinstance(_data, dict) or metric not in _data:
             continue
-        _scores[_iter] = float(_data[_metric])
+        _scores[_iter] = float(_data[metric])
         _sources.add(_json.parent.name)
 
     if len(_sources) > 1:
         raise ValueError(
-            f"'{_metric}' 를 내는 accumulator 가 둘 이상이다({sorted(_sources)}). "
+            f"'{metric}' 를 내는 accumulator 가 둘 이상이다({sorted(_sources)}). "
             f"어느 것을 볼지 모호하다."
         )
     if not _scores:
         _seen = sorted({_p.parent.name for _p in _dir.glob("*/iter_*.json")})
         raise ValueError(
-            f"로그에 '{_metric}' 지표가 없다. {_dir} 의 accumulator: "
+            f"로그에 '{metric}' 지표가 없다. {_dir} 의 accumulator: "
             f"{_seen if _seen else '없음'}"
         )
-
-    _pick = (max if _higher else min)(_scores, key=lambda _k: _scores[_k])
-    print(f"[INFO] best iter={_pick} ({_mode}/{_metric}={_scores[_pick]:.6f}, "
-          f"후보 {len(_scores)}개)")
-    return _pick
+    return _scores
 
 
 def Resolve_weight_path(
     resume_path: str | None,
     weight_path: str | None,
     workspace: Path,
-    start_iter: int | str | None,
-    best_metric: BEST_METRIC | None = None,
+    start_iter: int | None,
+    selection: Iter_Selection | None = None,
 ) -> str | None:
     """resume과 weight 경로를 해석하여 실제 파일 경로를 반환함. resume이 우선.
 
@@ -86,13 +124,16 @@ def Resolve_weight_path(
 
     **둘 다 지정되지 않은 경우(처음부터 학습)만 None이 정상**이며, 그때만 조용히 넘어간다.
 
+    iteration 을 고르는 순서는 ``start_iter`` → ``selection`` → 마지막 체크포인트다.
+    ``selection`` 을 넘길지는 **호출 측이 정한다** — 학습 재개에 걸면 이미 지난 iteration
+    부터 다시 돌면서 뒤 체크포인트를 덮어쓴다.
+
     Args:
         resume_path: run 디렉터리명. 지정되면 ``workspace/checkpoints`` 에서 찾는다.
         weight_path: 가중치 파일 경로. ``resume_path`` 가 없을 때만 쓰인다.
         workspace: run 디렉터리. resume 시 그 하위 ``checkpoints`` 를 뒤진다.
-        start_iter: 지목할 iteration. 숫자면 그 iter, ``"best"`` 면 학습 로그에서 고른다
-            (``best_metric`` 필요). None이면 디렉터리의 마지막 체크포인트.
-        best_metric: ``"best"`` 를 해석할 ``(mode, metric, higher_is_better)``.
+        start_iter: 지목할 iteration. 명시하면 ``selection`` 보다 우선한다.
+        selection: 러너가 선언한 iteration 선택 방법. None이면 마지막 체크포인트.
 
     Returns:
         체크포인트 파일 경로. 가중치를 요구하지 않은 경우에만 None.
@@ -100,7 +141,6 @@ def Resolve_weight_path(
     Raises:
         FileNotFoundError: 가중치를 요구했으나(resume_path 또는 weight_path 지정) 해석하지
             못한 경우. 초기 가중치로 진행하지 않고 여기서 멈춘다.
-        ValueError: ``start_iter`` 가 숫자도 알려진 키워드도 아닌 경우.
     """
     if resume_path is not None:
         if weight_path is not None:
@@ -113,7 +153,9 @@ def Resolve_weight_path(
                 f"--resume_path 에는 상위 경로 없이 run 디렉터리명만 준다."
             )
 
-        _iter = _Resolve_start_iter(start_iter, workspace, best_metric)
+        _iter = start_iter
+        if _iter is None and selection is not None:
+            _iter = selection(workspace)
 
         if _iter is not None:
             _target = _ckpt_dir / f"checkpoint_{_iter}.pt"
@@ -139,33 +181,6 @@ def Resolve_weight_path(
         raise FileNotFoundError(f"weight 파일 없음: {weight_path}")
 
     return None
-
-
-def _Resolve_start_iter(
-    start_iter: int | str | None,
-    workspace: Path,
-    best_metric: BEST_METRIC | None,
-) -> int | None:
-    """``start_iter`` 를 정수로 정규화한다. 키워드면 로그에서 고른다."""
-    if start_iter is None:
-        return None
-    if isinstance(start_iter, int):
-        return start_iter
-
-    _text = str(start_iter).strip()
-    if _text.lstrip("-").isdigit():
-        return int(_text)
-    if _text != BEST_KEYWORD:
-        raise ValueError(
-            f"start_iter 는 정수이거나 '{BEST_KEYWORD}' 여야 한다: {start_iter!r}"
-        )
-    if best_metric is None:
-        raise ValueError(
-            f"'{BEST_KEYWORD}' 를 요구했으나 판정 기준이 없다. 러너가 best_metric "
-            f"(mode, metric, higher_is_better) 을 선언해야 한다 — 어떤 지표를 어느 "
-            f"방향으로 볼지는 프레임워크가 알 수 없다."
-        )
-    return Select_iter_from_log(workspace, best_metric)
 
 
 def _Iter_of(path: Path) -> int | None:

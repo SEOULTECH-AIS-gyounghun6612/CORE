@@ -15,7 +15,7 @@ from torch.multiprocessing.spawn import spawn
 from python_toolbox.project import Project_Template
 from python_toolbox.file import Write_to
 
-from .utils.weight import BEST_METRIC, Resolve_weight_path
+from .utils.weight import Iter_Selection, Resolve_weight_path
 
 from .assembler import Component_Assembler
 
@@ -40,11 +40,14 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
         node_rank_offset: 멀티 노드 시 현재 노드의 rank 시작 오프셋.
         resume_path: resume 시 기존 워크스페이스 경로.
         weight_path: 특정 가중치 파일 경로.
-        start_iter: 시작 이터레이션 직접 지정. ``"best"`` 면 학습 로그에서 고른다
-            (``best_metric`` 필요). None이면 체크포인트에서 결정.
-        best_metric: ``"best"`` 를 해석할 ``(mode, metric, higher_is_better)``.
-            **하위 러너가 선언한다** — 어떤 지표를 어느 방향으로 볼지는 도메인 지식이고,
-            이름으로 max/min 을 추측하면 그게 조용한 오답이 된다. None이면 키워드를 못 쓴다.
+        start_iter: 시작 이터레이션 직접 지정. 주면 아래 선언보다 우선한다.
+            None이면 phase 별 선언(``resume_selection`` / ``eval_selection``)이 정하고,
+            그것도 없으면 마지막 체크포인트.
+        resume_selection: **학습 재개** 시 어느 체크포인트에서 이어갈지. 기본 None(마지막).
+            여기에 지표 기반 선택을 걸면 이미 지난 iteration 부터 다시 돌면서 뒤 체크포인트를
+            덮어쓰므로, 의도가 분명할 때만 선언한다.
+        eval_selection: **읽기만 하는 패스**(test·export 등)에서 어느 체크포인트를 볼지.
+            "이 도메인에서 좋은 모델이 무엇인가" 는 도메인 지식이라 하위 러너가 선언한다.
     """
 
     project_name: str
@@ -58,11 +61,13 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
     node_rank_offset: int = 0
     resume_path: str | None = None
     weight_path: str | None = None
-    start_iter: int | str | None = None
+    start_iter: int | None = None
     is_multi_gpu: bool = field(init=False)
 
-    #: 하위 러너가 덮어쓴다. 인스턴스 설정이 아니라 도메인 선언이라 ClassVar 다.
-    best_metric: ClassVar[BEST_METRIC | None] = None
+    # 실행 인자가 아니라 **도메인 선언**이라 ClassVar 다. train/val 루프와 test 는 이미
+    # is_test 로 갈려 있으므로, 체크포인트 선택도 같은 경계로 나눠 선언한다.
+    resume_selection: ClassVar[Iter_Selection | None] = None
+    eval_selection: ClassVar[Iter_Selection | None] = None
 
     def __post_init__(self):
         super().__init__(self.project_name)
@@ -107,10 +112,11 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
                 print(f"[INFO] Single-Process: Ready on {_device}")
                 _w_size = 1
 
-            # 가중치 경로 결정: resume_path → weight_path → start_iter 우선순위
+            # 가중치 경로 결정: resume_path → weight_path → start_iter 우선순위.
+            # 체크포인트 선택은 phase 선언을 그대로 넘긴다 — 여기서 조건을 만들지 않는다.
             _resolved_path = Resolve_weight_path(
                 self.resume_path, self.weight_path, self.workspace, self.start_iter,
-                self.best_metric,
+                self.eval_selection if is_test else self.resume_selection,
             )
             # Assembler 호출 → 컴포넌트 조립 + 가중치 로드 → start_iter 반환
             _start_iter, _components = self.assembler(

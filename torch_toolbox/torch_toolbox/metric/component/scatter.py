@@ -9,6 +9,46 @@ from ..definition import Accumulator
 from .. import ACCUMULATORS
 
 
+def Oas_shrinkage(cov: Tensor, dof: int) -> float:
+    """공분산과 자유도만으로 shrinkage 계수를 정한다 (OAS 해석해).
+
+    ``Sigma_hat = (1-r)*S + r*(tr S/d)*I`` 의 ``r`` 을 닫힌 식으로 낸다. 잡을 값은
+    "표본이 부족한 만큼 구(球) 쪽으로 얼마나 당길까" 다 — 표본이 많으면 0 으로, 차원에 비해
+    적으면 1 로 간다.
+
+    **Ledoit-Wolf 대신 OAS 를 쓰는 이유는 비용이다.** LW 원식은 표본별 4차 항
+    ``sum ||r_k||^4`` 이 필요해 전수 패스를 한 번 더 돌아야 한다. OAS 는 같은 목표(스케일
+    항등행렬)에 대해 ``tr(S)``·``tr(S^2)``·자유도만 쓰므로 이미 모은 것으로 끝난다.
+
+    Args:
+        cov: (d, d) 대칭 공분산 추정치.
+        dof: 그 추정에 쓰인 자유도. 클래스 내 풀링이면 ``표본 수 - 클래스 수`` 다.
+
+    Returns:
+        ``[0, 1]`` 의 shrinkage 계수.
+
+    Raises:
+        ValueError: ``cov`` 가 정사각이 아니거나 ``dof`` 가 1 미만인 경우.
+    """
+    if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
+        raise ValueError(f"cov 는 정사각이어야 한다: {tuple(cov.shape)}")
+    if dof < 1:
+        raise ValueError(f"자유도가 1 미만이다: {dof}")
+
+    _s = cov.double()
+    _d = _s.shape[0]
+    _tr = torch.diagonal(_s).sum()
+    _tr_sq = (_s * _s).sum()                      # 대칭이라 tr(S^2) = sum(S*S)
+
+    # S 가 이미 등방이면 분모가 0 이다 — 당길 방향이 없으니 목표와 같다고 본다.
+    _den = (dof + 1 - 2.0 / _d) * (_tr_sq - _tr ** 2 / _d)
+    if _den <= 0:
+        return 1.0
+
+    _num = (1 - 2.0 / _d) * _tr_sq + _tr ** 2
+    return float(torch.clamp(_num / _den, 0.0, 1.0))
+
+
 @ACCUMULATORS.Register_module("within_class_scatter_accumulator")
 class Within_Class_Scatter_Accumulator(Accumulator):
     """클래스별 평균과 **클래스 내 공분산의 풀링**을 한 패스로 누적한다.
@@ -20,7 +60,7 @@ class Within_Class_Scatter_Accumulator(Accumulator):
     메모리는 공유 스캐터 `(D, D)` 하나와 클래스별 평균 `(K, D)` 다. 클래스마다 공분산을
     따로 들면 `K·D²` 이 되어 못 쓴다 — 풀링이 목적이므로 하나로 합치며 누적한다.
 
-    **왜 단순 2차 모멘트 차가 아닌가.** `Σxxᵀ − Σ n_k μ_k μ_kᵀ` 로도 같은 값이 나오지만,
+    **왜 단순 2차 모멘트 차가 아닌가.** `Σxxᵀ - Σ n_k μ_k μ_kᵀ` 로도 같은 값이 나오지만,
     클래스가 뭉쳐 있을수록 두 큰 값의 차가 되어 자리수가 상쇄된다(정규화 임베딩이면
     `Σxxᵀ` 의 trace 가 `N`, 결과의 trace 는 그보다 훨씬 작다). 여기서는 배치마다 배치
     평균 기준으로 중심화한 뒤 평균 차이를 보정해 합치므로(Chan 병합) 큰 값의 차가 생기지
