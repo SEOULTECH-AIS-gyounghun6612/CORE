@@ -77,12 +77,13 @@ RADIAL_FOLDS = {
 
 #: 생성 그룹 -> 데이터 그룹(물리량 종류). 같은 key 끼리 pool/표시 단위로 묶는다. 매핑에 없으면
 #: 자기 이름이 곧 key(고유 그룹). radial 계열은 모두 px 반경이라 한 pool 이어야 outer-inner 간격
-#: (살 두께·구멍 깊이)이 표준화로 안 사라진다. size 는 면적(px²)·길이(px) 혼합이라 자기 그룹으로 둔다.
+#: (살 두께·구멍 깊이)이 표준화로 안 사라진다. size·area 는 이제 전부 길이 차원(면적 항은 sqrt)이나,
+#: area 는 1/r 가중이 섞여 의미가 달라 그룹을 유지한다.
 DATA_GROUP: dict[str, str] = {
     "radial_outer": "radius", "radial_inner": "radius",
     "outer_stats": "radius", "inner_stats": "radius", "thickness_stats": "radius",
     "coverage_stats": "coverage",
-    "area_cartesian": "area", "area_polar": "area",
+    "area_cartesian_sqrt": "area", "area_polar_sqrt": "area",
     "area_ratio": "ratio", "ratio": "ratio",
     "chirality": "moment", "moments": "moment",
     "position": "position", "size": "size",
@@ -97,11 +98,13 @@ class Geometry_Embedding_Config(Composable_Config):
     """극좌표 기반 형상 **토큰** embedding 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``. 데이터셋 target_size 와 같아야 한다.
+        sampling_size: **샘플링 기준 캔버스** ``(H, W)`` — 입력 캔버스가 아니다. 하위 모듈이
+            여기서 샘플 반경 기본값(``r_max``), 길이 단위(px 환산), 면적 상한을 뽑는다.
+            입력은 이 값과 무관하게 아무 크기나 들어와도 된다.
         num_radial: 극좌표 r bin 수 ``NR``.
         num_angular: 극좌표 theta bin 수 ``NT``. 각도 토큰 수(radial_rle).
         sub: 극좌표 셀당 축별 sub-sample 수. 늘리면 바깥쪽 얇은 구멍 민감도가 오른다.
-        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        r_max: 최대 반경(px). None 이면 ``sampling_size`` 반대각.
         occupancy_threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
         radial_domains: **낼 radial 도메인**. :data:`RADIAL_FOLDS` 의 key 중에서 고른다.
             도메인 목록은 산출물의 정체(서명)에 들어가므로, 여기를 고치면 서명이 바뀌어 소비처가
@@ -114,7 +117,7 @@ class Geometry_Embedding_Config(Composable_Config):
     config_type: str = _CFG
     object_type: str = _NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
     num_radial: int = 224
     num_angular: int = 512
     sub: int = 1
@@ -130,7 +133,7 @@ class Geometry_Embedding(Trainable_Model):
     """``(B, 1, H, W)`` 이진 마스크 -> ``(B, FEAT_DIM)`` geometry feature.
 
     Args:
-        size: 캔버스 ``(H, W)``.
+        sampling_size: 샘플링 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         num_radial: 극좌표 r bin 수.
         num_angular: 극좌표 theta bin 수.
         sub: 극좌표 셀당 축별 sub-sample 수 (표본 ``sub**2``).
@@ -143,7 +146,7 @@ class Geometry_Embedding(Trainable_Model):
 
     def Build(
         self,
-        size: tuple[int, int] = (224, 224),
+        sampling_size: tuple[int, int] = (224, 224),
         num_radial: int = 224,
         num_angular: int = 512,
         sub: int = 1,
@@ -154,7 +157,7 @@ class Geometry_Embedding(Trainable_Model):
         variance_warn: float = 3.0,
         **kwargs: Any,
     ) -> None:
-        _K = dict(trainable=False, size=size)
+        _K = dict(trainable=False, sampling_size=sampling_size)
         # 파이프라인(공유 인프라 — 항상). 중간값 frame/u,v/polar/prof 를 만든다.
         self.frame  = Centroid_Frame(name="frame", **_K)
         self.coords = Frame_Coords(name="coords", **_K)
@@ -266,7 +269,7 @@ class Geometry_Embedding(Trainable_Model):
         정규화 전 raw(원본 px·값) — 정규화는 소비처가 선형 scale 로 따로 한다.
         """
         _frame = self.frame(mask)
-        _u, _v = self.coords(_frame)
+        _u, _v = self.coords(mask, _frame)
         _polar = self.polar(mask, _frame)
         _prof  = self.radial(_polar)
 

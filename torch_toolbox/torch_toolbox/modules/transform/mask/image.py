@@ -33,27 +33,35 @@ _CH_CFG     = f"{_CH_NAME}_Config"
 @CFGS.Register_module(_ALIGN_CFG)
 @dataclass
 class Align_Raster_Config(Composable_Config):
-    """PCA 정준 자세 정렬 설정.
+    """주축 정렬 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``.
+        output_size: **출력** 캔버스 ``(H, W)``. 입력 캔버스는 ``forward`` 가 읽으므로 자유.
     """
     config_type: str = _ALIGN_CFG
     object_type: str = _ALIGN_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    output_size: tuple[int, int] = (224, 224)
 
 
 @MODELS.Register_module(_ALIGN_NAME)
 class Align_Raster(Trainable_Model):
-    """마스크를 정준 자세로 돌린다 — centroid 를 중심에, 주축을 수평으로.
+    """마스크를 :attr:`Frame.angle` 만큼 돌린다 — centroid 를 중심에, 주축을 수평으로.
 
-    각도와 중심은 :class:`~torch_toolbox.modules.transform.mask.canonical.Centroid_Frame` 이 해석적으로
-    준다(2x2 공분산 닫힌 해). 여기서는 그 파라미터로 리샘플만 한다. 기존 numpy 경로는
-    LINEAR resize 후 NEAREST warp 를 확장 캔버스에 걸고 다시 crop 해 **리샘플을 두 번**
+    각도와 중심은 :class:`~torch_toolbox.modules.transform.mask.canonical.Centroid_Frame` 이
+    해석적으로 준다 — 축은 k=2 harmonic, 180° 는 k=3 harmonic ``Z3`` 의 위상(부품별
+    ``flip_phase_deg`` 표)이 정한 값이다. 여기서는 그 파라미터로 리샘플만 한다. 기존 numpy
+    경로는 LINEAR resize 후 NEAREST warp 를 확장 캔버스에 걸고 다시 crop 해 **리샘플을 두 번**
     했다 — 여기서는 한 번이다.
 
+    출력 캔버스는 ``output_size``, 입력 캔버스는 ``forward`` 가 읽으므로 자유다.
+
     Note:
+        **"정준(canonical) 자세" 가 아니다.** 대칭 형상은 각도 자체가 미결정이다
+        (n>=3 회전대칭이면 ``Z2 = 0``, 2회 대칭이면 ``Z3 = 0``) — 그 경우 여기 출력은
+        노이즈가 정한 방향이다. :attr:`Frame.anisotropy` / :attr:`Frame.flip_margin` 이
+        그 미결정성을 보고하므로 소비처가 함께 읽어야 한다.
+
         회전 자유도를 **제거**하는 쪽이다. 무작위로 흔들어 모델이 배우게 하는
         :class:`~dataloader.utils.augment.Mask_Rotate` 와 상호 배타적이며, 이쪽은
         추론에도 필요해 배포 그래프에 리샘플이 남는다.
@@ -62,10 +70,10 @@ class Align_Raster(Trainable_Model):
     _gx: Tensor
     _gy: Tensor
 
-    def Build(self, size: tuple[int, int] = (224, 224), **kwargs: Any) -> None:
-        _h, _w = int(size[0]), int(size[1])
-        self.size = (_h, _w)
-        self.frame = Centroid_Frame(name="frame", trainable=False, size=self.size)
+    def Build(self, output_size: tuple[int, int] = (224, 224), **kwargs: Any) -> None:
+        _h, _w = int(output_size[0]), int(output_size[1])
+        self.output_size = (_h, _w)
+        self.frame = Centroid_Frame(name="frame", trainable=False, sampling_size=self.output_size)
 
         # 출력 픽셀의 캔버스 중심 기준 좌표 (상수).
         _ys = torch.arange(_h, dtype=torch.float32) - (_h - 1) / 2.0
@@ -81,13 +89,14 @@ class Align_Raster(Trainable_Model):
     def forward(self, mask: Tensor) -> Tensor:
         """
         Args:
-            mask: (B, 1, H, W) float — 전경 1 / 배경 0.
+            mask: (B, 1, Hin, Win) float — 전경 1 / 배경 0. 입력 캔버스는 자유.
 
         Returns:
-            (B, 1, H, W) float — 정준 자세.
+            (B, 1, H, W) float — 정준 자세. 캔버스는 ``output_size``.
         """
         _b = mask.shape[0]
-        _h, _w = self.size
+        _h, _w = self.output_size                                     # 출력 캔버스
+        _ih, _iw = mask.shape[-2], mask.shape[-1]              # 입력 캔버스 (gather 범위)
         _flat = mask.reshape(_b, -1)
         _frame = self.frame(mask)
 
@@ -103,8 +112,8 @@ class Align_Raster(Trainable_Model):
 
         def _tap(_dy: int, _dx: int) -> Tensor:
             _r, _c = _y0 + _dy, _x0 + _dx
-            _ok = (_r >= 0) & (_r < _h) & (_c >= 0) & (_c < _w)
-            _i = _r.clamp(0, _h - 1) * _w + _c.clamp(0, _w - 1)
+            _ok = (_r >= 0) & (_r < _ih) & (_c >= 0) & (_c < _iw)
+            _i = _r.clamp(0, _ih - 1) * _iw + _c.clamp(0, _iw - 1)
             return _flat.gather(1, _i) * _ok.to(_flat.dtype)
 
         _v = (

@@ -15,9 +15,18 @@ export 그래프에서 떼지 않고 GPU 에서 함께 최적화한다.
 - **방위는 harmonic 차수로 고정한다.** 축 자체는 k=2 (`Z2 = Σ m·r²·e^{i2θ}`)가 정하고 u 를
   major 로 둔다 — 여기까지는 π 주기라 180° 가 남는다. 그 한 비트는 **홀수** harmonic k=3
   (`Z3`)의 위상으로만 가를 수 있다(짝수는 π 회전에 불변, 원점 이동도 평행축 정리상 무력).
-  두 harmonic 의 상대 크기가 그대로 신뢰도 `anisotropy` / `flip_margin` 이라, 정렬을 믿을지
-  회전 불변 거리로 내려갈지는 소비처가 그 값으로 판단한다(`Centroid_Frame` ↔ `Region_Scalars`
+  `Z3` 의 어느 위상 성분(0°/90°)을 볼지는 **부품별 표**가 정한다 — 프레임마다 값을 보고 고르면
+  경계에 걸린 형상이 회전마다 선택을 뒤집어 더 나빠진다(실측).
+- **그래서 이 정렬은 `정준(canonical)` 이 아니다.** 대칭 형상은 각도가 원리적으로 미결정이다
+  (n≥3 회전대칭 `Z2=0`, 2회 대칭 `Z3=0`). 두 harmonic 의 상대 크기가 그대로 신뢰도
+  `anisotropy` / `flip_margin` 이라, 정렬을 믿을지 회전 불변 거리로 내려갈지는 소비처가 그 값으로 판단한다(`Centroid_Frame` ↔ `Region_Scalars`
   한 벌 — 후자는 major/minor 를 축 이름이 아니라 고유값 크기순으로 뽑아 안전측에 둔다).
+- **입력 캔버스는 자유다 — 크기 인자는 전부 다른 뜻이다.** 모든 모듈이 입력 H·W 를 `forward`
+  에서 읽으므로 앞단 crop 이 필수가 아니다(원본 프레임을 그대로 넣어도 된다). 그래서 config 의
+  크기 인자는 이름으로 역할을 가른다: `sampling_size` = 샘플 반경 기본값·길이 단위·Spec 상한을
+  뽑는 **기준 캔버스**(입력이 아니다), `output_size`/`target_size`/`crop_size` = **출력 캔버스**.
+  `Frame_Coords` 와 `Region_Scalars` 의 `sampling_size` 는 같아야 한다 — 전자가 나눈 길이 단위를
+  후자가 곱해 px 로 되돌린다.
 - **차원은 하드코딩하지 않는다.** 각 서술자가 `Feature_Spec` 으로 자기 차원·범위를 선언하고
   조립체가 합산한다 → 설정을 바꿔도 슬라이스가 조용히 어긋나지 않는다.
 - **구멍은 형상 정보다.** fill / 최대연결성분 / convex hull 을 쓰지 않는다(실측상 표본의 56%가
@@ -38,7 +47,7 @@ export 그래프에서 떼지 않고 GPU 에서 함께 최적화한다.
        │   geometry/spec Normalizer                  (정규화)  → (B, FEAT_DIM)
        │   geometry/__init__ Geometry_Embedding      = 위 전부의 조립체 ────┘
        └─ image 분기 (백본 입력)
-           image.Align_Raster → Image_Channels       (정준자세 + mask/blur/edge 채널)
+           image.Align_Raster → Image_Channels       (주축 정렬 + mask/blur/edge 채널)
 ```
 
 ## 역할 지도
@@ -72,7 +81,8 @@ export 그래프에서 떼지 않고 GPU 에서 함께 최적화한다.
   마스크 → `(B, FEAT_DIM)`. `Forward_with_aux` 로 `r_outer`·`frame_angle` 도 함께 낸다.
 
 **image 분기 — `image.py`** (DINOv2 백본 입력)
-- `Align_Raster` [align_raster] — PCA 정준 자세로 정렬. **수동 bilinear**(GridSample/warpAffine 아님).
+- `Align_Raster` [align_raster] — `Frame.angle` 만큼 회전 정렬(정준 자세는 아니다 — 위 설계 규율).
+  **수동 bilinear**(GridSample/warpAffine 아님).
 - `Image_Channels` [image_channels] — `mask / blur{k} / edge` 채널 스택.
 
 ## 남은 것

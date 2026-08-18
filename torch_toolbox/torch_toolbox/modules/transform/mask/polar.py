@@ -44,16 +44,16 @@ class Polar_Raster_Config(Composable_Config):
     """극좌표 리샘플 설정.
 
     Attributes:
-        size: 입력 캔버스 ``(H, W)``.
+        sampling_size: 샘플 반경 기본값을 뽑는 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         num_radial: r 방향 bin 수 ``NR``.
         num_angular: theta 방향 bin 수 ``NT``.
         sub: 셀당 축별 sub-sample 수. 셀당 표본은 ``sub**2``.
-        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        r_max: 최대 반경(px). None 이면 ``sampling_size`` 반대각.
     """
     config_type: str = _CFG
     object_type: str = _NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
     num_radial: int = 224
     num_angular: int = 512
     sub: int = 1
@@ -65,16 +65,16 @@ class Polar_Raster(Trainable_Model):
     """이진 마스크 + :class:`Frame` -> ``(B, NR, NT)`` occupancy 분수.
 
     Args:
-        size: 입력 캔버스 ``(H, W)``.
+        sampling_size: 샘플 반경 기본값을 뽑는 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         num_radial: r 방향 bin 수 ``NR``.
         num_angular: theta 방향 bin 수 ``NT``.
         sub: 셀당 축별 sub-sample 수. 셀당 표본은 ``sub**2`` 개.
-        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        r_max: 최대 반경(px). None 이면 ``sampling_size`` 반대각.
 
     Note:
         상수 버퍼는 ``persistent=False`` 라 state_dict 에는 안 들어가지만,
         **ONNX 에서는 initializer 로 구워진다.** 즉 그래프가 이 설정에 고정되며
-        ``NR``/``NT``/``sub``/캔버스를 바꾸려면 재export 다.
+        ``NR``/``NT``/``sub``/``r_max`` 를 바꾸려면 재export 다.
 
         런타임 메모리는 ``B * NR * NT * sub**2`` 에 비례한다. 학습은 DataLoader worker 에서
         샘플 단위(B=1)로 돌므로 문제가 없으나, 큰 배치로 GPU 에서 한번에 돌릴 때는
@@ -93,15 +93,15 @@ class Polar_Raster(Trainable_Model):
 
     def Build(
         self,
-        size: tuple[int, int] = (224, 224),
+        sampling_size: tuple[int, int] = (224, 224),
         num_radial: int = 224,
         num_angular: int = 512,
         sub: int = 1,
         r_max: float | None = None,
         **kwargs: Any,
     ) -> None:
-        _h, _w = int(size[0]), int(size[1])
-        self.size = (_h, _w)
+        _h, _w = int(sampling_size[0]), int(sampling_size[1])
+        self.sampling_size = (_h, _w)
         self.num_radial = int(num_radial)
         self.num_angular = int(num_angular)
         self.sub = int(sub)
@@ -130,11 +130,22 @@ class Polar_Raster(Trainable_Model):
         self.register_buffer("_frac_y", (_oy - _r0).reshape(-1).to(torch.float32), persistent=False)
         self.register_buffer("_theta_idx", torch.arange(self.num_angular), persistent=False)
 
-    def _sample(self, flat: Tensor, row: Tensor, col: Tensor) -> Tensor:
-        """``(B, H*W)`` 마스크에서 정수 격자점을 읽는다. 범위 밖은 0."""
-        _h, _w = self.size
-        _valid = (row >= 0) & (row < _h) & (col >= 0) & (col < _w)
-        _idx = row.clamp(0, _h - 1) * _w + col.clamp(0, _w - 1)
+    def _sample(self, flat: Tensor, row: Tensor, col: Tensor, h: int, w: int) -> Tensor:
+        """``(B, H*W)`` 마스크에서 정수 격자점을 읽는다. 범위 밖은 0.
+
+        캔버스 크기는 build 상수가 아니라 인자로 받는다 — 샘플 반경은 ``r_max`` 가 정해
+        입력 크기와 무관하므로, 크롭 없이 원본 프레임을 그대로 넣을 수 있다
+        (``Center_Crop`` 과 같은 규약).
+        """
+        # stride 가 틀어지면 유효 인덱스 범위 안에서 엉뚱한 화소를 읽어 조용히 틀린다.
+        # 채널이 1이 아닌 입력도 여기서 걸린다.
+        if flat.shape[-1] != h * w:
+            raise ValueError(
+                f"flat 길이 {flat.shape[-1]} != h*w ({h}*{w}={h * w}). "
+                f"입력이 (B, 1, H, W) 인지 확인할 것."
+            )
+        _valid = (row >= 0) & (row < h) & (col >= 0) & (col < w)
+        _idx = row.clamp(0, h - 1) * w + col.clamp(0, w - 1)
         return flat.gather(1, _idx) * _valid.to(flat.dtype)
 
     def forward(self, mask: Tensor, frame: Frame) -> Tensor:
@@ -147,6 +158,7 @@ class Polar_Raster(Trainable_Model):
             (B, NR, NT) float — 셀별 occupancy 분수 [0, 1]. theta 는 주축 정렬 완료.
         """
         _b = mask.shape[0]
+        _h, _w = mask.shape[-2], mask.shape[-1]
         _flat = mask.reshape(_b, -1)
 
         _oc = frame.origin[:, 0].view(-1, 1)                   # (B, 1) col
@@ -157,10 +169,10 @@ class Polar_Raster(Trainable_Model):
         _fx = self._frac_x.view(1, -1)
         _fy = self._frac_y.view(1, -1)
 
-        _v00 = self._sample(_flat, _r0,     _c0)
-        _v01 = self._sample(_flat, _r0,     _c0 + 1)
-        _v10 = self._sample(_flat, _r0 + 1, _c0)
-        _v11 = self._sample(_flat, _r0 + 1, _c0 + 1)
+        _v00 = self._sample(_flat, _r0,     _c0,     _h, _w)
+        _v01 = self._sample(_flat, _r0,     _c0 + 1, _h, _w)
+        _v10 = self._sample(_flat, _r0 + 1, _c0,     _h, _w)
+        _v11 = self._sample(_flat, _r0 + 1, _c0 + 1, _h, _w)
 
         _val = (
             _v00 * ((1.0 - _fy) * (1.0 - _fx))

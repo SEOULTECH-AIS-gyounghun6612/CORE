@@ -40,6 +40,17 @@ def _Abs2(re: Tensor, im: Tensor) -> Tensor:
     return (re * re + im * im).clamp_min(1e-24).sqrt()
 
 
+def _Grid(h: int, w: int, device: torch.device) -> tuple[Tensor, Tensor]:
+    """캔버스 기하중심 기준 픽셀 좌표 ``(dy (1,H,1), dx (1,1,W))``.
+
+    build 상수가 아니라 입력 크기에서 만든다 — 캔버스가 자유로워야 크롭 없이 원본
+    프레임을 넣을 수 있다 (``Polar_Raster._sample`` 과 같은 규약).
+    """
+    _ys = torch.arange(h, dtype=torch.float32, device=device) - (h - 1) / 2.0
+    _xs = torch.arange(w, dtype=torch.float32, device=device) - (w - 1) / 2.0
+    return _ys.view(1, h, 1), _xs.view(1, 1, w)
+
+
 class Frame(NamedTuple):
     """정준 좌표계 파라미터.
 
@@ -88,12 +99,18 @@ class Centroid_Frame_Config(Composable_Config):
     """정준 좌표계 산출 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``.
+        sampling_size: **샘플링 기준 캔버스** ``(H, W)`` — 입력 캔버스가 아니다.
+            여기서 뽑는 것은 3차 모멘트의 FP16 범위뿐이고, 출력값에서는 약분된다.
+        flip_phase_deg: 180° 확정에 쓸 ``w = Z3·e^{-i3a}`` 의 위상(0 또는 90). 형상이
+            정하는 상수라 **부품마다 표가 들고 있다** — 프레임마다 값을 보고 고르면
+            판정 경계에 걸린 형상이 회전마다 선택을 뒤집어 더 나빠진다(실측: 어떤
+            임계를 써도 고정 0° 보다 나빴다).
     """
     config_type: str = _FRAME_CFG
     object_type: str = _FRAME_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
+    flip_phase_deg: float = 0.0
 
 
 @MODELS.Register_module(_FRAME_NAME)
@@ -159,47 +176,52 @@ class Centroid_Frame(Trainable_Model):
         관통 구멍은 형상 정보이므로 메우지 않는다.
     """
 
-    _dx: Tensor
-    _dy: Tensor
-
     def Out_channels(self) -> list[int]:
         """center (2) / origin (2) / angle (1) / scale (1) / anisotropy (1) / flip_margin (1)."""
         return [2, 2, 1, 1, 1, 1]
 
-    def Build(self, size: tuple[int, int] = (224, 224), **kwargs: Any) -> None:
-        _h, _w = int(size[0]), int(size[1])
-        self.size = (_h, _w)
+    def Build(self, sampling_size: tuple[int, int] = (224, 224),
+              flip_phase_deg: float = 0.0, **kwargs: Any) -> None:
+        _h, _w = int(sampling_size[0]), int(sampling_size[1])
+        self.sampling_size = (_h, _w)
+        self.flip_phase_deg = float(flip_phase_deg)
         # 3차 모멘트용 무차원화 상수. u^3 을 픽셀 단위로 만들면 112^3 ~= 1.4e6 으로
         # 단일 항이 FP16 최대값(65504)을 넘는다 (:class:`Frame_Coords` 와 같은 이유).
+        # 출력값에서는 약분되므로(flip_margin 의 분자·분모 모두 3차) 입력 캔버스와 무관.
         self.norm = math.hypot((_h - 1) / 2.0, (_w - 1) / 2.0)
-
-        # 픽셀 중심 좌표. 캔버스 기하중심 기준 오프셋으로 둔다.
-        _ys = torch.arange(_h, dtype=torch.float32) - (_h - 1) / 2.0
-        _xs = torch.arange(_w, dtype=torch.float32) - (_w - 1) / 2.0
-        self.register_buffer("_dy", _ys.view(1, _h, 1), persistent=False)
-        self.register_buffer("_dx", _xs.view(1, 1, _w), persistent=False)
 
     def forward(self, mask: Tensor) -> Frame:
         """
         Args:
-            mask: (B, 1, H, W) float. 전경 1, 배경 0.
+            mask: (B, 1, H, W) float. 전경 1, 배경 0. 캔버스 크기는 자유.
 
         Returns:
             :class:`Frame`.
         """
         _m = mask[:, 0]                                        # (B, H, W)
-        _n = _m.sum(dim=(1, 2)).clamp_min(1.0)                 # (B,) 전경 픽셀 수
+        # int() 를 쓰지 않는다 — 심볼릭 shape 이 그대로 흘러야 동적 축으로 export 된다.
+        _h, _w = mask.shape[-2], mask.shape[-1]
+        _gy, _gx = _Grid(_h, _w, mask.device)
 
-        # centroid — 캔버스 기하중심 기준 오프셋
-        _cx = (_m * self._dx).sum(dim=(1, 2)) / _n             # (B,)
-        _cy = (_m * self._dy).sum(dim=(1, 2)) / _n
+        # **FP16 계약 — 모든 리덕션은 무차원 좌표로, sum 이 아니라 mean 으로.**
+        # px 로 누산하면 224 캔버스에서 이미 Sum(m·dx²) = 3.1e6 으로 FP16 최대(65504)를
+        # 넘어 TRT 가 0 을 낸다(실측: 64 통과 / 224 이상 전부 0). 아래 모멘트는 전부
+        # `_nm` 으로 나뉘어 H·W 가 약분되므로, mean 으로 바꿔도 **값이 바뀌지 않는다**.
+        _ux, _uy = _gx / self.norm, _gy / self.norm
+        # 빈 마스크 가드. FP16 정규수 하한(6.1e-5)보다 커야 해서 1e-4 다 — 이보다 작은
+        # 전경 비율은 seg 단계 `min_area` 가 이미 걸러낸다.
+        _nm = _m.mean(dim=(1, 2)).clamp_min(1e-4)              # (B,) 전경 화소 비율
 
-        # centroid 기준 중심 모멘트 (2차)
-        _ddx = self._dx - _cx.view(-1, 1, 1)                   # (B, H, W)
-        _ddy = self._dy - _cy.view(-1, 1, 1)
-        _sxx = (_m * _ddx * _ddx).sum(dim=(1, 2)) / _n
-        _syy = (_m * _ddy * _ddy).sum(dim=(1, 2)) / _n
-        _sxy = (_m * _ddx * _ddy).sum(dim=(1, 2)) / _n
+        # centroid — 캔버스 기하중심 기준 오프셋 (무차원)
+        _cx = (_m * _ux).mean(dim=(1, 2)) / _nm                # (B,)
+        _cy = (_m * _uy).mean(dim=(1, 2)) / _nm
+
+        # centroid 기준 중심 모멘트 (2차). 좌표가 무차원이라 `norm²` 만큼 작다.
+        _x = _ux - _cx.view(-1, 1, 1)                          # (B, H, W) 무차원
+        _y = _uy - _cy.view(-1, 1, 1)
+        _sxx = (_m * _x * _x).mean(dim=(1, 2)) / _nm
+        _syy = (_m * _y * _y).mean(dim=(1, 2)) / _nm
+        _sxy = (_m * _x * _y).mean(dim=(1, 2)) / _nm
 
         # Z2 = Σ m·r²·e^{i2θ} 의 실/허부. 주축각은 그 위상의 절반이다.
         _z_re = _sxx - _syy
@@ -208,8 +230,9 @@ class Centroid_Frame(Trainable_Model):
 
         # 회전반경(px) — 정규화되지 않은 **절대** 크기량. 아래 두 비율의 분모를 여기 남겨
         # 두어야 Sxx+Syy = 2*scale², |Z2| = anisotropy*2*scale² 로 원본이 복원된다.
+        # 모멘트가 무차원이므로 여기서 `norm` 을 곱해 px 로 되돌린다 — **출력 계약**이다.
         _trace = _sxx + _syy
-        _scale = (_trace * 0.5).clamp_min(0.0).sqrt()
+        _scale = (_trace * 0.5).clamp_min(0.0).sqrt() * self.norm
 
         # |Z2| 를 전체 관성으로 정규화 — k=2 harmonic 이 얼마나 실재하는지. 0 이면 주축이 없고
         # (원환·n>=3 회전대칭에서 정확히 0) 위 atan2 는 노이즈의 위상을 낸 것이다.
@@ -229,23 +252,48 @@ class Centroid_Frame(Trainable_Model):
         # 반쪽 분할(sign 가중)을 버린 이유는 실측 정확도이자 구조다 — sign() 은 피적분함수를
         # 불연속으로 만들어 근대칭 형상에서 margin 이 노이즈에 잠긴다. Z3 는 좌표 다항식이라
         # 형상이 연속 변형되면 값도 연속으로 움직인다.
-        _x = _ddx / self.norm                                  # (B, H, W) 무차원
-        _y = _ddy / self.norm
+        # 좌표는 위에서 이미 무차원이다(`_x`, `_y`).
         _xx = _x * _x
         _yy = _y * _y
-        _z3_re = (_m * _x * (_xx - 3.0 * _yy)).sum(dim=(1, 2))     # Re Z3 = Σ m·(x³ - 3xy²)
-        _z3_im = (_m * _y * (3.0 * _xx - _yy)).sum(dim=(1, 2))     # Im Z3 = Σ m·(3x²y - y³)
-        _proj = _z3_re * torch.cos(3.0 * _angle) + _z3_im * torch.sin(3.0 * _angle)
-        _angle = _angle + (_proj < 0).to(_angle.dtype) * torch.pi
+        _z3_re = (_m * _x * (_xx - 3.0 * _yy)).mean(dim=(1, 2))    # Re Z3 = mean m·(x³ - 3xy²)
+        _z3_im = (_m * _y * (3.0 * _xx - _yy)).mean(dim=(1, 2))    # Im Z3 = mean m·(3x²y - y³)
+
+        _c3, _s3 = torch.cos(3.0 * _angle), torch.sin(3.0 * _angle)
+        _proj = _z3_re * _c3 + _z3_im * _s3                        # Re(w) — 0°
 
         # |Z3| 를 Σ m·r³ 로 정규화 — k=3 harmonic 이 얼마나 실재하는지. 2회 대칭에서 정확히 0.
         # r³ 는 pow(1.5) 대신 r²·sqrt(r²) 로 둔다 (일반 거듭제곱보다 빠르다).
         _r2 = _xx + _yy
-        _r3 = (_m * _r2 * _r2.sqrt()).sum(dim=(1, 2)).clamp_min(1e-12)
+        # 분자 `_z3_*` 와 같은 mean 이라 H·W 가 약분된다 — 비율은 그대로다.
+        _r3 = (_m * _r2 * _r2.sqrt()).mean(dim=(1, 2)).clamp_min(1e-12)
         _flip = _Abs2(_z3_re, _z3_im) / _r3                    # (B,) [0, 1]
 
-        _h, _w = self.size
-        _center = torch.stack([_cx + (_w - 1) / 2.0, _cy + (_h - 1) / 2.0], dim=1)
+        # ``w = Z3·e^{-i3a}`` 는 **형상 상수**다 — 물체를 돌리면 ``Z3`` 와 ``e^{-i3a}`` 가
+        # 상쇄돼 ``w`` 는 그대로고, π 회전에서만 부호가 뒤집힌다. 그래서 ``w`` 의 어느
+        # 방향 성분을 봐도 필요한 한 비트를 담는다.
+        #
+        # 위 ``_proj`` 는 실수부(0°)다. ``proj(φ) = |w|·cos(arg w − φ)`` 를 φ 로 미분하면
+        # φ=0 에서 그 값이 곧 ``Im(w)`` 이고 ``proj² + (dproj/dφ)² = |w|²`` 가 항등이다 —
+        # **90° 성분은 별개 통계가 아니라 위상에 대한 기울기**다. 그래서 0° 가 못 쓰는
+        # 형상(값 0, 기울기 최대)은 90° 로 보면 최대가 된다.
+        #
+        # 실측: ``20G031``/``20G032`` 는 ``|Z3|/Σm·r³ = 0.58`` 로 크지만 위상이 −89° 라
+        # 실수부가 0 을 지나며 36각도 중 13~14회 뒤집힌다. 허수부로 보면 0회다.
+        #
+        # **위상은 인자로 받는다. 여기서 값을 보고 고르지 않는다.** 어느 쪽을 쓸지는
+        # 형상이 정하는 상수이고, 프레임마다 값을 보고 고르면 그 판정 경계에 걸린 형상이
+        # 회전마다 선택을 뒤집어 더 나빠진다(실측: 어떤 임계를 써도 고정 0° 보다 나빴다 —
+        # 5 → 8~21). 표를 만들 때 부품마다 한 번 정하고, 여기서는 받은 값을 쓰기만 한다.
+        # 261개 중 259개가 0°/90° 중 하나로 해결되고, 남는 2개는 2회 대칭에 가까워 어떤
+        # 위상으로도 안 된다 — 그건 ``flip_margin`` 이 보고한다.
+        if self.flip_phase_deg == 90.0:
+            _proj = _z3_im * _c3 - _z3_re * _s3                    # Im(w) = dproj/dφ|₀
+
+        _angle = _angle + (_proj < 0).to(_angle.dtype) * torch.pi
+
+        # centroid 를 px 로 되돌려 캔버스 절대 좌표로 낸다 — **출력 계약**이다.
+        _center = torch.stack([_cx * self.norm + (_w - 1) / 2.0,
+                               _cy * self.norm + (_h - 1) / 2.0], dim=1)
         _origin = _center.round().long()                       # 정수 양자화 (col, row)
         return Frame(
             center=_center, origin=_origin, angle=_angle, scale=_scale,
@@ -259,12 +307,14 @@ class Frame_Coords_Config(Composable_Config):
     """정렬 좌표 ``(u, v)`` 산출 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``.
+        sampling_size: **샘플링 기준 캔버스** ``(H, W)`` — 입력 캔버스가 아니다. 여기서
+            길이 단위를 뽑는다. :class:`~torch_toolbox.modules.transform.mask.geometry.region.Region_Scalars`
+            와 **같아야 한다** — 그쪽이 이 값을 곱해 px 로 되돌린다.
     """
     config_type: str = _COORD_CFG
     object_type: str = _COORD_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
 
 
 @MODELS.Register_module(_COORD_NAME)
@@ -280,36 +330,31 @@ class Frame_Coords(Trainable_Model):
     단일 항에서 넘긴다.
     """
 
-    _dx: Tensor
-    _dy: Tensor
-
     def Out_channels(self) -> list[int]:
         """u, v 두 텐서."""
         return [1, 1]
 
-    def Build(self, size: tuple[int, int] = (224, 224), **kwargs: Any) -> None:
-        _h, _w = int(size[0]), int(size[1])
-        self.size = (_h, _w)
-        self.norm = float(torch.tensor([(_h - 1) / 2.0, (_w - 1) / 2.0]).square().sum().sqrt())
+    def Build(self, sampling_size: tuple[int, int] = (224, 224), **kwargs: Any) -> None:
+        _h, _w = int(sampling_size[0]), int(sampling_size[1])
+        self.sampling_size = (_h, _w)
+        self.norm = math.hypot((_h - 1) / 2.0, (_w - 1) / 2.0)
 
-        _ys = torch.arange(_h, dtype=torch.float32) - (_h - 1) / 2.0
-        _xs = torch.arange(_w, dtype=torch.float32) - (_w - 1) / 2.0
-        self.register_buffer("_dy", _ys.view(1, _h, 1), persistent=False)
-        self.register_buffer("_dx", _xs.view(1, 1, _w), persistent=False)
-
-    def forward(self, frame: Frame) -> tuple[Tensor, Tensor]:
+    def forward(self, mask: Tensor, frame: Frame) -> tuple[Tensor, Tensor]:
         """
         Args:
+            mask: (B, 1, H, W) float — 좌표 격자 크기만 쓴다.
             frame: :class:`Frame`.
 
         Returns:
             ``(u, v)`` — 각각 (B, H, W) float. ``norm`` 으로 나눈 무차원 좌표.
         """
-        _h, _w = self.size
+        # int() 를 쓰지 않는다 — 심볼릭 shape 이 그대로 흘러야 동적 축으로 export 된다.
+        _h, _w = mask.shape[-2], mask.shape[-1]
+        _gy, _gx = _Grid(_h, _w, mask.device)
         _cx = frame.center[:, 0].view(-1, 1, 1) - (_w - 1) / 2.0
         _cy = frame.center[:, 1].view(-1, 1, 1) - (_h - 1) / 2.0
-        _ddx = (self._dx - _cx) / self.norm
-        _ddy = (self._dy - _cy) / self.norm
+        _ddx = (_gx - _cx) / self.norm
+        _ddy = (_gy - _cy) / self.norm
 
         _cos = torch.cos(frame.angle).view(-1, 1, 1)
         _sin = torch.sin(frame.angle).view(-1, 1, 1)

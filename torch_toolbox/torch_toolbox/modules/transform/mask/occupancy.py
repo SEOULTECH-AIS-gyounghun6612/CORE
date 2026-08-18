@@ -55,13 +55,13 @@ class OccupancyTotals_Config(Composable_Config):
     """직교/극좌표 occupancy 총량 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``.
+        sampling_size: 캔버스 ``(H, W)``.
         num_radial / num_angular: 극좌표 격자. 셀 수 도출에 쓴다.
     """
     config_type: str = _OCCUPANCY_TOTALS_CFG
     object_type: str = _OCCUPANCY_TOTALS_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
     num_radial: int = 224
     num_angular: int = 512
 
@@ -70,15 +70,20 @@ class OccupancyTotals_Config(Composable_Config):
 class Occupancy(Trainable_Model):
     """직교/극좌표 occupancy 총량.
 
-    Returns 는 ``(area_cartesian, area_polar)`` 두 스칼라다. 둘의 차이가 곧 정보이므로
-    같은 단위로 맞추지 않는다.
+    Returns 는 ``(area_cartesian_sqrt, area_polar_sqrt)`` 두 스칼라다. 둘의 차이가 곧
+    정보이므로 같은 단위로 맞추지 않는다.
 
-    - ``area_cartesian``: 전경 픽셀 합. 균일 격자이므로 실제 면적에 비례한다.
-    - ``area_polar``: 극좌표 셀 occupancy 분수의 합. 셀 크기가 ``r`` 에 비례하므로
+    - ``area_cartesian_sqrt``: 전경 픽셀 합의 sqrt. 균일 격자라 실제 면적에 비례한다.
+    - ``area_polar_sqrt``: 극좌표 셀 occupancy 분수 합의 sqrt. 셀 크기가 ``r`` 에 비례하므로
       중심부 재료가 과대·주변부가 과소 계상된다 (= 1/r 가중).
 
+    **면적이 아니라 sqrt 인 이유**는 ``region.py`` 의 :data:`SIZE_NAMES` 와 같다 — 길이
+    차원이라야 도메인 나눗값 하나로 정규화된다. 덤으로 FP16 에 들어간다: px² 는 600x800
+    캔버스에서 4.8e5 로 FP16 최대(65504)를 넘어 TRT 가 inf 를 낸다. 합을 만들지 않고
+    ``mean`` 에서 곧장 sqrt 로 가므로 중간값도 안전하다.
+
     Args:
-        size: 캔버스 ``(H, W)``.
+        sampling_size: 면적 상한 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         cells: 극좌표 셀 수 ``NR * NT``.
     """
 
@@ -88,10 +93,10 @@ class Occupancy(Trainable_Model):
         return [self.dim]
 
     def Build(
-        self, size: tuple[int, int] = (224, 224),
+        self, sampling_size: tuple[int, int] = (224, 224),
         num_radial: int = 224, num_angular: int = 512, **kwargs: Any,
     ) -> None:
-        self.size = (int(size[0]), int(size[1]))
+        self.sampling_size = (int(sampling_size[0]), int(sampling_size[1]))
         self.cells = int(num_radial) * int(num_angular)
 
     def Spec(self) -> tuple[Feature_Spec, ...]:
@@ -100,10 +105,10 @@ class Occupancy(Trainable_Model):
         **원본 스케일(선형)** — 형상 크기라 log 로 뭉개지 않는다.
         """
         return (
-            Feature_Spec("area_cartesian", 1, "identity",
-                         (0.0, float(self.size[0] * self.size[1]))),
-            Feature_Spec("area_polar",     1, "identity", (0.0, float(self.cells))),
-            Feature_Spec("area_ratio",     1, "identity", (0.0, 20.0)),
+            Feature_Spec("area_cartesian_sqrt", 1, "identity",
+                         (0.0, math.sqrt(self.sampling_size[0] * self.sampling_size[1]))),
+            Feature_Spec("area_polar_sqrt",     1, "identity", (0.0, math.sqrt(self.cells))),
+            Feature_Spec("area_ratio",          1, "identity", (0.0, 20.0)),
         )
 
     def forward(self, mask: Tensor, polar: Tensor) -> Tensor:
@@ -113,11 +118,15 @@ class Occupancy(Trainable_Model):
             polar: (B, NR, NT) float — :class:`~torch_toolbox.modules.transform.mask.polar.Polar_Raster` 출력.
 
         Returns:
-            (B, 3) float — ``area_cartesian``, ``area_polar``, 그 비.
+            (B, 3) float — ``area_cartesian_sqrt``, ``area_polar_sqrt``, 그 비(면적 기준).
         """
-        _cart = mask.sum(dim=(1, 2, 3))
-        _pol = polar.sum(dim=(1, 2))
-        return torch.stack([_cart, _pol, _pol / _cart.clamp_min(1.0)], dim=1)
+        _h, _w = mask.shape[-2], mask.shape[-1]
+        # sqrt(sum) = sqrt(mean) * sqrt(N) — 합을 만들지 않으므로 FP16 에서도 안 넘친다.
+        _cart = mask.mean(dim=(1, 2, 3)).clamp_min(0).sqrt() * ((_h * _w) ** 0.5)
+        _pol = polar.mean(dim=(1, 2)).clamp_min(0).sqrt() * (self.cells ** 0.5)
+        # 비는 **면적** 기준 그대로다 — sqrt 끼리 나눈 뒤 제곱하면 항등이고 px² 가 안 생긴다.
+        _r = _pol / _cart.clamp_min(1e-4)
+        return torch.stack([_cart, _pol, _r * _r], dim=1)
 
 
 _RADIAL_PROFILE_NAME = "radial_profile"
@@ -130,15 +139,15 @@ class RadialProfile_Config(Composable_Config):
     """theta별 반경 프로파일 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``. ``r_max`` 가 None 일 때 반대각을 구한다.
+        sampling_size: 샘플 반경 기본값 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         num_radial: r bin 수. ``dr`` 도출에 쓴다.
-        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        r_max: 최대 반경(px). None 이면 ``sampling_size`` 반대각.
         threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
     """
     config_type: str = _RADIAL_PROFILE_CFG
     object_type: str = _RADIAL_PROFILE_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
     num_radial: int = 224
     r_max: float | None = None
     threshold: float = 0.5
@@ -156,7 +165,7 @@ class Radial_Profile(Trainable_Model):
     ``coverage`` 를 함께 본다 (재료가 없으면 ``coverage == 0``).
 
     Args:
-        size / num_radial / r_max: ``dr`` 도출. ``Polar_Raster`` 와 같은 값이어야 한다.
+        sampling_size / num_radial / r_max: ``dr`` 도출. ``Polar_Raster`` 와 같은 값이어야 한다.
         threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
     """
 
@@ -165,10 +174,10 @@ class Radial_Profile(Trainable_Model):
         return [1, 1, 1]
 
     def Build(
-        self, size: tuple[int, int] = (224, 224), num_radial: int = 224,
+        self, sampling_size: tuple[int, int] = (224, 224), num_radial: int = 224,
         r_max: float | None = None, threshold: float = 0.5, **kwargs: Any,
     ) -> None:
-        _rmax = (math.hypot((size[0] - 1) / 2.0, (size[1] - 1) / 2.0)
+        _rmax = (math.hypot((sampling_size[0] - 1) / 2.0, (sampling_size[1] - 1) / 2.0)
                  if r_max is None else float(r_max))
         self.dr = _rmax / int(num_radial)
         self.threshold = float(threshold)
@@ -208,16 +217,16 @@ class RadialRLE_Config(Composable_Config):
     """theta별 재료 RLE(전이점) 설정.
 
     Attributes:
-        size: 캔버스 ``(H, W)``. ``r_max`` None 일 때 반대각.
+        sampling_size: 샘플 반경 기본값 기준 캔버스 ``(H, W)``. 입력 캔버스가 아니다.
         num_radial: r bin 수. ``dr`` 도출.
-        r_max: 최대 반경(px). None 이면 캔버스 반대각.
+        r_max: 최대 반경(px). None 이면 ``sampling_size`` 반대각.
         threshold: 셀을 "재료 있음"으로 볼 occupancy 분수 하한.
         max_transitions: theta 당 담을 최대 **전이점 수** ``K``. 넘으면 자른다. 출력 차원 = K.
     """
     config_type: str = _RADIAL_RLE_CFG
     object_type: str = _RADIAL_RLE_NAME
     trainable: bool = False
-    size: tuple[int, int] = (224, 224)
+    sampling_size: tuple[int, int] = (224, 224)
     num_radial: int = 224
     r_max: float | None = None
     threshold: float = 0.5
@@ -239,7 +248,7 @@ class Radial_RLE(Trainable_Model):
     빈 자리는 0. ``Radial_Profile`` 이 theta 당 최외곽/최내곽 하나씩만 접던 한계를 여기서 편다.
 
     Args:
-        size / num_radial / r_max: ``dr`` 도출. ``Polar_Raster`` 와 같은 값이어야 한다.
+        sampling_size / num_radial / r_max: ``dr`` 도출. ``Polar_Raster`` 와 같은 값이어야 한다.
         threshold: 재료 판정 하한.
         max_transitions: theta 당 슬롯 수 K (시작 + 살/구멍 간격들).
     """
@@ -249,11 +258,11 @@ class Radial_RLE(Trainable_Model):
         return [self.max_transitions]
 
     def Build(
-        self, size: tuple[int, int] = (224, 224), num_radial: int = 224,
+        self, sampling_size: tuple[int, int] = (224, 224), num_radial: int = 224,
         r_max: float | None = None, threshold: float = 0.5, max_transitions: int = 8,
         **kwargs: Any,
     ) -> None:
-        _rmax = (math.hypot((size[0] - 1) / 2.0, (size[1] - 1) / 2.0)
+        _rmax = (math.hypot((sampling_size[0] - 1) / 2.0, (sampling_size[1] - 1) / 2.0)
                  if r_max is None else float(r_max))
         self.dr = _rmax / int(num_radial)
         self.threshold = float(threshold)
