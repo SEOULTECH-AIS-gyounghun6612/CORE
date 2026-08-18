@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TypeVar, Generic
+from typing import Any, ClassVar, TypeVar, Generic
 from dataclasses import dataclass, field
 from pathlib import Path
 from contextlib import contextmanager
@@ -15,7 +15,7 @@ from torch.multiprocessing.spawn import spawn
 from python_toolbox.project import Project_Template
 from python_toolbox.file import Write_to
 
-from .utils.weight import Resolve_weight_path
+from .utils.weight import BEST_METRIC, Resolve_weight_path
 
 from .assembler import Component_Assembler
 
@@ -40,7 +40,11 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
         node_rank_offset: 멀티 노드 시 현재 노드의 rank 시작 오프셋.
         resume_path: resume 시 기존 워크스페이스 경로.
         weight_path: 특정 가중치 파일 경로.
-        start_iter: 시작 이터레이션 직접 지정. None이면 체크포인트에서 결정.
+        start_iter: 시작 이터레이션 직접 지정. ``"best"`` 면 학습 로그에서 고른다
+            (``best_metric`` 필요). None이면 체크포인트에서 결정.
+        best_metric: ``"best"`` 를 해석할 ``(mode, metric, higher_is_better)``.
+            **하위 러너가 선언한다** — 어떤 지표를 어느 방향으로 볼지는 도메인 지식이고,
+            이름으로 max/min 을 추측하면 그게 조용한 오답이 된다. None이면 키워드를 못 쓴다.
     """
 
     project_name: str
@@ -54,8 +58,11 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
     node_rank_offset: int = 0
     resume_path: str | None = None
     weight_path: str | None = None
-    start_iter: int | None = None
+    start_iter: int | str | None = None
     is_multi_gpu: bool = field(init=False)
+
+    #: 하위 러너가 덮어쓴다. 인스턴스 설정이 아니라 도메인 선언이라 ClassVar 다.
+    best_metric: ClassVar[BEST_METRIC | None] = None
 
     def __post_init__(self):
         super().__init__(self.project_name)
@@ -102,7 +109,8 @@ class Base_Runner(Project_Template, Generic[ASSEMBLER, LOSS]):
 
             # 가중치 경로 결정: resume_path → weight_path → start_iter 우선순위
             _resolved_path = Resolve_weight_path(
-                self.resume_path, self.weight_path, self.workspace, self.start_iter
+                self.resume_path, self.weight_path, self.workspace, self.start_iter,
+                self.best_metric,
             )
             # Assembler 호출 → 컴포넌트 조립 + 가중치 로드 → start_iter 반환
             _start_iter, _components = self.assembler(
