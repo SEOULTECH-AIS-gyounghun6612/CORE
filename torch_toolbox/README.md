@@ -54,7 +54,7 @@ torch_toolbox/
 │   ├── __init__.py          # ACCUMULATORS
 │   ├── definition.py        # Accumulator ABC, Accumulator_Config, Assemble_Metric_Config, Assemble_Metric
 │   ├── build.py             # Build_metric
-│   ├── component/           # Scalar_Accumulator, Centroid_Accumulator
+│   ├── component/           # Scalar_·Centroid_·Within_Class_Scatter_Accumulator
 │   └── functional/          # stateless 순수 함수
 ├── optim/                   # 옵티마이저·스케줄러
 │   ├── __init__.py          # SCHEDULER
