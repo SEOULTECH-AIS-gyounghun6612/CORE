@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ui_toolbox"
+version = "0.1.0"
+authors = [
+  { name="Choi_keonghun & Jun_eins", email="dev.gyounghun6612@gmail.com" },
+]
+description = "Domain-free Qt widgets and their contracts, built on PySide6."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: User Interfaces",
+]
+dependencies = [
+    "PySide6",
+    "numpy",
+    "opencv-python",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "black",
+    "isort",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["ui_toolbox*"]
+
+[project.urls]
+"Homepage" = "https://github.com/DXR-keonghun6612/ToolBox/tree/HUB/ui_toolbox"
