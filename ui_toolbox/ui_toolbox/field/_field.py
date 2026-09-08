@@ -1,4 +1,4 @@
-"""칸 선언과 그 값들. Qt 를 모른다.
+"""칸 선언과 그 값들, 그리고 `Field.type` 판별.
 
 칸 하나가 이름 · 자료형 · 표시 · 입력 힌트를 함께 든다. 행이 하나든 여럿이든 이 선언이 같고,
 무엇으로 보이는지만 표현이 정한다 - 한 행이면 폼, 여러 행이면 표.
@@ -6,10 +6,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+import types
+from dataclasses import dataclass
+from typing import Any, Union, get_args, get_origin
 
-__all__ = ["Field", "Rows"]
+__all__ = ["Field", "Order", "Rows", "Type_name", "list_pair", "list_str",
+           "optional_float"]
 
 
 def Order(value: Any) -> tuple[int, float, str]:
@@ -57,6 +59,57 @@ class Field:
     def title(self) -> str:
         """머리글에 쓸 문구."""
         return self.label or self.name
+
+
+# ── Field.type 판별 ───────────────────────────────────────────────────────────
+def _strip_optional(tp):
+    """`X | None` 이면 `X`, 아니면 그대로."""
+    _origin = get_origin(tp)
+    _is_union = _origin is Union or (
+        hasattr(types, "UnionType") and isinstance(tp, types.UnionType))
+    if not _is_union:
+        return tp
+    # nullable 목록도 목록 위젯을 받게 한다 - 위젯이 안 생기면 그 값이 통째로 유실된다
+    _rest = [_a for _a in get_args(tp) if _a is not type(None)]
+    return _rest[0] if len(_rest) == 1 else tp
+
+
+def list_str(tp) -> bool:
+    """`list[str]` · `list[Any]` 인가 (Optional 포함)."""
+    _tp = _strip_optional(tp)
+    return get_origin(_tp) is list and get_args(_tp) in ((str,), (Any,))
+
+
+def list_pair(tp) -> bool:
+    """`list[tuple[str, str]]` 인가 (Optional 포함)."""
+    _tp = _strip_optional(tp)
+    return get_origin(_tp) is list and get_args(_tp) == (tuple[str, str],)
+
+
+def optional_float(tp) -> bool:
+    """`float | None` 인가."""
+    _origin = get_origin(tp)
+    _is_union = _origin is Union or (
+        hasattr(types, "UnionType") and isinstance(tp, types.UnionType))
+    return _is_union and set(get_args(tp)) == {float, type(None)}
+
+
+#: 그 자체로 판별되는 자료형. 순서가 없어 dict 하나면 됨.
+_PLAIN = {bool: "bool", int: "int", float: "float", str: "str"}
+
+
+def Type_name(tp) -> str:
+    """`Field.type` -> 등록표가 쓰는 이름. 모르는 자료형이면 빈 글자.
+
+    겹침이 있어 순서가 있다 - `float | None` 은 `float` 보다 먼저 걸러야 한다.
+    """
+    if optional_float(tp):
+        return "optional_float"
+    if list_pair(tp):
+        return "list_pair"
+    if list_str(tp):
+        return "list_str"
+    return _PLAIN.get(tp, "")
 
 
 class Rows:

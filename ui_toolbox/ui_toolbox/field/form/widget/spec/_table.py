@@ -1,14 +1,12 @@
 """table 표현 - 항목들을 모델 하나로 밈.
 
-[`_stack`](../layout/_stack.py) 과 같은 공개 API(`changed` · `rows` · `load`)를 내되 항목마다
-위젯을 만들지 않음. 칸이 고정된 목록이 여기 옴.
+[`_stack`](../../layout/_stack.py) 과 같은 계약을 내되 항목마다 위젯을 만들지 않음.
+칸이 고정된 목록이 여기 옴.
 
 정렬과 거르기는 `보이는 순서`만 바꿈 - 원본 순서는 그대로.
 """
 
 from __future__ import annotations
-
-from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 from PySide6.QtWidgets import (
@@ -22,9 +20,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ....style import LABEL, Mark
-from ..._field import Order, Rows
-from ..._item import Button
+from .....style import LABEL, Mark, Now
+from ...._field import Order, Rows
+from ...._item import Button
+from ...._value import Value
 from ._bar import Button_bar
 
 _ROOT = QModelIndex()   # 평평한 표라 부모 인덱스는 늘 이것 하나
@@ -175,16 +174,16 @@ class _Model(QAbstractTableModel):
         self._rebuild()
 
 
-class Table_view(QWidget):
-    """칸이 고정된 항목 목록 - 거르기 줄 + 표 + 조작 줄.
+class Table_view(Value):
+    """칸이 고정된 항목 목록 - 거르기 줄 + 표 + 조작 줄. payload 는 `list[dict]`.
 
     Attributes:
-        changed: 항목 추가 · 삭제 · 이동 · 편집 시 emit.
-        selected: 고른 항목의 원본 자리. 고른 것이 없으면 `-1`.
+        value_changed: 항목 전체
+        selected: 고른 항목의 원본 자리. 고른 것이 없으면 `-1`
     """
 
-    changed  = Signal()
-    selected = Signal(int)
+    value_changed = Signal(list)
+    selected      = Signal(int)
 
     def __init__(self, data: Rows, add_label: str = "+ 추가",
                  movable: bool = False, filterable: bool = True,
@@ -212,13 +211,13 @@ class Table_view(QWidget):
 
         _lay = QVBoxLayout(self)
         _lay.setContentsMargins(0, 0, 0, 0)
-        _lay.setSpacing(2)
+        _lay.setSpacing(Now()["tight"])
         if filterable:
             _lay.addWidget(self._build_filter())
         _lay.addWidget(self._view, stretch=1)
         _lay.addLayout(self._build_bar(add_label, movable))
 
-        self._model.dataChanged.connect(lambda *_: self.changed.emit())
+        self._model.dataChanged.connect(lambda *_: self._emit())
         self._view.selectionModel().selectionChanged.connect(self._on_selection)
 
     def _build_filter(self) -> QWidget:
@@ -251,13 +250,17 @@ class Table_view(QWidget):
         return _bar
 
     # ── public API ────────────────────────────────────────────────────────────
-    def rows(self) -> list[dict]:
+    def value(self) -> list[dict]:
         """원본 순서의 항목들."""
         return self._model.rows()
 
-    def load(self, rows: list[dict] | None) -> None:
-        """항목 전체를 갈아끼움. 로드는 `changed` 를 내지 않음."""
-        self._model.replace(rows)
+    def set_value(self, value) -> None:
+        self._model.replace(value)
+
+    def _emit(self) -> None:
+        """사람이 고쳤을 때의 후처리."""
+        self.value_changed.emit(self.value())
+        self._emit()
 
     def set_rows(self, data: Rows) -> None:
         """칸 선언까지 갈아끼움. 칸 폭도 정렬도 다시 잡음."""
@@ -308,16 +311,16 @@ class Table_view(QWidget):
 
     def _on_add(self) -> None:
         self.select(self._model.append())
-        self.changed.emit()
+        self._emit()
 
     def _on_remove(self) -> None:
         if self._model.remove(self.current()):
             self._arm(self.current())
-            self.changed.emit()
+            self._emit()
 
     def _on_move(self, step: int) -> None:
         _at = self.current()
         _to = self._model.move(_at, step)
         if _to != _at:
             self.select(_to)
-            self.changed.emit()
+            self._emit()
