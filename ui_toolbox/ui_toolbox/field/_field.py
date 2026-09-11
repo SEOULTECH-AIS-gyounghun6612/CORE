@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Union, get_args, get_origin
 
@@ -42,6 +43,7 @@ class Field:
         max: 수 입력의 상한.
         step: 수 입력의 증감 단위.
         kind: 입력 변형 이름 (`path` 등). 같은 자료형이라도 위젯이 갈릴 때.
+        display: 값 -> 보일 글자. 비면 `str`. 정렬은 값으로, 거르기는 이 글자로.
     """
 
     name:     str
@@ -55,10 +57,17 @@ class Field:
     max:      float | None = None
     step:     float | None = None
     kind:     str = ""
+    display:  Callable[[Any], str] | None = None
 
     def title(self) -> str:
         """머리글에 쓸 문구."""
         return self.label or self.name
+
+    def text(self, value: Any) -> str:
+        """그 값의 보일 글자. 빈 값은 `display` 에 안 넘기고 빈 글자."""
+        if value is None:
+            return ""
+        return str(value) if self.display is None else self.display(value)
 
 
 # ── Field.type 판별 ───────────────────────────────────────────────────────────
@@ -193,7 +202,9 @@ class Rows:
         self._rows = [dict(_r) for _r in (rows or [])]
 
     def matches(self, at: int, text: str) -> bool:
-        """그 행의 어느 칸이든 `text` 를 품고 있나 (대소문자 무시).
+        """그 행의 어느 칸이든 보이는 글자에 `text` 를 품고 있나 (대소문자 무시).
+
+        선언 안 된 키는 화면에 없으므로 안 봄.
 
         Args:
             at: 행 자리.
@@ -202,5 +213,5 @@ class Rows:
         if not text:
             return True
         _low = text.lower()
-        return any(_low in str(_v).lower()
-                   for _v in self._rows[at].values() if _v is not None)
+        _row = self._rows[at]
+        return any(_low in _f.text(_row.get(_f.name)).lower() for _f in self._fields)

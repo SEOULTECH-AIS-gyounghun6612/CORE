@@ -108,3 +108,23 @@ def test_matches_ignores_case_and_scans_every_column():
 def test_title_falls_back_to_name():
     assert Field("k").title() == "k"
     assert Field("k", label="칸").title() == "칸"
+
+
+# ── 보이는 글자 ───────────────────────────────────────────────────────────────
+def _tag(value) -> str:
+    return f"<{value}>"
+
+
+def test_text_goes_through_display():
+    assert (Field("k", display=_tag).text("a"), Field("k").text(3)) == ("<a>", "3")
+
+
+def test_text_of_none_is_blank():
+    """빈 값은 `display` 에 안 넘김 - 받는 쪽이 None 을 따로 안 막게."""
+    assert Field("k", display=_tag).text(None) == ""
+
+
+def test_matches_reads_the_shown_text():
+    """보이는 글자로 거름. 선언 안 된 키는 화면에 없으므로 안 걸림."""
+    _r = Rows([Field("k", display=_tag)], [{"k": "a", "숨음": "zz"}])
+    assert (_r.matches(0, "<A>"), _r.matches(0, "zz")) == (True, False)

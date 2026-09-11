@@ -119,9 +119,11 @@ class _Model(QAbstractTableModel):
             if role != Qt.ItemDataRole.CheckStateRole or _value is None:
                 return None
             return Qt.CheckState.Checked if _value else Qt.CheckState.Unchecked
-        if role not in (Qt.DisplayRole, Qt.EditRole):
-            return None
-        return "" if _value is None else str(_value)
+        if role == Qt.DisplayRole:
+            return _field.text(_value)
+        if role == Qt.EditRole:
+            return "" if _value is None else str(_value)   # 고칠 때는 값 그대로
+        return None
 
     def setData(self, index: QModelIndex, value, role=Qt.EditRole) -> bool:
         if not index.isValid():
@@ -172,6 +174,50 @@ class _Model(QAbstractTableModel):
         self._data = data
         self._sort = None
         self._rebuild()
+
+    def extend(self, rows: list[dict]) -> None:
+        """행을 끝에 붙임. 리셋 없이 끼워 고른 자리가 안 풀림.
+
+        거르기에 안 걸리는 행은 안 보임. 정렬이 서 있으면 그 자리로 하나씩 끼움.
+        """
+        _first = len(self._data)
+        for _row in rows:
+            self._data.append(_row)
+        _new = [_at for _at in range(_first, len(self._data))
+                if self._data.matches(_at, self._filter)]
+        if not _new:
+            return
+
+        if self._sort is None:
+            _end = len(self._order)
+            self.beginInsertRows(_ROOT, _end, _end + len(_new) - 1)
+            self._order += _new
+            self.endInsertRows()
+            return
+
+        for _at in _new:
+            _to = self._place(_at)
+            self.beginInsertRows(_ROOT, _to, _to)
+            self._order.insert(_to, _at)
+            self.endInsertRows()
+
+    def _place(self, at: int) -> int:
+        """정렬이 설 때 원본 자리 `at` 이 들어갈 보이는 자리.
+
+        같은 값끼리는 원본 순서 - `_rebuild` 의 안정 정렬과 같은 답. 붙인 행이라 그 뒤.
+        """
+        _col, _desc = self._sort
+        _name = self._data.fields[_col].name
+        _key = Order(self._data.get(at, _name))
+        _lo, _hi = 0, len(self._order)
+        while _lo < _hi:
+            _mid = (_lo + _hi) // 2
+            _there = Order(self._data.get(self._order[_mid], _name))
+            if (_there >= _key) if _desc else (_there <= _key):
+                _lo = _mid + 1
+            else:
+                _hi = _mid
+        return _lo
 
 
 class Table_view(Value):
@@ -256,6 +302,14 @@ class Table_view(Value):
 
     def set_value(self, value) -> None:
         self._model.replace(value)
+
+    def extend(self, rows: list[dict]) -> None:
+        """행을 끝에 붙임. 신호 안 냄 - `set_value` 와 같은 복원 쪽.
+
+        통째로 갈 때는 `set_value`, 몇 행 늘 때는 이것. 리셋이 없어 고른 자리가 안 풀림.
+        """
+        self._model.extend(rows)
+        self._arm(self.current())
 
     def _emit(self) -> None:
         """사람이 고쳤을 때의 후처리."""

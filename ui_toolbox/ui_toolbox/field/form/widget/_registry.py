@@ -134,7 +134,7 @@ def _list(spec: Field, label: str) -> QWidget:
 # ── 못 고치는 칸 ──────────────────────────────────────────────────────────────
 def _readout(spec: Field, label: str) -> QWidget:
     """자료형을 안 가림. 보이는 꼴은 `style.py` 의 READOUT 역할."""
-    return Readout_row(label, spec.default, tooltip=spec.tip)
+    return Readout_row(label, spec.default, tooltip=spec.tip, display=spec.display)
 
 
 for _name in ("bool", "int", "float", "optional_float", "str", "list_str",

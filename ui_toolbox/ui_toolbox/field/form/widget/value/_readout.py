@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import Signal
@@ -24,15 +25,18 @@ class Readout_row(Value):
     value_changed = Signal(object)
 
     def __init__(self, label: str = "", default: Any = None, tooltip: str = "",
+                 display: Callable[[Any], str] | None = None,
                  parent: QWidget | None = None) -> None:
         """Args:
         label: 왼쪽 라벨. 비면 라벨 없이 값만.
         default: 초기값.
         tooltip: 위젯 툴팁.
+        display: 값 -> 보일 글자. 비면 목록은 쉼표로, 나머지는 `str`.
         parent: 부모 위젯.
         """
         super().__init__(parent)
         self._value = default
+        self._display = display
 
         _lay = QHBoxLayout(self)
         _lay.setContentsMargins(0, 0, 0, 0)
@@ -46,11 +50,12 @@ class Readout_row(Value):
         if tooltip:
             self.setToolTip(tooltip)
 
-    @staticmethod
-    def _text(value: Any) -> str:
+    def _text(self, value: Any) -> str:
         """값 -> 보일 글자."""
         if value is None:
             return ""
+        if self._display is not None:
+            return self._display(value)
         if isinstance(value, (list, tuple)):
             return ", ".join(str(_v) for _v in value)
         return str(value)

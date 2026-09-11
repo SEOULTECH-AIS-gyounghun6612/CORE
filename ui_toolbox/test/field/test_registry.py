@@ -56,3 +56,14 @@ def test_labelled_off_drops_the_label():
     _spec = Field("가로", int, 3)
     assert Build(_spec).findChild(QLabel) is not None
     assert Build(_spec, labelled=False).findChild(QLabel) is None
+
+
+def _percent(value: float) -> str:
+    return f"{value:.0%}"
+
+
+def test_readout_shows_the_declared_text():
+    """표에서도 폼에서도 같은 선언이면 같은 글자. 값은 그대로 들고 감."""
+    _w = Build(Field("비율", float, 0.25, editable=False, display=_percent),
+               labelled=False)
+    assert (_w.value(), _w.findChild(QLabel).text()) == (0.25, "25%")

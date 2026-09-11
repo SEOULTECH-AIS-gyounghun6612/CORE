@@ -8,7 +8,8 @@
 |---|---|
 | 자료형 판별 | `list[str]` · `list[tuple[str, str]]` · `float \| None`. Optional 겹침도 같은 답 |
 | 정렬 자리 | 빈 값이 뒤. 수는 수로, 글자는 수 `0` 자리 |
-| 행 | 같은 값이면 안 바뀜. 사본으로 냄, 범위 밖 이동은 제자리, 거르기는 모든 칸 |
+| 행 | 같은 값이면 안 바뀜. 사본으로 냄, 범위 밖 이동은 제자리 |
+| 보이는 글자 | `display` 를 거침, 빈 값은 안 넘김. 거르기는 선언된 모든 칸의 그 글자 |
 
 ### test_value.py
 
@@ -33,6 +34,7 @@
 |---|---|
 | 올릴 때 막음 | 람다 · 인자 수 · 이미 찬 자리 |
 | 자리 | 아홉 키가 각자 자기 위젯을 냄. 빈 자리는 `None` |
+| 읽기 전용 글자 | 선언의 `display` 를 따르고 값은 그대로 |
 
 ### test_form.py
 
@@ -52,6 +54,14 @@
 | 칸 위젯 | 폼과 같은 등록표에서 옴. 라벨은 안 달고, 자리 없는 자료형은 `TypeError` |
 | 빈 칸 | 그 행에 칸이 없으면 `Field.default` |
 | 쌍 | 중복 key 를 살리고 빈 key 는 뺌. 칸 선언은 소비처가 줌 |
+
+### test_table.py
+
+| 축 | 확인하는 것 |
+|---|---|
+| 보이는 글자 | 화면은 `display`, 편집은 값. 거르기는 글자로, 정렬은 값으로 |
+| 붙이기 | 리셋 없이 한 번에 끼움, 신호 안 냄. 고른 것이 그대로, 거르기에 안 걸리면 안 보임 |
+| 정렬 중 붙이기 | 오름 · 내림 모두 다시 정렬한 자리와 같음. 같은 값은 원본 순서 |
 
 ## 기반
 
@@ -94,6 +104,10 @@ def _rows() -> Rows:
     return Rows(FIELDS[:4], [{"이름": "a", "칸수": 3}, {"이름": "b"}])
 
 _table = Table_view(_rows(), movable=True)    # 칸 고정. 정렬 · 거르기
+
+# 행이 계속 붙는 목록. 글자는 보일 때만 지음, 붙일 때 리셋 없음
+_log = Table_view(Rows([Field("시각", float, editable=False, display=_stamp)]), add_label="")
+_log.extend(new_rows)                          # 신호 안 냄 - set_value 와 같은 쪽
 _stack = Stack_view(_rows(), movable=True)    # 칸이 상황따라 숨음
 _pairs = Pair_editor(kind="path")             # key/value. 중복 key 허용
 
